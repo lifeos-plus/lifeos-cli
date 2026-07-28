@@ -35,6 +35,79 @@ describe("MayanCalendarAdapter", () => {
     });
   });
 
+  it("navigates week boundaries through Day Out of Time", () => {
+    expect(
+      adapter.shiftPeriodRange(
+        "week",
+        "2026-07-26",
+        "2026-08-01",
+        -1,
+      ),
+    ).toEqual({
+      start: "2026-07-25",
+      end: "2026-07-25",
+    });
+    expect(
+      adapter.shiftPeriodRange(
+        "week",
+        "2026-07-25",
+        "2026-07-25",
+        -1,
+      ),
+    ).toEqual({
+      start: "2026-07-18",
+      end: "2026-07-24",
+    });
+    expect(
+      adapter.shiftPeriodRange(
+        "week",
+        "2026-07-18",
+        "2026-07-24",
+        2,
+      ),
+    ).toEqual({
+      start: "2026-07-26",
+      end: "2026-08-01",
+    });
+  });
+
+  it("navigates month boundaries through Day Out of Time", () => {
+    expect(
+      adapter.shiftPeriodRange(
+        "month",
+        "2026-06-27",
+        "2026-07-24",
+        1,
+      ),
+    ).toEqual({
+      start: "2026-07-25",
+      end: "2026-07-25",
+    });
+    expect(
+      adapter.shiftPeriodRange(
+        "month",
+        "2026-07-25",
+        "2026-07-25",
+        1,
+      ),
+    ).toEqual({
+      start: "2026-07-26",
+      end: "2026-08-22",
+    });
+  });
+
+  it("uses calendar boundaries for planning period navigation", () => {
+    expect(adapter.getPreviousPeriod(new Date(2026, 6, 26), "week")).toEqual(
+      new Date(2026, 6, 25),
+    );
+    expect(adapter.getNextPeriod(new Date(2026, 6, 25), "week")).toEqual(
+      new Date(2026, 6, 26),
+    );
+    expect(adapter.getNextPeriod(new Date(2026, 6, 24), "month")).toEqual(
+      new Date(2026, 6, 25),
+    );
+  });
+
   it("enumerates thirteen moon options for a Mayan year", () => {
     const options = adapter.getMonthOptions(new Date(2026, 6, 26));
 

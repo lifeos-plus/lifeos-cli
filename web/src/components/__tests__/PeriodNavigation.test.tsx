@@ -196,6 +196,29 @@ describe("PeriodNavigation", () => {
     expect(centerButton.label).toBe("2025-02-01-2025-02-28");
   });
 
+  it("uses the adapter end boundary for a special one-day week", async () => {
+    calendarAdapterMock.getPeriodRange.mockReturnValueOnce({
+      start: "2026-07-25",
+      end: "2026-07-25",
+    });
+
+    renderWithProviders(
+      <PeriodNavigation
+        periodType="week"
+        selectedDate={new Date(2026, 6, 25)}
+        onPrevious={vi.fn()}
+        onNext={vi.fn()}
+        onCurrent={vi.fn()}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(actionButtonSpy.mock.calls[1]?.[0]).toBeDefined(),
+    );
+    const centerButton = actionButtonSpy.mock.calls[1][0] as { label: string };
+    expect(centerButton.label).toBe("2026-07-25");
+  });
+
   it("triggers navigation callbacks on button clicks", async () => {
     const user = userEvent.setup();
     const previous = vi.fn();

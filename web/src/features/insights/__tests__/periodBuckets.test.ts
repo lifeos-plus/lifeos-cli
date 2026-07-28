@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { buildBucketBoundaries } from "@/features/insights/periodBuckets";
-import { GregorianCalendarAdapter } from "@/utils/calendar";
+import {
+  GregorianCalendarAdapter,
+  MayanCalendarAdapter,
+} from "@/utils/calendar";
 
 describe("periodBuckets", () => {
   const mondayFirstAdapter = new GregorianCalendarAdapter(1);
@@ -54,5 +57,53 @@ describe("periodBuckets", () => {
       start: "2026-12-28",
       end: "2027-01-03",
     });
+  });
+
+  it("keeps Mayan year boundaries aligned around Day Out of Time", () => {
+    const buckets = buildBucketBoundaries(
+      "week",
+      "2026-07-20",
+      "2026-07-28",
+      new MayanCalendarAdapter(),
+    );
+
+    expect(buckets).toEqual([
+      {
+        start: "2026-07-18",
+        end: "2026-07-24",
+      },
+      {
+        start: "2026-07-25",
+        end: "2026-07-25",
+      },
+      {
+        start: "2026-07-26",
+        end: "2026-08-01",
+      },
+    ]);
+  });
+
+  it("includes Day Out of Time as a Mayan month bucket", () => {
+    const buckets = buildBucketBoundaries(
+      "month",
+      "2026-06-27",
+      "2026-07-26",
+      new MayanCalendarAdapter(),
+    );
+
+    expect(buckets).toEqual([
+      {
+        start: "2026-06-27",
+        end: "2026-07-24",
+      },
+      {
+        start: "2026-07-25",
+        end: "2026-07-25",
+      },
+      {
+        start: "2026-07-26",
+        end: "2026-08-22",
+      },
+    ]);
   });
 });

@@ -93,6 +93,21 @@ def test_iter_calendar_periods_deduplicates_mayan_buckets() -> None:
     )
 
 
+def test_iter_calendar_periods_keeps_mayan_week_boundaries_across_new_year() -> None:
+    periods = iter_calendar_periods(
+        start=date(2026, 7, 20),
+        end=date(2026, 7, 28),
+        granularity="week",
+        calendar_system="mayan_13_moon",
+    )
+
+    assert periods == (
+        (date(2026, 7, 18), date(2026, 7, 24)),
+        (date(2026, 7, 25), date(2026, 7, 25)),
+        (date(2026, 7, 26), date(2026, 8, 1)),
+    )
+
+
 def test_task_planning_cycle_filter_range_is_opt_in() -> None:
     assert (
         _planning_cycle_date_filter_range(
