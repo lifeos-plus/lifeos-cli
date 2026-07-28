@@ -20,12 +20,12 @@ uv run pre-commit run --all-files
 echo "[doctor] run tests"
 uv run pytest -m "not integration"
 
-echo "[doctor] export runtime requirements"
-uv export --format requirements.txt --no-dev --locked --no-emit-project \
-  --output-file /tmp/runtime-requirements.txt >/dev/null
+echo "[doctor] export locked requirements with all extras"
+uv export --format requirements.txt --all-extras --no-dev --locked --no-emit-project \
+  --output-file /tmp/locked-requirements.txt >/dev/null
 
-echo "[doctor] run runtime dependency vulnerability audit"
-uv run pip-audit --requirement /tmp/runtime-requirements.txt
+echo "[doctor] run locked dependency vulnerability audit"
+uv run pip-audit --requirement /tmp/locked-requirements.txt
 
 echo "[doctor] clean build artifacts"
 clean_build_artifacts
