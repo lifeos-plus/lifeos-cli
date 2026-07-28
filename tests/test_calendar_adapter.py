@@ -59,6 +59,18 @@ def test_mayan_calendar_adapter_resolves_year_moons_weeks_and_day_out_of_time() 
         date(2027, 7, 25),
         date(2027, 7, 25),
     )
+    assert adapter.month_range(date(2028, 2, 29)) == (
+        date(2028, 2, 7),
+        date(2028, 3, 6),
+    )
+    assert adapter.week_range(date(2028, 7, 24), 1) == (
+        date(2028, 7, 18),
+        date(2028, 7, 24),
+    )
+    assert adapter.week_range(date(2028, 7, 25), 1) == (
+        date(2028, 7, 25),
+        date(2028, 7, 25),
+    )
 
 
 def test_calendar_period_helpers_validate_calendar_system() -> None:

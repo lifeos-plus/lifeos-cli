@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from calendar import isleap
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Literal, Protocol
@@ -63,7 +64,6 @@ class GregorianCalendarAdapter:
 class MayanCalendarAdapter:
     """Mayan 13 Moon calendar adapter with 13 28-day moons and Day Out of Time."""
 
-    day_out_of_time_offset: int = 364
     moon_length_days: int = 28
 
     def year_start(self, target: date) -> date:
@@ -73,28 +73,55 @@ class MayanCalendarAdapter:
         return date(target.year - 1, 7, 26)
 
     def day_offset(self, target: date) -> int:
-        return (target - self.year_start(target)).days
+        start = self.year_start(target)
+        offset = (target - start).days
+        leap_day = self._leap_day(start)
+        if leap_day is not None and target > leap_day:
+            # February 29 is intercalary and must not shift later moon/week indices.
+            offset -= 1
+        return offset
 
-    def _day_out_of_time_range(self, target: date) -> tuple[date, date]:
-        day_out = self.year_start(target) + timedelta(days=self.day_out_of_time_offset)
-        return day_out, day_out
+    def _leap_day(self, year_start: date) -> date | None:
+        leap_year = year_start.year + 1
+        if not isleap(leap_year):
+            return None
+        return date(leap_year, 2, 29)
+
+    def _date_for_offset(self, year_start: date, offset: int) -> date:
+        target = year_start + timedelta(days=offset)
+        leap_day = self._leap_day(year_start)
+        if leap_day is not None and target >= leap_day:
+            target += timedelta(days=1)
+        return target
+
+    def _is_day_out_of_time(self, target: date) -> bool:
+        return target.month == 7 and target.day == 25
 
     def week_range(self, target: date, first_day_of_week: int) -> tuple[date, date]:
         del first_day_of_week
+        if self._is_day_out_of_time(target):
+            return target, target
+        year_start = self.year_start(target)
         offset = self.day_offset(target)
-        if offset >= self.day_out_of_time_offset:
-            return self._day_out_of_time_range(target)
-        start = self.year_start(target) + timedelta(days=(offset // 7) * 7)
-        return start, start + timedelta(days=6)
+        week_offset = (offset // 7) * 7
+        return (
+            self._date_for_offset(year_start, week_offset),
+            self._date_for_offset(year_start, week_offset + 6),
+        )
 
     def month_range(self, target: date) -> tuple[date, date]:
+        if self._is_day_out_of_time(target):
+            return target, target
+        year_start = self.year_start(target)
         offset = self.day_offset(target)
-        if offset >= self.day_out_of_time_offset:
-            return self._day_out_of_time_range(target)
-        start = self.year_start(target) + timedelta(
-            days=(offset // self.moon_length_days) * self.moon_length_days
+        month_offset = (offset // self.moon_length_days) * self.moon_length_days
+        return (
+            self._date_for_offset(year_start, month_offset),
+            self._date_for_offset(
+                year_start,
+                month_offset + self.moon_length_days - 1,
+            ),
         )
-        return start, start + timedelta(days=self.moon_length_days - 1)
 
     def year_range(self, target: date) -> tuple[date, date]:
         start = self.year_start(target)

@@ -470,27 +470,6 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
     }));
   }
 
-  // Mayan calendar specific methods - not applicable for Gregorian calendar
-  getMayanMonthInfo(_date: Date): {
-    moonIndex: number | null;
-    isMayanMonth: boolean;
-    monthStart: Date | null;
-  } {
-    return {
-      moonIndex: null,
-      isMayanMonth: false,
-      monthStart: null,
-    };
-  }
-
-  getMayanMonthStart(_yearStart: Date, _moonIndex: number): Date {
-    return new Date(); // Fallback for non-Mayan calendars
-  }
-
-  getMayanMonthOptions(): Array<{ index: number; name: string }> {
-    return []; // Empty array for non-Mayan calendars
-  }
-
   private parsePlanningDate(dateValue: string): Date {
     if (!dateValue) {
       return new Date(NaN);
