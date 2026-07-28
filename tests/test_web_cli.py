@@ -417,8 +417,10 @@ def test_web_task_list_basic_payload_excludes_full_task_fields(
 
     async def fake_load_task_relation_counts(
         _session: object,
-        _task_ids: list[UUID],
+        *,
+        task_ids: list[UUID],
     ) -> tuple[dict[UUID, int], dict[UUID, int]]:
+        assert task_ids == [UUID("11111111-1111-1111-1111-111111111111")]
         return (
             {UUID("11111111-1111-1111-1111-111111111111"): 4},
             {UUID("11111111-1111-1111-1111-111111111111"): 5},
@@ -427,8 +429,8 @@ def test_web_task_list_basic_payload_excludes_full_task_fields(
     monkeypatch.setattr(tasks.task_services, "list_tasks", fake_list_tasks)
     monkeypatch.setattr(tasks.task_services, "count_tasks", fake_count_tasks)
     monkeypatch.setattr(
-        tasks,
-        "_load_task_relation_counts",
+        tasks.task_queries,
+        "load_task_relation_counts",
         fake_load_task_relation_counts,
     )
 
@@ -579,27 +581,30 @@ def test_web_person_payload_preserves_tag_categories() -> None:
 
 def test_web_person_timelog_activity_payload_exposes_timeline_fields() -> None:
     pytest.importorskip("fastapi")
-    from lifeos_web.routers.persons import _activity_payload, _timelog_total_minutes
+    from lifeos_cli.db.services.person_activity_queries import (
+        PersonActivity,
+        _timelog_total_minutes,
+    )
+    from lifeos_web.routers.persons import _activity_payload
 
     timestamp = datetime(2026, 7, 2, 9, 0, tzinfo=timezone.utc)
-    payload = _activity_payload(
-        entity_id=UUID("11111111-1111-1111-1111-111111111111"),
+    activity = PersonActivity(
+        id=UUID("11111111-1111-1111-1111-111111111111"),
         activity_type="timelog",
         title="Deep work",
         description=None,
         activity_date=timestamp,
-        extra={
-            "start_time": "2026-07-02T09:00:00+00:00",
-            "end_time": "2026-07-02T09:30:00+00:00",
-            "area_id": "22222222-2222-2222-2222-222222222222",
-        },
+        start_time=timestamp,
+        end_time=datetime(2026, 7, 2, 9, 30, tzinfo=timezone.utc),
+        area_id=UUID("22222222-2222-2222-2222-222222222222"),
     )
+    payload = _activity_payload(activity)
 
     assert payload["status"] is None
     assert payload["start_time"] == "2026-07-02T09:00:00+00:00"
     assert payload["end_time"] == "2026-07-02T09:30:00+00:00"
     assert payload["area_id"] == "22222222-2222-2222-2222-222222222222"
-    assert _timelog_total_minutes([payload]) == 30
+    assert _timelog_total_minutes([activity]) == 30
 
 
 def test_web_habit_action_payload_uses_slim_habit_summary(
@@ -878,15 +883,17 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
 
     async def fake_load_task_relation_counts(
         _session: object,
-        _task_ids: list[UUID],
+        *,
+        task_ids: list[UUID],
     ) -> tuple[dict[UUID, int], dict[UUID, int]]:
+        assert task_ids == [UUID("11111111-1111-1111-1111-111111111111")]
         return ({}, {})
 
     monkeypatch.setattr(task_router.task_services, "list_tasks", fake_list_tasks)
     monkeypatch.setattr(task_router.task_services, "count_tasks", fake_count_tasks)
     monkeypatch.setattr(
-        task_router,
-        "_load_task_relation_counts",
+        task_router.task_queries,
+        "load_task_relation_counts",
         fake_load_task_relation_counts,
     )
 
@@ -1504,7 +1511,7 @@ def test_web_person_note_activity_payload_avoids_duplicate_note_content(
 ) -> None:
     pytest.importorskip("fastapi")
 
-    from lifeos_web.routers import persons
+    from lifeos_cli.db.services import person_activity_queries
 
     note_id = UUID("11111111-1111-1111-1111-111111111111")
     person_id = UUID("22222222-2222-2222-2222-222222222222")
@@ -1538,18 +1545,18 @@ def test_web_person_note_activity_payload_avoids_duplicate_note_content(
             return FakeResult()
 
     monkeypatch.setattr(
-        persons,
+        person_activity_queries,
         "_load_person_entity_ids",
         fake_load_person_entity_ids,
     )
     monkeypatch.setattr(
-        persons,
+        person_activity_queries,
         "_load_person_note_ids",
         fake_load_person_note_ids,
     )
 
     activities = asyncio.run(
-        persons._load_activity_items(
+        person_activity_queries._load_activity_items(
             cast(AsyncSession, FakeSession()),
             person_id=person_id,
             activity_filter="note",
@@ -1557,14 +1564,13 @@ def test_web_person_note_activity_payload_avoids_duplicate_note_content(
     )
 
     assert activities == [
-        {
-            "id": str(note_id),
-            "type": "note",
-            "title": "Remember the meeting notes",
-            "description": None,
-            "date": timestamp.isoformat(),
-            "status": None,
-        }
+        person_activity_queries.PersonActivity(
+            id=note_id,
+            activity_type="note",
+            title="Remember the meeting notes",
+            description=None,
+            activity_date=timestamp,
+        )
     ]
 
 

@@ -15,9 +15,12 @@ from lifeos_cli.application.calendar_adapter import (
     get_calendar_period_range,
 )
 from lifeos_cli.config import ConfigurationError
+from lifeos_cli.db.models.association import Association
+from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.person import Person
 from lifeos_cli.db.models.person_association import person_associations
 from lifeos_cli.db.models.task import Task
+from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services.entity_people import load_people_for_entities
 from lifeos_cli.db.services.model_utils import load_view_by_id
@@ -276,6 +279,42 @@ async def _build_task_views(session: AsyncSession, tasks: list[Task]) -> list[Ta
         entity_type="task",
     )
     return [build_task_view(task, people=people_map.get(task.id, ())) for task in tasks]
+
+
+async def load_task_relation_counts(
+    session: AsyncSession,
+    *,
+    task_ids: list[UUID],
+) -> tuple[dict[UUID, int], dict[UUID, int]]:
+    """Load active note and timelog counts for a set of tasks."""
+    unique_task_ids = list(dict.fromkeys(task_ids))
+    if not unique_task_ids:
+        return {}, {}
+
+    note_rows = await session.execute(
+        select(Association.target_id, func.count(Association.id))
+        .join(Note, Note.id == Association.source_id)
+        .where(
+            Association.source_model == "note",
+            Association.target_model == "task",
+            Association.link_type == "relates_to",
+            Association.target_id.in_(unique_task_ids),
+            Note.deleted_at.is_(None),
+        )
+        .group_by(Association.target_id)
+    )
+    timelog_rows = await session.execute(
+        select(Timelog.task_id, func.count(Timelog.id))
+        .where(
+            Timelog.task_id.in_(unique_task_ids),
+            Timelog.deleted_at.is_(None),
+        )
+        .group_by(Timelog.task_id)
+    )
+    return (
+        {task_id: int(count) for task_id, count in note_rows.all()},
+        {task_id: int(count) for task_id, count in timelog_rows.all()},
+    )
 
 
 async def get_task(

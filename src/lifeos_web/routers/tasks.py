@@ -8,12 +8,9 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lifeos_cli.db.models.association import Association
-from lifeos_cli.db.models.note import Note
-from lifeos_cli.db.models.timelog import Timelog
+from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services import tasks as task_services
 from lifeos_web.deps import get_db_session
 from lifeos_web.schemas import (
@@ -57,41 +54,6 @@ def _collect_task_tree_ids(tasks: list[Any]) -> list[UUID]:
     for task in tasks:
         visit(task)
     return task_ids
-
-
-async def _load_task_relation_counts(
-    session: AsyncSession,
-    task_ids: list[UUID],
-) -> tuple[dict[UUID, int], dict[UUID, int]]:
-    unique_task_ids = list(dict.fromkeys(task_ids))
-    if not unique_task_ids:
-        return {}, {}
-
-    note_rows = await session.execute(
-        select(Association.target_id, func.count(Association.id))
-        .join(Note, Note.id == Association.source_id)
-        .where(
-            Association.source_model == "note",
-            Association.target_model == "task",
-            Association.link_type == "relates_to",
-            Association.target_id.in_(unique_task_ids),
-            Note.deleted_at.is_(None),
-        )
-        .group_by(Association.target_id)
-    )
-    timelog_rows = await session.execute(
-        select(Timelog.task_id, func.count(Timelog.id))
-        .where(
-            Timelog.task_id.in_(unique_task_ids),
-            Timelog.deleted_at.is_(None),
-        )
-        .group_by(Timelog.task_id)
-    )
-
-    return (
-        {task_id: count for task_id, count in note_rows.all()},
-        {task_id: count for task_id, count in timelog_rows.all()},
-    )
 
 
 def _page_envelope(
@@ -221,9 +183,9 @@ async def list_tasks(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    notes_count_by_task, timelogs_count_by_task = await _load_task_relation_counts(
+    notes_count_by_task, timelogs_count_by_task = await task_queries.load_task_relation_counts(
         session,
-        [row.id for row in rows],
+        task_ids=[row.id for row in rows],
     )
     return _page_envelope(
         items=[
@@ -288,9 +250,9 @@ async def get_vision_hierarchy(vision_id: UUID, session: SessionDep) -> dict[str
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     task_ids = _collect_task_tree_ids(list(hierarchy.root_tasks))
-    notes_count_by_task, timelogs_count_by_task = await _load_task_relation_counts(
+    notes_count_by_task, timelogs_count_by_task = await task_queries.load_task_relation_counts(
         session,
-        task_ids,
+        task_ids=task_ids,
     )
     return {
         "vision_id": str(hierarchy.vision_id),
@@ -321,9 +283,9 @@ async def get_task(task_id: UUID, session: SessionDep) -> dict[str, object]:
     task = await task_services.get_task(session, task_id=task_id)
     if task is None:
         raise HTTPException(status_code=404, detail=f"Task {task_id} was not found")
-    notes_count_by_task, timelogs_count_by_task = await _load_task_relation_counts(
+    notes_count_by_task, timelogs_count_by_task = await task_queries.load_task_relation_counts(
         session,
-        [task.id],
+        task_ids=[task.id],
     )
     return _task_list_payload(
         task,
@@ -414,9 +376,9 @@ async def get_task_with_subtasks(task_id: UUID, session: SessionDep) -> dict[str
     if task is None:
         raise HTTPException(status_code=404, detail=f"Task {task_id} was not found")
     task_ids = _collect_task_tree_ids([task])
-    notes_count_by_task, timelogs_count_by_task = await _load_task_relation_counts(
+    notes_count_by_task, timelogs_count_by_task = await task_queries.load_task_relation_counts(
         session,
-        task_ids,
+        task_ids=task_ids,
     )
     return _task_tree_payload(
         task,

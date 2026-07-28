@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import warnings
-from datetime import date
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock
@@ -21,6 +21,7 @@ from lifeos_cli.db.base import Base
 from lifeos_cli.db.models.habit import Habit
 from lifeos_cli.db.models.habit_action import HabitAction
 from lifeos_cli.db.models.task import Task
+from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import habit_actions, notes, people, tags
 
@@ -214,10 +215,10 @@ def test_habit_action_notes_are_stored_as_linked_notes() -> None:
     asyncio.run(run())
 
 
-def test_web_task_relation_counts_include_related_notes() -> None:
+def test_task_relation_counts_exclude_soft_deleted_records() -> None:
     pytest.importorskip("fastapi")
 
-    from lifeos_web.routers.tasks import _load_task_relation_counts
+    from lifeos_cli.db.services.task_queries import load_task_relation_counts
 
     async def run() -> None:
         engine, session_factory = await _create_sqlite_session_factory()
@@ -231,17 +232,45 @@ def test_web_task_relation_counts_include_related_notes() -> None:
                 await session.flush()
                 await notes.create_note(
                     session,
-                    content="Task note",
+                    content="Active task note",
+                    task_ids=[task.id],
+                )
+                deleted_note = await notes.create_note(
+                    session,
+                    content="Deleted task note",
+                    task_ids=[task.id],
+                )
+                await notes.delete_note(session, note_id=deleted_note.id)
+
+                timestamp = datetime(2026, 7, 18, 12, 0, tzinfo=timezone.utc)
+                deleted_timelog = Timelog(
+                    title="Deleted task timelog",
+                    start_time=timestamp,
+                    end_time=timestamp.replace(minute=30),
+                    task_id=task.id,
+                )
+                session.add_all(
+                    [
+                        Timelog(
+                            title="Active task timelog",
+                            start_time=timestamp,
+                            end_time=timestamp.replace(minute=30),
+                            task_id=task.id,
+                        ),
+                        deleted_timelog,
+                    ]
+                )
+                await session.flush()
+                deleted_timelog.soft_delete()
+                await session.flush()
+
+                note_counts, timelog_counts = await load_task_relation_counts(
+                    session,
                     task_ids=[task.id],
                 )
 
-                note_counts, timelog_counts = await _load_task_relation_counts(
-                    session,
-                    [task.id],
-                )
-
                 assert note_counts == {task.id: 1}
-                assert timelog_counts == {}
+                assert timelog_counts == {task.id: 1}
         finally:
             await engine.dispose()
 

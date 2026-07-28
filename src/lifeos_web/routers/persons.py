@@ -3,23 +3,16 @@
 from __future__ import annotations
 
 import math
-from datetime import date, datetime
+from datetime import date
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lifeos_cli.db.models.association import Association
-from lifeos_cli.db.models.event import Event
-from lifeos_cli.db.models.note import Note
-from lifeos_cli.db.models.person_association import person_associations
-from lifeos_cli.db.models.task import Task
-from lifeos_cli.db.models.timelog import Timelog
-from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import people as people_services
+from lifeos_cli.db.services import person_activity_queries
 from lifeos_cli.db.services.read_models import PersonView, TagSummaryView
 from lifeos_web.deps import get_db_session
 from lifeos_web.schemas import ListResponse, Pagination
@@ -81,192 +74,23 @@ def _person_payload(person: PersonView) -> dict[str, object]:
     }
 
 
-def _preview(value: str | None, *, limit: int = 160) -> str | None:
-    if value is None:
-        return None
-    normalized = " ".join(value.split())
-    if len(normalized) <= limit:
-        return normalized
-    return f"{normalized[: limit - 1]}..."
-
-
-def _activity_payload(
-    *,
-    entity_id: UUID,
-    activity_type: str,
-    title: str,
-    description: str | None,
-    activity_date: date | datetime,
-    status: str | None = None,
-    extra: dict[str, object] | None = None,
-) -> dict[str, object]:
+def _activity_payload(item: person_activity_queries.PersonActivity) -> dict[str, object]:
+    """Convert a person activity query result to the established JSON shape."""
     payload: dict[str, object] = {
-        "id": str(entity_id),
-        "type": activity_type,
-        "title": title,
-        "description": _preview(description),
-        "date": activity_date.isoformat(),
-        "status": status,
+        "id": str(item.id),
+        "type": item.activity_type,
+        "title": item.title,
+        "description": item.description,
+        "date": item.activity_date.isoformat(),
+        "status": item.status,
     }
-    if extra:
-        payload.update(extra)
+    if item.start_time is not None:
+        payload["start_time"] = item.start_time.isoformat()
+    if item.end_time is not None:
+        payload["end_time"] = item.end_time.isoformat()
+    if item.activity_type == "timelog":
+        payload["area_id"] = str(item.area_id) if item.area_id else None
     return payload
-
-
-def _timelog_total_minutes(items: list[dict[str, object]]) -> int:
-    total = 0
-    for item in items:
-        if item.get("type") != "timelog":
-            continue
-        start = item.get("start_time")
-        end = item.get("end_time")
-        if not isinstance(start, str) or not isinstance(end, str):
-            continue
-        try:
-            start_dt = datetime.fromisoformat(start)
-            end_dt = datetime.fromisoformat(end)
-        except ValueError:
-            continue
-        minutes = round((end_dt - start_dt).total_seconds() / 60)
-        if minutes > 0:
-            total += minutes
-    return total
-
-
-async def _load_person_entity_ids(
-    session: AsyncSession,
-    *,
-    person_id: UUID,
-) -> dict[str, list[UUID]]:
-    rows = await session.execute(
-        select(
-            person_associations.c.entity_type,
-            person_associations.c.entity_id,
-        ).where(person_associations.c.person_id == person_id)
-    )
-    grouped: dict[str, list[UUID]] = {}
-    for entity_type, entity_id in rows.all():
-        grouped.setdefault(str(entity_type), []).append(entity_id)
-    return grouped
-
-
-async def _load_person_note_ids(session: AsyncSession, *, person_id: UUID) -> list[UUID]:
-    rows = await session.execute(
-        select(Association.source_id)
-        .distinct()
-        .where(
-            Association.source_model == "note",
-            Association.target_model == "person",
-            Association.target_id == person_id,
-            Association.link_type == "is_about",
-        )
-    )
-    return list(rows.scalars().all())
-
-
-async def _load_activity_items(
-    session: AsyncSession,
-    *,
-    person_id: UUID,
-    activity_filter: str | None,
-) -> list[dict[str, object]]:
-    entity_ids = await _load_person_entity_ids(session, person_id=person_id)
-    items: list[dict[str, object]] = []
-
-    if activity_filter in (None, "vision"):
-        vision_ids = entity_ids.get("vision", [])
-        if vision_ids:
-            vision_rows = await session.execute(
-                select(Vision).where(Vision.id.in_(vision_ids), Vision.deleted_at.is_(None))
-            )
-            items.extend(
-                _activity_payload(
-                    entity_id=vision.id,
-                    activity_type="vision",
-                    title=vision.name,
-                    description=vision.description,
-                    activity_date=vision.updated_at,
-                    status=vision.status,
-                )
-                for vision in vision_rows.scalars()
-            )
-
-    if activity_filter in (None, "task"):
-        task_ids = entity_ids.get("task", [])
-        if task_ids:
-            task_rows = await session.execute(
-                select(Task).where(Task.id.in_(task_ids), Task.deleted_at.is_(None))
-            )
-            items.extend(
-                _activity_payload(
-                    entity_id=task.id,
-                    activity_type="task",
-                    title=task.content,
-                    description=task.description,
-                    activity_date=task.updated_at,
-                    status=task.status,
-                )
-                for task in task_rows.scalars()
-            )
-
-    if activity_filter in (None, "planned_event"):
-        planned_event_ids = entity_ids.get("event", [])
-        if planned_event_ids:
-            planned_event_rows = await session.execute(
-                select(Event).where(Event.id.in_(planned_event_ids), Event.deleted_at.is_(None))
-            )
-            items.extend(
-                _activity_payload(
-                    entity_id=planned_event_record.id,
-                    activity_type="planned_event",
-                    title=planned_event_record.title,
-                    description=planned_event_record.description,
-                    activity_date=planned_event_record.start_time,
-                    status=planned_event_record.status,
-                )
-                for planned_event_record in planned_event_rows.scalars()
-            )
-
-    if activity_filter in (None, "timelog"):
-        timelog_ids = entity_ids.get("timelog", [])
-        if timelog_ids:
-            timelog_rows = await session.execute(
-                select(Timelog).where(Timelog.id.in_(timelog_ids), Timelog.deleted_at.is_(None))
-            )
-            items.extend(
-                _activity_payload(
-                    entity_id=timelog.id,
-                    activity_type="timelog",
-                    title=timelog.title,
-                    description=None,
-                    activity_date=timelog.start_time,
-                    extra={
-                        "start_time": timelog.start_time.isoformat(),
-                        "end_time": timelog.end_time.isoformat(),
-                        "area_id": str(timelog.area_id) if timelog.area_id else None,
-                    },
-                )
-                for timelog in timelog_rows.scalars()
-            )
-
-    if activity_filter in (None, "note"):
-        note_ids = await _load_person_note_ids(session, person_id=person_id)
-        if note_ids:
-            note_rows = await session.execute(
-                select(Note).where(Note.id.in_(note_ids), Note.deleted_at.is_(None))
-            )
-            items.extend(
-                _activity_payload(
-                    entity_id=note.id,
-                    activity_type="note",
-                    title=_preview(note.content) or "Note",
-                    description=None,
-                    activity_date=note.updated_at,
-                )
-                for note in note_rows.scalars()
-            )
-
-    return sorted(items, key=lambda item: str(item["date"]), reverse=True)
 
 
 @router.get("/", response_model=ListResponse)
@@ -396,30 +220,27 @@ async def list_person_activities(
     if activity_filter not in {None, "vision", "task", "planned_event", "timelog", "note"}:
         raise HTTPException(status_code=400, detail=f"Unsupported activity type: {activity_filter}")
 
-    all_items = await _load_activity_items(
+    result = await person_activity_queries.list_person_activities(
         session,
         person_id=person_id,
         activity_filter=activity_filter,
+        limit=size,
+        offset=(page - 1) * size,
     )
-    start = (page - 1) * size
-    items = all_items[start : start + size]
-    total = len(all_items)
     return ListResponse(
-        items=items,
+        items=[_activity_payload(item) for item in result.items],
         pagination=Pagination(
             page=page,
             size=size,
-            total=total,
-            pages=math.ceil(total / size) if size else 0,
+            total=result.total,
+            pages=math.ceil(result.total / size) if size else 0,
         ),
         meta={
             "person_id": str(person_id),
             "person_name": person.name,
             "activity_type": activity_filter,
-            "timelog_count": total if activity_filter == "timelog" else None,
-            "timelog_total_minutes": (
-                _timelog_total_minutes(all_items) if activity_filter == "timelog" else None
-            ),
+            "timelog_count": result.timelog_count,
+            "timelog_total_minutes": result.timelog_total_minutes,
         },
     )
 
