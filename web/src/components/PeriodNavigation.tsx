@@ -266,23 +266,27 @@ const PeriodNavigation: React.FC<PeriodNavigationProps> = ({
       }
 
       case "week": {
-        const weekStart = calendarAdapter.getWeekStart(selectedDate);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
+        const range = calendarAdapter.getPeriodRange("week", selectedDate);
+        const weekStart = parseLocalIso(range.start);
+        const weekEnd = parseLocalIso(range.end);
 
-        const startDateStr = formatDate(weekStart.toISOString(), timezone);
-        const endDateStr = formatDate(weekEnd.toISOString(), timezone);
+        const startDateStr = formatDate(range.start, timezone);
+        const endDateStr = formatDate(range.end, timezone);
 
-        // 如果跨年，显示完整日期
+        if (range.start === range.end) {
+          return addCurrentIndicator(startDateStr);
+        }
+
+        // Show complete dates when the week crosses a year boundary.
         if (weekStart.getFullYear() !== weekEnd.getFullYear()) {
           const weekRange = `${startDateStr} - ${endDateStr}`;
           return addCurrentIndicator(weekRange);
         }
 
-        // 如果跨月，显示月份
+        // Include the month when the week crosses a month boundary.
         if (weekStart.getMonth() !== weekEnd.getMonth()) {
           const startMonthStr = formatDate(
-            weekStart.toISOString(),
+            range.start,
             timezone,
           ).substring(0, 7);
           const endDay = String(weekEnd.getDate()).padStart(2, "0");
@@ -290,10 +294,10 @@ const PeriodNavigation: React.FC<PeriodNavigationProps> = ({
           return addCurrentIndicator(weekRange);
         }
 
-        // 同月内
+        // Use the compact form when the week stays within one month.
         const startDay = String(weekStart.getDate()).padStart(2, "0");
         const endDay = String(weekEnd.getDate()).padStart(2, "0");
-        const weekRange = `${formatDate(weekStart.toISOString(), timezone).substring(0, 7)}-${startDay}~${endDay}`;
+        const weekRange = `${formatDate(range.start, timezone).substring(0, 7)}-${startDay}~${endDay}`;
         return addCurrentIndicator(weekRange);
       }
 

@@ -151,31 +151,6 @@ export interface CalendarAdapter {
   ): Array<{ index: number; name: string }>;
 
   /**
-   * Get Mayan month information for a given date (Mayan calendar specific)
-   * @param date - The date to get month info for
-   * @returns Object containing moon index and whether it's a valid Mayan month
-   */
-  getMayanMonthInfo?(date: Date): {
-    moonIndex: number | null;
-    isMayanMonth: boolean;
-    monthStart: Date | null;
-  };
-
-  /**
-   * Get the start date of a specific Mayan month (Mayan calendar specific)
-   * @param yearStart - The start of the Mayan year
-   * @param moonIndex - The moon index (1-13)
-   * @returns Date object representing the start of the specified month
-   */
-  getMayanMonthStart?(yearStart: Date, moonIndex: number): Date;
-
-  /**
-   * Get all available Mayan months for selection (Mayan calendar specific)
-   * @returns Array of month objects with index and display name
-   */
-  getMayanMonthOptions?(): Array<{ index: number; name: string }>;
-
-  /**
    * Get the current week range based on calendar system
    * @returns Object containing start and end dates in YYYY-MM-DD format
    */

@@ -59,6 +59,18 @@ def test_mayan_calendar_adapter_resolves_year_moons_weeks_and_day_out_of_time() 
         date(2027, 7, 25),
         date(2027, 7, 25),
     )
+    assert adapter.month_range(date(2028, 2, 29)) == (
+        date(2028, 2, 7),
+        date(2028, 3, 6),
+    )
+    assert adapter.week_range(date(2028, 7, 24), 1) == (
+        date(2028, 7, 18),
+        date(2028, 7, 24),
+    )
+    assert adapter.week_range(date(2028, 7, 25), 1) == (
+        date(2028, 7, 25),
+        date(2028, 7, 25),
+    )
 
 
 def test_calendar_period_helpers_validate_calendar_system() -> None:
@@ -90,6 +102,21 @@ def test_iter_calendar_periods_deduplicates_mayan_buckets() -> None:
         (date(2026, 6, 27), date(2026, 7, 24)),
         (date(2026, 7, 25), date(2026, 7, 25)),
         (date(2026, 7, 26), date(2026, 8, 22)),
+    )
+
+
+def test_iter_calendar_periods_keeps_mayan_week_boundaries_across_new_year() -> None:
+    periods = iter_calendar_periods(
+        start=date(2026, 7, 20),
+        end=date(2026, 7, 28),
+        granularity="week",
+        calendar_system="mayan_13_moon",
+    )
+
+    assert periods == (
+        (date(2026, 7, 18), date(2026, 7, 24)),
+        (date(2026, 7, 25), date(2026, 7, 25)),
+        (date(2026, 7, 26), date(2026, 8, 1)),
     )
 
 

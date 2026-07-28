@@ -10,7 +10,6 @@ import {
   parseLocalDateString,
 } from "./CalendarAdapter";
 import type { TaskWithSubtasks } from "@/services/api";
-import { getDaysInWeek } from "@/utils/datetime";
 
 /**
  * Mayan 13-Moon calendar adapter implementation
@@ -75,6 +74,28 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     return new Date(y - 1, 6, 26);
   }
 
+  private getDateOrdinal(date: Date): number {
+    return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  private getLeapDayForYear(yearStart: Date): Date | null {
+    const leapDay = new Date(yearStart.getFullYear() + 1, 1, 29);
+    return leapDay.getMonth() === 1 ? leapDay : null;
+  }
+
+  private getDateForMayanDay(yearStart: Date, dayOfYear: number): Date {
+    const date = new Date(yearStart);
+    date.setDate(yearStart.getDate() + dayOfYear - 1);
+    const leapDay = this.getLeapDayForYear(yearStart);
+    if (
+      leapDay &&
+      this.getDateOrdinal(date) >= this.getDateOrdinal(leapDay)
+    ) {
+      date.setDate(date.getDate() + 1);
+    }
+    return date;
+  }
+
   /**
    * Get the day of year in Mayan calendar (1-365)
    * @param date - The date to get day of year for
@@ -82,19 +103,21 @@ export class MayanCalendarAdapter implements CalendarAdapter {
    */
   private getMayanDayOfYear(date: Date): number {
     const start = this.getMayanYearStart(date);
-    const startAtMid = new Date(
-      start.getFullYear(),
-      start.getMonth(),
-      start.getDate(),
-    );
-    const dAtMid = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-    );
-    const diffMs = dAtMid.getTime() - startAtMid.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    return diffDays + 1; // 1-based
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    let dayOfYear =
+      Math.floor(
+        (this.getDateOrdinal(date) - this.getDateOrdinal(start)) /
+          millisecondsPerDay,
+      ) + 1;
+    const leapDay = this.getLeapDayForYear(start);
+    if (
+      leapDay &&
+      this.getDateOrdinal(date) > this.getDateOrdinal(leapDay)
+    ) {
+      // February 29 is intercalary, so it must not shift later moon/week indices.
+      dayOfYear -= 1;
+    }
+    return dayOfYear;
   }
 
   /**
@@ -111,8 +134,11 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   } {
     const parts = this.toMayanParts(date);
     if (parts.isDayOutOfTime) {
-      const outOfTimeDate = new Date(parts.mayanYearStart);
-      outOfTimeDate.setDate(outOfTimeDate.getDate() + 364);
+      const outOfTimeDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
       return {
         start: new Date(outOfTimeDate),
         end: new Date(outOfTimeDate),
@@ -120,16 +146,26 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         weeks: [],
       };
     }
-    const start = new Date(parts.mayanYearStart);
-    start.setDate(start.getDate() + (parts.moonIndex! - 1) * 28);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 27);
+    const firstDayOfMoon = (parts.moonIndex! - 1) * 28 + 1;
+    const start = this.getDateForMayanDay(
+      parts.mayanYearStart,
+      firstDayOfMoon,
+    );
+    const end = this.getDateForMayanDay(
+      parts.mayanYearStart,
+      firstDayOfMoon + 27,
+    );
     const firstWeekIndex = Math.ceil(((parts.moonIndex! - 1) * 28 + 1) / 7);
     const weeks = Array.from({ length: 4 }).map((_, i) => {
-      const wStart = new Date(start);
-      wStart.setDate(start.getDate() + i * 7);
-      const wEnd = new Date(wStart);
-      wEnd.setDate(wStart.getDate() + 6);
+      const firstDayOfWeek = firstDayOfMoon + i * 7;
+      const wStart = this.getDateForMayanDay(
+        parts.mayanYearStart,
+        firstDayOfWeek,
+      );
+      const wEnd = this.getDateForMayanDay(
+        parts.mayanYearStart,
+        firstDayOfWeek + 6,
+      );
       return {
         start: wStart,
         end: wEnd,
@@ -158,52 +194,28 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   } {
     const parts = this.toMayanParts(date);
     if (parts.isDayOutOfTime) {
-      const outOfTimeDate = new Date(parts.mayanYearStart);
-      outOfTimeDate.setDate(outOfTimeDate.getDate() + 364);
+      const outOfTimeDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
       return { start: outOfTimeDate, end: outOfTimeDate, isDayOutOfTime: true };
     }
-    const start = new Date(parts.mayanYearStart);
-    start.setDate(start.getDate() + (parts.weekIndex! - 1) * 7);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
+    const firstDayOfWeek = (parts.weekIndex! - 1) * 7 + 1;
+    const start = this.getDateForMayanDay(
+      parts.mayanYearStart,
+      firstDayOfWeek,
+    );
+    const end = this.getDateForMayanDay(
+      parts.mayanYearStart,
+      firstDayOfWeek + 6,
+    );
     return {
       start,
       end,
       weekIndexWithinYear: parts.weekIndex,
       isDayOutOfTime: false,
     };
-  }
-
-  /**
-   * Get Mayan moon range by offset from a given date
-   * @param date - The base date
-   * @param deltaMonths - Number of months to offset
-   * @returns Object containing moon range and index
-   */
-  getMayanMoonRangeByOffset(
-    date: Date,
-    deltaMonths: number,
-  ): { start: Date; end: Date; moonIndex: number; mayanYearStart: Date } {
-    const parts = this.toMayanParts(date);
-    // If date is Day Out of Time, treat it as being in the 13th moon for navigation purposes
-    const currentMoonIndex = parts.isDayOutOfTime ? 13 : parts.moonIndex || 1;
-    const yearStart = new Date(parts.mayanYearStart);
-
-    let totalIndex = currentMoonIndex - 1 + deltaMonths;
-    while (totalIndex < 0) {
-      totalIndex += 13;
-      yearStart.setFullYear(yearStart.getFullYear() - 1);
-    }
-    while (totalIndex >= 13) {
-      totalIndex -= 13;
-      yearStart.setFullYear(yearStart.getFullYear() + 1);
-    }
-
-    const start = new Date(yearStart);
-    start.setDate(yearStart.getDate() + totalIndex * 28);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 27);
-    return { start, end, moonIndex: totalIndex + 1, mayanYearStart: yearStart };
   }
 
   /**
@@ -238,8 +250,10 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     }
 
     const yearStart = this.getYearStart(date);
-    const monthStart = new Date(yearStart);
-    monthStart.setDate(yearStart.getDate() + (parts.moonIndex! - 1) * 28);
+    const monthStart = this.getDateForMayanDay(
+      yearStart,
+      (parts.moonIndex! - 1) * 28 + 1,
+    );
 
     return {
       monthIndex: parts.moonIndex || null,
@@ -255,9 +269,7 @@ export class MayanCalendarAdapter implements CalendarAdapter {
    * @returns Date object representing the start of the specified month
    */
   getMonthStart(yearStart: Date, monthIndex: number): Date {
-    const monthStart = new Date(yearStart);
-    monthStart.setDate(yearStart.getDate() + (monthIndex - 1) * 28);
-    return monthStart;
+    return this.getDateForMayanDay(yearStart, (monthIndex - 1) * 28 + 1);
   }
 
   /**
@@ -274,8 +286,10 @@ export class MayanCalendarAdapter implements CalendarAdapter {
 
     return Array.from({ length: 13 }, (_, i) => {
       const moonIndex = i + 1;
-      const monthStart = new Date(yearStart);
-      monthStart.setDate(yearStart.getDate() + (moonIndex - 1) * 28);
+      const monthStart = this.getDateForMayanDay(
+        yearStart,
+        (moonIndex - 1) * 28 + 1,
+      );
 
       // Format: 3 2025-09-20
       const year = monthStart.getFullYear();
@@ -288,61 +302,6 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         name,
       };
     });
-  }
-
-  /**
-   * Get Mayan month information for a given date (Mayan calendar specific)
-   * @param date - The date to get month info for
-   * @returns Object containing moon index and whether it's a valid Mayan month
-   */
-  getMayanMonthInfo(date: Date): {
-    moonIndex: number | null;
-    isMayanMonth: boolean;
-    monthStart: Date | null;
-  } {
-    const parts = this.toMayanParts(date);
-    const isMayanMonth = !parts.isDayOutOfTime && parts.moonIndex !== undefined;
-
-    if (!isMayanMonth) {
-      return {
-        moonIndex: null,
-        isMayanMonth: false,
-        monthStart: null,
-      };
-    }
-
-    const yearStart = this.getYearStart(date);
-    const monthStart = new Date(yearStart);
-    monthStart.setDate(yearStart.getDate() + (parts.moonIndex! - 1) * 28);
-
-    return {
-      moonIndex: parts.moonIndex || null,
-      isMayanMonth: true,
-      monthStart,
-    };
-  }
-
-  /**
-   * Get the start date of a specific Mayan month
-   * @param yearStart - The start of the Mayan year
-   * @param moonIndex - The moon index (1-13)
-   * @returns Date object representing the start of the specified month
-   */
-  getMayanMonthStart(yearStart: Date, moonIndex: number): Date {
-    const monthStart = new Date(yearStart);
-    monthStart.setDate(yearStart.getDate() + (moonIndex - 1) * 28);
-    return monthStart;
-  }
-
-  /**
-   * Get all available Mayan months for selection
-   * @returns Array of month objects with index and display name
-   */
-  getMayanMonthOptions(): Array<{ index: number; name: string }> {
-    return Array.from({ length: 13 }, (_, i) => ({
-      index: i + 1,
-      name: `第${i + 1}月`,
-    }));
   }
 
   getYearStart(date: Date): Date {
@@ -368,6 +327,28 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     return range.start;
   }
 
+  private shiftAdjacentPeriodRange(
+    viewType: "month" | "week",
+    startDate: string,
+    step: number,
+  ): { start: string; end: string } {
+    let range = this.getPeriodRange(
+      viewType,
+      parseLocalDateString(startDate),
+    );
+    const direction = Math.sign(step);
+
+    for (let index = 0; index < Math.abs(Math.trunc(step)); index += 1) {
+      const boundary = parseLocalDateString(
+        direction > 0 ? range.end : range.start,
+      );
+      boundary.setDate(boundary.getDate() + direction);
+      range = this.getPeriodRange(viewType, boundary);
+    }
+
+    return range;
+  }
+
   getNextPeriod(currentDate: Date, cycleType: ExtendedPlanningViewType): Date {
     const nextDate = new Date(currentDate);
     const normalizedCycleType = normalizePlanningViewType(cycleType);
@@ -383,12 +364,18 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         start.setFullYear(start.getFullYear() + 7);
         return start;
       }
-      case "month":
-        nextDate.setDate(nextDate.getDate() + 28);
-        return nextDate;
-      case "week":
-        nextDate.setDate(nextDate.getDate() + 7);
-        return nextDate;
+      case "month": {
+        const range = this.getPeriodRange("month", currentDate);
+        return parseLocalDateString(
+          this.shiftAdjacentPeriodRange("month", range.start, 1).start,
+        );
+      }
+      case "week": {
+        const range = this.getPeriodRange("week", currentDate);
+        return parseLocalDateString(
+          this.shiftAdjacentPeriodRange("week", range.start, 1).start,
+        );
+      }
       case "day":
         nextDate.setDate(nextDate.getDate() + 1);
         return nextDate;
@@ -415,12 +402,18 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         start.setFullYear(start.getFullYear() - 7);
         return start;
       }
-      case "month":
-        prevDate.setDate(prevDate.getDate() - 28);
-        return prevDate;
-      case "week":
-        prevDate.setDate(prevDate.getDate() - 7);
-        return prevDate;
+      case "month": {
+        const range = this.getPeriodRange("month", currentDate);
+        return parseLocalDateString(
+          this.shiftAdjacentPeriodRange("month", range.start, -1).start,
+        );
+      }
+      case "week": {
+        const range = this.getPeriodRange("week", currentDate);
+        return parseLocalDateString(
+          this.shiftAdjacentPeriodRange("week", range.start, -1).start,
+        );
+      }
       case "day":
         prevDate.setDate(prevDate.getDate() - 1);
         return prevDate;
@@ -480,6 +473,12 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     return groups;
   }
 
+  private getPlanningCycleDate(task: TaskWithSubtasks): Date | null {
+    const value = task.planning_cycle_start_date;
+    if (!value || !isLocalDateString(value)) return null;
+    return parseLocalDateString(value);
+  }
+
   private buildSevenYearGroups(
     date: Date,
     tasks: TaskWithSubtasks[],
@@ -491,9 +490,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     const sevenYearTasks = this.getTasksByPlanningType(tasks, "7years");
 
     const tasksInCurrentPeriod = sevenYearTasks.filter((task) => {
-      if (!task.planning_cycle_start_date) return false;
-      if (!isLocalDateString(task.planning_cycle_start_date)) return false;
-      const taskDate = parseLocalDateString(task.planning_cycle_start_date);
+      const taskDate = this.getPlanningCycleDate(task);
+      if (!taskDate) return false;
       return taskDate >= start && taskDate <= end;
     });
 
@@ -520,9 +518,12 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     const dayTasks = this.getTasksByPlanningType(tasks, "day");
 
     const tasksInMayanYear = yearTasks.filter((task) => {
-      if (!task.planning_cycle_start_date) return false;
-      const d = new Date(task.planning_cycle_start_date);
-      return d >= mayanYearStart && d < nextMayanYearStart;
+      const taskDate = this.getPlanningCycleDate(task);
+      return (
+        taskDate !== null &&
+        taskDate >= mayanYearStart &&
+        taskDate < nextMayanYearStart
+      );
     });
 
     const yearGroup: PlanningGroup = {
@@ -535,14 +536,15 @@ export class MayanCalendarAdapter implements CalendarAdapter {
 
     // 13 moons
     for (let m = 1; m <= 13; m++) {
-      const moonStart = new Date(mayanYearStart);
-      moonStart.setDate(mayanYearStart.getDate() + (m - 1) * 28);
-      const moonEnd = new Date(moonStart);
-      moonEnd.setDate(moonStart.getDate() + 27);
+      const firstDayOfMoon = (m - 1) * 28 + 1;
+      const moonStart = this.getDateForMayanDay(
+        mayanYearStart,
+        firstDayOfMoon,
+      );
       const tasksInMoon = monthTasks.filter((task) => {
-        if (!task.planning_cycle_start_date) return false;
-        const d = new Date(task.planning_cycle_start_date);
-        const parts = this.toMayanParts(d);
+        const taskDate = this.getPlanningCycleDate(task);
+        if (!taskDate) return false;
+        const parts = this.toMayanParts(taskDate);
         return !parts.isDayOutOfTime && parts.moonIndex === m;
       });
       yearGroup.children!.push({
@@ -555,14 +557,13 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     }
 
     // Day out of time (single day)
-    const outOfTimeDate = new Date(mayanYearStart);
-    outOfTimeDate.setDate(outOfTimeDate.getDate() + 364);
+    const outOfTimeDate = new Date(mayanYearStart.getFullYear() + 1, 6, 25);
     const outOfTimeTasks = dayTasks.filter((task) => {
-      if (!task.planning_cycle_start_date) return false;
-      const d = new Date(task.planning_cycle_start_date);
+      const taskDate = this.getPlanningCycleDate(task);
+      if (!taskDate) return false;
       return (
-        this.isMayanDayOutOfTime(d) &&
-        this.getMayanYearStart(d).getTime() === mayanYearStart.getTime()
+        this.isMayanDayOutOfTime(taskDate) &&
+        this.getMayanYearStart(taskDate).getTime() === mayanYearStart.getTime()
       );
     });
     yearGroup.children!.push({
@@ -601,9 +602,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       label: `第${info.moonIndex}月`,
       date: info.start,
       tasks: monthTasks.filter((task) => {
-        if (!task.planning_cycle_start_date) return false;
-        const d = new Date(task.planning_cycle_start_date);
-        const parts = this.toMayanParts(d);
+        const taskDate = this.getPlanningCycleDate(task);
+        if (!taskDate) return false;
+        const parts = this.toMayanParts(taskDate);
         return !parts.isDayOutOfTime && parts.moonIndex === info.moonIndex;
       }),
       children: [],
@@ -611,9 +612,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
 
     info.weeks.forEach((w) => {
       const weekTasksIn = weekTasks.filter((task) => {
-        if (!task.planning_cycle_start_date) return false;
-        const d = new Date(task.planning_cycle_start_date);
-        const range = this.getMayanWeekRange(d);
+        const taskDate = this.getPlanningCycleDate(task);
+        if (!taskDate) return false;
+        const range = this.getMayanWeekRange(taskDate);
         return (
           !range.isDayOutOfTime && range.start.getTime() === w.start.getTime()
         );
@@ -645,9 +646,10 @@ export class MayanCalendarAdapter implements CalendarAdapter {
           label: "无时间日",
           date: range.start,
           tasks: dayTasks.filter((task) => {
-            if (!task.planning_cycle_start_date) return false;
-            const d = new Date(task.planning_cycle_start_date);
-            return this.isMayanDayOutOfTime(d);
+            const taskDate = this.getPlanningCycleDate(task);
+            return (
+              taskDate !== null && this.isMayanDayOutOfTime(taskDate)
+            );
           }),
           children: [],
         },
@@ -655,9 +657,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     }
 
     const weekTasksInWeek = weekTasks.filter((task) => {
-      if (!task.planning_cycle_start_date) return false;
-      const d = new Date(task.planning_cycle_start_date);
-      const r = this.getMayanWeekRange(d);
+      const taskDate = this.getPlanningCycleDate(task);
+      if (!taskDate) return false;
+      const r = this.getMayanWeekRange(taskDate);
       return !r.isDayOutOfTime && r.start.getTime() === range.start.getTime();
     });
 
@@ -669,12 +671,21 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       children: [],
     };
 
-    const days = getDaysInWeek(range.start);
+    const days: Date[] = [];
+    for (
+      let current = new Date(range.start);
+      current <= range.end;
+      current.setDate(current.getDate() + 1)
+    ) {
+      days.push(new Date(current));
+    }
     days.forEach((dayDate, index) => {
       const dayTasksInWeek = dayTasks.filter((task) => {
-        if (!task.planning_cycle_start_date) return false;
-        const taskDate = new Date(task.planning_cycle_start_date);
-        return taskDate.toDateString() === dayDate.toDateString();
+        const taskDate = this.getPlanningCycleDate(task);
+        return (
+          taskDate !== null &&
+          taskDate.toDateString() === dayDate.toDateString()
+        );
       });
       weekGroup.children!.push({
         id: `mayan-day-${range.start.toISOString()}-${index}`,
@@ -701,9 +712,10 @@ export class MayanCalendarAdapter implements CalendarAdapter {
           label: `无时间日`,
           date: date,
           tasks: dayTasks.filter((task) => {
-            if (!task.planning_cycle_start_date) return false;
-            const d = new Date(task.planning_cycle_start_date);
-            return this.isMayanDayOutOfTime(d);
+            const taskDate = this.getPlanningCycleDate(task);
+            return (
+              taskDate !== null && this.isMayanDayOutOfTime(taskDate)
+            );
           }),
           children: [],
         },
@@ -718,9 +730,10 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       label: `${year}年${month + 1}月${day}日`,
       date: date,
       tasks: dayTasks.filter((task) => {
-        if (!task.planning_cycle_start_date) return false;
-        const taskDate = new Date(task.planning_cycle_start_date);
-        return taskDate.toDateString() === date.toDateString();
+        const taskDate = this.getPlanningCycleDate(task);
+        return (
+          taskDate !== null && taskDate.toDateString() === date.toDateString()
+        );
       }),
       children: [],
     };
@@ -737,20 +750,10 @@ export class MayanCalendarAdapter implements CalendarAdapter {
 
   shiftWeekRange(
     startDate: string,
-    endDate: string,
+    _endDate: string,
     deltaWeeks: number,
   ): { start: string; end: string } {
-    // For Mayan calendar, use simple date arithmetic (same as Gregorian for week shifting)
-    const start = new Date(startDate + "T00:00:00");
-    const end = new Date(endDate + "T00:00:00");
-
-    start.setDate(start.getDate() + 7 * deltaWeeks);
-    end.setDate(end.getDate() + 7 * deltaWeeks);
-
-    return {
-      start: start.toLocaleDateString("en-CA"),
-      end: end.toLocaleDateString("en-CA"),
-    };
+    return this.shiftAdjacentPeriodRange("week", startDate, deltaWeeks);
   }
 
   /**
@@ -782,12 +785,7 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     startDate: string,
     deltaMonths: number,
   ): { start: string; end: string } {
-    const base = new Date(startDate + "T00:00:00");
-    const { start, end } = this.getMayanMoonRangeByOffset(base, deltaMonths);
-    return {
-      start: start.toLocaleDateString("en-CA"),
-      end: end.toLocaleDateString("en-CA"),
-    };
+    return this.shiftAdjacentPeriodRange("month", startDate, deltaMonths);
   }
 
   getPeriodRange(
