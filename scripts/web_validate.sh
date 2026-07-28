@@ -7,6 +7,9 @@ cd "${repo_root}/web"
 echo "[web-validate] install locked dependencies"
 npm ci
 
+echo "[web-validate] audit high-severity vulnerabilities"
+npm audit --audit-level=high
+
 echo "[web-validate] build frontend"
 npm run build
 

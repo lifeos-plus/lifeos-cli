@@ -29,6 +29,8 @@ Preferred disclosure order:
 
 Routine dependency version updates are intentionally limited to weekly minor updates; patch updates are excluded from routine PRs. Security updates and the weekly frontend audit remain independent of that routine policy. The frontend audit workflow never uses `npm audit fix --force`.
 
+Pull request and `main` validation audits the locked Python project with every optional extra and rejects any known vulnerability reported by `pip-audit`. Frontend validation rejects high- and critical-severity `npm audit` findings. The weekly frontend audit may prepare a non-force lockfile fix, but it still fails when high- or critical-severity findings remain after that attempt.
+
 ## Supported Branches
 
 Security fixes should land on the active `main` branch first.

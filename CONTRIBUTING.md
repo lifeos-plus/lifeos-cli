@@ -31,7 +31,7 @@ Run the default validation baseline before opening a PR:
 bash ./scripts/doctor.sh
 ```
 
-The default validation baseline includes dead-code scanning through `vulture`. It validates locked dependency resolution, runs lint plus the default non-integration test suite, exports runtime requirements for `pip-audit`, builds package artifacts, and then calls `bash ./scripts/integration_tests.sh` as the explicit PostgreSQL-backed integration entrypoint. When `LIFEOS_TEST_DATABASE_URL` is unset, the integration script reports an explicit skip and `doctor.sh` finishes with a warning that PostgreSQL CLI coverage did not run.
+The default validation baseline includes dead-code scanning through `vulture`. It validates locked dependency resolution, runs lint plus the default non-integration test suite, exports the project and all optional extras for `pip-audit`, builds package artifacts, and then calls `bash ./scripts/integration_tests.sh` as the explicit PostgreSQL-backed integration entrypoint. When `LIFEOS_TEST_DATABASE_URL` is unset, the integration script reports an explicit skip and `doctor.sh` finishes with a warning that PostgreSQL CLI coverage did not run.
 
 For frontend changes, including npm dependency updates, also run:
 
@@ -39,7 +39,7 @@ For frontend changes, including npm dependency updates, also run:
 bash ./scripts/web_validate.sh
 ```
 
-The frontend validation entrypoint installs the locked npm workspace, builds the Vite app, runs ESLint, and executes the Vitest suite. Use the npm version declared by `web/package.json` when updating `web/package-lock.json`, and prefer `npm ci` for local validation runs that should not rewrite the lockfile.
+The frontend validation entrypoint installs the locked npm workspace, rejects high- and critical-severity audit findings, builds the Vite app, runs ESLint, and executes the Vitest suite. Use the npm version declared by `web/package.json` when updating `web/package-lock.json`, and prefer `npm ci` for local validation runs that should not rewrite the lockfile.
 
 If you change CI, packaging metadata, or compatibility declarations, also validate the relevant interpreter targets explicitly. Examples:
 
@@ -77,8 +77,9 @@ Dependency maintenance policy:
 - Dependabot security updates remain eligible independently of the routine version-update policy; frontend security remediation is also checked weekly by `.github/workflows/frontend-dependency-audit.yml`.
 - `bash ./scripts/dependency_health.sh` remains the explicit maintainer audit flow for Python outdated packages and dependency-related health checks.
 - `bash ./scripts/web_dependency_health.sh` remains the explicit maintainer audit flow for frontend outdated packages and dependency-related health checks.
-- `bash ./scripts/web_validate.sh` remains the explicit maintainer and CI validation flow for frontend install, build, lint, and tests.
-- `.github/workflows/frontend-dependency-audit.yml` runs a weekly frontend audit and opens a draft PR when non-force `npm audit fix --package-lock-only` produces changes for `web/package-lock.json` or `web/package.json`.
+- `bash ./scripts/doctor.sh` rejects known vulnerabilities in the locked project and every optional Python extra during PR and `main` validation.
+- `bash ./scripts/web_validate.sh` remains the explicit maintainer and CI validation flow for frontend install, high-severity audit enforcement, build, lint, and tests.
+- `.github/workflows/frontend-dependency-audit.yml` runs a weekly frontend audit, opens a draft PR when non-force `npm audit fix --package-lock-only` produces changes for `web/package-lock.json` or `web/package.json`, and fails when high- or critical-severity findings remain afterward.
 - The `open-pull-requests-limit` setting limits concurrent Dependabot version-update PRs; it is not a dependency version ceiling.
 
 Static-analysis governance:

@@ -13,6 +13,7 @@ DOCTOR_TEXT = Path("scripts/doctor.sh").read_text()
 DEAD_CODE_CHECK_TEXT = Path("scripts/dead_code_check.sh").read_text()
 DEPENDENCY_HEALTH_TEXT = Path("scripts/dependency_health.sh").read_text()
 WEB_DEPENDENCY_HEALTH_TEXT = Path("scripts/web_dependency_health.sh").read_text()
+WEB_VALIDATE_TEXT = Path("scripts/web_validate.sh").read_text()
 PRE_COMMIT_CONFIG = yaml.safe_load(Path(".pre-commit-config.yaml").read_text())
 DEPENDENCY_REVIEW_WORKFLOW = yaml.safe_load(
     Path(".github/workflows/dependency-review.yml").read_text()
@@ -68,6 +69,7 @@ def _extract_frontend_available_themes() -> tuple[str, ...]:
 DOCTOR_COMMANDS = _non_comment_shell_lines(DOCTOR_TEXT)
 DEPENDENCY_HEALTH_COMMANDS = _non_comment_shell_lines(DEPENDENCY_HEALTH_TEXT)
 WEB_DEPENDENCY_HEALTH_COMMANDS = _non_comment_shell_lines(WEB_DEPENDENCY_HEALTH_TEXT)
+WEB_VALIDATE_COMMANDS = _non_comment_shell_lines(WEB_VALIDATE_TEXT)
 QUALITY_GATE_STEPS = _workflow_job_steps(VALIDATE_WORKFLOW, "quality-gate")
 INTEGRATION_JOB_STEPS = _workflow_job_steps(VALIDATE_WORKFLOW, "integration-postgres")
 
@@ -139,6 +141,10 @@ def test_dependency_scripts_keep_separate_scopes() -> None:
         "uv sync --extra dev --extra web --extra postgres --frozen" in line
         for line in DOCTOR_COMMANDS
     )
+    assert any(
+        "uv export --format requirements.txt --all-extras --no-dev --locked" in line
+        for line in DOCTOR_COMMANDS
+    )
     assert any('uv run pytest -m "not integration"' in line for line in DOCTOR_COMMANDS)
     assert not any("uv pip list --outdated" in line for line in DOCTOR_COMMANDS)
     assert any("uv run pip-audit" in line for line in DOCTOR_COMMANDS)
@@ -150,6 +156,8 @@ def test_dependency_scripts_keep_separate_scopes() -> None:
     assert any("npm outdated --long || true" in line for line in WEB_DEPENDENCY_HEALTH_COMMANDS)
     assert any("npm audit --audit-level=low" in line for line in WEB_DEPENDENCY_HEALTH_COMMANDS)
     assert not any("uv " in line for line in WEB_DEPENDENCY_HEALTH_COMMANDS)
+    assert any("npm ci" in line for line in WEB_VALIDATE_COMMANDS)
+    assert any("npm audit --audit-level=high" in line for line in WEB_VALIDATE_COMMANDS)
 
 
 def test_dependency_review_workflow_audits_backend_and_frontend_dependencies() -> None:
@@ -181,7 +189,16 @@ def test_frontend_dependency_audit_workflow_creates_non_force_fix_prs() -> None:
     joined_run_steps = "\n".join(run_steps)
     assert "npm audit --json > /tmp/web-npm-audit.json" in joined_run_steps
     assert "npm audit fix --package-lock-only" in joined_run_steps
+    assert "npm audit --audit-level=high" in joined_run_steps
     assert "--force" not in joined_run_steps
+
+    verification_step = next(
+        step
+        for step in steps
+        if step.get("name") == "Verify no high-severity vulnerabilities remain"
+    )
+    assert verification_step["if"] == "always()"
+    assert verification_step["run"] == "npm audit --audit-level=high"
 
     create_pr_step = next(
         step for step in steps if step.get("uses") == "peter-evans/create-pull-request@v8"

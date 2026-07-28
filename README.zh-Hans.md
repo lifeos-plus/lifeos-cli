@@ -195,7 +195,7 @@ uv run python scripts/audit_cli_help.py
 
 ## Dependency Maintenance
 
-Routine backend and frontend dependency version updates are checked weekly and grouped by workspace. Only semver minor version updates are included in routine automation; patch updates are intentionally excluded and major migrations remain explicit maintenance tasks. Security updates are handled independently, and the frontend audit workflow runs weekly without using `npm audit fix --force`.
+Routine backend and frontend dependency version updates are checked weekly and grouped by workspace. Only semver minor version updates are included in routine automation; patch updates are intentionally excluded and major migrations remain explicit maintenance tasks. Security updates are handled independently. Pull request validation audits every locked Python extra and rejects high- or critical-severity frontend findings, while the weekly frontend audit attempts non-force lockfile remediation without using `npm audit fix --force`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the dependency maintenance commands and workflow boundaries.
 
