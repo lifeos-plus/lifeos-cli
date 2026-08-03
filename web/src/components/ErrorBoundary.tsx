@@ -18,7 +18,7 @@ const ErrorDisplay: React.FC = () => {
           aria-hidden
           className="text-error mb-2"
         />
-        <h1 className="text-lg font-bold font-semibold mb-2">
+        <h1 className="text-lg font-semibold mb-2">
           {t("errorBoundary.title")}
         </h1>
         <p className="text-base text-base-content mb-4">

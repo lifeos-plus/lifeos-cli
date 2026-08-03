@@ -1032,7 +1032,7 @@ function InsightsPage() {
               {displayBuckets.map((bucket) => (
                 <div
                   key={bucket.key}
-                  className="hover:bg-base-50 rounded-lg p-2 transition-colors duration-200"
+                  className="rounded-lg p-2 transition-colors duration-200 hover:bg-base-200/50"
                 >
                   <StatisticItem
                     day={bucket.periodStart}

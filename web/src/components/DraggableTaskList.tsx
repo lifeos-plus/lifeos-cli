@@ -421,7 +421,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
             disabled={!hasSubtasks}
             className={`${
               hasSubtasks
-                ? "hover-button cursor-pointer"
+                ? "cursor-pointer transition-colors hover:bg-primary/20 hover:shadow-sm"
                 : "cursor-default opacity-30 text-base-content/40"
             }`}
             ariaLabel={
@@ -448,7 +448,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
                 style={style}
                 {...attributes}
                 {...listeners}
-                className="flex items-start sm:items-center space-x-3 flex-1 min-w-0 max-w-full overflow-hidden cursor-move"
+                className="dnd-sortable-item flex items-start sm:items-center space-x-3 flex-1 cursor-move"
               >
                 <span className="text-base-content text-lg flex-shrink-0">
                   {priorityInfo.iconName ? (

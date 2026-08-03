@@ -120,7 +120,9 @@ function NavigationRail({ onItemClick }: NavigationRailProps) {
                 onClick={onItemClick}
                 preload="intent"
                 className={`flex items-center gap-3 px-3 py-3 w-full text-base-content ${
-                  active ? "text-primary bg-primary/10" : "hover-nav-item"
+                  active
+                    ? "text-primary bg-primary/10"
+                    : "transition-colors hover:bg-primary/10 hover:text-primary"
                 }`}
                 activeProps={{
                   className: "text-primary bg-primary/10",
@@ -213,7 +215,7 @@ function AppBar({ onMenuClick }: AppBarProps) {
         <div className="flex-1 min-w-0 px-1 xs:px-0 md:px-4 lg:px-6">
           {title && (
             <div className="flex items-center gap-1 xs:gap-2 md:gap-3 lg:gap-4 min-w-0">
-              <div className="truncate text-base-content text-sm xs:text-base md:text-lg lg:text-xl font-bold font-semibold flex-shrink min-w-0">
+              <div className="truncate text-base-content text-sm xs:text-base md:text-lg lg:text-xl font-semibold flex-shrink min-w-0">
                 {title}
               </div>
               {subtitle && (

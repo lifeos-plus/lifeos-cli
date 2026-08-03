@@ -340,7 +340,7 @@ export function HabitActionList({
         {/* Left Side - Monthly Calendar View */}
         <Surface padding="lg" border="none" elevation="moderate">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold font-semibold text-base-content">
+            <h3 className="text-lg font-semibold text-base-content">
               {t("habits.actionList.monthView")}
             </h3>
             <div className="flex gap-2">
@@ -430,7 +430,7 @@ export function HabitActionList({
                       : "text-base-content"
                   } ${cellBgColor} ${cellBorderColor} ${
                     isClickable
-                      ? "cursor-pointer hover-card"
+                      ? "cursor-pointer transition-all hover:bg-base-300 hover:shadow-md"
                       : "cursor-not-allowed"
                   } ${
                     isSelectedDate ? "ring-2 ring-primary ring-offset-1" : ""
@@ -451,7 +451,7 @@ export function HabitActionList({
         {/* Right Side - 5 Days View */}
         <Surface padding="lg" border="none" elevation="moderate">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold font-semibold text-base-content">
+            <h3 className="text-lg font-semibold text-base-content">
               {t("habits.actionList.fiveDayView")}
             </h3>
             <div className="flex gap-2">

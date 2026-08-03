@@ -150,7 +150,7 @@ export default function AreaSorter({
               className={`flex items-center gap-2 p-2 border rounded transition-colors ${
                 disabled || loading
                   ? "bg-base-200 cursor-not-allowed opacity-60"
-                  : "bg-base-100 hover-card"
+                  : "bg-base-100 transition-all hover:bg-base-300 hover:shadow-md"
               }`}
             >
               {/* Order number */}

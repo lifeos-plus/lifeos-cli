@@ -80,6 +80,18 @@ describe("ActionButton", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("preserves keyboard focus after activation", async () => {
+    const user = userEvent.setup();
+    const Component = getActionButton();
+
+    render(<Component label="Save" />);
+
+    const button = screen.getByRole("button", { name: "Save" });
+    await user.tab();
+    await user.keyboard("{Enter}");
+    expect(button).toHaveFocus();
+  });
+
   it("supports xs size and iconOnly presentation", () => {
     const Component = getActionButton();
 

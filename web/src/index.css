@@ -19,10 +19,6 @@
   --tablet-rail-width: 0px;
   --desktop-rail-width: 128px;
 
-  /* Responsive container widths */
-  --container-max-width: min(100vw - 2rem, 1400px);
-  --container-padding: 1rem;
-
   /* Typography tokens */
   --fs-caption: 0.75rem; /* 12px */
   --fs-body: 1rem; /* 16px */
@@ -39,22 +35,10 @@
   --fw-semibold: 600;
   --fw-bold: 700;
 
-  /* Map to daisyUI color tokens - using base-content for better theme compatibility */
-  --tc-primary: hsl(var(--bc));
-  --tc-secondary: hsl(var(--bc) / 0.7);
-  --tc-muted: hsl(var(--bc) / 0.5);
 }
 
 /* Removed global @apply of daisyUI component classes (btn/input/select).
    @apply only supports Tailwind utilities, not component classes from plugins. */
-
-/* Modern responsive container */
-.container-responsive {
-  width: 100%;
-  max-width: var(--container-max-width);
-  margin: 0 auto;
-  padding: 0 var(--container-padding);
-}
 
 /* Responsive breakpoints for app bar and rail */
 @media (min-width: 640px) {
@@ -68,30 +52,6 @@
   :root {
     --appbar-height: var(--desktop-appbar-height);
     --rail-width: var(--desktop-rail-width);
-  }
-}
-
-/* Large screen optimizations */
-@media (min-width: 1536px) {
-  :root {
-    --container-max-width: min(100vw - 4rem, 1600px);
-    --container-padding: 2rem;
-  }
-}
-
-/* Extra large screen optimizations */
-@media (min-width: 1920px) {
-  :root {
-    --container-max-width: min(100vw - 6rem, 1800px);
-    --container-padding: 3rem;
-  }
-}
-
-/* Ultra wide screen optimizations */
-@media (min-width: 2560px) {
-  :root {
-    --container-max-width: min(100vw - 8rem, 2000px);
-    --container-padding: 4rem;
   }
 }
 
@@ -109,13 +69,6 @@
     text-size-adjust: 100%;
   }
 
-  /* Prevent zoom on input focus */
-  input,
-  textarea,
-  select {
-    font-size: 16px;
-  }
-
   /* Improve touch scrolling */
   .overflow-y-auto {
     -webkit-overflow-scrolling: touch;
@@ -129,29 +82,6 @@
     min-height: 40px;
     min-width: 40px;
   }
-}
-
-/* Desktop optimizations */
-@media (min-width: 1024px) {
-  /* Hover states work well on desktop */
-  .hover-nav-item:hover {
-    background-color: hsl(var(--bc) / 0.05);
-  }
-}
-
-/* Force width constraints for @dnd-kit elements to prevent overflow */
-[data-rbd-draggable-id],
-[data-rbd-droppable-id],
-[style*="transform"] {
-  max-width: 100% !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-}
-
-/* Ensure all flex containers handle width properly */
-.flex {
-  min-width: 0;
 }
 
 /* Markdown renderer list formatting */
@@ -187,17 +117,11 @@ html {
   scrollbar-gutter: stable both-edges;
 }
 
-/* Theme transition animations */
-*,
-*::before,
-*::after {
-  transition:
-    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    fill 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    stroke 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.dnd-sortable-item {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 /* Disable transitions during theme initialization to prevent flash */
@@ -207,80 +131,15 @@ html {
   transition: none !important;
 }
 
-/* Optimize transitions for better performance */
-* {
-  will-change: auto;
-}
-
-/* Specific optimizations for common theme-affected properties */
-.bg-base-100,
-.bg-base-200,
-.bg-base-300,
-.text-base-content,
-.border-base-200,
-.border-base-300 {
-  will-change: background-color, color, border-color;
-}
-
-/* Smooth transitions for DaisyUI components */
-.btn,
-.card,
-.input,
-.select,
-.textarea,
-.radio,
-.checkbox,
-.toggle,
-.swap {
-  transition:
-    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Override daisyUI default rounded corners for buttons and inputs */
-.btn {
-  border-radius: 4px !important;
-  font-weight: 400 !important; /* 覆盖 DaisyUI 默认的 font-medium */
-}
-
-/* 防止按钮状态持久化 - 解决多个按钮同时选中问题 */
-.btn:not(:disabled):active {
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-/* 确保按钮状态不会持久化 */
-.btn:focus:not(:focus-visible) {
-  outline: none;
-}
-
-/* 防止快速点击导致的状态混乱 */
-.btn {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-/* 强制重置按钮的 active 状态 */
-.btn.active {
-  background-color: inherit !important;
-  border-color: inherit !important;
-  color: inherit !important;
-}
-
-.input {
-  border-radius: 4px !important;
-}
-
-.textarea {
-  border-radius: 4px !important;
-}
-
-.select {
-  border-radius: 4px !important;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Mobile-specific optimizations */
@@ -290,106 +149,25 @@ html {
   }
 }
 
-@layer utilities {
-  /* Semantic text utilities - 已迁移到 DaisyUI 标准类 */
-  .text-muted {
-    color: var(--tc-muted);
+@media screen and (max-width: 639px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
   }
+}
 
-  /* Touch-friendly button sizes */
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
-  }
+html {
+  scroll-behavior: smooth;
+}
 
-  /* Line clamp utilities */
-  .line-clamp-1 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-  }
+* {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
 
-  .line-clamp-2 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-
-  .line-clamp-3 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-  }
-
-  .line-clamp-5 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 5;
-  }
-
-  .line-clamp-7 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 7;
-  }
-
-  .line-clamp-9 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 9;
-  }
-
-  .line-clamp-11 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 11;
-  }
-
-  .line-clamp-13 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 13;
-  }
-
-  .line-clamp-15 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 15;
-  }
-
-  /* Prevent zoom on input focus on iOS */
-  @media screen and (max-width: 640px) {
-    input,
-    textarea,
-    select {
-      font-size: 16px !important;
-    }
-  }
-
-  /* Smooth scrolling for mobile */
-  html {
-    scroll-behavior: smooth;
-  }
-
-  /* Better tap highlights */
-  * {
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
-  }
-
-  /* Drawer-specific optimizations */
-  @layer components {
-    .drawer-side {
-      @apply z-sidebar;
-    }
+@layer components {
+  .drawer-side {
+    @apply z-sidebar;
   }
 
   .drawer-overlay {
@@ -397,26 +175,6 @@ html {
     backdrop-filter: blur(2px);
   }
 
-  /* Smooth drawer transitions */
-  .drawer-toggle:checked ~ .drawer-side {
-    transform: translateX(0);
-  }
-
-  .drawer-side {
-    transform: translateX(-100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* Prevent text selection on buttons */
-  button {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-  }
-}
-
-@layer components {
   .note-card-collapsed {
     position: relative;
   }
@@ -441,80 +199,6 @@ html {
     );
     border-bottom-left-radius: inherit;
     border-bottom-right-radius: inherit;
-  }
-}
-
-/* Global hover effects following daisyUI design system */
-@layer components {
-  /* Base interactive transition */
-  .hover-interactive {
-    @apply transition-all duration-200 ease-in-out;
-  }
-
-  /* Card hover effects */
-  .hover-card {
-    @apply hover:bg-base-300 hover:shadow-md hover-interactive;
-  }
-
-  .hover-card-subtle {
-    @apply hover:bg-base-200 hover:shadow-sm hover-interactive;
-  }
-
-  /* Navigation item hover effects */
-  .hover-nav-item {
-    @apply hover:bg-primary/10 hover:text-primary hover-interactive;
-  }
-
-  .hover-nav-item-subtle {
-    @apply hover:bg-base-200 hover-interactive;
-  }
-
-  /* Button hover effects */
-  .hover-button {
-    @apply hover:bg-primary/20 hover:shadow-sm hover-interactive;
-  }
-
-  .hover-button-primary {
-    @apply hover:bg-primary hover:text-primary-content hover:shadow-md hover-interactive;
-  }
-
-  /* List item hover effects */
-  .hover-list-item {
-    @apply hover:bg-base-200 hover-interactive;
-  }
-
-  /* Input hover effects */
-  .hover-input {
-    @apply hover:border-primary/50 hover:shadow-sm hover-interactive;
-  }
-
-  /* Link hover effects */
-  .hover-link {
-    @apply hover:text-primary hover:underline hover-interactive;
-  }
-
-  /* Icon hover effects */
-  .hover-icon {
-    @apply hover:scale-110 hover:text-primary hover-interactive;
-  }
-}
-
-/* Theme-specific overrides for better contrast */
-[data-theme="dark"] {
-  /* Adjust muted text contrast in dark theme */
-  --tc-muted: hsl(var(--bc) / 0.6);
-}
-
-[data-theme="light"] {
-  /* Ensure good contrast in light themes */
-  --tc-muted: hsl(var(--bc) / 0.5);
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  :root {
-    --tc-secondary: hsl(var(--bc) / 0.9);
-    --tc-muted: hsl(var(--bc) / 0.8);
   }
 }
 
@@ -555,20 +239,4 @@ html {
     background: var(--scrollbar-thumb-active);
   }
 
-  /* Theme fine-tuning examples */
-  [data-theme="fresh"] {
-    --scrollbar-track: hsl(var(--b2));
-    --scrollbar-thumb: hsl(var(--b4, var(--b3)));
-  }
-
-  [data-theme="night"],
-  [data-theme="dracula"] {
-    --scrollbar-track: hsl(var(--b1));
-    --scrollbar-thumb: hsl(var(--b3));
-  }
-
-  /* Optional: enlarge on container hover for discoverability */
-  .scrollbar-hover-grow:hover {
-    --scrollbar-size: 10px;
-  }
 }

@@ -24,7 +24,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   return (
     <div className={`text-center py-12 ${className}`}>
       <div className="text-4xl mb-4">{icon}</div>
-      <h3 className="text-lg font-bold font-semibold text-base-content mb-2">
+      <h3 className="text-lg font-semibold text-base-content mb-2">
         {title}
       </h3>
       {description ? <p className="text-base mb-4">{description}</p> : null}

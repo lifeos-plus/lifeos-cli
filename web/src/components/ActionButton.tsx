@@ -201,15 +201,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
         // Prevent duplicate clicks.
         if (disabled) return;
 
-        // Run the original click handler.
-        if (onClick) {
-          onClick(e);
-        }
-
-        // Clear DaisyUI active/focus state from the current button.
-        const current = e.currentTarget;
-        current.classList.remove("active");
-        current.blur();
+        onClick?.(e);
       },
       [onClick, disabled],
     );
@@ -590,7 +582,7 @@ export const ExpandButton: React.FC<ExpandButtonProps> = ({
       type="button"
       onClick={handleClick}
       disabled={disabled}
-      className={`p-1 rounded hover-button transition-colors touch-target disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`min-h-11 min-w-11 rounded p-1 transition-colors hover:bg-primary/20 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       title={buttonTitle}
       aria-label={buttonAriaLabel}
     >
