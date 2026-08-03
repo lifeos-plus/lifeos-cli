@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { areasApi } from "@/services/api/areas";
 import { areasKeys } from "@/services/api/queryKeys";
 import type { UUID } from "@/types/primitive";
+import { DEFAULT_AREA_COLOR } from "@/utils/areaColors";
 
 export function useAreas(options?: {
   ttlMs?: number;
@@ -33,7 +34,7 @@ export function useAreas(options?: {
   const areaMap = useMemo(() => {
     const map = new Map<UUID, { name: string; color: string }>();
     for (const d of areaItems) {
-      map.set(d.id, { name: d.name, color: d.color || "#6B7280" });
+      map.set(d.id, { name: d.name, color: d.color || DEFAULT_AREA_COLOR });
     }
     return map;
   }, [areaItems]);

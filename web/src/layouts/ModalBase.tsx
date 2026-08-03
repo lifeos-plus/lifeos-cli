@@ -179,6 +179,8 @@ interface ModalBaseProps {
   bodyOverflow?: "visible" | "auto" | "hidden" | "scroll";
   /** Modal 主体额外类名 */
   bodyClassName?: string;
+  /** Render above an existing modal while preserving the shared modal shell. */
+  nested?: boolean;
 }
 
 /**
@@ -220,6 +222,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   showCloseButton = true,
   bodyOverflow = "auto",
   bodyClassName,
+  nested = false,
 }) => {
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
   const modalId = useId();
@@ -264,20 +267,20 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   if (!isOpen && !isVisible) return null;
 
   const overlayCls =
-    overlayClassName ||
-    `fixed inset-0 bg-base-content/50 flex items-center justify-center z-modal-overlay p-1 sm:p-2 md:p-4 transition-opacity duration-200 ${
+    `fixed inset-0 bg-base-content/50 flex items-center justify-center ${
+      nested ? "z-modal-nested" : "z-modal-overlay"
+    } p-1 sm:p-2 md:p-4 transition-opacity duration-200 ${
       isVisible ? "opacity-100" : "opacity-0"
-    }`;
+    } ${overlayClassName || ""}`.trim();
 
   const wrapperCls = "flex items-center justify-center w-full h-full";
 
   // 使用工具函数计算响应式样式
   const responsiveClasses = getResponsiveClasses(size);
   const containerCls =
-    className ||
     `bg-base-100 rounded-lg shadow ${responsiveClasses} flex flex-col border border-base-300 transition-all duration-200 transform ${
       isVisible ? "scale-100 opacity-100" : "scale-95 opacity-0"
-    }`;
+    } ${className || ""}`.trim();
 
   const handleOverlayClick: React.MouseEventHandler<HTMLDivElement> = (
     _event,

@@ -102,14 +102,6 @@ interface CardProps {
    * - elevated: 高级质感，焦点卡片（重要内容、悬浮状态）
    */
   elevation?: "subtle" | "moderate" | "elevated";
-  /**
-   * 磨砂玻璃效果 (Glassmorphism)
-   * - false: 不使用玻璃效果（默认）
-   * - true: 使用玻璃效果，会覆盖 elevation 设置
-   * - "light": 轻量玻璃效果
-   * - "strong": 强化玻璃效果
-   */
-  glass?: boolean | "light" | "strong";
   /** 内容区域溢出策略（默认可见） */
   contentOverflow?: "visible" | "auto" | "hidden" | "scroll";
   /** 追加到内容区域容器的类名 */
@@ -129,7 +121,6 @@ const Card: React.FC<CardProps> = ({
   withTopBorder: _withTopBorder = false,
   size = "md",
   elevation: _elevation = "moderate",
-  glass: _glass = false,
   contentOverflow = "visible",
   contentClassName,
 }) => {
@@ -153,7 +144,18 @@ const Card: React.FC<CardProps> = ({
   };
 
   return (
-    <Container className={containerClasses} overflow="hidden">
+    <Container
+      className={containerClasses}
+      overflow="hidden"
+      shadow={
+        _elevation === "subtle"
+          ? "sm"
+          : _elevation === "elevated"
+            ? "lg"
+            : "md"
+      }
+      borderVariant="default"
+    >
       {/* Header */}
       {title ? (
         <div className="flex items-center justify-between mb-4">
@@ -177,7 +179,9 @@ const Card: React.FC<CardProps> = ({
         disabled={disabled}
         error={error}
         overflowClassName={resolveContentOverflow()}
-        contentClassName={contentClassName}
+        contentClassName={`${_withTopBorder ? "border-t border-base-300 pt-4" : ""} ${
+          contentClassName || ""
+        }`.trim()}
       >
         {children}
       </ContentArea>

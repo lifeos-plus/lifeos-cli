@@ -100,7 +100,7 @@ function NavigationRail({ onItemClick }: NavigationRailProps) {
     }));
 
   return (
-    <aside className="w-28 md:w-32 lg:w-36 h-full bg-base-100 shadow-subtle">
+    <aside className="w-28 md:w-32 lg:w-36 h-full bg-base-100 shadow-sm">
       <div className="h-full flex flex-col">
         {/* Navigation items - scrollable area with flexible height */}
         <div
@@ -171,7 +171,7 @@ function AppBar({ onMenuClick }: AppBarProps) {
 
   return (
     <header
-      className="fixed top-0 inset-x-0 z-header bg-base-100/80 backdrop-blur supports-[backdrop-filter]:bg-base-100/60 border-base-300 shadow-subtle"
+      className="fixed top-0 inset-x-0 z-header bg-base-100/80 backdrop-blur supports-[backdrop-filter]:bg-base-100/60 border-base-300 shadow-sm"
       style={{ height: "var(--appbar-height)" }}
     >
       <div className="h-full flex items-center justify-between px-2 xs:px-3 md:px-4 lg:px-6">

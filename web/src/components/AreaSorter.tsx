@@ -4,6 +4,7 @@ import { areasApi, type Area } from "@/services/api/areas";
 import { logger } from "@/utils/core";
 import type { UUID } from "@/types/primitive";
 import ActionButton from "./ActionButton";
+import { UNKNOWN_AREA_COLOR } from "@/utils/areaColors";
 
 interface AreaSorterProps {
   areaOrder: UUID[];
@@ -160,7 +161,7 @@ export default function AreaSorter({
               {/* Area color indicator */}
               <div
                 className="w-4 h-4 rounded-full border"
-                style={{ backgroundColor: area.color || "#9CA3AF" }}
+                style={{ backgroundColor: area.color || UNKNOWN_AREA_COLOR }}
               />
 
               {/* Area name */}

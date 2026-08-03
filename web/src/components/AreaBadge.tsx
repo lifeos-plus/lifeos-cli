@@ -1,5 +1,6 @@
 import React from "react";
 import type { UUID } from "@/types/primitive";
+import { DEFAULT_AREA_COLOR, UNKNOWN_AREA_COLOR } from "@/utils/areaColors";
 
 interface AreaBadgeProps {
   /** When provided, used to look up name/color if `name`/`color` not directly given */
@@ -39,8 +40,8 @@ const AreaBadgeComponent: React.FC<AreaBadgeProps> = ({
     color ??
     (typeof areaId === "string"
       ? (areaMap?.get(areaId)?.color ??
-        (isUnknownId ? "#9CA3AF" : "#6B7280"))
-      : "#6B7280");
+        (isUnknownId ? UNKNOWN_AREA_COLOR : DEFAULT_AREA_COLOR))
+      : DEFAULT_AREA_COLOR);
 
   const resolvedName =
     name ??

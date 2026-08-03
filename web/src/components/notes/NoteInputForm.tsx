@@ -8,6 +8,7 @@ import { FormField, TextArea } from "@/components/forms";
 import type { Tag } from "@/services/api";
 import { ACTIVE_TASK_STATUSES } from "@/utils/constants";
 import type { UUID } from "@/types/primitive";
+import Surface from "@/layouts/Surface";
 
 interface NoteInputFormProps {
   onCreateNote: (
@@ -104,7 +105,12 @@ export function NoteInputForm({
   const isResetDisabled = !hasContent && !hasSelections;
 
   return (
-    <div className="bg-base-100 rounded-lg shadow-md p-4 sm:p-6 mb-6 sm:mb-8">
+    <Surface
+      padding="responsive"
+      border="none"
+      elevation="moderate"
+      className="mb-6 sm:mb-8"
+    >
       <div className="space-y-4">
         <FormField
           label={t("createNoteModal.title")}
@@ -183,6 +189,6 @@ export function NoteInputForm({
           />
         </div>
       </div>
-    </div>
+    </Surface>
   );
 }

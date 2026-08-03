@@ -2,8 +2,9 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import VisionSelector from "@/components/selects/VisionSelector";
 import { TextInput } from "@/components/forms";
-import ActionButton, { FormActions } from "@/components/ActionButton";
+import { FormActions } from "@/components/ActionButton";
 import type { UUID } from "@/types/primitive";
+import PlanningActionPanel from "./PlanningActionPanel";
 
 interface TaskCreationPanelProps {
   groupId: string;
@@ -31,22 +32,11 @@ export const TaskCreationPanel: React.FC<TaskCreationPanelProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="bg-base-200/50 border border-base-300 rounded-lg p-4 mb-4 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-base font-medium text-base-content">
-          {t("planning.taskActions.createTask", { period: groupLabel })}
-        </h4>
-        <ActionButton
-          label={t("common.cancel")}
-          iconName="x-mark"
-          color="neutral"
-          size="xs"
-          variant="ghost"
-          iconOnly
-          onClick={onCancel}
-        />
-      </div>
-
+    <PlanningActionPanel
+      title={t("planning.taskActions.createTask", { period: groupLabel })}
+      closeLabel={t("common.cancel")}
+      onClose={onCancel}
+    >
       <div className="grid grid-cols-1 md:grid-cols-10 gap-3">
         <div className="md:col-span-3">
           <VisionSelector
@@ -100,6 +90,6 @@ export const TaskCreationPanel: React.FC<TaskCreationPanelProps> = ({
           onCancel={onCancel}
         />
       </div>
-    </div>
+    </PlanningActionPanel>
   );
 };

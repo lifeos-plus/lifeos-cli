@@ -8,6 +8,7 @@ import {
   HABIT_ACTION_STATUS_CONFIG,
 } from "@/utils/constants";
 import ActionButton from "@/components/ActionButton";
+import Surface from "@/layouts/Surface";
 import EnumSelect from "@/components/selects/EnumSelect";
 import type { UUID } from "@/types/primitive";
 import CreateNoteModal from "@/components/CreateNoteModal";
@@ -337,7 +338,7 @@ export function HabitActionList({
       {/* Lower Section - Calendar and Recent List */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Side - Monthly Calendar View */}
-        <div className="bg-base-100 p-6 rounded-lg shadow-md">
+        <Surface padding="lg" border="none" elevation="moderate">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold font-semibold text-base-content">
               {t("habits.actionList.monthView")}
@@ -445,10 +446,10 @@ export function HabitActionList({
               );
             })}
           </div>
-        </div>
+        </Surface>
 
         {/* Right Side - 5 Days View */}
-        <div className="bg-base-100 p-6 rounded-lg shadow-md">
+        <Surface padding="lg" border="none" elevation="moderate">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold font-semibold text-base-content">
               {t("habits.actionList.fiveDayView")}
@@ -589,7 +590,7 @@ export function HabitActionList({
               );
             })}
           </div>
-        </div>
+        </Surface>
       </div>
 
       {creatingNoteForAction && (

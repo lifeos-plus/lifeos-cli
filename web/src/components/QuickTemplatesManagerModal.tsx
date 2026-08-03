@@ -10,6 +10,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { useAreas } from "@/hooks/queries/useAreas";
 import { useTimelogTemplates } from "@/hooks/queries/useTimelogTemplates";
 import type { TimelogTemplate } from "@/services/api/timelogTemplates";
+import { UNKNOWN_AREA_COLOR } from "@/utils/areaColors";
 
 interface QuickTemplatesManagerModalProps {
   isOpen: boolean;
@@ -154,7 +155,7 @@ const QuickTemplatesManagerModal = ({
                       }
                     : undefined;
                 const color =
-                  area?.color || template.area_color || "#9CA3AF";
+                  area?.color || template.area_color || UNKNOWN_AREA_COLOR;
                 const areaLabel =
                   area?.name ??
                   template.area_name ??

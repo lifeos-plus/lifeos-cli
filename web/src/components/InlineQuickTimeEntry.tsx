@@ -20,6 +20,7 @@ import {
 } from "@/utils/constants";
 import { useAreas } from "@/hooks/queries/useAreas";
 import { usePreferenceWithBootstrap } from "@/hooks/queries/usePreferenceWithBootstrap";
+import { UNKNOWN_AREA_COLOR } from "@/utils/areaColors";
 import ActionButton, { FormActions } from "./ActionButton";
 import { Icon } from "./icons";
 import TaskSelector from "./selects/TaskSelector";
@@ -824,7 +825,7 @@ export default function InlineQuickTimeEntry({
                       areaById?.color ||
                       areaByName?.color ||
                       tpl.area_color ||
-                      "#9CA3AF";
+                      UNKNOWN_AREA_COLOR;
                     return (
                       <span
                         className="inline-block w-1.5 h-1.5 rounded-full"

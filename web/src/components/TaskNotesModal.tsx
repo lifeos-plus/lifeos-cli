@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import ModalBase from "@/layouts/ModalBase";
+import Surface from "@/layouts/Surface";
 import CreateNoteModal from "./CreateNoteModal";
 import Badge from "@/components/common/Badge";
 import type { TaskWithSubtasks } from "@/services/api";
@@ -408,9 +409,12 @@ export default function TaskNotesModal(props: TaskNotesModalProps) {
             );
 
             return (
-              <div
+              <Surface
                 key={note.id}
-                className="bg-base-100 rounded-lg shadow-sm border border-base-200 p-3 lg:p-4 hover:shadow-md transition-shadow"
+                padding="responsive"
+                border="subtle"
+                elevation="subtle"
+                interactive
               >
                 <NoteCardLayout
                   content={note.content}
@@ -420,7 +424,7 @@ export default function TaskNotesModal(props: TaskNotesModalProps) {
                   actionsVisibility="hover"
                   minCollapsedLines={noteCollapsePreference.value}
                 />
-              </div>
+              </Surface>
             );
           })}
         </div>

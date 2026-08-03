@@ -1,4 +1,5 @@
 import ActionButton from "@/components/ActionButton";
+import Badge from "@/components/common/Badge";
 import type { PersonSummary, Tag } from "@/services/api";
 import { useTranslation } from "react-i18next";
 
@@ -52,11 +53,16 @@ export function FilterStatus({
             ].join("、")}
           </strong>
         </span>
-        <span className="text-sm text-primary bg-base-100 px-2 py-1 rounded-full flex-shrink-0">
+        <Badge
+          tone="primary"
+          variant="outline"
+          size="sm"
+          className="flex-shrink-0 bg-base-100"
+        >
           {searchKeyword.trim() && !isSearchApplied
             ? `(${t("filterStatus.readyToSearch")})`
             : `(${t("filterStatus.notesCount", { count: filteredNotesCount })})`}
-        </span>
+        </Badge>
       </div>
       <ActionButton
         label={t("filterStatus.clearFilters")}

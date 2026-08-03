@@ -14,6 +14,8 @@ import { Icon } from "./icons";
 import EnumSelect from "./selects/EnumSelect";
 import ModalBase from "@/layouts/ModalBase";
 import Card from "@/layouts/Card";
+import Surface from "@/layouts/Surface";
+import Badge from "@/components/common/Badge";
 import { useModalState } from "@/hooks/useModalState";
 import { Checkbox, FormField, TextInput, TextArea } from "./forms";
 import type { UUID } from "@/types/primitive";
@@ -42,6 +44,44 @@ const ENTITY_TYPE_DEFAULT_CATEGORIES: Record<string, string[]> = {
   person: ["location", "relation", "profession", "team"],
   note: ["topic"],
 };
+
+const ENTITY_VISUAL_THEMES = {
+  person: {
+    accent: "bg-primary",
+    accentText: "text-primary-content",
+    tag: "border-primary/40 bg-primary/20 hover:border-primary/60 hover:bg-primary/30",
+    edit: "border-primary/50 bg-primary/10",
+  },
+  note: {
+    accent: "bg-secondary",
+    accentText: "text-secondary-content",
+    tag: "border-secondary/40 bg-secondary/20 hover:border-secondary/60 hover:bg-secondary/30",
+    edit: "border-secondary/50 bg-secondary/10",
+  },
+  task: {
+    accent: "bg-accent",
+    accentText: "text-accent-content",
+    tag: "border-accent/40 bg-accent/20 hover:border-accent/60 hover:bg-accent/30",
+    edit: "border-accent/50 bg-accent/10",
+  },
+  vision: {
+    accent: "bg-info",
+    accentText: "text-info-content",
+    tag: "border-info/40 bg-info/20 hover:border-info/60 hover:bg-info/30",
+    edit: "border-info/50 bg-info/10",
+  },
+  general: {
+    accent: "bg-neutral",
+    accentText: "text-neutral-content",
+    tag: "border-neutral/40 bg-neutral/20 hover:border-neutral/60 hover:bg-neutral/30",
+    edit: "border-neutral/50 bg-neutral/10",
+  },
+} as const;
+
+const getEntityVisualTheme = (entityType: string) =>
+  ENTITY_VISUAL_THEMES[
+    entityType as keyof typeof ENTITY_VISUAL_THEMES
+  ] || ENTITY_VISUAL_THEMES.general;
 
 const getDefaultCategoryForEntityType = (
   entityType: string | null | undefined,
@@ -1436,61 +1476,27 @@ const TagGroup: React.FC<TagGroupProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // 根据实体类型定义颜色主题（使用 DaisyUI 语义化颜色）
-  const getEntityTypeTheme = (entityType: string) => {
-    const themes = {
-      person: {
-        gradient: "bg-gradient-to-br from-primary/10 to-primary/20",
-        border: "border-primary/30",
-        accent: "bg-primary",
-        accentText: "text-primary-content",
-        iconName: "people" as const,
-      },
-      note: {
-        gradient: "bg-gradient-to-br from-secondary/10 to-secondary/20",
-        border: "border-secondary/30",
-        accent: "bg-secondary",
-        accentText: "text-secondary-content",
-        iconName: "document-text" as const,
-      },
-      task: {
-        gradient: "bg-gradient-to-br from-accent/10 to-accent/20",
-        border: "border-accent/30",
-        accent: "bg-accent",
-        accentText: "text-accent-content",
-        iconName: "check" as const,
-      },
-      vision: {
-        gradient: "bg-gradient-to-br from-info/10 to-info/20",
-        border: "border-info/30",
-        accent: "bg-info",
-        accentText: "text-info-content",
-        iconName: "sparkles" as const,
-      },
-      general: {
-        gradient: "bg-gradient-to-br from-neutral/10 to-neutral/20",
-        border: "border-neutral/30",
-        accent: "bg-neutral",
-        accentText: "text-neutral-content",
-        iconName: "tag" as const,
-      },
-    };
-    return themes[entityType as keyof typeof themes] || themes.general;
-  };
-
-  const theme = getEntityTypeTheme(group.entityType);
+  const theme = getEntityVisualTheme(group.entityType);
+  const iconName =
+    group.entityType === "person"
+      ? "people"
+      : group.entityType === "note"
+        ? "document-text"
+        : group.entityType === "task"
+          ? "check"
+          : group.entityType === "vision"
+            ? "sparkles"
+            : "tag";
 
   return (
-    <div
-      className={`bg-gradient-to-br ${theme.gradient} ${theme.border} border rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200`}
-    >
+    <Surface padding="md" border="subtle" elevation="subtle">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div
             className={`w-6 h-6 ${theme.accent} rounded-full flex items-center justify-center shadow-sm`}
           >
             <Icon
-              name={theme.iconName}
+              name={iconName}
               size={16}
               className={theme.accentText}
               aria-hidden
@@ -1500,9 +1506,9 @@ const TagGroup: React.FC<TagGroupProps> = ({
             {group.displayName}
           </h4>
         </div>
-        <span className="text-sm font-medium text-base-content bg-base-200 px-2 py-1 rounded-full">
+        <Badge tone="ghost" size="sm">
           {t("tagManager.ui.tagCount", { count: group.tags.length })}
-        </span>
+        </Badge>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -1527,7 +1533,7 @@ const TagGroup: React.FC<TagGroupProps> = ({
           />
         ))}
       </div>
-    </div>
+    </Surface>
   );
 };
 
@@ -1567,49 +1573,7 @@ const TagItem: React.FC<TagItemProps> = ({
   const [editName, setEditName] = useState(tag.name);
   const [updating, setUpdating] = useState(false);
 
-  // 根据实体类型获取颜色主题（使用 DaisyUI 语义化颜色）
-  const getTagTheme = (entityType: string) => {
-    const themes = {
-      person: {
-        bg: "bg-primary/20 hover:bg-primary/30",
-        text: "text-primary-content",
-        border: "border-primary/40 hover:border-primary/60",
-        editBg: "bg-primary/10 border-primary/50",
-        deleteBg: "bg-error/10 border-error/50",
-      },
-      note: {
-        bg: "bg-secondary/20 hover:bg-secondary/30",
-        text: "text-secondary-content",
-        border: "border-secondary/40 hover:border-secondary/60",
-        editBg: "bg-secondary/10 border-secondary/50",
-        deleteBg: "bg-error/10 border-error/50",
-      },
-      task: {
-        bg: "bg-accent/20 hover:bg-accent/30",
-        text: "text-accent-content",
-        border: "border-accent/40 hover:border-accent/60",
-        editBg: "bg-accent/10 border-accent/50",
-        deleteBg: "bg-error/10 border-error/50",
-      },
-      vision: {
-        bg: "bg-info/20 hover:bg-info/30",
-        text: "text-info-content",
-        border: "border-info/40 hover:border-info/60",
-        editBg: "bg-info/10 border-info/50",
-        deleteBg: "bg-error/10 border-error/50",
-      },
-      general: {
-        bg: "bg-neutral/20 hover:bg-neutral/30",
-        text: "text-neutral-content",
-        border: "border-neutral/40 hover:border-neutral/60",
-        editBg: "bg-neutral/10 border-neutral/50",
-        deleteBg: "bg-error/10 border-error/50",
-      },
-    };
-    return themes[entityType as keyof typeof themes] || themes.general;
-  };
-
-  const theme = getTagTheme(entityType);
+  const theme = getEntityVisualTheme(entityType);
 
   const handleSave = async () => {
     if (editName.trim() === tag.name) {
@@ -1644,7 +1608,7 @@ const TagItem: React.FC<TagItemProps> = ({
   if (bulkEditMode) {
     return (
       <label
-        className={`inline-flex items-center gap-2 ${theme.bg} ${theme.border} border rounded-lg px-2 py-1 cursor-pointer`}
+        className={`inline-flex items-center gap-2 border rounded-lg px-2 py-1 cursor-pointer ${theme.tag}`}
       >
         <Checkbox
           checked={isBulkSelected}
@@ -1656,9 +1620,9 @@ const TagItem: React.FC<TagItemProps> = ({
           {tag.name}
         </span>
         {tag.usageStats && (
-          <span className="bg-base-content/10 text-base-content text-sm font-semibold px-1.5 py-0.5 rounded-full">
+          <Badge tone="ghost" size="xs">
             {tag.usageStats.total_usage}
-          </span>
+          </Badge>
         )}
       </label>
     );
@@ -1667,7 +1631,7 @@ const TagItem: React.FC<TagItemProps> = ({
   if (isEditing) {
     return (
       <div
-        className={`inline-flex items-center gap-2 ${theme.editBg} border rounded-lg px-2 py-1 shadow-md transition-all duration-200`}
+        className={`inline-flex items-center gap-2 border rounded-lg px-2 py-1 ${theme.edit}`}
       >
         <div className="flex items-center gap-2">
           <TextInput
@@ -1722,7 +1686,7 @@ const TagItem: React.FC<TagItemProps> = ({
   if (isDeleting) {
     return (
       <div
-        className={`inline-flex items-center ${theme.deleteBg} border rounded-lg px-2 py-1 shadow-md animate-pulse`}
+        className="inline-flex items-center rounded-lg border border-error/50 bg-error/10 px-2 py-1"
       >
         <span className="text-error text-sm font-medium">
           {t("common.deleting")}
@@ -1753,7 +1717,7 @@ const TagItem: React.FC<TagItemProps> = ({
 
   return (
     <div
-      className={`inline-flex items-center gap-1 ${theme.bg} ${theme.border} border rounded-lg px-2 py-1 cursor-pointer transition-all duration-200 group hover:shadow-sm hover:scale-102 transform`}
+      className={`group inline-flex cursor-pointer items-center gap-1 rounded-lg border px-2 py-1 transition-colors ${theme.tag}`}
       onClick={onEditStart}
     >
       <span className="text-base-content text-sm font-medium select-none">
@@ -1762,9 +1726,9 @@ const TagItem: React.FC<TagItemProps> = ({
 
       {/* Usage Statistics */}
       {tag.usageStats && (
-        <span className="bg-base-content/10 text-base-content text-sm font-semibold px-1.5 py-0.5 rounded-full">
+        <Badge tone="ghost" size="xs">
           {tag.usageStats.total_usage}
-        </span>
+        </Badge>
       )}
 
       {/* Interactive Icons */}

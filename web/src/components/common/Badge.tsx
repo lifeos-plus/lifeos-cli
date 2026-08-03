@@ -20,6 +20,7 @@ interface BadgeProps {
   variant?: BadgeVariant;
   size?: BadgeSize;
   className?: string;
+  title?: string;
 }
 
 const toneClassMap: Record<BadgeTone, string> = {
@@ -47,6 +48,7 @@ export default function Badge({
   variant = "solid",
   size = "md",
   className = "",
+  title,
 }: BadgeProps) {
   return (
     <span
@@ -59,6 +61,7 @@ export default function Badge({
       ]
         .filter(Boolean)
         .join(" ")}
+      title={title}
     >
       {children}
     </span>

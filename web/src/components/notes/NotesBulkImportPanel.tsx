@@ -21,6 +21,8 @@ import {
   useBulkNoteImport,
 } from "@/features/notes/useBulkNoteImport";
 import { ACTIVE_TASK_STATUSES } from "@/utils/constants";
+import Surface from "@/layouts/Surface";
+import Badge, { type BadgeTone } from "@/components/common/Badge";
 
 type PreviewStatus = "idle" | "pending" | "success" | "error";
 
@@ -218,28 +220,28 @@ export function NotesBulkImportPanel({
 
   const statusMeta: Record<
     PreviewStatus,
-    { label: string; className: string }
+    { label: string; tone: BadgeTone }
   > = {
     idle: {
       label: t("notes.bulkImport.status.idle"),
-      className: "bg-base-200 text-base-content",
+      tone: "neutral",
     },
     pending: {
       label: t("notes.bulkImport.status.pending"),
-      className: "bg-info/10 text-info",
+      tone: "info",
     },
     success: {
       label: t("notes.bulkImport.status.success"),
-      className: "bg-success/10 text-success",
+      tone: "success",
     },
     error: {
       label: t("notes.bulkImport.status.error"),
-      className: "bg-error/10 text-error",
+      tone: "error",
     },
   };
 
   return (
-    <div className="bg-base-100 rounded-lg shadow-md p-4 sm:p-6 space-y-6">
+    <Surface padding="responsive" border="none" elevation="moderate" className="space-y-6">
       <div className="space-y-2">
         <h2 className="text-xl font-semibold text-base-content">
           {t("notes.bulkImport.sectionTitle")}
@@ -340,9 +342,11 @@ export function NotesBulkImportPanel({
               const status = statusMeta[note.status];
               const isEditing = editingNoteId === note.id;
               return (
-                <div
+                <Surface
                   key={note.id}
-                  className="bg-base-100 rounded-lg shadow-sm border border-base-200 p-3 lg:p-4 flex flex-col gap-3"
+                  border="subtle"
+                  elevation="subtle"
+                  className="flex flex-col gap-3 p-3 lg:p-4"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-sm text-base-content/70">
@@ -350,11 +354,9 @@ export function NotesBulkImportPanel({
                         index: index + 1,
                       })}
                     </div>
-                    <span
-                      className={`text-xs px-3 py-1 rounded-full ${status.className}`}
-                    >
+                    <Badge tone={status.tone} size="sm">
                       {status.label}
-                    </span>
+                    </Badge>
                   </div>
                   <NoteCardLayout
                     content={note.content}
@@ -414,7 +416,7 @@ export function NotesBulkImportPanel({
                       {note.errorMessage}
                     </div>
                   )}
-                </div>
+                </Surface>
               );
             })}
           </div>
@@ -424,6 +426,6 @@ export function NotesBulkImportPanel({
           </div>
         )}
       </div>
-    </div>
+    </Surface>
   );
 }

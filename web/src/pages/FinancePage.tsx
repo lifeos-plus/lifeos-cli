@@ -13,6 +13,7 @@ import ToolbarContainer from "@/components/ToolbarContainer";
 import { usePageHeader } from "@/contexts/PageHeaderContext";
 import { useToast } from "@/contexts/ToastContext";
 import ModalBase from "@/layouts/ModalBase";
+import Surface from "@/layouts/Surface";
 import PageLayout from "@/layouts/PageLayout";
 import {
   financeApi,
@@ -719,7 +720,7 @@ function FinanceTreesWorkspace() {
         }}
       />
 
-      <section className="rounded-2xl border border-base-200 bg-base-100 p-4 shadow-sm">
+      <Surface as="section" padding="md" radius="xl" border="subtle" elevation="subtle">
         {treeFormVisible ? (
           <>
             <SnapshotNavigator
@@ -823,7 +824,7 @@ function FinanceTreesWorkspace() {
             {t("finance.tree.noTrees")}
           </div>
         )}
-      </section>
+      </Surface>
 
       {tree ? (
         <FinanceNodeFormModal
@@ -1045,7 +1046,7 @@ function SnapshotModule({
   if (!hasSnapshots) {
     if (snapshotFormVisible) {
       return (
-        <section className="rounded-2xl border border-base-200 bg-base-100 p-4 shadow-sm">
+        <Surface as="section" padding="md" radius="xl" border="subtle" elevation="subtle">
           <SnapshotFormPanel
             tree={tree}
             preset={preset}
@@ -1061,7 +1062,7 @@ function SnapshotModule({
             onSubmit={onCreateSnapshot}
             onCancel={onCloseSnapshotForm}
           />
-        </section>
+        </Surface>
       );
     }
 
@@ -1085,7 +1086,7 @@ function SnapshotModule({
   }
 
   return (
-    <section className="rounded-2xl border border-base-200 bg-base-100 p-4 shadow-sm">
+    <Surface as="section" padding="md" radius="xl" border="subtle" elevation="subtle">
       {snapshotFormVisible ? (
         snapshotFormMode !== "create" && snapshotDetailLoading ? (
             <div className="py-6">
@@ -1157,7 +1158,7 @@ function SnapshotModule({
           </div>
         </>
       )}
-    </section>
+    </Surface>
   );
 }
 

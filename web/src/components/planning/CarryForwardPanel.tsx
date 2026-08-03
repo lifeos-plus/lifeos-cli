@@ -1,7 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import ActionButton, { FormActions } from "@/components/ActionButton";
+import { FormActions } from "@/components/ActionButton";
 import type { TaskWithSubtasks } from "@/services/api";
+import PlanningActionPanel from "./PlanningActionPanel";
 
 interface CarryForwardPanelProps {
   tasks: TaskWithSubtasks[];
@@ -19,22 +20,12 @@ export const CarryForwardPanel: React.FC<CarryForwardPanelProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 mt-2">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-base font-medium text-warning">
-          {t("planning.carryForward.title")}
-        </h4>
-        <ActionButton
-          label={t("common.cancel")}
-          iconName="x-mark"
-          color="warning"
-          size="xs"
-          variant="ghost"
-          iconOnly
-          onClick={onCancel}
-        />
-      </div>
-
+    <PlanningActionPanel
+      title={t("planning.carryForward.title")}
+      closeLabel={t("common.cancel")}
+      onClose={onCancel}
+      tone="warning"
+    >
       <div className="mb-4">
         <p className="text-base text-warning mb-2">
           {t("planning.carryForward.message", { count: tasks.length })}
@@ -66,6 +57,6 @@ export const CarryForwardPanel: React.FC<CarryForwardPanelProps> = ({
         }}
         onCancel={onCancel}
       />
-    </div>
+    </PlanningActionPanel>
   );
 };

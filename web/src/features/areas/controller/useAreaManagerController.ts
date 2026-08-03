@@ -12,6 +12,7 @@ import {
   removeAreaDetailCache,
   setAreaDetailCache,
 } from "@/services/api/cacheInvalidation/areas";
+import { DEFAULT_NEW_AREA_COLOR } from "@/utils/areaColors";
 
 interface AreaFormData {
   name: string;
@@ -30,7 +31,7 @@ interface UseAreaManagerControllerParams {
 const DEFAULT_FORM_DATA: AreaFormData = {
   name: "",
   description: "",
-  color: "#3B82F6",
+  color: DEFAULT_NEW_AREA_COLOR,
   icon: "",
   is_active: true,
   display_order: 0,
@@ -93,7 +94,7 @@ export function useAreaManagerController({
     setFormData({
       name: area.name,
       description: area.description || "",
-      color: area.color || "#3B82F6",
+      color: area.color || DEFAULT_NEW_AREA_COLOR,
       icon: area.icon || "",
       is_active: area.is_active,
       display_order: area.display_order || 0,
