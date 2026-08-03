@@ -28,6 +28,7 @@ interface TaskEditModalProps {
   visionLocked?: boolean;
   inheritPlanningFromParent?: boolean;
   sessionId: string;
+  onRequestDelete?: (task: TaskWithSubtasks) => void;
 }
 
 const TaskEditModal: React.FC<TaskEditModalProps> = ({
@@ -43,6 +44,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
   mode = "single",
   visionLocked = false,
   inheritPlanningFromParent = true,
+  onRequestDelete,
 }) => {
   const sessionAwareClose = useCallback(() => {
     onClose({ sessionId });
@@ -95,6 +97,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
       visionId={visionId}
       mode={mode}
       visionLocked={visionLocked}
+      onRequestDelete={onRequestDelete}
     />
   );
 };

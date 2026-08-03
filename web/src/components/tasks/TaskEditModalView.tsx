@@ -37,6 +37,7 @@ interface TaskEditModalViewProps {
   visionId: UUID | null;
   mode?: "single" | "bulk";
   visionLocked?: boolean;
+  onRequestDelete?: (task: TaskWithSubtasks) => void;
 }
 
 export const TaskEditModalView: React.FC<TaskEditModalViewProps> = ({
@@ -57,6 +58,7 @@ export const TaskEditModalView: React.FC<TaskEditModalViewProps> = ({
   visionId,
   mode = "single",
   visionLocked = false,
+  onRequestDelete,
 }) => {
   const { t } = useTranslation();
   const { adapter } = usePlanningCycle();
@@ -125,6 +127,14 @@ export const TaskEditModalView: React.FC<TaskEditModalViewProps> = ({
           loading={loading}
           onCancel={handlers.handleClose}
           onSubmit={() => formRef.current?.requestSubmit()}
+          onDelete={
+            task && !isBulkMode && onRequestDelete
+              ? () => {
+                  handlers.handleClose();
+                  onRequestDelete(task);
+                }
+              : undefined
+          }
         />
       }
     >

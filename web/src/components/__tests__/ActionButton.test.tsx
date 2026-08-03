@@ -7,9 +7,40 @@ import { setupTranslationMock } from "@test/utils";
 setupTranslationMock();
 
 let ActionButton: typeof import("@/components/ActionButton").default;
+let FormActions: typeof import("@/components/ActionButton").FormActions;
 
 beforeAll(async () => {
-  ({ default: ActionButton } = await import("@/components/ActionButton"));
+  ({ default: ActionButton, FormActions } = await import(
+    "@/components/ActionButton"
+  ));
+});
+
+describe("FormActions", () => {
+  it("replaces the cancel action with a labeled delete action in edit mode", async () => {
+    const onCancel = vi.fn();
+    const onDelete = vi.fn();
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <FormActions
+        onCancel={onCancel}
+        onDelete={onDelete}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "common.cancel" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "common.delete" }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "common.submit" }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
 });
 
 const getActionButton = () => {

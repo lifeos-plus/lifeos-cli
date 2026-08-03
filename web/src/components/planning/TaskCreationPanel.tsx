@@ -31,15 +31,15 @@ export const TaskCreationPanel: React.FC<TaskCreationPanelProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="bg-success/10 border border-success/20 rounded-lg p-4 mt-2">
+    <div className="bg-base-200/50 border border-base-300 rounded-lg p-4 mb-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="text-base font-medium text-success">
+        <h4 className="text-base font-medium text-base-content">
           {t("planning.taskActions.createTask", { period: groupLabel })}
         </h4>
         <ActionButton
           label={t("common.cancel")}
           iconName="x-mark"
-          color="success"
+          color="neutral"
           size="xs"
           variant="ghost"
           iconOnly

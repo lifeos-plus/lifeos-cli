@@ -61,6 +61,7 @@ interface CreateNoteModalProps {
   mode?: "create" | "edit";
   existingNote?: Note;
   timezone?: string;
+  onRequestDelete?: (note: Note) => void;
 }
 
 export default function CreateNoteModal({
@@ -81,6 +82,7 @@ export default function CreateNoteModal({
   mode = "create",
   existingNote,
   timezone,
+  onRequestDelete,
 }: CreateNoteModalProps) {
   const { t } = useTranslation();
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -463,6 +465,14 @@ export default function CreateNoteModal({
             loading={isLoading}
             onCancel={handleClose}
             onSubmit={() => formRef.current?.requestSubmit()}
+            onDelete={
+              mode === "edit" && existingNote && onRequestDelete
+                ? () => {
+                    handleClose();
+                    onRequestDelete(existingNote);
+                  }
+                : undefined
+            }
             //disabled={!content.trim()}
             submitText={submitText}
             cancelText={t("common.cancel")}

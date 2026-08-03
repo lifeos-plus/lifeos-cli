@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { TaskEditModalView } from "@/components/tasks/TaskEditModalView";
-import type { TaskCreate } from "@/services/api";
+import type { TaskCreate, TaskWithSubtasks } from "@/services/api";
 import type { UseTaskEditorHandlers } from "@/hooks/tasks/useTaskEditor";
 import { setupTranslationMock } from "@test/utils";
 
@@ -144,6 +144,44 @@ const buildHandlers = (
 });
 
 describe("TaskEditModalView", () => {
+  it("routes edit-mode deletion through the existing close and confirmation flow", () => {
+    const handleClose = vi.fn();
+    const onRequestDelete = vi.fn();
+    const task = {
+      id: "11111111-1111-1111-1111-111111111111",
+      content: "Plan the month",
+    } as TaskWithSubtasks;
+
+    render(
+      <TaskEditModalView
+        isOpen
+        loading={false}
+        error={null}
+        modalTitle="Edit task"
+        canChangeVision
+        formData={baseFormData}
+        handlers={buildHandlers({ handleClose })}
+        filteredTasksForParent={[]}
+        excludedParentTaskIds={[]}
+        taskStatusFilter={[]}
+        visionStatusFilter={[]}
+        focusTrigger={0}
+        task={task}
+        allTasks={[]}
+        visionId={null}
+        onRequestDelete={onRequestDelete}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "common.delete" }));
+
+    expect(handleClose).toHaveBeenCalledTimes(1);
+    expect(onRequestDelete).toHaveBeenCalledWith(task);
+    expect(
+      screen.queryByRole("button", { name: "common.cancel" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps the Mayan moon when changing the monthly planning year", () => {
     const handlePlanningStartDateChange = vi.fn();
     render(

@@ -182,6 +182,7 @@ const PersonManager: React.FC<PersonManagerProps> = ({
 
   // Handle person deletion (unified confirm dialog)
   const handleDelete = (person: PersonSummary) => {
+    setEditingPerson(null);
     setDeletingPerson(person);
   };
 
@@ -600,6 +601,7 @@ const PersonManager: React.FC<PersonManagerProps> = ({
         onClose={() => setShowFormModal(false)}
         onSuccess={handleFormSuccess}
         editingPerson={editingPerson}
+        onRequestDelete={handleDelete}
       />
 
       <CreateNoteModal

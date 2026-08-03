@@ -653,6 +653,7 @@ const TimeLogPage = () => {
           isOpen={showEntryModal}
           onClose={handleModalClose}
           onSave={handleEntrySaved}
+          onRequestDelete={(entry) => requestDeleteEntry(entry.id)}
           entry={editingEntry}
           selectedDate={selectedDate}
           preloadedTasks={(() => {

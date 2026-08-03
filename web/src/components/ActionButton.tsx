@@ -67,6 +67,9 @@ interface FormActionsProps {
   // 事件处理
   onSubmit?: () => void;
   onCancel?: () => void;
+  /** edit-mode destructive action; replaces the default cancel action */
+  onDelete?: () => void;
+  deleteDisabled?: boolean;
 
   // 布局配置
   showTopBorder?: boolean;
@@ -324,6 +327,8 @@ function FormActions({
   size = "sm",
   onSubmit,
   onCancel,
+  onDelete,
+  deleteDisabled = false,
   showTopBorder = false,
   leftSlot,
   className = "",
@@ -343,17 +348,26 @@ function FormActions({
       withTopBorder={showTopBorder}
       className={className}
     >
-      {/* 左侧插槽（优先）或默认取消按钮 */}
+      {/* Custom action, edit-mode delete, or the default create-mode cancel action. */}
       {leftSlot ?? (
-        <ActionButton
-          label={cancelText || t("common.cancel")}
-          icon={cancelIcon}
-          color={cancelColor}
-          size={size}
-          onClick={onCancel}
-          disabled={loading || disabled}
-          variant="ghost"
-        />
+        onDelete ? (
+          <DeleteButton
+            showLabel
+            size={size}
+            onClick={() => onDelete()}
+            disabled={loading || deleteDisabled}
+          />
+        ) : (
+          <ActionButton
+            label={cancelText || t("common.cancel")}
+            icon={cancelIcon}
+            color={cancelColor}
+            size={size}
+            onClick={onCancel}
+            disabled={loading || disabled}
+            variant="ghost"
+          />
+        )
       )}
 
       {/* 提交按钮 */}
