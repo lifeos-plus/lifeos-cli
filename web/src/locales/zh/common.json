@@ -27,6 +27,7 @@
     "collapse": "收起",
     "close": "关闭",
     "loading": "加载中...",
+    "processing": "处理中...",
     "saving": "保存中...",
     "creating": "新建中...",
     "submitting": "提交中...",
@@ -38,12 +39,16 @@
     "noArea": "无领域",
     "please_select": "请选择……",
     "no_options": "暂无选项",
+    "no_match": "没有匹配的选项",
     "create_new": "新建",
     "reset": "重置",
     "preview": "预览",
     "placeholder": "占位",
     "default": "默认",
     "no_data": "暂无数据",
+    "clear_selection": "清除选择",
+    "loadMore": "加载更多",
+    "unknown_error": "未知错误",
     "create_with_name": "创建 {{name}}",
     "selected": "已选择",
     "date": "日期",
@@ -403,6 +408,11 @@
     "copySuccessMessage": "笔记内容已复制到剪贴板",
     "copyErrorMessage": "无法复制笔记内容，请手动选择文本复制",
     "copyTooltip": "复制",
+    "editTooltip": "编辑笔记",
+    "actions": {
+      "addNote": "添加笔记",
+      "viewNotes": "查看笔记"
+    },
     "timelogChipDefault": "时间记录",
     "timelogChipTooltip": "关联的时间记录 {{label}}",
     "tooltip": {
@@ -508,6 +518,7 @@
       "search": "搜索",
       "reset": "重置",
       "copyResults": "复制结果",
+      "export": "导出",
       "enableBatch": "开启批量操作",
       "selectAll": "全选",
       "selectInverse": "反选",
@@ -945,6 +956,8 @@
       "createFailedMessage": "创建任务时遇到问题，请稍后重试",
       "createFailedNoContent": "请输入任务标题",
       "createFailedNoVision": "请选择愿景或设置默认收件箱愿景",
+      "createSuccess": "任务创建成功",
+      "createSuccessMessage": "任务已创建到 {{period}} 规划中",
       "carryForwardSuccess": "顺延成功",
       "carryForwardSuccessMessage": "已将 {{count}} 个任务顺延到下个周期",
       "carryForwardPartialFailed": "部分任务顺延失败",
@@ -1800,6 +1813,11 @@
       "updateFailed": "更新习惯失败",
       "creating": "创建中...",
       "updating": "更新中..."
+    }
+  },
+  "tagSelector": {
+    "errors": {
+      "nameRequired": "标签名称不能为空"
     }
   },
   "apiErrors": {

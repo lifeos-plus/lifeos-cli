@@ -11,6 +11,7 @@
     "dev": "vite",
     "build": "tsc -b && npm run typecheck:test && vite build",
     "build-prod": "tsc -b && npm run typecheck:test && NODE_OPTIONS=--max-old-space-size=1536 vite build",
+    "i18n:check": "node scripts/check-i18n.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

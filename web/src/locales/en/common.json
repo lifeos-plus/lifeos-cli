@@ -27,6 +27,7 @@
     "collapse": "Collapse",
     "close": "Close",
     "loading": "Loading...",
+    "processing": "Processing...",
     "saving": "Saving...",
     "creating": "Creating...",
     "submitting": "Submitting...",
@@ -38,12 +39,16 @@
     "noArea": "No Area",
     "please_select": "Please select...",
     "no_options": "No options",
+    "no_match": "No matching options",
     "create_new": "Create New",
     "reset": "Reset",
     "preview": "Preview",
     "placeholder": "Placeholder",
     "default": "Default",
     "no_data": "No data",
+    "clear_selection": "Clear selection",
+    "loadMore": "Load more",
+    "unknown_error": "Unknown error",
     "create_with_name": "Create {{name}}",
     "selected": "Selected",
     "date": "Date",
@@ -403,6 +408,11 @@
     "copySuccessMessage": "Note content copied to clipboard",
     "copyErrorMessage": "Unable to copy note content, please manually select and copy text",
     "copyTooltip": "Copy",
+    "editTooltip": "Edit note",
+    "actions": {
+      "addNote": "Add note",
+      "viewNotes": "View notes"
+    },
     "timelogChipDefault": "Timelog",
     "timelogChipTooltip": "Linked timelog {{label}}",
     "tooltip": {
@@ -508,6 +518,7 @@
       "search": "Search",
       "reset": "Reset",
       "copyResults": "Copy results",
+      "export": "Export",
       "enableBatch": "Enable batch actions",
       "selectAll": "Select all",
       "selectInverse": "Invert selection",
@@ -945,6 +956,8 @@
       "createFailedMessage": "Failed to create task, please try again later",
       "createFailedNoContent": "Please enter task title",
       "createFailedNoVision": "Please select a vision or set default inbox vision",
+      "createSuccess": "Task Created Successfully",
+      "createSuccessMessage": "Task has been created in {{period}} planning",
       "carryForwardSuccess": "Carry Forward Success",
       "carryForwardSuccessMessage": "{{count}} tasks have been carried forward to next period",
       "carryForwardPartialFailed": "Some Tasks Carry Forward Failed",
@@ -1800,6 +1813,11 @@
       "updateFailed": "Failed to update habit",
       "creating": "Creating...",
       "updating": "Updating..."
+    }
+  },
+  "tagSelector": {
+    "errors": {
+      "nameRequired": "Tag name is required"
     }
   },
   "apiErrors": {

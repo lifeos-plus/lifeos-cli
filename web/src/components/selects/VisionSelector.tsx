@@ -110,7 +110,7 @@ const VisionSelector: React.FC<VisionSelectorProps> = React.memo(
         const def = availableVisions.find((v) => v.id === defaultInboxVision);
         if (def) {
           items.push({
-            id: "default",
+            id: defaultInboxVision,
             label: `${def.name} (${t("common.default")})`,
           });
         }
@@ -147,10 +147,6 @@ const VisionSelector: React.FC<VisionSelectorProps> = React.memo(
     const handleChange = (val: SelectorValue) => {
       if (val === undefined || val === "") {
         onChange(allowUndefined ? null : "");
-        return;
-      }
-      if (val === "default" && defaultInboxVision) {
-        onChange(defaultInboxVision);
         return;
       }
       const parsed = typeof val === "string" ? val : String(val);
