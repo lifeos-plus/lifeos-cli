@@ -241,7 +241,11 @@ export function NotesBulkImportPanel({
   };
 
   return (
-    <Surface padding="responsive" border="none" elevation="moderate" className="space-y-6">
+    <Surface
+      padding="responsive"
+      elevation="moderate"
+      className="space-y-6"
+    >
       <div className="space-y-2">
         <h2 className="text-xl font-semibold text-base-content">
           {t("notes.bulkImport.sectionTitle")}

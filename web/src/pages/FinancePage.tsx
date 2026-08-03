@@ -369,11 +369,14 @@ function FinancePresetWorkspace({ preset }: { preset: PresetConfig }) {
 
   if (!tree) {
     return (
-      <div
-        className={`rounded-2xl border border-dashed border-base-200 bg-base-100 p-8 text-center ${financeTextClass.bodyMuted}`}
+      <Surface
+        padding="lg"
+        border="dashed"
+        elevation="moderate"
+        className={`text-center ${financeTextClass.bodyMuted}`}
       >
         <p>{t("finance.tree.noTrees")}</p>
-      </div>
+      </Surface>
     );
   }
 
@@ -720,7 +723,7 @@ function FinanceTreesWorkspace() {
         }}
       />
 
-      <Surface as="section" padding="md" radius="xl" border="subtle" elevation="subtle">
+      <Surface as="section" padding="md" elevation="moderate">
         {treeFormVisible ? (
           <>
             <SnapshotNavigator
@@ -1046,7 +1049,7 @@ function SnapshotModule({
   if (!hasSnapshots) {
     if (snapshotFormVisible) {
       return (
-        <Surface as="section" padding="md" radius="xl" border="subtle" elevation="subtle">
+        <Surface as="section" padding="md" elevation="moderate">
           <SnapshotFormPanel
             tree={tree}
             preset={preset}
@@ -1067,8 +1070,11 @@ function SnapshotModule({
     }
 
     return (
-      <div
-        className={`rounded-2xl border border-dashed border-base-200 bg-base-100 p-8 text-center ${financeTextClass.bodyMuted}`}
+      <Surface
+        padding="lg"
+        border="dashed"
+        elevation="moderate"
+        className={`text-center ${financeTextClass.bodyMuted}`}
       >
         <p>{t("finance.history.empty")}</p>
         <div className="mt-4 flex justify-center">
@@ -1081,12 +1087,12 @@ function SnapshotModule({
             disabled={!treeOptions.length}
           />
         </div>
-      </div>
+      </Surface>
     );
   }
 
   return (
-    <Surface as="section" padding="md" radius="xl" border="subtle" elevation="subtle">
+    <Surface as="section" padding="md" elevation="moderate">
       {snapshotFormVisible ? (
         snapshotFormMode !== "create" && snapshotDetailLoading ? (
             <div className="py-6">

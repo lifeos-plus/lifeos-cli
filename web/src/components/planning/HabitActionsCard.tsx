@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Card from "@/layouts/Card";
 import EnumSelect from "@/components/selects/EnumSelect";
-import ActionButton, { ExpandButton } from "@/components/ActionButton";
+import ActionButton from "@/components/ActionButton";
 import {
   HABIT_ACTION_STATUS_OPTIONS,
   HABIT_ACTION_STATUS_CONFIG,
@@ -106,23 +106,18 @@ export const HabitActionsCard: React.FC<HabitActionsCardProps> = ({
           return (
             <div
               key={action.id}
-              className="w-full flex items-start group border-b border-base-200/50 last:border-b-0"
+              data-testid="planning-habit-action-row"
+              className="group w-full border-b border-base-200/50 last:border-b-0"
             >
-              <div className="mr-2 mt-3">
-                <ExpandButton
-                  isExpanded={false}
-                  onClick={() => {}}
-                  disabled
-                  className="cursor-default opacity-50"
-                />
-              </div>
-
-              <div className="flex-1 w-full min-w-0">
+              <div className="w-full min-w-0">
                 <div
-                  className={`w-full px-4 py-3 transition-all duration-200 ease-in-out hover:bg-base-200 hover:shadow-md group-hover:bg-base-200/80 ${statusStyling.bgColor}`}
+                  className={`w-full px-2 py-3 transition-all duration-200 ease-in-out hover:bg-base-200 hover:shadow-md group-hover:bg-base-200/80 sm:px-4 ${statusStyling.bgColor}`}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  <div
+                    data-testid="planning-habit-action-layout"
+                    className="flex w-full min-w-0 flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
                       <span className={`text-lg ${statusStyling.color}`}>
                         <Icon
                           name={statusStyling.iconName}
@@ -137,7 +132,7 @@ export const HabitActionsCard: React.FC<HabitActionsCardProps> = ({
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
                             <h5 className="font-medium text-base-content text-base min-w-0 truncate">
                               {action.habit.title}
                             </h5>
@@ -152,7 +147,7 @@ export const HabitActionsCard: React.FC<HabitActionsCardProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 ml-3 flex-shrink-0">
+                    <div className="flex w-full flex-wrap items-center justify-end gap-2 md:ml-3 md:w-auto md:flex-nowrap">
                       <ActionButton
                         label={t("notes.actions.addNote")}
                         iconName="document-plus"
@@ -174,7 +169,7 @@ export const HabitActionsCard: React.FC<HabitActionsCardProps> = ({
                         ariaLabel={t("notes.actions.viewNotes")}
                       />
 
-                      <div className="min-w-[90px]">
+                      <div className="w-32 min-w-0 md:w-28">
                         <EnumSelect
                           value={action.status}
                           onChange={(value) =>

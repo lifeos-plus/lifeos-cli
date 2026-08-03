@@ -4,6 +4,16 @@ import { describe, expect, it } from "vitest";
 import Surface from "@/layouts/Surface";
 
 describe("Surface", () => {
+  it("uses the default application radius and border", () => {
+    render(<Surface>Content</Surface>);
+
+    expect(screen.getByText("Content")).toHaveClass(
+      "rounded-lg",
+      "border-base-300",
+      "shadow-none",
+    );
+  });
+
   it("renders semantic surface variants", () => {
     render(
       <Surface

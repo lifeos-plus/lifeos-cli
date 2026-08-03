@@ -205,12 +205,18 @@ html {
 /* Global, theme-aware scrollbar styles (daisyUI variables) */
 @layer base {
   :root {
+    /* Keep controls consistent across DaisyUI themes without overriding states. */
+    --rounded-btn: 0.375rem;
     --scrollbar-size: 8px;
     --scrollbar-radius: 999px;
     --scrollbar-track: hsl(var(--b2));
     --scrollbar-thumb: hsl(var(--b3));
     --scrollbar-thumb-hover: hsl(var(--bc) / 0.2);
     --scrollbar-thumb-active: hsl(var(--bc) / 0.3);
+  }
+
+  [data-theme] {
+    --rounded-btn: 0.375rem;
   }
 
   /* Firefox */

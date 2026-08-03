@@ -42,5 +42,12 @@ describe("HabitActionsCard", () => {
     expect(viewButtons[0].className).toContain("opacity-40");
     expect(viewButtons[1]).toBeEnabled();
     expect(viewButtons[1].className).not.toContain("opacity-40");
+    expect(screen.getAllByTestId("planning-habit-action-row")[0]).not.toHaveTextContent(
+      "common.expand",
+    );
+    expect(screen.getAllByTestId("planning-habit-action-layout")[0]).toHaveClass(
+      "flex-col",
+      "md:flex-row",
+    );
   });
 });

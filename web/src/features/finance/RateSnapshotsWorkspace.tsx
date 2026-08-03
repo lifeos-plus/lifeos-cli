@@ -316,7 +316,7 @@ export function RateSnapshotsWorkspace() {
         onCreate={openCreateRateSnapshotForm}
       />
 
-      <Surface as="section" padding="md" radius="xl" border="subtle" elevation="subtle">
+      <Surface as="section" padding="md" elevation="moderate">
         {rateFormVisible ? (
           <>
             <SnapshotNavigator

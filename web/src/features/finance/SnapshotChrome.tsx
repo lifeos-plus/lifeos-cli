@@ -37,7 +37,7 @@ export function SnapshotSelectorToolbar({
   const { t } = useTranslation();
 
   return (
-    <Surface as="section" padding="md" radius="xl" border="subtle" elevation="subtle">
+    <Surface as="section" padding="md" elevation="moderate">
       <div className="grid grid-cols-1 items-center gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         {description ? (
           <p className={`min-w-0 ${financeTextClass.bodyMuted}`}>{description}</p>

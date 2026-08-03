@@ -107,7 +107,6 @@ export function NoteInputForm({
   return (
     <Surface
       padding="responsive"
-      border="none"
       elevation="moderate"
       className="mb-6 sm:mb-8"
     >
