@@ -1,5 +1,4 @@
 import json
-import re
 from pathlib import Path
 from typing import Any, cast
 
@@ -24,7 +23,7 @@ FRONTEND_DEPENDENCY_AUDIT_WORKFLOW = yaml.safe_load(
 VALIDATE_WORKFLOW = yaml.safe_load(Path(".github/workflows/validate.yml").read_text())
 VULTURE_WHITELIST_TEXT = Path("scripts/vulture_whitelist.py").read_text()
 LOAD_LOCAL_ENV_TEXT = Path("scripts/load_local_env.sh").read_text()
-WEB_THEME_TEXT = Path("web/src/theme.ts").read_text()
+WEB_THEME_CATALOG = json.loads(Path("web/src/config/themeCatalog.json").read_text())
 
 
 def _non_comment_shell_lines(text: str) -> list[str]:
@@ -57,13 +56,9 @@ def _flatten_json_catalog_keys(catalog: dict[str, Any]) -> dict[str, str]:
 
 
 def _extract_frontend_available_themes() -> tuple[str, ...]:
-    match = re.search(
-        r"export const AVAILABLE_THEMES: AppTheme\[] = \[(?P<body>.*?)\];",
-        WEB_THEME_TEXT,
-        flags=re.DOTALL,
-    )
-    assert match is not None
-    return tuple(re.findall(r'"([^"]+)"', match.group("body")))
+    themes = WEB_THEME_CATALOG["themes"]
+    assert isinstance(themes, dict)
+    return ("system", *themes.keys())
 
 
 DOCTOR_COMMANDS = _non_comment_shell_lines(DOCTOR_TEXT)
