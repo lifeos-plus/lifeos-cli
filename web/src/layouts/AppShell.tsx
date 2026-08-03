@@ -48,7 +48,7 @@ export default function AppShell({ children }: AppShellProps) {
         />
 
         {/* Drawer content */}
-        <div className="drawer-content flex flex-col">
+        <div className="drawer-content flex w-full min-w-0 max-w-full flex-col">
           <AppBar onMenuClick={() => setIsDrawerOpen(true)} />
 
           {/* Page content area */}
@@ -224,7 +224,7 @@ function AppBar({ onMenuClick }: AppBarProps) {
                 </div>
               )}
               {actions && (
-                <div className="ml-auto flex gap-1 xs:gap-1 md:gap-2 lg:gap-3 flex-shrink-0 min-w-0">
+                <div className="ml-auto flex min-w-0 max-w-full flex-shrink gap-1 overflow-x-auto xs:gap-1 md:gap-2 lg:gap-3">
                   {actions}
                 </div>
               )}

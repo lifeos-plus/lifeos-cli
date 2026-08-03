@@ -494,7 +494,7 @@ export function HabitActionList({
               return (
                 <div
                   key={formatDateKey(date)}
-                  className={`flex items-center justify-between p-3 border rounded-lg transition-colors hover:bg-primary/10 focus-within:bg-primary/10 ${
+                  className={`flex min-w-0 flex-col items-stretch gap-2 rounded-lg border p-3 transition-colors hover:bg-primary/10 focus-within:bg-primary/10 sm:flex-row sm:items-center sm:justify-between ${
                     isSelectedDate
                       ? "border-primary bg-primary/10 ring-2 ring-primary/20"
                       : isTodayDate
@@ -504,8 +504,8 @@ export function HabitActionList({
                           : "border-base-300 bg-base-200"
                   }`}
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="text-base min-w-[80px]">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="min-w-0 text-base">
                       {isDailyCadence && (
                         <span className="font-medium text-base-content">
                           {(() => {
@@ -521,7 +521,7 @@ export function HabitActionList({
                         </span>
                       )}
                       <span
-                        className={`text-sm text-base-content/70 ${
+                        className={`break-words text-sm text-base-content/70 ${
                           isDailyCadence ? "ml-2" : "font-medium"
                         }`}
                       >
@@ -531,13 +531,13 @@ export function HabitActionList({
                     </div>
 
                     {!action && (
-                      <span className="text-base text-base-content/50">
+                      <span className="min-w-0 break-words text-base text-base-content/50">
                         {t("habits.actionList.notRecorded")}
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
                     {action && (
                       <>
                         {canModifyAction && (

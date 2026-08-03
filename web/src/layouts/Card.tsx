@@ -49,7 +49,7 @@ const ContentArea: React.FC<ContentAreaProps> = ({
   contentClassName = "",
 }) => (
   <div
-    className={`flex-1 min-h-0 ${overflowClassName} ${contentClassName}`.trim()}
+    className={`min-h-0 min-w-0 flex-1 ${overflowClassName} ${contentClassName}`.trim()}
   >
     <ErrorDisplay error={error ?? null} className="mb-4" />
     <div

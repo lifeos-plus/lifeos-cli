@@ -744,7 +744,7 @@ export default function InlineQuickTimeEntry({
   };
 
   return (
-    <div className="bg-base-100 rounded-lg border border-primary/30 p-4 shadow-sm">
+    <div className="min-w-0 max-w-full rounded-lg border border-primary/30 bg-base-100 p-4 shadow-sm">
       <div className="mb-3">
         <h4 className="text-lg font-semibold text-base-content flex items-center justify-between">
           <span className="inline-flex items-center gap-2">
@@ -755,7 +755,7 @@ export default function InlineQuickTimeEntry({
       </div>
 
       {/* Task single-select (left) + Templates (right) */}
-      <div className="mt-1 mb-5 flex flex-col lg:flex-row items-start justify-between gap-3">
+      <div className="mt-1 mb-5 flex min-w-0 flex-col items-start justify-between gap-3 lg:flex-row">
         {/* Left: inline compact TaskSelector */}
         <div className="w-full lg:w-56">
           <TaskSelector
@@ -773,7 +773,7 @@ export default function InlineQuickTimeEntry({
         </div>
 
         {/* Right: templates */}
-        <div className="flex-1 w-full lg:w-auto">
+        <div className="min-w-0 flex-1 w-full lg:w-auto">
           <div className="flex items-center gap-2 mb-2 justify-start lg:justify-end">
             <ActionButton
               label={t("quickTimeEntry.templates.manage")}
@@ -843,7 +843,7 @@ export default function InlineQuickTimeEntry({
 
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
         {/* Quick input row */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-3">
+        <div className="flex min-w-0 flex-col items-start gap-3 lg:flex-row lg:items-center">
           {/* Start Time */}
           <div className="flex-shrink-0 w-full lg:w-auto mt-4">
             <label
@@ -919,7 +919,7 @@ export default function InlineQuickTimeEntry({
           </div>
 
           {/* Task Title */}
-          <div className="flex-1  mt-4">
+          <div className="mt-4 min-w-0 flex-1">
             <label
               htmlFor={`${idPrefix}-title`}
               className={FORM_LABEL_COMPACT_CLASS}

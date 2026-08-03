@@ -331,7 +331,7 @@ const PersonManager: React.FC<PersonManagerProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full min-w-0 max-w-full space-y-6 overflow-hidden">
       {combinedError && (
         <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-md">
           {combinedError}
@@ -342,8 +342,8 @@ const PersonManager: React.FC<PersonManagerProps> = ({
       <ListContainer
         title={t("personManager.list", { count: total ?? persons.length })}
         headerAction={
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <div className="relative min-w-0 flex-1 sm:flex-none">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
                   className="h-5 w-5 text-base-content/50"
@@ -368,7 +368,7 @@ const PersonManager: React.FC<PersonManagerProps> = ({
                 onChange={handleSearchInputChange}
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
-                className="w-64 pl-10 text-base"
+                className="w-full pl-10 text-base sm:w-64"
               />
             </div>
             <ActionButton

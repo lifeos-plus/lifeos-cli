@@ -30,13 +30,13 @@ const ToolbarContainer: React.FC<ToolbarContainerProps> = ({
   const getLayoutClasses = () => {
     if (layout === "three-column") {
       return responsive
-        ? "flex flex-col lg:grid lg:grid-cols-3 gap-3 lg:items-center"
-        : "grid grid-cols-3 gap-3 items-center";
+        ? "flex min-w-0 flex-col gap-3 lg:grid lg:grid-cols-[repeat(3,minmax(0,1fr))] lg:items-center"
+        : "grid min-w-0 grid-cols-[repeat(3,minmax(0,1fr))] items-center gap-3";
     }
 
     return responsive
-      ? "flex flex-col md:flex-row md:items-center md:justify-between gap-3"
-      : "flex items-center justify-between gap-3";
+      ? "flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:justify-between"
+      : "flex min-w-0 items-center justify-between gap-3";
   };
 
   const contentClasses = getLayoutClasses();

@@ -50,6 +50,8 @@ const defaultPortalTarget = (): HTMLElement | null => {
   return document.body;
 };
 
+const VIEWPORT_INLINE_PADDING = 8;
+
 const clampWidth = (
   width: number,
   minWidth?: number,
@@ -109,7 +111,12 @@ export const useDropdownSurface = (
     const previousMenuPos = menuPosRef.current;
     const requestedWidth =
       getPreferredWidth?.(rect) ?? rect.width ?? previousMenuPos.width;
-    const clampedWidth = clampWidth(requestedWidth, minWidth, maxWidth);
+    const configuredWidth = clampWidth(requestedWidth, minWidth, maxWidth);
+    const viewportWidth = Math.max(
+      0,
+      window.innerWidth - VIEWPORT_INLINE_PADDING * 2,
+    );
+    const clampedWidth = Math.min(configuredWidth, viewportWidth);
     preferredWidthRef.current = clampedWidth;
 
     const heightEstimate =

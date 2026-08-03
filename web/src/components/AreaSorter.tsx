@@ -147,7 +147,7 @@ export default function AreaSorter({
                 name: area.name,
                 position: index + 1,
               })}
-              className={`flex items-center gap-2 p-2 border rounded transition-colors ${
+              className={`flex min-w-0 items-center gap-2 overflow-hidden rounded border p-2 transition-colors ${
                 disabled || loading
                   ? "bg-base-200 cursor-not-allowed opacity-60"
                   : "bg-base-100 transition-all hover:bg-base-300 hover:shadow-md"
@@ -165,10 +165,12 @@ export default function AreaSorter({
               />
 
               {/* Area name */}
-              <div className="flex-1 text-sm font-medium">{area.name}</div>
+              <div className="min-w-0 flex-1 break-words text-sm font-medium">
+                {area.name}
+              </div>
 
               {/* Move buttons */}
-              <div className="flex flex-row gap-1">
+              <div className="flex flex-shrink-0 flex-row gap-1">
                 <ActionButton
                   label={t("settings.areaSorter.moveUp", {
                     name: area.name,

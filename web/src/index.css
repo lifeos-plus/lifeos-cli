@@ -113,6 +113,12 @@ html {
   scrollbar-gutter: stable;
 }
 
+body,
+#root {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 .scrollbar-gutter-stable-both {
   scrollbar-gutter: stable both-edges;
 }

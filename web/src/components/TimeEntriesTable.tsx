@@ -360,7 +360,7 @@ const TimeEntriesTable: React.FC<TimeEntriesTableProps> = ({
   }
 
   return (
-    <Container className="h-fit">
+    <Container className="h-fit min-w-0 max-w-full" overflow="hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-base-100  border-b border-base-200">

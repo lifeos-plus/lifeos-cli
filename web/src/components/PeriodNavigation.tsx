@@ -370,11 +370,11 @@ const PeriodNavigation: React.FC<PeriodNavigationProps> = ({
 
   // 响应式宽度类名映射
   const responsiveWidthClassMap = {
-    sm: "w-32 sm:w-40",
-    md: "w-40 sm:w-48 md:w-56",
-    lg: "w-56 sm:w-64 md:w-72",
-    xl: "w-64 sm:w-72 md:w-80 lg:w-96",
-    auto: "w-auto min-w-56 sm:min-w-64 md:min-w-72",
+    sm: "w-full min-w-0 max-w-32 sm:max-w-40",
+    md: "w-full min-w-0 max-w-40 sm:max-w-48 md:max-w-56",
+    lg: "w-full min-w-0 max-w-56 sm:max-w-64 md:max-w-72",
+    xl: "w-full min-w-0 max-w-64 sm:max-w-72 md:max-w-80 lg:max-w-96",
+    auto: "w-auto min-w-0",
   } as const;
 
   const getCenterButtonWidthClass = () =>
@@ -436,7 +436,7 @@ const PeriodNavigation: React.FC<PeriodNavigationProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`flex items-center gap-1 sm:gap-2 ${className}`}
+      className={`flex min-w-0 max-w-full items-center gap-1 sm:gap-2 ${className}`}
     >
       {/* 前一周期按钮 */}
       <ActionButton
@@ -452,7 +452,7 @@ const PeriodNavigation: React.FC<PeriodNavigationProps> = ({
       />
 
       {/* 当前周期按钮 + 日期选择器 */}
-      <div className="flex items-center gap-1 sm:gap-1.5">
+      <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-1.5">
         <div className={`${getCenterButtonWidthClass()} flex justify-center`}>
           <ActionButton
             label={responsiveDisplayLabel}
@@ -467,7 +467,7 @@ const PeriodNavigation: React.FC<PeriodNavigationProps> = ({
                 : t("planning.periodNavigation.goToCurrent")
             }
             disabled={disabled}
-            className={`font-normal text-sm sm:text-lg font-medium [&_span.truncate]:whitespace-normal [&_span.truncate]:text-ellipsis [&_span.truncate]:overflow-hidden ${
+            className={`w-full min-w-0 max-w-full font-normal text-sm sm:text-lg font-medium [&_span.truncate]:whitespace-normal [&_span.truncate]:text-ellipsis [&_span.truncate]:overflow-hidden ${
               centerButtonWidth !== "auto" ? "" : ""
             }`}
           />
