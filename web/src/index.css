@@ -57,12 +57,6 @@
 
 /* Mobile-first responsive optimizations */
 @media (max-width: 639px) {
-  /* Ensure touch targets are at least 44px */
-  .btn {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
   /* Optimize text for mobile reading */
   body {
     -webkit-text-size-adjust: 100%;
@@ -72,15 +66,6 @@
   /* Improve touch scrolling */
   .overflow-y-auto {
     -webkit-overflow-scrolling: touch;
-  }
-}
-
-/* Tablet optimizations */
-@media (min-width: 640px) and (max-width: 1023px) {
-  /* Slightly larger touch targets for tablets */
-  .btn {
-    min-height: 40px;
-    min-width: 40px;
   }
 }
 
@@ -145,14 +130,6 @@ body,
 @media (max-width: 1023px) {
   :root {
     --appbar-height: var(--mobile-appbar-height);
-  }
-}
-
-@media screen and (max-width: 639px) {
-  input,
-  textarea,
-  select {
-    font-size: 16px !important;
   }
 }
 

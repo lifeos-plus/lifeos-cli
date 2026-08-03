@@ -45,7 +45,9 @@ describe("ToastProvider", () => {
       contextRef!.showSuccess("Saved", "All good");
     });
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Saved");
+    const toast = await screen.findByRole("alert");
+    expect(toast).toHaveTextContent("Saved");
+    expect(toast).toHaveClass("alert", "alert-success");
 
     act(() => {
       screen.getByRole("button", { name: "common.close" }).click();

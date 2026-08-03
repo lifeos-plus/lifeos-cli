@@ -939,7 +939,7 @@ function InsightsPage() {
 
                   const baseClasses = [
                     "btn",
-                    selected ? "btn-primary/40" : "btn-neutral/40",
+                    selected ? "btn-primary" : "btn-neutral",
                     selected ? "" : "btn-ghost",
                     "btn-xs",
                     "min-w-32 max-w-40 flex-shrink-0",

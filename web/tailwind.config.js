@@ -58,9 +58,9 @@ module.exports = {
         'toast': '5000',
 
         // Fixed positioned elements
-        'fab': '4000',
-        'header': '4100',
-        'sidebar': '4200',
+        'fab': '60',
+        'header': '40',
+        'sidebar': '50',
 
         // Highest priority
         'max': '9999',

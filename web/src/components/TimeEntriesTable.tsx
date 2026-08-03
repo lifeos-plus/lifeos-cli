@@ -533,7 +533,7 @@ const TimeEntriesTable: React.FC<TimeEntriesTableProps> = ({
                         inlineSessionId && (
                           <tr>
                             <td colSpan={isSelectMode ? 9 : 8} className="p-0">
-                              <div className="bg-primary/10 p-4 animate-in slide-in-from-top-2 duration-200">
+                              <div className="bg-primary/10 p-4">
                                 <InlineQuickTimeEntry
                                   selectedDate={selectedDate}
                                   startTime={inlineStartTime}

@@ -107,21 +107,21 @@ const Toast: React.FC<{
   const getToastStyle = () => {
     switch (toast.type) {
       case "success":
-        return "bg-primary/80 border-primary/30 text-primary-content";
+        return "alert-success";
       case "error":
-        return "bg-secondary/80 border-secondary/30 text-secondary-content";
+        return "alert-error";
       case "warning":
-        return "bg-accent/80 border-accent/30 text-accent-content";
+        return "alert-warning";
       case "info":
-        return "bg-neutral/80 border-neutral/30 text-neutral-content";
+        return "alert-info";
       default:
-        return "bg-base-100/80 border-base-300 text-base-content";
+        return "";
     }
   };
 
   return (
     <div
-      className={`max-w-md w-full shadow-lg transform transition-all duration-300 ease-in-out animate-in slide-in-from-right-full rounded-lg border backdrop-blur-sm ${getToastStyle()}`}
+      className={`alert w-full max-w-md shadow-lg ${getToastStyle()}`}
       role="alert"
       aria-live="polite"
     >

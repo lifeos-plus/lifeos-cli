@@ -278,8 +278,8 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   // 使用工具函数计算响应式样式
   const responsiveClasses = getResponsiveClasses(size);
   const containerCls =
-    `bg-base-100 rounded-lg shadow ${responsiveClasses} flex flex-col border border-base-300 transition-all duration-200 transform ${
-      isVisible ? "scale-100 opacity-100" : "scale-95 opacity-0"
+    `bg-base-100 rounded-lg shadow ${responsiveClasses} flex flex-col border border-base-300 transition-opacity duration-200 ${
+      isVisible ? "opacity-100" : "opacity-0"
     } ${className || ""}`.trim();
 
   const handleOverlayClick: React.MouseEventHandler<HTMLDivElement> = (
