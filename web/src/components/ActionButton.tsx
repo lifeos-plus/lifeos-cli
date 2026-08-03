@@ -590,11 +590,17 @@ export const ExpandButton: React.FC<ExpandButtonProps> = ({
         <Icon
           name="chevron-right"
           size={resolveIconSize(size, true)}
-          className={`transition-transform ${isExpanded ? "rotate-90" : ""}`}
+          className={`transition-transform ${isExpanded ? "rotate-90" : ""} ${
+            disabled ? "opacity-30" : ""
+          }`}
           aria-hidden
         />
       }
-      className={className}
+      className={`${
+        disabled
+          ? "!bg-transparent !border-transparent !text-base-content !shadow-none !opacity-100 cursor-default"
+          : ""
+      } ${className}`.trim()}
       ariaLabel={buttonAriaLabel}
       ariaExpanded={isExpanded}
     />

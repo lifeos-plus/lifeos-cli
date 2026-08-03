@@ -416,11 +416,11 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
             isExpanded={isExpanded}
             onClick={() => hasSubtasks && onToggleExpansion(task.id)}
             disabled={!hasSubtasks}
-            className={`${
+            className={
               hasSubtasks
                 ? "cursor-pointer transition-colors hover:bg-primary/20 hover:shadow-sm"
-                : "cursor-default opacity-30 text-base-content/40"
-            }`}
+                : ""
+            }
             ariaLabel={
               hasSubtasks
                 ? isExpanded

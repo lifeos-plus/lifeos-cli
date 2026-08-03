@@ -195,4 +195,20 @@ describe("ExpandButton", () => {
     expect(button).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
+
+  it("dims only the icon when expansion is unavailable", () => {
+    render(<ExpandButton isExpanded={false} onClick={vi.fn()} disabled />);
+
+    const button = screen.getByRole("button", { name: "common.expand" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveClass(
+      "!bg-transparent",
+      "!border-transparent",
+      "!text-base-content",
+      "!shadow-none",
+      "!opacity-100",
+      "cursor-default",
+    );
+    expect(button.querySelector("svg")).toHaveClass("opacity-30");
+  });
 });
