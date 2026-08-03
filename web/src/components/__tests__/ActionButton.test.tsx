@@ -142,6 +142,27 @@ describe("ActionButton", () => {
     await user.click(screen.getByRole("button", { name: "Disabled" }));
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it("only shows explanatory tooltips when explicitly requested", async () => {
+    const user = userEvent.setup();
+    const Component = getActionButton();
+
+    render(
+      <Component
+        label=""
+        icon={<span aria-hidden>*</span>}
+        tooltip="Create tasks in bulk"
+      />,
+    );
+
+    await user.hover(
+      screen.getByRole("button", { name: "Create tasks in bulk" }),
+    );
+
+    expect(screen.getByRole("tooltip")).toHaveTextContent(
+      "Create tasks in bulk",
+    );
+  });
 });
 
 describe("ExpandButton", () => {
@@ -150,6 +171,28 @@ describe("ExpandButton", () => {
 
     const button = screen.getByRole("button", { name: "common.collapse" });
     expect(button).toHaveClass("btn", "btn-xs", "btn-square");
+    expect(button).toHaveAttribute("aria-expanded", "true");
     expect(button.querySelector("svg")).toHaveClass("rotate-90");
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("keeps contextual labels accessible without showing a tooltip", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ExpandButton
+        isExpanded={false}
+        onClick={vi.fn()}
+        collapsedLabel="Expand task details"
+      />,
+    );
+
+    const button = screen.getByRole("button", {
+      name: "Expand task details",
+    });
+    await user.hover(button);
+
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 });

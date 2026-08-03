@@ -132,7 +132,7 @@ const AreaManagerModal: React.FC<AreaManagerModalProps> = ({
                   color="neutral"
                   size="sm"
                   onClick={() => void toggleActive(area)}
-                  title={
+                  tooltip={
                     area.is_active
                       ? t("areaManager.toggleActive")
                       : t("areaManager.toggleInactive")

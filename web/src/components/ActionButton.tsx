@@ -14,7 +14,7 @@ interface ActionButtonProps {
   color?: ActionColor;
   size?: ActionSize;
   variant?: ActionVariant;
-  title?: string;
+  tooltip?: string;
   disabled?: boolean;
   className?: string;
   icon?: React.ReactNode; // emoji or SVG/icon component
@@ -24,6 +24,7 @@ interface ActionButtonProps {
   ariaLabel?: string; // accessibility label
   ariaHasPopup?: React.AriaAttributes["aria-haspopup"];
   ariaExpanded?: boolean;
+  ariaPressed?: boolean;
   shape?: ActionShape;
   iconOnly?: boolean;
   form?: string;
@@ -164,7 +165,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       color = "neutral",
       size = "sm",
       variant = "ghost",
-      title,
+      tooltip,
       disabled,
       className,
       icon,
@@ -174,6 +175,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       ariaLabel,
       ariaHasPopup,
       ariaExpanded,
+      ariaPressed,
       shape = "default",
       iconOnly,
       form,
@@ -206,8 +208,8 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       [onClick, disabled],
     );
 
-    const combinedAriaLabel = ariaLabel || label || title;
-    const tooltipContent = title?.trim();
+    const combinedAriaLabel = ariaLabel || label || tooltip;
+    const tooltipContent = tooltip?.trim();
     const finalIconSize = iconSize ?? resolveIconSize(size, computedIconOnly);
     const resolvedIcon =
       icon ??
@@ -225,6 +227,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
         aria-label={combinedAriaLabel}
         aria-haspopup={ariaHasPopup}
         aria-expanded={ariaExpanded}
+        aria-pressed={ariaPressed}
         form={form}
       >
         <span
@@ -450,7 +453,7 @@ interface CreateNewButtonProps {
 
   // 文本配置
   label?: string; // 默认使用 t("common.add")
-  title?: string; // tooltip 文本
+  tooltip?: string;
   showLabel?: boolean; // 默认 true
 
   // 图标配置
@@ -475,7 +478,6 @@ interface ExpandButtonProps {
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   size?: ActionSize;
   disabled?: boolean;
-  title?: string;
   className?: string;
   ariaLabel?: string;
   expandedLabel?: string;
@@ -558,7 +560,6 @@ export const ExpandButton: React.FC<ExpandButtonProps> = ({
   onClick,
   size = "sm",
   disabled = false,
-  title,
   className = "",
   ariaLabel,
   expandedLabel,
@@ -570,13 +571,11 @@ export const ExpandButton: React.FC<ExpandButtonProps> = ({
     onClick(e);
   };
 
-  const buttonTitle =
-    title ||
+  const buttonAriaLabel =
+    ariaLabel ||
     (isExpanded
       ? expandedLabel || t("common.collapse")
       : collapsedLabel || t("common.expand"));
-  const buttonAriaLabel =
-    ariaLabel || (isExpanded ? t("common.collapse") : t("common.expand"));
 
   return (
     <ActionButton
@@ -596,8 +595,8 @@ export const ExpandButton: React.FC<ExpandButtonProps> = ({
         />
       }
       className={className}
-      title={buttonTitle}
       ariaLabel={buttonAriaLabel}
+      ariaExpanded={isExpanded}
     />
   );
 };

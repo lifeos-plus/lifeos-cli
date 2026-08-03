@@ -415,11 +415,6 @@ const TimeEntriesTable: React.FC<TimeEntriesTableProps> = ({
                     onClick={() =>
                       onSortChange(sortOrder === "asc" ? "desc" : "asc")
                     }
-                    title={t(
-                      sortOrder === "asc"
-                        ? "timeLog.table.sortAscTooltip"
-                        : "timeLog.table.sortDescTooltip",
-                    )}
                   />
                 </div>
               </th>

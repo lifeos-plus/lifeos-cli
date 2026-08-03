@@ -241,11 +241,12 @@ function CalendarPage() {
               iconName="clipboard"
               color={showPlannedEvents ? "primary" : "neutral"}
               variant={showPlannedEvents ? "solid" : "ghost"}
-              title={
+              ariaLabel={
                 showPlannedEvents
                   ? t("modules.calendar.toggle.planned.title.hide")
                   : t("modules.calendar.toggle.planned.title.show")
               }
+              ariaPressed={showPlannedEvents}
               onClick={() => setShowPlannedEvents((v) => !v)}
             />
             <ActionButton
@@ -253,11 +254,12 @@ function CalendarPage() {
               iconName="timer"
               color={showTimelogs ? "primary" : "neutral"}
               variant={showTimelogs ? "solid" : "ghost"}
-              title={
+              ariaLabel={
                 showTimelogs
                   ? t("modules.calendar.toggle.actual.title.hide")
                   : t("modules.calendar.toggle.actual.title.show")
               }
+              ariaPressed={showTimelogs}
               onClick={() => setShowTimelogs((v) => !v)}
             />
           </div>
