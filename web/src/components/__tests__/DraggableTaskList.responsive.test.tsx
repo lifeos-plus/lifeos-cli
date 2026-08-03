@@ -49,12 +49,19 @@ describe("DraggableTaskList responsive layout", () => {
     );
 
     expect(screen.getByTestId("draggable-task-layout")).toHaveClass(
-      "flex-col",
-      "lg:flex-row",
+      "grid-cols-1",
+      "2xl:grid-cols-[minmax(0,1fr)_auto]",
     );
     expect(screen.getByTestId("draggable-task-actions")).toHaveClass(
       "flex-wrap",
-      "lg:flex-nowrap",
+      "2xl:flex-nowrap",
+    );
+
+    const sortableRow = screen
+      .getByTestId("draggable-task-layout")
+      .closest(".dnd-sortable-item");
+    expect(sortableRow).toContainElement(
+      screen.getByTestId("draggable-task-actions"),
     );
   });
 });

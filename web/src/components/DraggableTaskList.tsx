@@ -229,17 +229,10 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
     isDragging,
   } = useSortable({ id: task.id });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
+  const style: React.CSSProperties = {
+    transform: transform ? CSS.Transform.toString(transform) : undefined,
     transition,
     opacity: isDragging ? 0.5 : 1,
-    // Keep width constraints stable while dnd transforms are active.
-    maxWidth: "100%",
-    width: "100%",
-    minWidth: "0",
-    // Prevent flex children from overflowing the row container.
-    flexShrink: 1,
-    overflow: "hidden",
   };
 
   // Get associated habit for this task
@@ -410,8 +403,12 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
   return (
     <>
       <div
-        className="w-full flex items-start group min-w-0 max-w-full"
-        style={{ paddingLeft: `min(${depth * 16}px, 15vw)` }}
+        ref={setNodeRef}
+        style={{
+          ...style,
+          paddingLeft: `min(${depth * 16}px, 15vw)`,
+        }}
+        className="dnd-sortable-item group flex w-full min-w-0 max-w-full items-start"
       >
         {/* Expand/Collapse Button */}
         <div className="mr-1 mt-2 flex-shrink-0 sm:mr-2 sm:mt-3">
@@ -443,15 +440,13 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
           >
             <div
               data-testid="draggable-task-layout"
-              className="flex w-full min-w-0 flex-col items-stretch gap-2 lg:flex-row lg:items-center lg:justify-between"
+              className="grid w-full min-w-0 grid-cols-1 items-stretch gap-2 2xl:grid-cols-[minmax(0,1fr)_auto] 2xl:items-center"
             >
               {/* Draggable Task Info */}
               <div
-                ref={setNodeRef}
-                style={style}
                 {...attributes}
                 {...listeners}
-                className="dnd-sortable-item flex flex-1 cursor-move flex-wrap items-start gap-2 sm:flex-nowrap sm:items-center sm:gap-3"
+                className="flex w-full min-w-0 cursor-move flex-wrap items-start gap-2 overflow-hidden sm:flex-nowrap sm:items-center sm:gap-3"
               >
                 <span className="text-base-content text-lg flex-shrink-0">
                   {priorityInfo.iconName ? (
@@ -477,7 +472,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
 
                 <div className="flex min-w-0 max-w-full basis-full flex-col overflow-hidden sm:basis-auto sm:flex-1 sm:flex-row sm:items-center">
                   <h4
-                    className={`font-medium text-base-content text-base min-w-0 max-w-full overflow-hidden`}
+                    className="w-full min-w-0 flex-1 overflow-hidden text-base font-medium text-base-content"
                     onMouseEnter={handleTaskMouseEnter}
                     onMouseMove={handleTaskMouseMove}
                     onMouseLeave={handleTaskMouseLeave}
@@ -547,14 +542,19 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
 
                 {/* Associated Persons */}
                 {task.people && task.people.length > 0 && (
-                  <PersonsList people={task.people} inline max={3} />
+                  <PersonsList
+                    people={task.people}
+                    inline
+                    max={3}
+                    className="min-w-0 max-w-full overflow-hidden"
+                  />
                 )}
               </div>
 
               {/* Action Buttons - Always visible with ultra-compact design */}
               <div
                 data-testid="draggable-task-actions"
-                className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1 lg:ml-2 lg:w-auto lg:flex-nowrap"
+                className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1 2xl:ml-2 2xl:w-auto 2xl:flex-nowrap"
               >
                 <div className="w-28 min-w-0 sm:w-32 lg:w-24">
                   <EnumSelect

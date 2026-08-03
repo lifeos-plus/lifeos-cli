@@ -117,13 +117,6 @@ html {
   scrollbar-gutter: stable both-edges;
 }
 
-.dnd-sortable-item {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-}
-
 /* Disable transitions during theme initialization to prevent flash */
 .theme-initializing *,
 .theme-initializing *::before,
