@@ -46,7 +46,7 @@ const ListContainer: React.FC<ListContainerProps> = ({
   contentClassName = "",
   withTopBorder = false,
   shadow = true,
-  borderVariant = "default",
+  borderVariant = "none",
   columns,
 }) => {
   // 构建容器的基础类名 - 使用统一的卡片设计规范

@@ -4,12 +4,12 @@ import { describe, expect, it } from "vitest";
 import Surface from "@/layouts/Surface";
 
 describe("Surface", () => {
-  it("uses the default application radius and border", () => {
+  it("uses a borderless default application surface", () => {
     render(<Surface>Content</Surface>);
 
     expect(screen.getByText("Content")).toHaveClass(
       "rounded-lg",
-      "border-base-300",
+      "border-0",
       "shadow-none",
     );
   });

@@ -13,6 +13,8 @@ describe("Card", () => {
 
     const content = screen.getByText("Content");
     expect(content.parentElement).toHaveClass("border-t", "pt-4");
-    expect(content.closest(".bg-base-100")).toHaveClass("shadow-sm");
+    const card = content.closest(".bg-base-100");
+    expect(card).toHaveClass("shadow-sm");
+    expect(card).not.toHaveClass("border");
   });
 });

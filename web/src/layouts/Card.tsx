@@ -152,7 +152,7 @@ const Card: React.FC<CardProps> = ({
             ? "lg"
             : "md"
       }
-      borderVariant="default"
+      borderVariant="none"
     >
       {/* Header */}
       {title ? (

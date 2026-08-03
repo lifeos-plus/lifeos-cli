@@ -50,7 +50,7 @@ export default function Surface({
   className = "",
   padding = "none",
   radius = "lg",
-  border = "default",
+  border = "none",
   elevation = "none",
   interactive = false,
 }: SurfaceProps) {

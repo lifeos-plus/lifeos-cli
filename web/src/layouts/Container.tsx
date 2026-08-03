@@ -42,7 +42,7 @@ function Container({
   maxWidth = true,
   flex = "none",
   minHeight = "auto",
-  borderVariant = "default",
+  borderVariant = "none",
   shadow = "md",
 }: ContainerProps) {
   const baseClasses = [
