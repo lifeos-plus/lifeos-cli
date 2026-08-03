@@ -18,7 +18,7 @@ interface ContainerProps {
   /** Minimum height constraint. */
   minHeight?: "0" | "auto" | "full" | "screen" | "fit";
   /** Border style. */
-  borderVariant?: "default" | "subtle" | "none";
+  borderVariant?: "subtle" | "none";
   /** Shadow strength. */
   shadow?: "none" | "sm" | "md" | "lg";
 }
@@ -92,11 +92,7 @@ function Container({
           : padding === "lg"
             ? "p-6"
             : "p-2 md:p-4 lg:p-6", // responsive
-    borderVariant === "none"
-      ? ""
-      : borderVariant === "subtle"
-        ? "border border-base-200"
-        : "border border-base-300",
+    borderVariant === "subtle" ? "border border-base-200" : "",
     shadow === "none"
       ? "shadow-none"
       : shadow === "sm"

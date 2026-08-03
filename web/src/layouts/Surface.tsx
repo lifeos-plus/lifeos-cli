@@ -1,8 +1,8 @@
-import type { ElementType, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 type SurfacePadding = "none" | "sm" | "md" | "lg" | "responsive";
 type SurfaceRadius = "md" | "lg" | "xl";
-type SurfaceBorder = "none" | "subtle" | "default" | "dashed";
+type SurfaceBorder = "none" | "subtle" | "dashed";
 type SurfaceElevation = "none" | "subtle" | "moderate" | "elevated";
 
 interface SurfaceProps {
@@ -33,7 +33,6 @@ const radiusClasses: Record<SurfaceRadius, string> = {
 const borderClasses: Record<SurfaceBorder, string> = {
   none: "border-0",
   subtle: "border border-base-200",
-  default: "border border-base-300",
   dashed: "border border-dashed border-base-300",
 };
 
@@ -54,7 +53,7 @@ export default function Surface({
   elevation = "none",
   interactive = false,
 }: SurfaceProps) {
-  const Component = as as ElementType;
+  const Component = as;
   const classes = [
     "bg-base-100",
     paddingClasses[padding],

@@ -114,18 +114,18 @@ const Card: React.FC<CardProps> = ({
   error,
   loading = false,
   disabled = false,
-  className: _className = "",
+  className = "",
   children,
-  withTopBorder: _withTopBorder = false,
+  withTopBorder = false,
   size = "md",
-  elevation: _elevation = "moderate",
+  elevation = "moderate",
   contentOverflow = "visible",
   contentClassName,
 }) => {
   // 使用工具函数计算样式
   const { titleSizeClass, buttonSize, containerClasses } = getCardStyles(
     size,
-    _className,
+    className,
   );
 
   const resolveContentOverflow = () => {
@@ -146,13 +146,12 @@ const Card: React.FC<CardProps> = ({
       className={containerClasses}
       overflow="hidden"
       shadow={
-        _elevation === "subtle"
+        elevation === "subtle"
           ? "sm"
-          : _elevation === "elevated"
+          : elevation === "elevated"
             ? "lg"
             : "md"
       }
-      borderVariant="none"
     >
       {/* Header */}
       {title ? (
@@ -177,7 +176,7 @@ const Card: React.FC<CardProps> = ({
         disabled={disabled}
         error={error}
         overflowClassName={resolveContentOverflow()}
-        contentClassName={`${_withTopBorder ? "border-t border-base-300 pt-4" : ""} ${
+        contentClassName={`${withTopBorder ? "border-t border-base-300 pt-4" : ""} ${
           contentClassName || ""
         }`.trim()}
       >

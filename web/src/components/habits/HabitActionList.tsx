@@ -338,7 +338,7 @@ export function HabitActionList({
       {/* Lower Section - Calendar and Recent List */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Side - Monthly Calendar View */}
-        <Surface padding="lg" border="none" elevation="moderate">
+        <Surface padding="lg" elevation="moderate">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-base-content">
               {t("habits.actionList.monthView")}
@@ -449,7 +449,7 @@ export function HabitActionList({
         </Surface>
 
         {/* Right Side - 5 Days View */}
-        <Surface padding="lg" border="none" elevation="moderate">
+        <Surface padding="lg" elevation="moderate">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-base-content">
               {t("habits.actionList.fiveDayView")}

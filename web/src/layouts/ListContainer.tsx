@@ -12,8 +12,6 @@ interface ListContainerProps {
   children: React.ReactNode;
   /** 空状态时的内容 */
   emptyState?: React.ReactNode;
-  /** 是否显示边框 */
-  bordered?: boolean;
   /** 容器尺寸 */
   size?: "sm" | "md" | "lg";
   /** 额外的 CSS 类名 */
@@ -24,8 +22,8 @@ interface ListContainerProps {
   withTopBorder?: boolean;
   /** 是否显示阴影 */
   shadow?: boolean | "none" | "sm" | "md" | "lg";
-  /** 边框风格：none 取消；subtle 弱化；default 默认 */
-  borderVariant?: "none" | "subtle" | "default";
+  /** Optional structural border. */
+  borderVariant?: "none" | "subtle";
   /** 列标题配置（用于表格布局） */
   columns?: Array<{
     key: string;
