@@ -7,8 +7,6 @@ interface ThemeContextValue extends PreferenceWithBootstrapReturn<AppTheme> {
   effectiveTheme: Exclude<AppTheme, "system">;
   setTheme: (nextTheme: AppTheme) => Promise<void>;
   isSystem: boolean;
-  isLight: boolean;
-  isDark: boolean;
 }
 
 export const ThemeContext = createContext<ThemeContextValue | null>(null);

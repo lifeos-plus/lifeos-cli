@@ -1,66 +1,14 @@
-// Theme initialization and application utilities for daisyUI themes
+import themeCatalog from "@/config/themeCatalog.json";
 
 const THEME_STORAGE_KEY = "app-theme";
 
-export type AppTheme =
-  | "system"
-  | "fresh"
-  | "cupcake"
-  | "bumblebee"
-  | "emerald"
-  | "corporate"
-  | "synthwave"
-  | "retro"
-  | "cyberpunk"
-  | "valentine"
-  | "halloween"
-  | "garden"
-  | "forest"
-  | "aqua"
-  | "lofi"
-  | "pastel"
-  | "fantasy"
-  | "wireframe"
-  | "luxury"
-  | "dracula"
-  | "cmyk"
-  | "autumn"
-  | "business"
-  | "acid"
-  | "lemonade"
-  | "night"
-  | "coffee"
-  | "winter";
+type DaisyTheme = keyof typeof themeCatalog.themes;
+
+export type AppTheme = "system" | DaisyTheme;
 
 export const AVAILABLE_THEMES: AppTheme[] = [
   "system",
-  "fresh",
-  "cupcake",
-  "bumblebee",
-  "emerald",
-  "corporate",
-  "synthwave",
-  "retro",
-  "cyberpunk",
-  "valentine",
-  "halloween",
-  "garden",
-  "forest",
-  "aqua",
-  "lofi",
-  "pastel",
-  "fantasy",
-  "wireframe",
-  "luxury",
-  "dracula",
-  "cmyk",
-  "autumn",
-  "business",
-  "acid",
-  "lemonade",
-  "night",
-  "coffee",
-  "winter",
+  ...(Object.keys(themeCatalog.themes) as DaisyTheme[]),
 ];
 
 function applyTheme(theme: Exclude<AppTheme, "system">) {
