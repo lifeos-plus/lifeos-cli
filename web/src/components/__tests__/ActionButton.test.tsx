@@ -8,9 +8,10 @@ setupTranslationMock();
 
 let ActionButton: typeof import("@/components/ActionButton").default;
 let FormActions: typeof import("@/components/ActionButton").FormActions;
+let ExpandButton: typeof import("@/components/ActionButton").ExpandButton;
 
 beforeAll(async () => {
-  ({ default: ActionButton, FormActions } = await import(
+  ({ default: ActionButton, FormActions, ExpandButton } = await import(
     "@/components/ActionButton"
   ));
 });
@@ -140,5 +141,15 @@ describe("ActionButton", () => {
 
     await user.click(screen.getByRole("button", { name: "Disabled" }));
     expect(onClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("ExpandButton", () => {
+  it("uses DaisyUI sizing and announces the available action", () => {
+    render(<ExpandButton isExpanded onClick={vi.fn()} size="xs" />);
+
+    const button = screen.getByRole("button", { name: "common.collapse" });
+    expect(button).toHaveClass("btn", "btn-xs", "btn-square");
+    expect(button.querySelector("svg")).toHaveClass("rotate-90");
   });
 });

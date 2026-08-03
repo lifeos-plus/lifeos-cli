@@ -4,7 +4,6 @@ import { ActionButtonGroup } from "@/components/ActionButton";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import Container from "./Container";
 
-// 样式计算工具函数
 const getCardStyles = (size: string, className: string) => {
   const titleSizeClass =
     {
@@ -20,9 +19,8 @@ const getCardStyles = (size: string, className: string) => {
   }[size] || "md") as "sm" | "md" | "lg";
 
   const containerClasses = [
-    "card-body flex flex-col",
+    "flex flex-col",
     !className.includes("h-auto") ? "h-full" : "",
-    "p-2 md:p-4 lg:p-6",
     !className.includes("mb-0") ? "mb-6" : "",
     className,
   ]

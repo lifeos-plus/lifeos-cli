@@ -4,21 +4,19 @@ type TextInputProps = Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
   "size"
 > & {
-  /** 控件尺寸，对应 DaisyUI 类 */
+  /** DaisyUI control size. */
   size?: "sm" | "md" | "lg";
 };
 
 /**
- * TextInput - 标准化输入框组件
- *
- * 预置 DaisyUI 样式，统一输入框外观和行为
+ * Standard DaisyUI text input.
  */
 const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
   ({ className = "", size = "md", type = "text", ...rest }, ref) => {
     const sizeClasses = {
-      sm: "h-8 text-xs",
-      md: "h-10 sm:h-12 text-sm",
-      lg: "h-14 text-base sm:text-lg",
+      sm: "input-sm text-sm",
+      md: "input-md text-sm",
+      lg: "input-lg text-base",
     } as const;
 
     const baseClasses = `input input-bordered w-full ${sizeClasses[size]}`;

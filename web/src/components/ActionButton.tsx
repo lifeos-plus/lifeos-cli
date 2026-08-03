@@ -556,6 +556,7 @@ export const CreateNewButton: React.FC<CreateNewButtonProps> = ({
 export const ExpandButton: React.FC<ExpandButtonProps> = ({
   isExpanded,
   onClick,
+  size = "sm",
   disabled = false,
   title,
   className = "",
@@ -575,32 +576,28 @@ export const ExpandButton: React.FC<ExpandButtonProps> = ({
       ? expandedLabel || t("common.collapse")
       : collapsedLabel || t("common.expand"));
   const buttonAriaLabel =
-    ariaLabel || (isExpanded ? t("common.expand") : t("common.collapse"));
+    ariaLabel || (isExpanded ? t("common.collapse") : t("common.expand"));
 
   return (
-    <button
-      type="button"
+    <ActionButton
+      label=""
       onClick={handleClick}
       disabled={disabled}
-      className={`min-h-11 min-w-11 rounded p-1 transition-colors hover:bg-primary/20 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-      title={buttonTitle}
-      aria-label={buttonAriaLabel}
-    >
-      <svg
-        className={`w-4 h-4 text-base-content transition-transform ${
-          isExpanded ? "rotate-90" : ""
-        }`}
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 5l7 7-7 7"
+      size={size}
+      variant="ghost"
+      shape="square"
+      iconOnly
+      icon={
+        <Icon
+          name="chevron-right"
+          size={resolveIconSize(size, true)}
+          className={`transition-transform ${isExpanded ? "rotate-90" : ""}`}
+          aria-hidden
         />
-      </svg>
-    </button>
+      }
+      className={className}
+      title={buttonTitle}
+      ariaLabel={buttonAriaLabel}
+    />
   );
 };

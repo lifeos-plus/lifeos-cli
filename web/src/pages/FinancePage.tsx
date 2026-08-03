@@ -142,7 +142,7 @@ function FinancePage() {
 
   return (
     <PageLayout>
-      <ToolbarContainer className="mb-6" variant="compact" padding="sm">
+      <ToolbarContainer className="mb-6" padding="sm">
         <div className="flex flex-wrap items-center gap-2">
           {FINANCE_TOOLBAR_ORDER.map(renderToolbarItem)}
         </div>

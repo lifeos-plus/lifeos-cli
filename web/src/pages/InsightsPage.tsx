@@ -707,7 +707,6 @@ function InsightsPage() {
       {/* 统计工具条（响应式布局） */}
       <ToolbarContainer
         className="mb-4 w-full max-w-full overflow-hidden"
-        variant="compact"
         padding="md"
         layout="three-column"
       >
