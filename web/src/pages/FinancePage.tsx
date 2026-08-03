@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
-import ActionButton, { CreateNewButton } from "@/components/ActionButton";
+import ActionButton, {
+  CreateNewButton,
+  ExpandButton,
+} from "@/components/ActionButton";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import { FormField, TextInput } from "@/components/forms";
@@ -1455,14 +1458,9 @@ function TreeNodeRow({
   return (
     <li>
       <div className="flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-2 py-2 transition-colors hover:border-base-300/80 hover:bg-primary/10 focus-within:bg-primary/10">
-        <ActionButton
-          label=""
-          ariaLabel={isExpanded ? t("common.collapse") : t("common.expand")}
-          iconName={isExpanded ? "chevron-down" : "chevron-right"}
-          iconOnly
-          shape="square"
+        <ExpandButton
+          isExpanded={isExpanded}
           size="xs"
-          variant="ghost"
           disabled={!hasChildren}
           onClick={() => onToggleNode(node.id)}
         />
