@@ -162,7 +162,7 @@ const NoteItem = React.memo<NoteItemProps>(
       habitAction: NoteHabitActionSummary,
     ): string => {
       const habitLabel =
-        habitAction.habit_title?.trim() || t("habits.form.title");
+        habitAction.habit_title?.trim() || t("habitForm.fields.title");
       return `${habitLabel} · ${formatDate(habitAction.action_date, timezone)} (${habitAction.status})`;
     };
 
@@ -428,7 +428,8 @@ const NoteItem = React.memo<NoteItemProps>(
                 {t("habitActionNotes.typeLabel")}
               </span>
               <div className="text-base font-semibold text-base-content">
-                {habitAction.habit_title?.trim() || t("habits.form.title")}
+                {habitAction.habit_title?.trim() ||
+                  t("habitForm.fields.title")}
               </div>
               <dl className="space-y-1 text-sm">
                 <div className="flex items-start gap-2">
