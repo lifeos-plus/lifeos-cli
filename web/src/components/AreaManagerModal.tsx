@@ -13,6 +13,7 @@ import EnumSelect from "./selects/EnumSelect";
 import { FormField, TextInput, TextArea, Checkbox } from "./forms";
 import { FORM_LABEL_COMPACT_CLASS } from "./forms/styles";
 import { useAreaManagerController } from "@/features/areas/controller/useAreaManagerController";
+import { AREA_COLOR_PALETTE } from "@/utils/areaColors";
 
 interface AreaManagerModalProps {
   isOpen: boolean;
@@ -50,20 +51,6 @@ const AreaManagerModal: React.FC<AreaManagerModalProps> = ({
     isOpen,
     onClose,
   });
-
-  // Common color palette for areas
-  const colorPalette = [
-    "#3B82F6", // Blue
-    "#10B981", // Green
-    "#F59E0B", // Amber
-    "#8B5CF6", // Purple
-    "#EF4444", // Red
-    "#F97316", // Orange
-    "#06B6D4", // Cyan
-    "#84CC16", // Lime
-    "#EC4899", // Pink
-    "#6366F1", // Indigo
-  ];
 
   // Common icons for areas
   const iconOptions = [
@@ -145,7 +132,7 @@ const AreaManagerModal: React.FC<AreaManagerModalProps> = ({
                   color="neutral"
                   size="sm"
                   onClick={() => void toggleActive(area)}
-                  title={
+                  tooltip={
                     area.is_active
                       ? t("areaManager.toggleActive")
                       : t("areaManager.toggleInactive")
@@ -177,9 +164,13 @@ const AreaManagerModal: React.FC<AreaManagerModalProps> = ({
         <ModalBase
           isOpen={showForm}
           onClose={resetForm}
-          ariaLabelledBy="area-form-title"
-          overlayClassName="fixed inset-0 bg-base-content/50 flex items-center justify-center z-modal-nested p-4"
-          className="bg-base-100 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto z-modal-nested"
+          title={
+            editingArea
+              ? t("areaManager.editArea")
+              : t("areaManager.addNewArea")
+          }
+          size="sm"
+          nested
           loading={loading}
           showLoadingOverlay={false}
           showLoadingSpinner={true}
@@ -187,15 +178,6 @@ const AreaManagerModal: React.FC<AreaManagerModalProps> = ({
           showCloseButton={true}
           errorDisplayMode="none"
         >
-          <h3
-            id="area-form-title"
-            className="text-lg font-bold font-semibold text-base-content mb-4"
-          >
-            {editingArea
-              ? t("areaManager.editArea")
-              : t("areaManager.addNewArea")}
-          </h3>
-
           <form onSubmit={saveArea} className="space-y-4">
             <FormField
               label={t("areaManager.areaName")}
@@ -241,10 +223,11 @@ const AreaManagerModal: React.FC<AreaManagerModalProps> = ({
                 {t("areaManager.color")}
               </label>
               <div className="flex space-x-2 mb-2">
-                {colorPalette.map((color) => (
+                {AREA_COLOR_PALETTE.map((color) => (
                   <button
                     key={color}
                     type="button"
+                    aria-label={color}
                     onClick={() => setFormData((prev) => ({ ...prev, color }))}
                     className={`w-8 h-8 rounded-full border-2 ${
                       formData.color === color

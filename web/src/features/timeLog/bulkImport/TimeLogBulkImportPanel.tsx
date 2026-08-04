@@ -27,6 +27,7 @@ import {
 } from "./bulkImportDefaults";
 import type { ProcessedEntry } from "@/utils/datetime";
 import type { UUID } from "@/types/primitive";
+import { UNKNOWN_AREA_COLOR } from "@/utils/areaColors";
 import type { TaskWithSubtasks } from "@/services/api";
 import type {
   Timelog,
@@ -423,7 +424,7 @@ const TimeLogBulkImportPanel: React.FC<TimeLogBulkImportPanelProps> = ({
     areaMap.forEach((value, key) => {
       normalized.set(key, {
         name: value.name,
-        color: value.color ?? "#94a3b8",
+        color: value.color ?? UNKNOWN_AREA_COLOR,
       });
     });
     return normalized;

@@ -91,8 +91,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       effectiveTheme,
       setTheme,
       isSystem: preference.value === "system",
-      isLight: effectiveTheme === "pastel",
-      isDark: effectiveTheme === "night",
     }),
     [preference, updateThemeValue, saveThemeValue, effectiveTheme, setTheme],
   );

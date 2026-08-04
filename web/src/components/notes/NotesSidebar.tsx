@@ -1,8 +1,11 @@
 import { useCallback } from "react";
+import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { PersonSummary, Tag } from "@/services/api";
 import ActionButton from "@/components/ActionButton";
 import { Icon } from "@/components/icons";
+import type { IconName } from "@/components/icons";
+import Badge from "@/components/common/Badge";
 import Card from "@/layouts/Card";
 import ExpandableCard from "@/components/ExpandableCard";
 import { TextInput } from "@/components/forms";
@@ -24,6 +27,50 @@ interface NotesSidebarProps {
   onApplyFilters: () => void;
   onUntaggedToggle: () => void;
   isLoadingStats?: boolean;
+}
+
+interface NotesFilterOptionProps {
+  label: string;
+  countLabel: string;
+  iconName: IconName;
+  selected: boolean;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+}
+
+function NotesFilterOption({
+  label,
+  countLabel,
+  iconName,
+  selected,
+  onClick,
+}: NotesFilterOptionProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center justify-between rounded-lg p-1.5 transition-colors ${
+        selected
+          ? "bg-primary/10 text-primary"
+          : "bg-base-100 hover:bg-primary/10"
+      }`}
+    >
+      <span
+        className={`flex items-center gap-1 text-sm font-medium ${
+          selected ? "text-primary" : "text-base-content"
+        }`}
+      >
+        <Icon name={iconName} size={16} className="text-primary" aria-hidden />
+        {label}
+      </span>
+      <Badge
+        tone={selected ? "primary" : "ghost"}
+        size="xs"
+        className="flex-shrink-0"
+      >
+        {countLabel}
+      </Badge>
+    </button>
+  );
 }
 
 export function NotesSidebar({
@@ -130,8 +177,12 @@ export function NotesSidebar({
                     (p) => p.id === person.id,
                   );
                   return (
-                    <button
+                    <NotesFilterOption
                       key={person.id}
+                      label={`@${person.display_name}`}
+                      countLabel={`(${usageCount})`}
+                      iconName="people"
+                      selected={isSelected}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -142,37 +193,7 @@ export function NotesSidebar({
                           persons: true,
                         }));
                       }}
-                      className={`w-full flex items-center justify-between p-1.5 rounded-lg transition-colors ${
-                        isSelected
-                          ? "bg-primary/10 text-primary"
-                          : "bg-base-100 hover:bg-primary/10"
-                      }`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span
-                          className={`text-sm font-medium ${
-                            isSelected ? "text-primary" : "text-base-content"
-                          }`}
-                        >
-                          <Icon
-                            name="people"
-                            size={16}
-                            className="mr-1 text-primary"
-                            aria-hidden
-                          />
-                          @{person.display_name}
-                        </span>
-                      </div>
-                      <span
-                        className={`inline-flex text-xs px-1 py-0.5 rounded ${
-                          isSelected
-                            ? "bg-primary/20 text-primary"
-                            : "bg-base-100 text-base-content/60"
-                        }`}
-                      >
-                        ({usageCount})
-                      </span>
-                    </button>
+                    />
                   );
                 })}
               </div>
@@ -198,39 +219,13 @@ export function NotesSidebar({
           ) : (
             <div className="space-y-1">
               {/* Untagged filter option - always shown at the top */}
-              <button
+              <NotesFilterOption
+                label={t("notesSidebar.untagged")}
+                countLabel={`(${t("notesSidebar.pinned")})`}
+                iconName="document-text"
+                selected={showUntaggedOnly}
                 onClick={onUntaggedToggle}
-                className={`w-full flex items-center justify-between p-1.5 rounded-lg transition-colors ${
-                  showUntaggedOnly
-                    ? "bg-primary/10 text-primary"
-                    : "bg-base-100 hover:bg-primary/10"
-                }`}
-              >
-                <div className="flex items-center gap-1">
-                  <span
-                    className={`text-sm font-medium ${
-                      showUntaggedOnly ? "text-primary" : "text-base-content"
-                    }`}
-                  >
-                    <Icon
-                      name="document-text"
-                      size={16}
-                      className="mr-1 text-primary"
-                      aria-hidden
-                    />
-                    {t("notesSidebar.untagged")}
-                  </span>
-                </div>
-                <span
-                  className={`inline-flex text-xs px-1 py-0.5 rounded ${
-                    showUntaggedOnly
-                      ? "bg-primary/20 text-primary"
-                      : "bg-base-100 text-base-content/60"
-                  }`}
-                >
-                  ({t("notesSidebar.pinned")})
-                </span>
-              </button>
+              />
 
               {/* Regular tags */}
               {availableNoteTags.length === 0 ? (
@@ -244,8 +239,12 @@ export function NotesSidebar({
                     (t) => t.id === tag.id,
                   );
                   return (
-                    <button
+                    <NotesFilterOption
                       key={tag.id}
+                      label={`#${tag.name}`}
+                      countLabel={`(${usageCount})`}
+                      iconName="tag"
+                      selected={isSelected}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -256,37 +255,7 @@ export function NotesSidebar({
                           tags: true,
                         }));
                       }}
-                      className={`w-full flex items-center justify-between p-1.5 rounded-lg transition-colors ${
-                        isSelected
-                          ? "bg-primary/10 text-primary"
-                          : "bg-base-100 hover:bg-primary/10"
-                      }`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span
-                          className={`text-sm font-medium ${
-                            isSelected ? "text-primary" : "text-base-content"
-                          }`}
-                        >
-                          <Icon
-                            name="tag"
-                            size={16}
-                            className="mr-1 text-primary"
-                            aria-hidden
-                          />
-                          #{tag.name}
-                        </span>
-                      </div>
-                      <span
-                        className={`inline-flex text-xs px-1 py-0.5 rounded ${
-                          isSelected
-                            ? "bg-primary/20 text-primary"
-                            : "bg-base-100 text-base-content/60"
-                        }`}
-                      >
-                        ({usageCount})
-                      </span>
-                    </button>
+                    />
                   );
                 })
               )}

@@ -1,8 +1,9 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import TaskSelector from "@/components/selects/TaskSelector";
-import ActionButton, { FormActions } from "@/components/ActionButton";
+import { FormActions } from "@/components/ActionButton";
 import type { UUID } from "@/types/primitive";
+import PlanningActionPanel from "./PlanningActionPanel";
 
 interface TaskSelectorPanelProps {
   groupId: string;
@@ -28,22 +29,12 @@ export const TaskSelectorPanel: React.FC<TaskSelectorPanelProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mt-2">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-base font-medium text-primary">
-          {t("planning.taskActions.addTask", { period: groupLabel })}
-        </h4>
-        <ActionButton
-          label={t("common.cancel")}
-          iconName="x-mark"
-          color="primary"
-          size="xs"
-          variant="ghost"
-          iconOnly
-          onClick={onCancel}
-        />
-      </div>
-
+    <PlanningActionPanel
+      title={t("planning.taskActions.addTask", { period: groupLabel })}
+      closeLabel={t("common.cancel")}
+      onClose={onCancel}
+      tone="primary"
+    >
       <TaskSelector
         value={selectedTaskId}
         onChange={onTaskSelectorChange}
@@ -70,6 +61,6 @@ export const TaskSelectorPanel: React.FC<TaskSelectorPanelProps> = ({
           onCancel={onCancel}
         />
       </div>
-    </div>
+    </PlanningActionPanel>
   );
 };

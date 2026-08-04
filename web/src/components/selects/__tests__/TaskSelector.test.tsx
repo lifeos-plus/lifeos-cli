@@ -117,6 +117,9 @@ describe("TaskSelector", () => {
       "task-1",
       "task-2",
     ]);
+    expect(props.dropdownClassName).toBe("max-h-96");
+    expect(props.dropdownMinWidth).toBe(480);
+    expect(props.dropdownMaxWidth).toBe(800);
   });
 
   it("maps selection back to task ids and special values", () => {

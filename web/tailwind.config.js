@@ -1,6 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 const daisyui = require('daisyui')
 const typography = require('@tailwindcss/typography')
+const themeCatalog = require('./src/config/themeCatalog.json')
+
+const daisyThemes = Object.entries(themeCatalog.themes).map(([name, config]) =>
+  config ? { [name]: config } : name
+)
 
 module.exports = {
   content: [
@@ -11,7 +16,7 @@ module.exports = {
     extend: {
       screens: {
         'xs': '475px',
-        'md-lg': '896px', //
+        'md-lg': '896px',
       },
       spacing: {
         '18': '4.5rem',
@@ -53,9 +58,9 @@ module.exports = {
         'toast': '5000',
 
         // Fixed positioned elements
-        'fab': '4000',
-        'header': '4100',
-        'sidebar': '4200',
+        'fab': '60',
+        'header': '40',
+        'sidebar': '50',
 
         // Highest priority
         'max': '9999',
@@ -123,62 +128,13 @@ module.exports = {
       }),
     },
   },
-  // Enable daisyUI and configure themes (light/dark to start)
   plugins: [daisyui, typography],
   daisyui: {
-    styled: true, // **关键：** 强制包含所有主题的样式，防止被 JIT 编译器优化掉
-    themes: [
-      {
-        fresh: {
-          "color-scheme": "light",
-          "primary": "#10b981",        // 清新绿色
-          "primary-content": "#ffffff",
-          "secondary": "#059669",      // 深一点的绿色
-          "secondary-content": "#ffffff",
-          "accent": "#34d399",         // 亮绿色
-          "accent-content": "#064e3b",
-          "neutral": "#374151",        // 中性灰
-          "neutral-content": "#ffffff",
-          "base-100": "#f0fdf4",     // 非常浅的绿色背景
-          "base-200": "#dcfce7",     // 浅绿色
-          "base-300": "#bbf7d0",     // 稍深一点的绿色
-          "base-content": "#064e3b", // 深绿色文字
-          "info": "#0ea5e9",           // 蓝色信息
-          "success": "#10b981",        // 绿色成功
-          "warning": "#f59e0b",        // 橙色警告
-          "error": "#ef4444",          // 红色错误
-        },
-      },
-      "cupcake",
-      "bumblebee",
-      "emerald",
-      "corporate",
-      "synthwave",
-      "retro",
-      "cyberpunk",
-      "valentine",
-      "halloween",
-      "garden",
-      "forest",
-      "aqua",
-      "lofi",
-      "pastel",
-      "fantasy",
-      "wireframe",
-      "luxury",
-      "dracula",
-      "cmyk",
-      "autumn",
-      "business",
-      "acid",
-      "lemonade",
-      "night",
-      "coffee",
-      "winter"
-    ],
+    styled: true,
+    themes: daisyThemes,
     base: true,
     utils: true,
-    logs: true, // 保持日志开启，以便在控制台观察 daisyUI 的行为
+    logs: false,
     prefix: "",
     themeRoot: ":root",
   },

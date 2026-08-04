@@ -26,14 +26,6 @@ interface ExpandableCardProps {
    * - elevated: 高级质感，焦点卡片（重要内容、悬浮状态）
    */
   elevation?: "subtle" | "moderate" | "elevated";
-  /**
-   * 磨砂玻璃效果 (Glassmorphism)
-   * - false: 不使用玻璃效果（默认）
-   * - true: 使用玻璃效果，会覆盖 elevation 设置
-   * - "light": 轻量玻璃效果
-   * - "strong": 强化玻璃效果
-   */
-  glass?: boolean | "light" | "strong";
 }
 
 /**
@@ -59,37 +51,12 @@ const ExpandableCard: React.FC<ExpandableCardProps> = ({
   className = "",
   disabled = false,
   elevation = "moderate",
-  glass = false,
 }) => {
-  // 获取玻璃效果类
-  const getGlassClass = (glassType: boolean | "light" | "strong") => {
-    if (!glassType) return null;
-
-    if (glassType === true) {
-      // 默认玻璃效果，结合当前 elevation
-      return `glass-${elevation}`;
-    }
-
-    if (glassType === "light") {
-      return "glass-light";
-    }
-
-    if (glassType === "strong") {
-      return "glass-strong";
-    }
-
-    return null;
-  };
-
-  // 构建容器类名（用于 glass 或额外样式）
-  const glassClass = getGlassClass(glass);
   const containerClasses = [
     "w-full",
     "h-fit",
     "min-w-0",
     "overflow-hidden",
-    glassClass || "",
-    glass ? "bg-transparent shadow-none border-0" : "",
     className,
   ]
     .filter(Boolean)
@@ -104,6 +71,13 @@ const ExpandableCard: React.FC<ExpandableCardProps> = ({
       overflow="hidden"
       maxHeight="fit"
       padding="none"
+      shadow={
+        elevation === "subtle"
+          ? "sm"
+          : elevation === "elevated"
+            ? "lg"
+            : "md"
+      }
     >
       {/* 标题区域 */}
       <div

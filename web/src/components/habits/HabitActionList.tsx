@@ -8,6 +8,7 @@ import {
   HABIT_ACTION_STATUS_CONFIG,
 } from "@/utils/constants";
 import ActionButton from "@/components/ActionButton";
+import Surface from "@/layouts/Surface";
 import EnumSelect from "@/components/selects/EnumSelect";
 import type { UUID } from "@/types/primitive";
 import CreateNoteModal from "@/components/CreateNoteModal";
@@ -337,9 +338,9 @@ export function HabitActionList({
       {/* Lower Section - Calendar and Recent List */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Side - Monthly Calendar View */}
-        <div className="bg-base-100 p-6 rounded-lg shadow-md">
+        <Surface padding="lg" elevation="moderate">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold font-semibold text-base-content">
+            <h3 className="text-lg font-semibold text-base-content">
               {t("habits.actionList.monthView")}
             </h3>
             <div className="flex gap-2">
@@ -429,7 +430,7 @@ export function HabitActionList({
                       : "text-base-content"
                   } ${cellBgColor} ${cellBorderColor} ${
                     isClickable
-                      ? "cursor-pointer hover-card"
+                      ? "cursor-pointer transition-all hover:bg-base-300 hover:shadow-md"
                       : "cursor-not-allowed"
                   } ${
                     isSelectedDate ? "ring-2 ring-primary ring-offset-1" : ""
@@ -445,12 +446,12 @@ export function HabitActionList({
               );
             })}
           </div>
-        </div>
+        </Surface>
 
         {/* Right Side - 5 Days View */}
-        <div className="bg-base-100 p-6 rounded-lg shadow-md">
+        <Surface padding="lg" elevation="moderate">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold font-semibold text-base-content">
+            <h3 className="text-lg font-semibold text-base-content">
               {t("habits.actionList.fiveDayView")}
             </h3>
             <div className="flex gap-2">
@@ -493,7 +494,7 @@ export function HabitActionList({
               return (
                 <div
                   key={formatDateKey(date)}
-                  className={`flex items-center justify-between p-3 border rounded-lg transition-colors hover:bg-primary/10 focus-within:bg-primary/10 ${
+                  className={`flex min-w-0 flex-col items-stretch gap-2 rounded-lg border p-3 transition-colors hover:bg-primary/10 focus-within:bg-primary/10 sm:flex-row sm:items-center sm:justify-between ${
                     isSelectedDate
                       ? "border-primary bg-primary/10 ring-2 ring-primary/20"
                       : isTodayDate
@@ -503,8 +504,8 @@ export function HabitActionList({
                           : "border-base-300 bg-base-200"
                   }`}
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="text-base min-w-[80px]">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="min-w-0 text-base">
                       {isDailyCadence && (
                         <span className="font-medium text-base-content">
                           {(() => {
@@ -520,7 +521,7 @@ export function HabitActionList({
                         </span>
                       )}
                       <span
-                        className={`text-sm text-base-content/70 ${
+                        className={`break-words text-sm text-base-content/70 ${
                           isDailyCadence ? "ml-2" : "font-medium"
                         }`}
                       >
@@ -530,13 +531,13 @@ export function HabitActionList({
                     </div>
 
                     {!action && (
-                      <span className="text-base text-base-content/50">
+                      <span className="min-w-0 break-words text-base text-base-content/50">
                         {t("habits.actionList.notRecorded")}
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
                     {action && (
                       <>
                         {canModifyAction && (
@@ -589,7 +590,7 @@ export function HabitActionList({
               );
             })}
           </div>
-        </div>
+        </Surface>
       </div>
 
       {creatingNoteForAction && (

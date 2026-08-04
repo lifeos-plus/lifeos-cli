@@ -4,6 +4,7 @@ import { areasApi, type Area } from "@/services/api/areas";
 import { logger } from "@/utils/core";
 import type { UUID } from "@/types/primitive";
 import ActionButton from "./ActionButton";
+import { UNKNOWN_AREA_COLOR } from "@/utils/areaColors";
 
 interface AreaSorterProps {
   areaOrder: UUID[];
@@ -146,10 +147,10 @@ export default function AreaSorter({
                 name: area.name,
                 position: index + 1,
               })}
-              className={`flex items-center gap-2 p-2 border rounded transition-colors ${
+              className={`flex min-w-0 items-center gap-2 overflow-hidden rounded border p-2 transition-colors ${
                 disabled || loading
                   ? "bg-base-200 cursor-not-allowed opacity-60"
-                  : "bg-base-100 hover-card"
+                  : "bg-base-100 transition-all hover:bg-base-300 hover:shadow-md"
               }`}
             >
               {/* Order number */}
@@ -160,14 +161,16 @@ export default function AreaSorter({
               {/* Area color indicator */}
               <div
                 className="w-4 h-4 rounded-full border"
-                style={{ backgroundColor: area.color || "#9CA3AF" }}
+                style={{ backgroundColor: area.color || UNKNOWN_AREA_COLOR }}
               />
 
               {/* Area name */}
-              <div className="flex-1 text-sm font-medium">{area.name}</div>
+              <div className="min-w-0 flex-1 break-words text-sm font-medium">
+                {area.name}
+              </div>
 
               {/* Move buttons */}
-              <div className="flex flex-row gap-1">
+              <div className="flex flex-shrink-0 flex-row gap-1">
                 <ActionButton
                   label={t("settings.areaSorter.moveUp", {
                     name: area.name,

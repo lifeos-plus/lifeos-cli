@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import ActionButton, { CreateNewButton } from "@/components/ActionButton";
 import EnumSelect from "@/components/selects/EnumSelect";
 import type { UUID } from "@/types/primitive";
+import Surface from "@/layouts/Surface";
 
 import { financeTextClass } from "./styles";
 
@@ -36,7 +37,7 @@ export function SnapshotSelectorToolbar({
   const { t } = useTranslation();
 
   return (
-    <section className="rounded-2xl border border-base-200 bg-base-100 p-4 shadow-sm">
+    <Surface as="section" padding="md" elevation="moderate">
       <div className="grid grid-cols-1 items-center gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         {description ? (
           <p className={`min-w-0 ${financeTextClass.bodyMuted}`}>{description}</p>
@@ -96,7 +97,7 @@ export function SnapshotSelectorToolbar({
           />
         </div>
       </div>
-    </section>
+    </Surface>
   );
 }
 

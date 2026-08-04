@@ -48,7 +48,7 @@ export default function AppShell({ children }: AppShellProps) {
         />
 
         {/* Drawer content */}
-        <div className="drawer-content flex flex-col">
+        <div className="drawer-content flex w-full min-w-0 max-w-full flex-col">
           <AppBar onMenuClick={() => setIsDrawerOpen(true)} />
 
           {/* Page content area */}
@@ -100,7 +100,7 @@ function NavigationRail({ onItemClick }: NavigationRailProps) {
     }));
 
   return (
-    <aside className="w-28 md:w-32 lg:w-36 h-full bg-base-100 shadow-subtle">
+    <aside className="w-28 md:w-32 lg:w-36 h-full bg-base-100 shadow-sm">
       <div className="h-full flex flex-col">
         {/* Navigation items - scrollable area with flexible height */}
         <div
@@ -120,7 +120,9 @@ function NavigationRail({ onItemClick }: NavigationRailProps) {
                 onClick={onItemClick}
                 preload="intent"
                 className={`flex items-center gap-3 px-3 py-3 w-full text-base-content ${
-                  active ? "text-primary bg-primary/10" : "hover-nav-item"
+                  active
+                    ? "text-primary bg-primary/10"
+                    : "transition-colors hover:bg-primary/10 hover:text-primary"
                 }`}
                 activeProps={{
                   className: "text-primary bg-primary/10",
@@ -171,7 +173,7 @@ function AppBar({ onMenuClick }: AppBarProps) {
 
   return (
     <header
-      className="fixed top-0 inset-x-0 z-header bg-base-100/80 backdrop-blur supports-[backdrop-filter]:bg-base-100/60 border-base-300 shadow-subtle"
+      className="fixed top-0 inset-x-0 z-header bg-base-100/80 backdrop-blur supports-[backdrop-filter]:bg-base-100/60 border-base-300 shadow-sm"
       style={{ height: "var(--appbar-height)" }}
     >
       <div className="h-full flex items-center justify-between px-2 xs:px-3 md:px-4 lg:px-6">
@@ -213,7 +215,7 @@ function AppBar({ onMenuClick }: AppBarProps) {
         <div className="flex-1 min-w-0 px-1 xs:px-0 md:px-4 lg:px-6">
           {title && (
             <div className="flex items-center gap-1 xs:gap-2 md:gap-3 lg:gap-4 min-w-0">
-              <div className="truncate text-base-content text-sm xs:text-base md:text-lg lg:text-xl font-bold font-semibold flex-shrink min-w-0">
+              <div className="truncate text-base-content text-sm xs:text-base md:text-lg lg:text-xl font-semibold flex-shrink min-w-0">
                 {title}
               </div>
               {subtitle && (
@@ -222,7 +224,7 @@ function AppBar({ onMenuClick }: AppBarProps) {
                 </div>
               )}
               {actions && (
-                <div className="ml-auto flex gap-1 xs:gap-1 md:gap-2 lg:gap-3 flex-shrink-0 min-w-0">
+                <div className="ml-auto flex min-w-0 max-w-full flex-shrink gap-1 overflow-x-auto xs:gap-1 md:gap-2 lg:gap-3">
                   {actions}
                 </div>
               )}

@@ -7,6 +7,7 @@ import { formatDuration } from "@/utils/datetime";
 import { useAreaOrderReadOnly } from "@/hooks/queries/useAreaOrderReadOnly";
 import Card from "@/layouts/Card";
 import type { UUID } from "@/types/primitive";
+import { UNKNOWN_AREA_COLOR } from "@/utils/areaColors";
 
 interface TimeProgressBarProps {
   entries: ProcessedEntry[];
@@ -121,7 +122,7 @@ const TimeProgressBar: React.FC<TimeProgressBarProps> = ({
           return {
             areaId: areaId as UUID,
             areaName: t("timeLog.progressBar.unknownUnfilled"),
-            areaColor: "#9CA3AF", // Gray color for unknown
+            areaColor: UNKNOWN_AREA_COLOR,
             totalMinutes: minutesForArea,
             percentage: 0,
           };
@@ -131,7 +132,7 @@ const TimeProgressBar: React.FC<TimeProgressBarProps> = ({
             areaId: areaId as UUID,
             areaName:
               area?.name || t("timeLog.progressBar.unknownArea"),
-            areaColor: area?.color || "#9CA3AF",
+            areaColor: area?.color || UNKNOWN_AREA_COLOR,
             totalMinutes: minutesForArea,
             percentage: 0,
           };
@@ -198,7 +199,7 @@ const TimeProgressBar: React.FC<TimeProgressBarProps> = ({
     timeAllocation.push({
       areaId: "-1",
       areaName: t("timeLog.progressBar.unknownUnfilled"),
-      areaColor: "#9CA3AF",
+      areaColor: UNKNOWN_AREA_COLOR,
       totalMinutes: 1440, // 24 hours
       percentage: 100,
     });

@@ -314,7 +314,7 @@ const BatchEditModal: React.FC<BatchEditModalProps> = ({
     <ModalBase isOpen={isOpen} onClose={handleClose}>
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-lg font-bold font-bold text-base-content">
+        <h2 className="text-lg font-bold text-base-content">
           {getModalTitle()}
         </h2>
         <p className="text-base mt-1">{t("batchEdit.description")}</p>

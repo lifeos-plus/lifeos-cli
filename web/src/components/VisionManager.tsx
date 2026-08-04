@@ -535,7 +535,7 @@ const VisionManager = forwardRef<VisionManagerHandle, VisionManagerProps>(
                     color="success"
                     size="sm"
                     variant="outline"
-                    title={t("visions.vision.actions.bulkCreateTasks")}
+                    ariaLabel={t("visions.vision.actions.bulkCreateTasks")}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleBulkCreateTasks(vision);

@@ -3,27 +3,23 @@ import React from "react";
 interface ContainerProps {
   children: React.ReactNode;
   className?: string;
-  /** 内容溢出处理策略 */
+  /** Content overflow behavior. */
   overflow?: "hidden" | "auto" | "visible" | "scroll";
-  /** 最大高度策略 */
+  /** Maximum height constraint. */
   maxHeight?: "none" | "full" | "screen" | "fit";
-  /** 响应式内边距 */
+  /** Container padding. */
   padding?: "none" | "sm" | "md" | "lg" | "responsive";
-  /** 是否启用最小宽度约束 */
+  /** Whether to apply the minimum-width constraint. */
   minWidth?: boolean;
-  /** 是否启用最大宽度约束 */
+  /** Whether to apply the maximum-width constraint. */
   maxWidth?: boolean;
-  /** Flex布局相关属性 */
+  /** Flex sizing behavior. */
   flex?: "1" | "none" | "auto" | "initial";
-  /** 最小高度约束 */
+  /** Minimum height constraint. */
   minHeight?: "0" | "auto" | "full" | "screen" | "fit";
-  /** 是否启用flex布局 */
-  isFlex?: boolean;
-  /** Flex方向 */
-  flexDirection?: "row" | "col" | "row-reverse" | "col-reverse";
-  /** 边框风格 */
-  borderVariant?: "default" | "subtle" | "none";
-  /** 阴影强度 */
+  /** Border style. */
+  borderVariant?: "subtle" | "none";
+  /** Shadow strength. */
   shadow?: "none" | "sm" | "md" | "lg";
 }
 
@@ -35,7 +31,6 @@ interface ContainerProps {
  * - Responsive padding options
  * - Configurable height constraints
  * - Better mobile support
- * - Flex layout support for modern layouts
  */
 function Container({
   children,
@@ -47,9 +42,7 @@ function Container({
   maxWidth = true,
   flex = "none",
   minHeight = "auto",
-  isFlex = false,
-  flexDirection = "col",
-  borderVariant = "default",
+  borderVariant = "none",
   shadow = "md",
 }: ContainerProps) {
   const baseClasses = [
@@ -81,8 +74,6 @@ function Container({
         : overflow === "scroll"
           ? "overflow-scroll"
           : "overflow-visible",
-    isFlex ? "flex" : "",
-    isFlex ? `flex-${flexDirection}` : "",
     flex === "1"
       ? "flex-1"
       : flex === "none"
@@ -101,11 +92,7 @@ function Container({
           : padding === "lg"
             ? "p-6"
             : "p-2 md:p-4 lg:p-6", // responsive
-    borderVariant === "none"
-      ? ""
-      : borderVariant === "subtle"
-        ? "border border-base-200"
-        : "border border-base-300",
+    borderVariant === "subtle" ? "border border-base-200" : "",
     shadow === "none"
       ? "shadow-none"
       : shadow === "sm"

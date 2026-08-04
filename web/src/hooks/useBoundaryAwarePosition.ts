@@ -15,6 +15,7 @@ export interface MenuPositionState {
 }
 
 const FLOAT_TOLERANCE = 0.5;
+const VIEWPORT_INLINE_PADDING = 8;
 
 const areMenuPositionsEqual = (
   prev: MenuPositionState,
@@ -65,6 +66,7 @@ export const useBoundaryAwarePosition = (config: BoundaryConfig) => {
     ) => {
       const rect = inputElement.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
       const bottomPadding = 20;
       const gapSize = 4;
 
@@ -108,10 +110,25 @@ export const useBoundaryAwarePosition = (config: BoundaryConfig) => {
         maxHeight = rect.top - minTop - gapSize;
       }
 
+      const requestedWidth = customWidth || rect.width;
+      const availableWidth = Math.max(
+        0,
+        viewportWidth - VIEWPORT_INLINE_PADDING * 2,
+      );
+      const width = Math.min(requestedWidth, availableWidth);
+      const maxLeft = Math.max(
+        VIEWPORT_INLINE_PADDING,
+        viewportWidth - VIEWPORT_INLINE_PADDING - width,
+      );
+      const left = Math.min(
+        Math.max(rect.left, VIEWPORT_INLINE_PADDING),
+        maxLeft,
+      );
+
       const nextState: MenuPositionState = {
         top,
-        left: rect.left,
-        width: customWidth || rect.width,
+        left,
+        width,
         maxHeight: Math.max(maxHeight, 100),
         openDirection,
       };

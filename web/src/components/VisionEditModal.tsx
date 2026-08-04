@@ -5,7 +5,7 @@ import { visionsApi } from "@/services/api/visions";
 import PersonSelector from "./selects/PersonSelector";
 import type { Vision, VisionCreate, VisionUpdate } from "@/services/api";
 import { logger } from "@/utils/core";
-import { FormActions, DeleteButton } from "./ActionButton";
+import { FormActions } from "./ActionButton";
 import AreaSelect from "./selects/AreaSelect";
 import { useModalState } from "@/hooks/useModalState";
 import { useToast } from "@/contexts/ToastContext";
@@ -212,21 +212,13 @@ const VisionEditModal: React.FC<VisionEditModalProps> = ({
           loading={loading}
           onCancel={attemptClose}
           onSubmit={() => document.querySelector("form")?.requestSubmit()}
-          leftSlot={
-            vision ? (
-              <DeleteButton
-                showLabel={true}
-                size="md"
-                onClick={() => {
-                  if (loading) return;
+          onDelete={
+            vision && onRequestDelete
+              ? () => {
                   attemptClose();
-                  if (vision) {
-                    onRequestDelete?.(vision);
-                  }
-                }}
-                disabled={loading}
-              />
-            ) : undefined
+                  onRequestDelete(vision);
+                }
+              : undefined
           }
         />
       }

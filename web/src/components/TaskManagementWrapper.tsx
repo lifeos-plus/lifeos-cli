@@ -98,6 +98,7 @@ const TaskManagementWrapper: React.FC<TaskManagementWrapperProps> = ({
           isOpen={taskManagement.isEditModalOpen}
           onClose={taskManagement.actions.closeEditModal}
           onSave={taskManagement.actions.handleTaskSave}
+          onRequestDelete={taskManagement.actions.handleDeleteTask}
           task={taskManagement.editingTask}
           visionId={
             taskManagement.editingTask?.vision_id ||

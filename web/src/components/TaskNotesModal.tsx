@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import ModalBase from "@/layouts/ModalBase";
+import Surface from "@/layouts/Surface";
 import CreateNoteModal from "./CreateNoteModal";
 import Badge from "@/components/common/Badge";
 import type { TaskWithSubtasks } from "@/services/api";
@@ -20,6 +21,9 @@ import NoteCardLayout, {
 import { useNoteCollapsePreference } from "@/hooks/notes/useNoteCollapsePreference";
 import { Icon } from "./icons";
 import { useAssociatedNotesController } from "@/features/notes/controller/useAssociatedNotesController";
+import ConfirmDialog from "./ConfirmDialog";
+import { notesApi } from "@/services/api/notes";
+import { useToast } from "@/contexts/ToastContext";
 
 type SharedProps = {
   isOpen: boolean;
@@ -78,9 +82,11 @@ export default function TaskNotesModal(props: TaskNotesModalProps) {
           : null;
 
   const { t } = useTranslation();
+  const toast = useToast();
   const noteCollapsePreference = useNoteCollapsePreference();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [deletingNote, setDeletingNote] = useState<Note | null>(null);
   const createModalNoteDefaults = useMemo(() => {
     if (entityType === "task" && task) {
       return deriveNoteAssociationDefaults({
@@ -116,6 +122,7 @@ export default function TaskNotesModal(props: TaskNotesModalProps) {
   useEffect(() => {
     if (!isOpen) {
       setEditingNote(null);
+      setDeletingNote(null);
       setShowCreateModal(false);
     }
   }, [isOpen]);
@@ -134,6 +141,21 @@ export default function TaskNotesModal(props: TaskNotesModalProps) {
     setEditingNote(null);
     refetch();
     onNotesChanged?.();
+  };
+
+  const confirmDeleteNote = async () => {
+    if (!deletingNote) return;
+    try {
+      await notesApi.delete(deletingNote.id);
+      setDeletingNote(null);
+      await refetch();
+      onNotesChanged?.();
+    } catch (error) {
+      toast.showError(
+        t("common.operationFailed"),
+        error instanceof Error ? error.message : t("common.unknown_error"),
+      );
+    }
   };
 
   const formatFirstTimelogLabel = (
@@ -387,9 +409,12 @@ export default function TaskNotesModal(props: TaskNotesModalProps) {
             );
 
             return (
-              <div
+              <Surface
                 key={note.id}
-                className="bg-base-100 rounded-lg shadow-sm border border-base-200 p-3 lg:p-4 hover:shadow-md transition-shadow"
+                padding="responsive"
+                border="subtle"
+                elevation="subtle"
+                interactive
               >
                 <NoteCardLayout
                   content={note.content}
@@ -399,7 +424,7 @@ export default function TaskNotesModal(props: TaskNotesModalProps) {
                   actionsVisibility="hover"
                   minCollapsedLines={noteCollapsePreference.value}
                 />
-              </div>
+              </Surface>
             );
           })}
         </div>
@@ -461,7 +486,19 @@ export default function TaskNotesModal(props: TaskNotesModalProps) {
           mode="edit"
           existingNote={editingNote}
           onNoteCreated={handleEditComplete}
+          onRequestDelete={(note) => setDeletingNote(note)}
           timezone={timezone}
+        />
+      )}
+
+      {deletingNote && (
+        <ConfirmDialog
+          isOpen={!!deletingNote}
+          title={t("common.delete")}
+          message={`${t("common.confirm")}${t("common.delete")}: ${deletingNote.content}`}
+          confirmText={t("common.delete")}
+          onConfirm={confirmDeleteNote}
+          onCancel={() => setDeletingNote(null)}
         />
       )}
     </ModalBase>

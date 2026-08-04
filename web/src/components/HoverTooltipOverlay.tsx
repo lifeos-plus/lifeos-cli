@@ -137,6 +137,7 @@ const HoverTooltipOverlay: React.FC<HoverTooltipOverlayProps> = ({
 
   return createPortal(
     <div
+      role="tooltip"
       className={`${baseClasses} ${className}`.trim()}
       ref={tooltipRef}
       style={{ left: computedLeft, top: computedTop }}

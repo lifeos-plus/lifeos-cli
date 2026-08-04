@@ -19,10 +19,6 @@
   --tablet-rail-width: 0px;
   --desktop-rail-width: 128px;
 
-  /* Responsive container widths */
-  --container-max-width: min(100vw - 2rem, 1400px);
-  --container-padding: 1rem;
-
   /* Typography tokens */
   --fs-caption: 0.75rem; /* 12px */
   --fs-body: 1rem; /* 16px */
@@ -39,22 +35,10 @@
   --fw-semibold: 600;
   --fw-bold: 700;
 
-  /* Map to daisyUI color tokens - using base-content for better theme compatibility */
-  --tc-primary: hsl(var(--bc));
-  --tc-secondary: hsl(var(--bc) / 0.7);
-  --tc-muted: hsl(var(--bc) / 0.5);
 }
 
 /* Removed global @apply of daisyUI component classes (btn/input/select).
    @apply only supports Tailwind utilities, not component classes from plugins. */
-
-/* Modern responsive container */
-.container-responsive {
-  width: 100%;
-  max-width: var(--container-max-width);
-  margin: 0 auto;
-  padding: 0 var(--container-padding);
-}
 
 /* Responsive breakpoints for app bar and rail */
 @media (min-width: 640px) {
@@ -71,87 +55,18 @@
   }
 }
 
-/* Large screen optimizations */
-@media (min-width: 1536px) {
-  :root {
-    --container-max-width: min(100vw - 4rem, 1600px);
-    --container-padding: 2rem;
-  }
-}
-
-/* Extra large screen optimizations */
-@media (min-width: 1920px) {
-  :root {
-    --container-max-width: min(100vw - 6rem, 1800px);
-    --container-padding: 3rem;
-  }
-}
-
-/* Ultra wide screen optimizations */
-@media (min-width: 2560px) {
-  :root {
-    --container-max-width: min(100vw - 8rem, 2000px);
-    --container-padding: 4rem;
-  }
-}
-
 /* Mobile-first responsive optimizations */
 @media (max-width: 639px) {
-  /* Ensure touch targets are at least 44px */
-  .btn {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
   /* Optimize text for mobile reading */
   body {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
 
-  /* Prevent zoom on input focus */
-  input,
-  textarea,
-  select {
-    font-size: 16px;
-  }
-
   /* Improve touch scrolling */
   .overflow-y-auto {
     -webkit-overflow-scrolling: touch;
   }
-}
-
-/* Tablet optimizations */
-@media (min-width: 640px) and (max-width: 1023px) {
-  /* Slightly larger touch targets for tablets */
-  .btn {
-    min-height: 40px;
-    min-width: 40px;
-  }
-}
-
-/* Desktop optimizations */
-@media (min-width: 1024px) {
-  /* Hover states work well on desktop */
-  .hover-nav-item:hover {
-    background-color: hsl(var(--bc) / 0.05);
-  }
-}
-
-/* Force width constraints for @dnd-kit elements to prevent overflow */
-[data-rbd-draggable-id],
-[data-rbd-droppable-id],
-[style*="transform"] {
-  max-width: 100% !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-}
-
-/* Ensure all flex containers handle width properly */
-.flex {
-  min-width: 0;
 }
 
 /* Markdown renderer list formatting */
@@ -183,21 +98,14 @@ html {
   scrollbar-gutter: stable;
 }
 
-.scrollbar-gutter-stable-both {
-  scrollbar-gutter: stable both-edges;
+body,
+#root {
+  max-width: 100%;
+  overflow-x: clip;
 }
 
-/* Theme transition animations */
-*,
-*::before,
-*::after {
-  transition:
-    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    fill 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    stroke 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.scrollbar-gutter-stable-both {
+  scrollbar-gutter: stable both-edges;
 }
 
 /* Disable transitions during theme initialization to prevent flash */
@@ -207,80 +115,15 @@ html {
   transition: none !important;
 }
 
-/* Optimize transitions for better performance */
-* {
-  will-change: auto;
-}
-
-/* Specific optimizations for common theme-affected properties */
-.bg-base-100,
-.bg-base-200,
-.bg-base-300,
-.text-base-content,
-.border-base-200,
-.border-base-300 {
-  will-change: background-color, color, border-color;
-}
-
-/* Smooth transitions for DaisyUI components */
-.btn,
-.card,
-.input,
-.select,
-.textarea,
-.radio,
-.checkbox,
-.toggle,
-.swap {
-  transition:
-    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Override daisyUI default rounded corners for buttons and inputs */
-.btn {
-  border-radius: 4px !important;
-  font-weight: 400 !important; /* 覆盖 DaisyUI 默认的 font-medium */
-}
-
-/* 防止按钮状态持久化 - 解决多个按钮同时选中问题 */
-.btn:not(:disabled):active {
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-/* 确保按钮状态不会持久化 */
-.btn:focus:not(:focus-visible) {
-  outline: none;
-}
-
-/* 防止快速点击导致的状态混乱 */
-.btn {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-/* 强制重置按钮的 active 状态 */
-.btn.active {
-  background-color: inherit !important;
-  border-color: inherit !important;
-  color: inherit !important;
-}
-
-.input {
-  border-radius: 4px !important;
-}
-
-.textarea {
-  border-radius: 4px !important;
-}
-
-.select {
-  border-radius: 4px !important;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Mobile-specific optimizations */
@@ -290,133 +133,19 @@ html {
   }
 }
 
-@layer utilities {
-  /* Semantic text utilities - 已迁移到 DaisyUI 标准类 */
-  .text-muted {
-    color: var(--tc-muted);
-  }
+html {
+  scroll-behavior: smooth;
+}
 
-  /* Touch-friendly button sizes */
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
-  /* Line clamp utilities */
-  .line-clamp-1 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-  }
-
-  .line-clamp-2 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-
-  .line-clamp-3 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-  }
-
-  .line-clamp-5 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 5;
-  }
-
-  .line-clamp-7 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 7;
-  }
-
-  .line-clamp-9 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 9;
-  }
-
-  .line-clamp-11 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 11;
-  }
-
-  .line-clamp-13 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 13;
-  }
-
-  .line-clamp-15 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 15;
-  }
-
-  /* Prevent zoom on input focus on iOS */
-  @media screen and (max-width: 640px) {
-    input,
-    textarea,
-    select {
-      font-size: 16px !important;
-    }
-  }
-
-  /* Smooth scrolling for mobile */
-  html {
-    scroll-behavior: smooth;
-  }
-
-  /* Better tap highlights */
-  * {
-    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
-  }
-
-  /* Drawer-specific optimizations */
-  @layer components {
-    .drawer-side {
-      @apply z-sidebar;
-    }
-  }
-
-  .drawer-overlay {
-    background-color: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(2px);
-  }
-
-  /* Smooth drawer transitions */
-  .drawer-toggle:checked ~ .drawer-side {
-    transform: translateX(0);
-  }
-
-  .drawer-side {
-    transform: translateX(-100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* Prevent text selection on buttons */
-  button {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-  }
+* {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
 }
 
 @layer components {
+  .drawer-side {
+    @apply z-sidebar;
+  }
+
   .note-card-collapsed {
     position: relative;
   }
@@ -444,89 +173,21 @@ html {
   }
 }
 
-/* Global hover effects following daisyUI design system */
-@layer components {
-  /* Base interactive transition */
-  .hover-interactive {
-    @apply transition-all duration-200 ease-in-out;
-  }
-
-  /* Card hover effects */
-  .hover-card {
-    @apply hover:bg-base-300 hover:shadow-md hover-interactive;
-  }
-
-  .hover-card-subtle {
-    @apply hover:bg-base-200 hover:shadow-sm hover-interactive;
-  }
-
-  /* Navigation item hover effects */
-  .hover-nav-item {
-    @apply hover:bg-primary/10 hover:text-primary hover-interactive;
-  }
-
-  .hover-nav-item-subtle {
-    @apply hover:bg-base-200 hover-interactive;
-  }
-
-  /* Button hover effects */
-  .hover-button {
-    @apply hover:bg-primary/20 hover:shadow-sm hover-interactive;
-  }
-
-  .hover-button-primary {
-    @apply hover:bg-primary hover:text-primary-content hover:shadow-md hover-interactive;
-  }
-
-  /* List item hover effects */
-  .hover-list-item {
-    @apply hover:bg-base-200 hover-interactive;
-  }
-
-  /* Input hover effects */
-  .hover-input {
-    @apply hover:border-primary/50 hover:shadow-sm hover-interactive;
-  }
-
-  /* Link hover effects */
-  .hover-link {
-    @apply hover:text-primary hover:underline hover-interactive;
-  }
-
-  /* Icon hover effects */
-  .hover-icon {
-    @apply hover:scale-110 hover:text-primary hover-interactive;
-  }
-}
-
-/* Theme-specific overrides for better contrast */
-[data-theme="dark"] {
-  /* Adjust muted text contrast in dark theme */
-  --tc-muted: hsl(var(--bc) / 0.6);
-}
-
-[data-theme="light"] {
-  /* Ensure good contrast in light themes */
-  --tc-muted: hsl(var(--bc) / 0.5);
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  :root {
-    --tc-secondary: hsl(var(--bc) / 0.9);
-    --tc-muted: hsl(var(--bc) / 0.8);
-  }
-}
-
 /* Global, theme-aware scrollbar styles (daisyUI variables) */
 @layer base {
   :root {
+    /* Keep controls consistent across DaisyUI themes without overriding states. */
+    --rounded-btn: 0.375rem;
     --scrollbar-size: 8px;
     --scrollbar-radius: 999px;
     --scrollbar-track: hsl(var(--b2));
     --scrollbar-thumb: hsl(var(--b3));
     --scrollbar-thumb-hover: hsl(var(--bc) / 0.2);
     --scrollbar-thumb-active: hsl(var(--bc) / 0.3);
+  }
+
+  [data-theme] {
+    --rounded-btn: 0.375rem;
   }
 
   /* Firefox */
@@ -555,334 +216,4 @@ html {
     background: var(--scrollbar-thumb-active);
   }
 
-  /* Theme fine-tuning examples */
-  [data-theme="fresh"] {
-    --scrollbar-track: hsl(var(--b2));
-    --scrollbar-thumb: hsl(var(--b4, var(--b3)));
-  }
-
-  [data-theme="night"],
-  [data-theme="dracula"] {
-    --scrollbar-track: hsl(var(--b1));
-    --scrollbar-thumb: hsl(var(--b3));
-  }
-
-  /* ===== 渐进式质感增强系统 ===== */
-
-  /* CSS变量定义 - 基于DaisyUI主题自动适配 */
-  :root {
-    /* 基础质感 - 轻微增强，适用于所有卡片 */
-    --shadow-subtle-near: 0 1px 3px hsl(var(--bc) / 0.1);
-    --shadow-subtle-far: 0 1px 2px hsl(var(--bc) / 0.05);
-    --shadow-subtle-inset: inset 0 1px 0 hsl(var(--b1) / 0.8);
-
-    /* 中等质感 - 用于重要内容区域 */
-    --shadow-moderate-near: 0 4px 6px hsl(var(--bc) / 0.12);
-    --shadow-moderate-far: 0 2px 4px hsl(var(--bc) / 0.08);
-    --shadow-moderate-inset: inset 0 1px 0 hsl(var(--b1) / 0.9);
-
-    /* 高级质感 - 用于焦点卡片和交互状态 */
-    --shadow-elevated-near: 0 8px 25px hsl(var(--bc) / 0.15);
-    --shadow-elevated-mid: 0 4px 10px hsl(var(--bc) / 0.1);
-    --shadow-elevated-far: 0 2px 4px hsl(var(--bc) / 0.05);
-    --shadow-elevated-inset: inset 0 1px 0 hsl(var(--b1) / 0.95);
-  }
-
-  /* 暗色主题增强 */
-  [data-theme="night"],
-  [data-theme="dracula"],
-  [data-theme="synthwave"],
-  [data-theme="cyberpunk"],
-  [data-theme="halloween"],
-  [data-theme="forest"],
-  [data-theme="luxury"],
-  [data-theme="business"],
-  [data-theme="coffee"] {
-    --shadow-subtle-near: 0 1px 3px rgba(0, 0, 0, 0.3);
-    --shadow-subtle-far: 0 1px 2px rgba(0, 0, 0, 0.2);
-    --shadow-subtle-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-
-    --shadow-moderate-near: 0 4px 6px rgba(0, 0, 0, 0.4);
-    --shadow-moderate-far: 0 2px 4px rgba(0, 0, 0, 0.25);
-    --shadow-moderate-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-
-    --shadow-elevated-near: 0 8px 25px rgba(0, 0, 0, 0.5);
-    --shadow-elevated-mid: 0 4px 10px rgba(0, 0, 0, 0.3);
-    --shadow-elevated-far: 0 2px 4px rgba(0, 0, 0, 0.2);
-    --shadow-elevated-inset: inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  }
-
-  /* 半暗色主题适中增强 */
-  [data-theme="retro"],
-  [data-theme="aqua"],
-  [data-theme="lofi"],
-  [data-theme="autumn"],
-  [data-theme="winter"] {
-    --shadow-subtle-near: 0 1px 3px rgba(0, 0, 0, 0.15);
-    --shadow-subtle-far: 0 1px 2px rgba(0, 0, 0, 0.1);
-    --shadow-subtle-inset: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-
-    --shadow-moderate-near: 0 4px 6px rgba(0, 0, 0, 0.2);
-    --shadow-moderate-far: 0 2px 4px rgba(0, 0, 0, 0.12);
-    --shadow-moderate-inset: inset 0 1px 0 rgba(255, 255, 255, 0.4);
-
-    --shadow-elevated-near: 0 8px 25px rgba(0, 0, 0, 0.25);
-    --shadow-elevated-mid: 0 4px 10px rgba(0, 0, 0, 0.15);
-    --shadow-elevated-far: 0 2px 4px rgba(0, 0, 0, 0.1);
-    --shadow-elevated-inset: inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  }
-
-  /* 渐进式质感类 */
-  .shadow-subtle {
-    box-shadow:
-      var(--shadow-subtle-near), var(--shadow-subtle-far),
-      var(--shadow-subtle-inset);
-    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .shadow-moderate {
-    box-shadow:
-      var(--shadow-moderate-near), var(--shadow-moderate-far),
-      var(--shadow-moderate-inset);
-    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .shadow-elevated {
-    box-shadow:
-      var(--shadow-elevated-near), var(--shadow-elevated-mid),
-      var(--shadow-elevated-far), var(--shadow-elevated-inset);
-    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* 悬浮交互增强 */
-  .shadow-subtle:hover {
-    box-shadow:
-      var(--shadow-moderate-near), var(--shadow-moderate-far),
-      var(--shadow-moderate-inset);
-  }
-
-  .shadow-moderate:hover {
-    box-shadow:
-      var(--shadow-elevated-near), var(--shadow-elevated-mid),
-      var(--shadow-elevated-far), var(--shadow-elevated-inset);
-  }
-
-  /* 保持向后兼容 - 将原有的shadow-md映射到moderate级别 */
-  .shadow-md {
-    box-shadow:
-      var(--shadow-moderate-near), var(--shadow-moderate-far),
-      var(--shadow-moderate-inset);
-    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* ===== 磨砂玻璃效果系统 (Glassmorphism) ===== */
-
-  /* CSS变量定义 - 基于DaisyUI主题自动适配 */
-  :root {
-    /* 玻璃背景透明度 */
-    --glass-bg-opacity: 0.1;
-    --glass-bg-opacity-hover: 0.15;
-    --glass-bg-opacity-strong: 0.2;
-
-    /* 玻璃边框 */
-    --glass-border: 1px solid hsl(var(--bc) / 0.1);
-    --glass-border-hover: 1px solid hsl(var(--bc) / 0.15);
-    --glass-border-strong: 1px solid hsl(var(--bc) / 0.2);
-
-    /* 模糊强度 */
-    --glass-blur: 10px;
-    --glass-blur-light: 6px;
-    --glass-blur-strong: 16px;
-
-    /* 饱和度增强 */
-    --glass-saturate: 1.8;
-  }
-
-  /* 亮色主题的玻璃效果 */
-  [data-theme="light"],
-  [data-theme="cupcake"],
-  [data-theme="bumblebee"],
-  [data-theme="emerald"],
-  [data-theme="corporate"],
-  [data-theme="garden"],
-  [data-theme="lofi"],
-  [data-theme="pastel"],
-  [data-theme="fantasy"],
-  [data-theme="wireframe"],
-  [data-theme="cmyk"] {
-    --glass-bg-opacity: 0.6;
-    --glass-bg-opacity-hover: 0.7;
-    --glass-bg-opacity-strong: 0.8;
-    --glass-border: 1px solid rgba(255, 255, 255, 0.3);
-    --glass-border-hover: 1px solid rgba(255, 255, 255, 0.4);
-    --glass-border-strong: 1px solid rgba(255, 255, 255, 0.5);
-  }
-
-  /* 暗色主题的玻璃效果 */
-  [data-theme="night"],
-  [data-theme="dracula"],
-  [data-theme="synthwave"],
-  [data-theme="cyberpunk"],
-  [data-theme="halloween"],
-  [data-theme="forest"],
-  [data-theme="luxury"],
-  [data-theme="business"],
-  [data-theme="coffee"] {
-    --glass-bg-opacity: 0.1;
-    --glass-bg-opacity-hover: 0.15;
-    --glass-bg-opacity-strong: 0.25;
-    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
-    --glass-border-hover: 1px solid rgba(255, 255, 255, 0.15);
-    --glass-border-strong: 1px solid rgba(255, 255, 255, 0.2);
-  }
-
-  /* 半暗色主题的玻璃效果 */
-  [data-theme="retro"],
-  [data-theme="aqua"],
-  [data-theme="autumn"],
-  [data-theme="winter"],
-  [data-theme="dim"] {
-    --glass-bg-opacity: 0.3;
-    --glass-bg-opacity-hover: 0.4;
-    --glass-bg-opacity-strong: 0.5;
-    --glass-border: 1px solid rgba(255, 255, 255, 0.2);
-    --glass-border-hover: 1px solid rgba(255, 255, 255, 0.25);
-    --glass-border-strong: 1px solid rgba(255, 255, 255, 0.3);
-  }
-
-  /* 基础玻璃效果类 */
-  .glass {
-    background: hsl(var(--b1) / var(--glass-bg-opacity));
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur))
-      saturate(var(--glass-saturate));
-    border: var(--glass-border);
-    transition:
-      background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* 轻量玻璃效果 */
-  .glass-light {
-    background: hsl(var(--b1) / calc(var(--glass-bg-opacity) * 0.7));
-    backdrop-filter: blur(var(--glass-blur-light))
-      saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur-light))
-      saturate(var(--glass-saturate));
-    border: var(--glass-border);
-    transition:
-      background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* 强化玻璃效果 */
-  .glass-strong {
-    background: hsl(var(--b1) / var(--glass-bg-opacity-strong));
-    backdrop-filter: blur(var(--glass-blur-strong))
-      saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur-strong))
-      saturate(var(--glass-saturate));
-    border: var(--glass-border-strong);
-    transition:
-      background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* 玻璃悬浮效果 */
-  .glass:hover {
-    background: hsl(var(--b1) / var(--glass-bg-opacity-hover));
-    border: var(--glass-border-hover);
-  }
-
-  .glass-light:hover {
-    background: hsl(var(--b1) / calc(var(--glass-bg-opacity-hover) * 0.7));
-    border: var(--glass-border-hover);
-  }
-
-  .glass-strong:hover {
-    background: hsl(var(--b1) / var(--glass-bg-opacity-strong));
-    border: var(--glass-border-strong);
-  }
-
-  /* 玻璃效果与阴影的组合类 */
-  .glass-subtle {
-    background: hsl(var(--b1) / var(--glass-bg-opacity));
-    backdrop-filter: blur(var(--glass-blur-light))
-      saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur-light))
-      saturate(var(--glass-saturate));
-    border: var(--glass-border);
-    box-shadow: var(--shadow-subtle-near), var(--shadow-subtle-far);
-    transition:
-      background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .glass-moderate {
-    background: hsl(var(--b1) / var(--glass-bg-opacity));
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur))
-      saturate(var(--glass-saturate));
-    border: var(--glass-border);
-    box-shadow: var(--shadow-moderate-near), var(--shadow-moderate-far);
-    transition:
-      background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .glass-elevated {
-    background: hsl(var(--b1) / var(--glass-bg-opacity-strong));
-    backdrop-filter: blur(var(--glass-blur-strong))
-      saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur-strong))
-      saturate(var(--glass-saturate));
-    border: var(--glass-border-strong);
-    box-shadow:
-      var(--shadow-elevated-near), var(--shadow-elevated-mid),
-      var(--shadow-elevated-far);
-    transition:
-      background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* 玻璃组合效果的悬浮状态 */
-  .glass-subtle:hover {
-    background: hsl(var(--b1) / var(--glass-bg-opacity-hover));
-    border: var(--glass-border-hover);
-    box-shadow: var(--shadow-moderate-near), var(--shadow-moderate-far);
-  }
-
-  .glass-moderate:hover {
-    background: hsl(var(--b1) / var(--glass-bg-opacity-hover));
-    border: var(--glass-border-hover);
-    box-shadow:
-      var(--shadow-elevated-near), var(--shadow-elevated-mid),
-      var(--shadow-elevated-far);
-  }
-
-  /* 降级支持 - 不支持backdrop-filter的浏览器 */
-  @supports not (backdrop-filter: blur(10px)) {
-    .glass,
-    .glass-light,
-    .glass-strong,
-    .glass-subtle,
-    .glass-moderate,
-    .glass-elevated {
-      background: hsl(var(--b1) / 0.9);
-    }
-  }
-
-  /* Optional: enlarge on container hover for discoverability */
-  .scrollbar-hover-grow:hover {
-    --scrollbar-size: 10px;
-  }
 }

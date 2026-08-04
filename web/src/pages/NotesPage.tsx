@@ -290,6 +290,7 @@ function NotesPage() {
   const [showPersonFormModal, setShowPersonFormModal] =
     useState<boolean>(false);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+  const [deletingPerson, setDeletingPerson] = useState<Person | null>(null);
   const {
     tags: availableNoteTags,
     refresh: refreshNoteTags,
@@ -370,6 +371,28 @@ function NotesPage() {
     // Refresh notes to update any person information that might have changed
     // This could be optimized by only refreshing if necessary
   }, []);
+
+  const handleRequestDeletePerson = useCallback((person: Person) => {
+    setShowPersonFormModal(false);
+    setEditingPerson(null);
+    setDeletingPerson(person);
+  }, []);
+
+  const confirmDeletePerson = useCallback(async () => {
+    if (!deletingPerson) return;
+    try {
+      await personsApi.delete(deletingPerson.id);
+      setSelectedPersonForDetail(null);
+      showSuccess(t("common.delete"), deletingPerson.display_name);
+    } catch (error) {
+      showError(
+        t("common.operationFailed"),
+        error instanceof Error ? error.message : t("common.unknown_error"),
+      );
+    } finally {
+      setDeletingPerson(null);
+    }
+  }, [deletingPerson, showError, showSuccess, t]);
 
   /**
    * Handle creating new note tag
@@ -633,7 +656,21 @@ function NotesPage() {
         onClose={handleClosePersonForm}
         onSuccess={handlePersonFormSuccess}
         editingPerson={editingPerson}
+        onRequestDelete={handleRequestDeletePerson}
       />
+
+      {deletingPerson && (
+        <ConfirmDialog
+          isOpen={!!deletingPerson}
+          title={t("common.delete")}
+          message={t("personManager.deleteConfirmMessage", {
+            name: deletingPerson.display_name,
+          })}
+          confirmText={t("common.delete")}
+          onConfirm={confirmDeletePerson}
+          onCancel={() => setDeletingPerson(null)}
+        />
+      )}
 
       <TagManager
         isOpen={showTagManager}
@@ -694,6 +731,7 @@ function NotesPage() {
         onClose={closeEditModal}
         mode={"edit"}
         existingNote={modalEditingNote ?? undefined}
+        onRequestDelete={(note) => handleDeleteNote(note.id)}
       />
     </PageLayout>
   );

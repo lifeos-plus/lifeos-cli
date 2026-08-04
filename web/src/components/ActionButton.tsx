@@ -14,7 +14,7 @@ interface ActionButtonProps {
   color?: ActionColor;
   size?: ActionSize;
   variant?: ActionVariant;
-  title?: string;
+  tooltip?: string;
   disabled?: boolean;
   className?: string;
   icon?: React.ReactNode; // emoji or SVG/icon component
@@ -24,6 +24,7 @@ interface ActionButtonProps {
   ariaLabel?: string; // accessibility label
   ariaHasPopup?: React.AriaAttributes["aria-haspopup"];
   ariaExpanded?: boolean;
+  ariaPressed?: boolean;
   shape?: ActionShape;
   iconOnly?: boolean;
   form?: string;
@@ -67,6 +68,9 @@ interface FormActionsProps {
   // 事件处理
   onSubmit?: () => void;
   onCancel?: () => void;
+  /** edit-mode destructive action; replaces the default cancel action */
+  onDelete?: () => void;
+  deleteDisabled?: boolean;
 
   // 布局配置
   showTopBorder?: boolean;
@@ -161,7 +165,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       color = "neutral",
       size = "sm",
       variant = "ghost",
-      title,
+      tooltip,
       disabled,
       className,
       icon,
@@ -171,6 +175,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       ariaLabel,
       ariaHasPopup,
       ariaExpanded,
+      ariaPressed,
       shape = "default",
       iconOnly,
       form,
@@ -198,21 +203,13 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
         // Prevent duplicate clicks.
         if (disabled) return;
 
-        // Run the original click handler.
-        if (onClick) {
-          onClick(e);
-        }
-
-        // Clear DaisyUI active/focus state from the current button.
-        const current = e.currentTarget;
-        current.classList.remove("active");
-        current.blur();
+        onClick?.(e);
       },
       [onClick, disabled],
     );
 
-    const combinedAriaLabel = ariaLabel || label || title;
-    const tooltipContent = title?.trim();
+    const combinedAriaLabel = ariaLabel || label || tooltip;
+    const tooltipContent = tooltip?.trim();
     const finalIconSize = iconSize ?? resolveIconSize(size, computedIconOnly);
     const resolvedIcon =
       icon ??
@@ -230,6 +227,7 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
         aria-label={combinedAriaLabel}
         aria-haspopup={ariaHasPopup}
         aria-expanded={ariaExpanded}
+        aria-pressed={ariaPressed}
         form={form}
       >
         <span
@@ -324,6 +322,8 @@ function FormActions({
   size = "sm",
   onSubmit,
   onCancel,
+  onDelete,
+  deleteDisabled = false,
   showTopBorder = false,
   leftSlot,
   className = "",
@@ -343,17 +343,26 @@ function FormActions({
       withTopBorder={showTopBorder}
       className={className}
     >
-      {/* 左侧插槽（优先）或默认取消按钮 */}
+      {/* Custom action, edit-mode delete, or the default create-mode cancel action. */}
       {leftSlot ?? (
-        <ActionButton
-          label={cancelText || t("common.cancel")}
-          icon={cancelIcon}
-          color={cancelColor}
-          size={size}
-          onClick={onCancel}
-          disabled={loading || disabled}
-          variant="ghost"
-        />
+        onDelete ? (
+          <DeleteButton
+            showLabel
+            size={size}
+            onClick={() => onDelete()}
+            disabled={loading || deleteDisabled}
+          />
+        ) : (
+          <ActionButton
+            label={cancelText || t("common.cancel")}
+            icon={cancelIcon}
+            color={cancelColor}
+            size={size}
+            onClick={onCancel}
+            disabled={loading || disabled}
+            variant="ghost"
+          />
+        )
       )}
 
       {/* 提交按钮 */}
@@ -444,7 +453,7 @@ interface CreateNewButtonProps {
 
   // 文本配置
   label?: string; // 默认使用 t("common.add")
-  title?: string; // tooltip 文本
+  tooltip?: string;
   showLabel?: boolean; // 默认 true
 
   // 图标配置
@@ -469,7 +478,6 @@ interface ExpandButtonProps {
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   size?: ActionSize;
   disabled?: boolean;
-  title?: string;
   className?: string;
   ariaLabel?: string;
   expandedLabel?: string;
@@ -550,8 +558,8 @@ export const CreateNewButton: React.FC<CreateNewButtonProps> = ({
 export const ExpandButton: React.FC<ExpandButtonProps> = ({
   isExpanded,
   onClick,
+  size = "sm",
   disabled = false,
-  title,
   className = "",
   ariaLabel,
   expandedLabel,
@@ -563,38 +571,38 @@ export const ExpandButton: React.FC<ExpandButtonProps> = ({
     onClick(e);
   };
 
-  const buttonTitle =
-    title ||
+  const buttonAriaLabel =
+    ariaLabel ||
     (isExpanded
       ? expandedLabel || t("common.collapse")
       : collapsedLabel || t("common.expand"));
-  const buttonAriaLabel =
-    ariaLabel || (isExpanded ? t("common.expand") : t("common.collapse"));
 
   return (
-    <button
-      type="button"
+    <ActionButton
+      label=""
       onClick={handleClick}
       disabled={disabled}
-      className={`p-1 rounded hover-button transition-colors touch-target disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
-      title={buttonTitle}
-      aria-label={buttonAriaLabel}
-    >
-      <svg
-        className={`w-4 h-4 text-base-content transition-transform ${
-          isExpanded ? "rotate-90" : ""
-        }`}
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 5l7 7-7 7"
+      size={size}
+      variant="ghost"
+      shape="square"
+      iconOnly
+      icon={
+        <Icon
+          name="chevron-right"
+          size={resolveIconSize(size, true)}
+          className={`transition-transform ${isExpanded ? "rotate-90" : ""} ${
+            disabled ? "opacity-30" : ""
+          }`}
+          aria-hidden
         />
-      </svg>
-    </button>
+      }
+      className={`${
+        disabled
+          ? "!bg-transparent !border-transparent !text-base-content !shadow-none !opacity-100 cursor-default"
+          : ""
+      } ${className}`.trim()}
+      ariaLabel={buttonAriaLabel}
+      ariaExpanded={isExpanded}
+    />
   );
 };

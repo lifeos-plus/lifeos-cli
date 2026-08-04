@@ -37,6 +37,7 @@ interface TimeEntryModalProps {
   mode?: "default" | "draft";
   onDraftSubmit?: (payload: TimelogCreate) => void | Promise<void>;
   sessionId: string;
+  onRequestDelete?: (entry: Timelog) => void;
 }
 
 const TimeEntryModal = ({
@@ -49,6 +50,7 @@ const TimeEntryModal = ({
   preloadedTasks,
   mode = "default",
   onDraftSubmit,
+  onRequestDelete,
 }: TimeEntryModalProps) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState<TimelogCreate>({
@@ -438,6 +440,14 @@ const TimeEntryModal = ({
           loading={loading}
           onCancel={attemptClose}
           onSubmit={() => formRef.current?.requestSubmit()}
+          onDelete={
+            entry && mode === "default" && onRequestDelete
+              ? () => {
+                  attemptClose();
+                  onRequestDelete(entry);
+                }
+              : undefined
+          }
         />
       }
     >

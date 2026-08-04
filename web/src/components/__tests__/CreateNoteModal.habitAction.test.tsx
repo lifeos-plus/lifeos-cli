@@ -46,6 +46,36 @@ const ModalWrapper = ({ children }: { children: ReactNode }) => (
 );
 
 describe("CreateNoteModal habit action links", () => {
+  it("routes edit-mode deletion through the caller confirmation flow", () => {
+    const onClose = vi.fn();
+    const onRequestDelete = vi.fn();
+    const existingNote = {
+      id: "note-1" as UUID,
+      content: "Existing note",
+      created_at: "2026-07-05T12:00:00.000Z",
+      updated_at: "2026-07-05T12:00:00.000Z",
+    };
+
+    renderWithProviders(
+      <CreateNoteModal
+        isOpen
+        onClose={onClose}
+        mode="edit"
+        existingNote={existingNote}
+        onRequestDelete={onRequestDelete}
+      />,
+      { wrapper: ModalWrapper },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "common.delete" }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onRequestDelete).toHaveBeenCalledWith(existingNote);
+    expect(
+      screen.queryByRole("button", { name: "common.cancel" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("submits locked habit action identifiers when creating a note", async () => {
     notesApiMock.create.mockResolvedValue({
       id: "note-1",

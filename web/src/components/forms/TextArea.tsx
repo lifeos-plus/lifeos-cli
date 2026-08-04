@@ -3,16 +3,14 @@ import React, { forwardRef } from "react";
 type TextAreaResize = "none" | "both" | "horizontal" | "vertical" | "y";
 
 type TextAreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
-  /** 控件尺寸，对应 DaisyUI 类 */
+  /** DaisyUI control size. */
   size?: "sm" | "md" | "lg";
-  /** resize 行为封装成语义化枚举 */
+  /** CSS resize behavior. */
   resize?: TextAreaResize;
 };
 
 /**
- * TextArea - 标准化文本域组件
- *
- * 预置 DaisyUI 样式，统一文本域外观和行为
+ * Standard DaisyUI textarea.
  */
 const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
   (
@@ -20,9 +18,9 @@ const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
     ref,
   ) => {
     const sizeClasses = {
-      sm: "h-16 text-xs",
-      md: "h-20 sm:h-24 lg:h-28 text-sm",
-      lg: "h-32 text-base sm:text-lg",
+      sm: "textarea-sm min-h-16 text-sm",
+      md: "textarea-md min-h-24 text-sm",
+      lg: "textarea-lg min-h-32 text-base",
     } as const;
 
     const resizeClasses: Record<TextAreaResize, string> = {

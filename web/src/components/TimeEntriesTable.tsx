@@ -360,7 +360,7 @@ const TimeEntriesTable: React.FC<TimeEntriesTableProps> = ({
   }
 
   return (
-    <Container className="h-fit">
+    <Container className="h-fit min-w-0 max-w-full" overflow="hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-base-100  border-b border-base-200">
@@ -415,11 +415,6 @@ const TimeEntriesTable: React.FC<TimeEntriesTableProps> = ({
                     onClick={() =>
                       onSortChange(sortOrder === "asc" ? "desc" : "asc")
                     }
-                    title={t(
-                      sortOrder === "asc"
-                        ? "timeLog.table.sortAscTooltip"
-                        : "timeLog.table.sortDescTooltip",
-                    )}
                   />
                 </div>
               </th>
@@ -533,7 +528,7 @@ const TimeEntriesTable: React.FC<TimeEntriesTableProps> = ({
                         inlineSessionId && (
                           <tr>
                             <td colSpan={isSelectMode ? 9 : 8} className="p-0">
-                              <div className="bg-primary/10 p-4 animate-in slide-in-from-top-2 duration-200">
+                              <div className="bg-primary/10 p-4">
                                 <InlineQuickTimeEntry
                                   selectedDate={selectedDate}
                                   startTime={inlineStartTime}

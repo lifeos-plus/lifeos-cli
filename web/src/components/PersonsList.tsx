@@ -1,6 +1,7 @@
 import React from "react";
 import type { PersonSummary } from "@/services/api";
 import { Icon } from "./icons";
+import Badge from "./common/Badge";
 
 interface PersonsListProps {
   people?: PersonSummary[] | null;
@@ -46,9 +47,12 @@ const PersonsListComponent: React.FC<PersonsListProps> = ({
           .join(" ")}
       >
         {toRender.map((person) => (
-          <span
+          <Badge
             key={person.id}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-base-300 text-sm bg-base-100"
+            tone="neutral"
+            variant="outline"
+            size="sm"
+            className="gap-1 bg-base-100"
             title={person.display_name}
           >
             {showIcon ? (
@@ -60,7 +64,7 @@ const PersonsListComponent: React.FC<PersonsListProps> = ({
               />
             ) : null}
             {renderItem ? renderItem(person) : person.display_name}
-          </span>
+          </Badge>
         ))}
         {overflow > 0 ? <span className="text-sm">+{overflow}</span> : null}
       </div>

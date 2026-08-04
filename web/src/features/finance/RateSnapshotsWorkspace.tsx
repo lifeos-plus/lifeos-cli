@@ -9,6 +9,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import AssetSelect from "@/components/selects/AssetSelect";
 import { useToast } from "@/contexts/ToastContext";
 import ModalBase from "@/layouts/ModalBase";
+import Surface from "@/layouts/Surface";
 import {
   financeApi,
   type FinanceRateSnapshot,
@@ -315,7 +316,7 @@ export function RateSnapshotsWorkspace() {
         onCreate={openCreateRateSnapshotForm}
       />
 
-      <section className="rounded-2xl border border-base-200 bg-base-100 p-4 shadow-sm">
+      <Surface as="section" padding="md" elevation="moderate">
         {rateFormVisible ? (
           <>
             <SnapshotNavigator
@@ -584,7 +585,7 @@ export function RateSnapshotsWorkspace() {
             </div>
           </div>
         )}
-      </section>
+      </Surface>
 
       <ConfirmDialog
         isOpen={Boolean(pendingDeleteRateSnapshot)}

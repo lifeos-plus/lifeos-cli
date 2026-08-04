@@ -19,12 +19,14 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
 
   return (
     <div className={`alert alert-error ${className}`}>
-      <div className="flex items-center justify-between gap-3 w-full">
-        <span className="inline-flex items-center gap-2">
-          <Icon name="warning" size={18} aria-hidden />
-          {error}
+      <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3">
+        <span className="inline-flex min-w-0 flex-1 items-start gap-2 break-words">
+          <Icon name="warning" size={18} className="flex-shrink-0" aria-hidden />
+          <span className="min-w-0 break-words">{error}</span>
         </span>
-        {action ? <div className="flex items-center">{action}</div> : null}
+        {action ? (
+          <div className="flex flex-shrink-0 items-center">{action}</div>
+        ) : null}
       </div>
     </div>
   );

@@ -4,7 +4,6 @@ import { ActionButtonGroup } from "@/components/ActionButton";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import Container from "./Container";
 
-// 样式计算工具函数
 const getCardStyles = (size: string, className: string) => {
   const titleSizeClass =
     {
@@ -20,9 +19,8 @@ const getCardStyles = (size: string, className: string) => {
   }[size] || "md") as "sm" | "md" | "lg";
 
   const containerClasses = [
-    "card-body flex flex-col",
+    "flex flex-col",
     !className.includes("h-auto") ? "h-full" : "",
-    "p-2 md:p-4 lg:p-6",
     !className.includes("mb-0") ? "mb-6" : "",
     className,
   ]
@@ -51,7 +49,7 @@ const ContentArea: React.FC<ContentAreaProps> = ({
   contentClassName = "",
 }) => (
   <div
-    className={`flex-1 min-h-0 ${overflowClassName} ${contentClassName}`.trim()}
+    className={`min-h-0 min-w-0 flex-1 ${overflowClassName} ${contentClassName}`.trim()}
   >
     <ErrorDisplay error={error ?? null} className="mb-4" />
     <div
@@ -102,14 +100,6 @@ interface CardProps {
    * - elevated: 高级质感，焦点卡片（重要内容、悬浮状态）
    */
   elevation?: "subtle" | "moderate" | "elevated";
-  /**
-   * 磨砂玻璃效果 (Glassmorphism)
-   * - false: 不使用玻璃效果（默认）
-   * - true: 使用玻璃效果，会覆盖 elevation 设置
-   * - "light": 轻量玻璃效果
-   * - "strong": 强化玻璃效果
-   */
-  glass?: boolean | "light" | "strong";
   /** 内容区域溢出策略（默认可见） */
   contentOverflow?: "visible" | "auto" | "hidden" | "scroll";
   /** 追加到内容区域容器的类名 */
@@ -124,19 +114,18 @@ const Card: React.FC<CardProps> = ({
   error,
   loading = false,
   disabled = false,
-  className: _className = "",
+  className = "",
   children,
-  withTopBorder: _withTopBorder = false,
+  withTopBorder = false,
   size = "md",
-  elevation: _elevation = "moderate",
-  glass: _glass = false,
+  elevation = "moderate",
   contentOverflow = "visible",
   contentClassName,
 }) => {
   // 使用工具函数计算样式
   const { titleSizeClass, buttonSize, containerClasses } = getCardStyles(
     size,
-    _className,
+    className,
   );
 
   const resolveContentOverflow = () => {
@@ -153,7 +142,17 @@ const Card: React.FC<CardProps> = ({
   };
 
   return (
-    <Container className={containerClasses} overflow="hidden">
+    <Container
+      className={containerClasses}
+      overflow="hidden"
+      shadow={
+        elevation === "subtle"
+          ? "sm"
+          : elevation === "elevated"
+            ? "lg"
+            : "md"
+      }
+    >
       {/* Header */}
       {title ? (
         <div className="flex items-center justify-between mb-4">
@@ -177,7 +176,9 @@ const Card: React.FC<CardProps> = ({
         disabled={disabled}
         error={error}
         overflowClassName={resolveContentOverflow()}
-        contentClassName={contentClassName}
+        contentClassName={`${withTopBorder ? "border-t border-base-300 pt-4" : ""} ${
+          contentClassName || ""
+        }`.trim()}
       >
         {children}
       </ContentArea>

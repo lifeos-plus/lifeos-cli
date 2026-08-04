@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
-import ActionButton, { CreateNewButton } from "@/components/ActionButton";
+import ActionButton, {
+  CreateNewButton,
+  ExpandButton,
+} from "@/components/ActionButton";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import { FormField, TextInput } from "@/components/forms";
@@ -13,6 +16,7 @@ import ToolbarContainer from "@/components/ToolbarContainer";
 import { usePageHeader } from "@/contexts/PageHeaderContext";
 import { useToast } from "@/contexts/ToastContext";
 import ModalBase from "@/layouts/ModalBase";
+import Surface from "@/layouts/Surface";
 import PageLayout from "@/layouts/PageLayout";
 import {
   financeApi,
@@ -141,7 +145,7 @@ function FinancePage() {
 
   return (
     <PageLayout>
-      <ToolbarContainer className="mb-6" variant="compact" padding="sm">
+      <ToolbarContainer className="mb-6" padding="sm">
         <div className="flex flex-wrap items-center gap-2">
           {FINANCE_TOOLBAR_ORDER.map(renderToolbarItem)}
         </div>
@@ -368,11 +372,14 @@ function FinancePresetWorkspace({ preset }: { preset: PresetConfig }) {
 
   if (!tree) {
     return (
-      <div
-        className={`rounded-2xl border border-dashed border-base-200 bg-base-100 p-8 text-center ${financeTextClass.bodyMuted}`}
+      <Surface
+        padding="lg"
+        border="dashed"
+        elevation="moderate"
+        className={`text-center ${financeTextClass.bodyMuted}`}
       >
         <p>{t("finance.tree.noTrees")}</p>
-      </div>
+      </Surface>
     );
   }
 
@@ -719,7 +726,7 @@ function FinanceTreesWorkspace() {
         }}
       />
 
-      <section className="rounded-2xl border border-base-200 bg-base-100 p-4 shadow-sm">
+      <Surface as="section" padding="md" elevation="moderate">
         {treeFormVisible ? (
           <>
             <SnapshotNavigator
@@ -823,7 +830,7 @@ function FinanceTreesWorkspace() {
             {t("finance.tree.noTrees")}
           </div>
         )}
-      </section>
+      </Surface>
 
       {tree ? (
         <FinanceNodeFormModal
@@ -1045,7 +1052,7 @@ function SnapshotModule({
   if (!hasSnapshots) {
     if (snapshotFormVisible) {
       return (
-        <section className="rounded-2xl border border-base-200 bg-base-100 p-4 shadow-sm">
+        <Surface as="section" padding="md" elevation="moderate">
           <SnapshotFormPanel
             tree={tree}
             preset={preset}
@@ -1061,13 +1068,16 @@ function SnapshotModule({
             onSubmit={onCreateSnapshot}
             onCancel={onCloseSnapshotForm}
           />
-        </section>
+        </Surface>
       );
     }
 
     return (
-      <div
-        className={`rounded-2xl border border-dashed border-base-200 bg-base-100 p-8 text-center ${financeTextClass.bodyMuted}`}
+      <Surface
+        padding="lg"
+        border="dashed"
+        elevation="moderate"
+        className={`text-center ${financeTextClass.bodyMuted}`}
       >
         <p>{t("finance.history.empty")}</p>
         <div className="mt-4 flex justify-center">
@@ -1080,12 +1090,12 @@ function SnapshotModule({
             disabled={!treeOptions.length}
           />
         </div>
-      </div>
+      </Surface>
     );
   }
 
   return (
-    <section className="rounded-2xl border border-base-200 bg-base-100 p-4 shadow-sm">
+    <Surface as="section" padding="md" elevation="moderate">
       {snapshotFormVisible ? (
         snapshotFormMode !== "create" && snapshotDetailLoading ? (
             <div className="py-6">
@@ -1157,7 +1167,7 @@ function SnapshotModule({
           </div>
         </>
       )}
-    </section>
+    </Surface>
   );
 }
 
@@ -1448,14 +1458,9 @@ function TreeNodeRow({
   return (
     <li>
       <div className="flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-2 py-2 transition-colors hover:border-base-300/80 hover:bg-primary/10 focus-within:bg-primary/10">
-        <ActionButton
-          label=""
-          ariaLabel={isExpanded ? t("common.collapse") : t("common.expand")}
-          iconName={isExpanded ? "chevron-down" : "chevron-right"}
-          iconOnly
-          shape="square"
+        <ExpandButton
+          isExpanded={isExpanded}
           size="xs"
-          variant="ghost"
           disabled={!hasChildren}
           onClick={() => onToggleNode(node.id)}
         />

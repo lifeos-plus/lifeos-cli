@@ -40,6 +40,7 @@ import {
   buildBucketBoundaries,
   parseLocalDate,
 } from "@/features/insights/periodBuckets";
+import { getReadableTextColor, UNKNOWN_AREA_COLOR } from "@/utils/areaColors";
 
 type AreaBucket = {
   areaId: UUID;
@@ -99,15 +100,6 @@ const formatBucketTitle = (
   return formatBucketLabel(granularity, start, end);
 };
 
-const hexToRgb = (hex: string): string => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  if (!result) return "155, 163, 175";
-  const r = parseInt(result[1], 16);
-  const g = parseInt(result[2], 16);
-  const b = parseInt(result[3], 16);
-  return `${r}, ${g}, ${b}`;
-};
-
 interface StatisticItemProps {
   day: string;
   rows: DailyAreaRow[];
@@ -165,6 +157,8 @@ const StatisticItem: React.FC<StatisticItemProps> = ({
             const percentage = denominator
               ? Math.round((r.minutes / denominator) * 100)
               : 0;
+            const areaColor =
+              areaIdToColor[r.area_id] || UNKNOWN_AREA_COLOR;
 
             return (
               <div
@@ -172,12 +166,15 @@ const StatisticItem: React.FC<StatisticItemProps> = ({
                 className="relative flex items-center justify-center"
                 style={{
                   width: `${widthPct}%`,
-                  backgroundColor: `rgba(${hexToRgb(areaIdToColor[r.area_id] || "#9CA3AF")}, 0.7)`,
+                  backgroundColor: areaColor,
                 }}
                 title={`${areaIdToName[r.area_id] || `领域${r.area_id}`}: ${duration} (${percentage}%)`}
               >
                 {showLabel && (
-                  <span className="px-2 py-2 text-sm font-medium text-white drop-shadow-sm truncate max-w-full flex items-center justify-center h-full">
+                  <span
+                    className="px-2 py-2 text-sm font-medium drop-shadow-sm truncate max-w-full flex items-center justify-center h-full"
+                    style={{ color: getReadableTextColor(areaColor) }}
+                  >
                     <span>
                       {viewMode === "percent" ? `${percentage}%` : duration}
                     </span>
@@ -272,7 +269,7 @@ function InsightsPage() {
     });
     sorted.forEach((area) => {
       idName[area.id] = area.name;
-      idColor[area.id] = area.color || "#9CA3AF";
+      idColor[area.id] = area.color || UNKNOWN_AREA_COLOR;
     });
     setAreaIdToName(idName);
     setAreaIdToColor(idColor);
@@ -710,7 +707,6 @@ function InsightsPage() {
       {/* 统计工具条（响应式布局） */}
       <ToolbarContainer
         className="mb-4 w-full max-w-full overflow-hidden"
-        variant="compact"
         padding="md"
         layout="three-column"
       >
@@ -943,7 +939,7 @@ function InsightsPage() {
 
                   const baseClasses = [
                     "btn",
-                    selected ? "btn-primary/40" : "btn-neutral/40",
+                    selected ? "btn-primary" : "btn-neutral",
                     selected ? "" : "btn-ghost",
                     "btn-xs",
                     "min-w-32 max-w-40 flex-shrink-0",
@@ -980,7 +976,7 @@ function InsightsPage() {
                           className="inline-block w-2 h-2 rounded-full flex-shrink-0"
                           style={{
                             backgroundColor:
-                              areaIdToColor[idStr] || "#9CA3AF",
+                              areaIdToColor[idStr] || UNKNOWN_AREA_COLOR,
                           }}
                         />
                         <span className="font-medium text-base-content truncate">
@@ -1035,7 +1031,7 @@ function InsightsPage() {
               {displayBuckets.map((bucket) => (
                 <div
                   key={bucket.key}
-                  className="hover:bg-base-50 rounded-lg p-2 transition-colors duration-200"
+                  className="rounded-lg p-2 transition-colors duration-200 hover:bg-base-200/50"
                 >
                   <StatisticItem
                     day={bucket.periodStart}

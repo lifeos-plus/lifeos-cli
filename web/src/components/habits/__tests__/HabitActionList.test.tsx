@@ -34,7 +34,7 @@ describe("HabitActionList", () => {
   });
 
   it("does not render note details in the five day view", () => {
-    renderWithProviders(
+    const { container } = renderWithProviders(
       <HabitActionList
         actions={[actionWithoutNotes, action]}
         habitId={"habit-1" as UUID}
@@ -58,6 +58,11 @@ describe("HabitActionList", () => {
     expect(viewButtons[0].className).toContain("opacity-40");
     expect(viewButtons[1]).toBeEnabled();
     expect(viewButtons[1].className).not.toContain("opacity-40");
+    expect(container.querySelector(".space-y-2 > div")).toHaveClass(
+      "flex-col",
+      "sm:flex-row",
+      "min-w-0",
+    );
   });
 
   it("uses habit action occurrence periods for weekly five period view", () => {

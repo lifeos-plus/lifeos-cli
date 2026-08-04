@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 
 import NoteItem from "./NoteItem";
 import EmptyState from "@/components/EmptyState";
+import Surface from "@/layouts/Surface";
 import ActionButton from "@/components/ActionButton";
 import { Icon } from "@/components/icons";
 import type { Note } from "@/types/newNotes";
@@ -74,9 +75,13 @@ export function NotesList({
   return (
     <div className="space-y-2">
       {notes.map((note) => (
-        <div
+        <Surface
           key={note.id}
-          className="bg-base-100 rounded-lg shadow-sm border border-base-200 p-3 lg:p-4 hover:shadow-md transition-shadow group"
+          padding="responsive"
+          border="subtle"
+          elevation="subtle"
+          interactive
+          className="group"
         >
           <NoteItem
             note={note}
@@ -94,7 +99,7 @@ export function NotesList({
             minCollapsedLines={minCollapsedLines}
             timezone={timezone}
           />
-        </div>
+        </Surface>
       ))}
 
       {hasMore &&

@@ -12,8 +12,6 @@ interface ListContainerProps {
   children: React.ReactNode;
   /** 空状态时的内容 */
   emptyState?: React.ReactNode;
-  /** 是否显示边框 */
-  bordered?: boolean;
   /** 容器尺寸 */
   size?: "sm" | "md" | "lg";
   /** 额外的 CSS 类名 */
@@ -24,8 +22,8 @@ interface ListContainerProps {
   withTopBorder?: boolean;
   /** 是否显示阴影 */
   shadow?: boolean | "none" | "sm" | "md" | "lg";
-  /** 边框风格：none 取消；subtle 弱化；default 默认 */
-  borderVariant?: "none" | "subtle" | "default";
+  /** Optional structural border. */
+  borderVariant?: "none" | "subtle";
   /** 列标题配置（用于表格布局） */
   columns?: Array<{
     key: string;
@@ -46,7 +44,7 @@ const ListContainer: React.FC<ListContainerProps> = ({
   contentClassName = "",
   withTopBorder = false,
   shadow = true,
-  borderVariant = "default",
+  borderVariant = "none",
   columns,
 }) => {
   // 构建容器的基础类名 - 使用统一的卡片设计规范
@@ -63,7 +61,7 @@ const ListContainer: React.FC<ListContainerProps> = ({
   // 标题尺寸
   const titleSizeClass =
     size === "sm" ? "text-base" : size === "lg" ? "text-lg" : "text-base";
-  const contentClasses = `flex-1 text-sm ${contentClassName || "overflow-auto"}`;
+  const contentClasses = `min-w-0 flex-1 text-sm ${contentClassName || "overflow-auto"}`;
 
   // 获取列对齐样式
   const getColumnAlignClass = (align?: "left" | "center" | "right") => {
@@ -82,16 +80,21 @@ const ListContainer: React.FC<ListContainerProps> = ({
       className={containerClasses}
       borderVariant={borderVariant}
       shadow={resolvedShadow}
+      overflow="hidden"
     >
       {/* Header */}
       {!hideHeader && (
         <div className="px-6 py-4 border-b border-base-300">
-          <div className="flex items-center justify-between">
-            <h2 className={`${titleSizeClass} font-medium text-base-content`}>
+          <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2
+              className={`${titleSizeClass} min-w-0 break-words font-medium text-base-content`}
+            >
               {title}
             </h2>
             {headerAction && (
-              <div className="flex-shrink-0 ml-4">{headerAction}</div>
+              <div className="min-w-0 flex-shrink-0 sm:ml-4">
+                {headerAction}
+              </div>
             )}
           </div>
         </div>

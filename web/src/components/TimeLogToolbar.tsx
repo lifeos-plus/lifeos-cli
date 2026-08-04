@@ -62,7 +62,6 @@ const TimeLogToolbar: React.FC<TimeLogToolbarProps> = ({
   return (
     <ToolbarContainer
       className="mb-4"
-      variant="compact"
       padding="md"
       layout="three-column"
     >

@@ -334,7 +334,7 @@ const TaskSelectorManaged: React.FC<TaskSelectorProps> = ({
         usePortal={usePortal}
         onFocus={onInteract}
         onClick={onInteract}
-        dropdownClassName="min-w-[36rem] max-h-96"
+        dropdownClassName="max-h-96"
         dropdownMinWidth={480}
         dropdownMaxWidth={800}
         dropdownPreferredWidth={(rect) => Math.max(rect.width, 640)}

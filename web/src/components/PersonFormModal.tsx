@@ -18,6 +18,7 @@ interface PersonFormModalProps {
   onClose: () => void;
   onSuccess: (result?: { updatedPerson?: Person; created?: boolean }) => void;
   editingPerson?: Person | null;
+  onRequestDelete?: (person: Person) => void;
 }
 
 /**
@@ -33,6 +34,7 @@ const PersonFormModal: React.FC<PersonFormModalProps> = ({
   onClose,
   onSuccess,
   editingPerson,
+  onRequestDelete,
 }) => {
   const { t } = useTranslation();
 
@@ -266,6 +268,14 @@ const PersonFormModal: React.FC<PersonFormModalProps> = ({
           loading={loading}
           onCancel={handleClose}
           onSubmit={() => document.querySelector("form")?.requestSubmit()}
+          onDelete={
+            editingPerson && onRequestDelete
+              ? () => {
+                  handleClose();
+                  onRequestDelete(editingPerson);
+                }
+              : undefined
+          }
         />
       }
       loading={loading}

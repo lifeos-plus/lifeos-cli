@@ -77,8 +77,8 @@ const EntryRowComponent: React.FC<EntryRowProps> = ({
   } else {
     rowClassName +=
       index % 2 === 0
-        ? "bg-base-100 hover-list-item"
-        : "bg-base-50 hover-list-item";
+        ? "bg-base-100 hover:bg-base-200"
+        : "bg-base-200/30 hover:bg-base-200";
   }
 
   // Calculate display date

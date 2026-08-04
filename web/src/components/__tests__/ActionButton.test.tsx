@@ -7,9 +7,41 @@ import { setupTranslationMock } from "@test/utils";
 setupTranslationMock();
 
 let ActionButton: typeof import("@/components/ActionButton").default;
+let FormActions: typeof import("@/components/ActionButton").FormActions;
+let ExpandButton: typeof import("@/components/ActionButton").ExpandButton;
 
 beforeAll(async () => {
-  ({ default: ActionButton } = await import("@/components/ActionButton"));
+  ({ default: ActionButton, FormActions, ExpandButton } = await import(
+    "@/components/ActionButton"
+  ));
+});
+
+describe("FormActions", () => {
+  it("replaces the cancel action with a labeled delete action in edit mode", async () => {
+    const onCancel = vi.fn();
+    const onDelete = vi.fn();
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <FormActions
+        onCancel={onCancel}
+        onDelete={onDelete}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "common.cancel" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "common.delete" }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "common.submit" }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
 });
 
 const getActionButton = () => {
@@ -47,6 +79,18 @@ describe("ActionButton", () => {
 
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves keyboard focus after activation", async () => {
+    const user = userEvent.setup();
+    const Component = getActionButton();
+
+    render(<Component label="Save" />);
+
+    const button = screen.getByRole("button", { name: "Save" });
+    await user.tab();
+    await user.keyboard("{Enter}");
+    expect(button).toHaveFocus();
   });
 
   it("supports xs size and iconOnly presentation", () => {
@@ -97,5 +141,74 @@ describe("ActionButton", () => {
 
     await user.click(screen.getByRole("button", { name: "Disabled" }));
     expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("only shows explanatory tooltips when explicitly requested", async () => {
+    const user = userEvent.setup();
+    const Component = getActionButton();
+
+    render(
+      <Component
+        label=""
+        icon={<span aria-hidden>*</span>}
+        tooltip="Create tasks in bulk"
+      />,
+    );
+
+    await user.hover(
+      screen.getByRole("button", { name: "Create tasks in bulk" }),
+    );
+
+    expect(screen.getByRole("tooltip")).toHaveTextContent(
+      "Create tasks in bulk",
+    );
+  });
+});
+
+describe("ExpandButton", () => {
+  it("uses DaisyUI sizing and announces the available action", () => {
+    render(<ExpandButton isExpanded onClick={vi.fn()} size="xs" />);
+
+    const button = screen.getByRole("button", { name: "common.collapse" });
+    expect(button).toHaveClass("btn", "btn-xs", "btn-square");
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(button.querySelector("svg")).toHaveClass("rotate-90");
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("keeps contextual labels accessible without showing a tooltip", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ExpandButton
+        isExpanded={false}
+        onClick={vi.fn()}
+        collapsedLabel="Expand task details"
+      />,
+    );
+
+    const button = screen.getByRole("button", {
+      name: "Expand task details",
+    });
+    await user.hover(button);
+
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("dims only the icon when expansion is unavailable", () => {
+    render(<ExpandButton isExpanded={false} onClick={vi.fn()} disabled />);
+
+    const button = screen.getByRole("button", { name: "common.expand" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveClass(
+      "!bg-transparent",
+      "!border-transparent",
+      "!text-base-content",
+      "!shadow-none",
+      "!opacity-100",
+      "cursor-default",
+    );
+    expect(button.querySelector("svg")).toHaveClass("opacity-30");
   });
 });
