@@ -18,7 +18,7 @@ def test_cli_top_level_help_describes_command_grammar(capsys) -> None:
     assert "███████╗██║██║     ███████╗╚██████╔╝███████║" in captured.out
     assert "usage:" not in captured.out
     assert "Run LifeOS resource commands from the terminal." not in captured.out
-    assert "repo: https://github.com/liujuanjuan1984/lifeos-cli" in captured.out
+    assert "repo: https://github.com/lifeos-plus/lifeos-cli" in captured.out
     assert "uv tool install --upgrade lifeos-cli" in captured.out
     assert "lifeos <resource> <action> [arguments] [options]" in captured.out
     assert "Resources model domains" not in captured.out
@@ -30,11 +30,11 @@ def test_cli_top_level_help_describes_command_grammar(capsys) -> None:
     assert "primary command reference" in captured.out
     assert "Run `lifeos init` to initialize LifeOS before getting started." in captured.out
     assert (
-        "Welcome bug reports and suggestions through https://github.com/liujuanjuan1984/lifeos-cli."
+        "Welcome bug reports and suggestions through https://github.com/lifeos-plus/lifeos-cli."
         in captured.out
     )
     assert (
-        "repo: https://github.com/liujuanjuan1984/lifeos-cli\nuv tool install --upgrade lifeos-cli"
+        "repo: https://github.com/lifeos-plus/lifeos-cli\nuv tool install --upgrade lifeos-cli"
         in captured.out
     )
     assert "\n  lifeos <resource> <action> [arguments] [options]" in captured.out

@@ -7,7 +7,7 @@
       "run_lifeos_init_to_initialize_lifeos_before_getting_started": "开始使用前，请先运行 `lifeos init` 初始化 LifeOS。",
       "show_program_version_and_exit": "显示程序版本并退出",
       "use_lifeos_resource_help_and_lifeos_resource_action_help_as_primary_command": "将 `lifeos <resource> --help` 和 `lifeos <resource> <action> --help` 作为主要命令参考。",
-      "welcome_bug_reports_and_suggestions_through_https_github_com_liujuanjuan1984_lifeos_cli": "欢迎通过 https://github.com/liujuanjuan1984/lifeos-cli 提交问题报告和建议。"
+      "welcome_bug_reports_and_suggestions_through_https_github_com_lifeos_plus_lifeos_cli": "欢迎通过 https://github.com/lifeos-plus/lifeos-cli 提交问题报告和建议。"
     }
   },
   "common": {

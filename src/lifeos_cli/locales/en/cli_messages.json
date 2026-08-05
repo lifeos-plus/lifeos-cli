@@ -7,7 +7,7 @@
       "run_lifeos_init_to_initialize_lifeos_before_getting_started": "Run `lifeos init` to initialize LifeOS before getting started.",
       "show_program_version_and_exit": "Show the program version and exit",
       "use_lifeos_resource_help_and_lifeos_resource_action_help_as_primary_command": "Use `lifeos <resource> --help` and `lifeos <resource> <action> --help` as the primary command reference.",
-      "welcome_bug_reports_and_suggestions_through_https_github_com_liujuanjuan1984_lifeos_cli": "Welcome bug reports and suggestions through https://github.com/liujuanjuan1984/lifeos-cli."
+      "welcome_bug_reports_and_suggestions_through_https_github_com_lifeos_plus_lifeos_cli": "Welcome bug reports and suggestions through https://github.com/lifeos-plus/lifeos-cli."
     }
   },
   "common": {
