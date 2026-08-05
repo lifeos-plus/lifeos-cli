@@ -520,9 +520,7 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
    * Get the current week range based on Gregorian calendar
    */
   getCurrentWeekRange(): { start: string; end: string } {
-    return getCurrentWeekRange(
-      this.getWeekStart(new Date()).getDay() === 0 ? 7 : 1,
-    );
+    return getCurrentWeekRange(this.firstDayOfWeek);
   }
 
   /**

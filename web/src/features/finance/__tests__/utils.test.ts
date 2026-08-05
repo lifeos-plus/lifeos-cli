@@ -29,7 +29,7 @@ describe("finance snapshot labels", () => {
       snapshotLabel({
         ...baseSnapshot,
         title: "June net worth",
-      } as FinanceSnapshot),
+      } as FinanceSnapshot, "UTC"),
     ).toBe("June net worth");
   });
 
@@ -38,26 +38,29 @@ describe("finance snapshot labels", () => {
       snapshotLabel({
         ...baseSnapshot,
         title: " ",
-      } as FinanceSnapshot),
+      } as FinanceSnapshot, "UTC"),
     ).not.toBe(" ");
   });
 });
 
 describe("finance rate snapshot labels", () => {
   it("uses only the captured timestamp", () => {
-    const label = rateSnapshotLabel({
-      id: "rate-snapshot-1",
-      captured_at: "2026-06-25T12:00:00.000Z",
-      source: "manual",
-      entries: [
-        {
-          id: "rate-entry-1",
-          base_currency: "BTC",
-          quote_currency: "USDT",
-          rate: "100000",
-        },
-      ],
-    } as FinanceRateSnapshot);
+    const label = rateSnapshotLabel(
+      {
+        id: "rate-snapshot-1",
+        captured_at: "2026-06-25T12:00:00.000Z",
+        source: "manual",
+        entries: [
+          {
+            id: "rate-entry-1",
+            base_currency: "BTC",
+            quote_currency: "USDT",
+            rate: "100000",
+          },
+        ],
+      } as FinanceRateSnapshot,
+      "UTC",
+    );
 
     expect(label).not.toContain("BTC/USDT");
   });

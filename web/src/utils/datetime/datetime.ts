@@ -2,7 +2,7 @@
 
 import { DateTime } from "luxon";
 
-import { resolvePreferredTimezone, zonedDateTimeToUtc } from "./timezone";
+import { resolvePreferredTimezone } from "./timezone";
 
 function resolveTimezoneInput(timezone?: string): string {
   const trimmed = timezone?.trim();
@@ -96,6 +96,9 @@ export function localDateTimeLocalToUtcIso(
     zone: resolveTimezoneInput(timezone),
   });
   if (!dt.isValid) return "";
+  if (dt.toFormat("yyyy-LL-dd'T'HH:mm") !== localDateTime.slice(0, 16)) {
+    return "";
+  }
   return dt.toUTC().toJSDate().toISOString();
 }
 
@@ -104,31 +107,10 @@ export function hhmmOnDateToISO(
   hhmm: string,
   timezone?: string,
 ): string {
-  const [hours, minutes] = hhmm.split(":").map((v) => parseInt(v, 10));
   const tz = resolveTimezoneInput(timezone);
   const dateOnly = formatDateInTimezone(baseDate, tz);
   if (!dateOnly) return "";
-  const [yearStr, monthStr, dayStr] = dateOnly.split("-");
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-  const day = parseInt(dayStr, 10);
-  if (
-    !Number.isFinite(year) ||
-    !Number.isFinite(month) ||
-    !Number.isFinite(day)
-  ) {
-    return "";
-  }
-  return zonedDateTimeToUtc(
-    year,
-    month,
-    day,
-    Number.isFinite(hours) ? hours : 0,
-    Number.isFinite(minutes) ? minutes : 0,
-    0,
-    0,
-    tz,
-  ).toISOString();
+  return localDateTimeLocalToUtcIso(`${dateOnly}T${hhmm}`, tz);
 }
 
 // ---- Time helpers (from timeUtils.ts)
@@ -372,34 +354,14 @@ export function dateStringToISO(
   if (!isDateKey(dateString)) {
     return "";
   }
-  const [yearStr, monthStr, dayStr] = dateString.split("-");
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-  const day = parseInt(dayStr, 10);
-  if (
-    !Number.isFinite(year) ||
-    !Number.isFinite(month) ||
-    !Number.isFinite(day)
-  ) {
+  const localDate = DateTime.fromISO(dateString, { zone: tz });
+  if (!localDate.isValid || localDate.toFormat("yyyy-LL-dd") !== dateString) {
     return "";
   }
-
-  if (isEndDate) {
-    // For end date, we want 23:59:59.999 in the user's timezone
-    return zonedDateTimeToUtc(
-      year,
-      month,
-      day,
-      23,
-      59,
-      59,
-      999,
-      tz,
-    ).toISOString();
-  } else {
-    // For start date, we want 00:00:00.000 in the user's timezone
-    return zonedDateTimeToUtc(year, month, day, 0, 0, 0, 0, tz).toISOString();
-  }
+  const boundary = isEndDate
+    ? localDate.endOf("day")
+    : localDate.startOf("day");
+  return boundary.toUTC().toJSDate().toISOString();
 }
 
 // ---- Calendar Arithmetic Helpers (local Date-based) ----

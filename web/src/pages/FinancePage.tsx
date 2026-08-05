@@ -15,6 +15,7 @@ import AssetSelect from "@/components/selects/AssetSelect";
 import ToolbarContainer from "@/components/ToolbarContainer";
 import { usePageHeader } from "@/contexts/PageHeaderContext";
 import { useToast } from "@/contexts/ToastContext";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 import ModalBase from "@/layouts/ModalBase";
 import Surface from "@/layouts/Surface";
 import PageLayout from "@/layouts/PageLayout";
@@ -171,6 +172,7 @@ function FinancePresetWorkspace({ preset }: { preset: PresetConfig }) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const { assets, createAsset } = useFinanceAssetSource();
+  const activeTimezone = useSystemTimezone().timezone;
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<UUID | null>(null);
   const [snapshotFormVisible, setSnapshotFormVisible] = useState(false);
   const [snapshotFormMode, setSnapshotFormMode] = useState<SnapshotFormMode>("create");
@@ -208,8 +210,8 @@ function FinancePresetWorkspace({ preset }: { preset: PresetConfig }) {
   const snapshotOptions = snapshots.map((snapshot) => ({
     value: snapshot.id,
     label: snapshot.tree_name
-      ? `${snapshotLabel(snapshot)} · ${snapshot.tree_name}`
-      : snapshotLabel(snapshot),
+      ? `${snapshotLabel(snapshot, activeTimezone)} · ${snapshot.tree_name}`
+      : snapshotLabel(snapshot, activeTimezone),
   }));
   const activeTreeId = snapshotFormVisible
     ? selectedTreeId
@@ -445,6 +447,7 @@ function FinancePresetWorkspace({ preset }: { preset: PresetConfig }) {
 
       <SnapshotModule
         preset={preset}
+        timezone={activeTimezone}
         tree={tree}
         assets={assets}
         onCreateAsset={createAsset}
@@ -481,7 +484,9 @@ function FinancePresetWorkspace({ preset }: { preset: PresetConfig }) {
         isOpen={Boolean(pendingDeleteSnapshot)}
         title={t("finance.snapshot.deleteTitle")}
         message={t("finance.snapshot.deleteMessage", {
-          name: pendingDeleteSnapshot ? snapshotLabel(pendingDeleteSnapshot) : "",
+          name: pendingDeleteSnapshot
+            ? snapshotLabel(pendingDeleteSnapshot, activeTimezone)
+            : "",
         })}
         confirmText={t("finance.snapshot.deleteConfirm")}
         onCancel={() => setPendingDeleteSnapshot(null)}
@@ -974,6 +979,7 @@ function FinanceTreeFormPanel({
 
 function SnapshotModule({
   preset,
+  timezone,
   tree,
   assets,
   onCreateAsset,
@@ -1000,6 +1006,7 @@ function SnapshotModule({
   onUpdateSnapshot,
 }: {
   preset: PresetConfig;
+  timezone: string;
   tree: FinanceTree;
   assets: FinanceAsset[];
   onCreateAsset: (code: string) => Promise<FinanceAsset>;
@@ -1130,7 +1137,11 @@ function SnapshotModule({
       ) : (
         <>
           <SnapshotNavigator
-            title={currentSnapshot ? snapshotLabel(currentSnapshot) : t("finance.history.noSelection")}
+            title={
+              currentSnapshot
+                ? snapshotLabel(currentSnapshot, timezone)
+                : t("finance.history.noSelection")
+            }
             rightSlot={
               currentSnapshot ? (
                 <SnapshotActionButtons

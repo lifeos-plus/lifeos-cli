@@ -93,6 +93,15 @@ describe("datetime helpers", () => {
     ).toBe("2024-03-10T10:30:00.000Z");
   });
 
+  it("rejects local wall times skipped by a DST transition", () => {
+    expect(
+      localDateTimeLocalToUtcIso(
+        "2024-03-10T02:30",
+        "America/Los_Angeles",
+      ),
+    ).toBe("");
+  });
+
   it("formats date-only strings as floating days (no UTC shift)", () => {
     // If this were parsed as UTC midnight and then rendered in LA, it would become 2023-12-31.
     expect(formatDate("2024-01-01", "America/Los_Angeles")).toBe("2024-01-01");

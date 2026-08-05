@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { GregorianCalendarAdapter } from "@/utils/calendar";
 import type { TaskWithSubtasks } from "@/services/api";
@@ -39,6 +39,20 @@ describe("GregorianCalendarAdapter", () => {
 
     const sundayStart = new GregorianCalendarAdapter(7).getWeekStart(thursday);
     expect(sundayStart.getDay()).toBe(0);
+  });
+
+  it("preserves non-Monday week starts in the current week range", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-08-05T12:00:00"));
+
+      expect(new GregorianCalendarAdapter(2).getCurrentWeekRange()).toEqual({
+        start: "2026-08-04",
+        end: "2026-08-10",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("computes next and previous periods", () => {

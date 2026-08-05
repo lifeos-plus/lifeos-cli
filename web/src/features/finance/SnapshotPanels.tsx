@@ -226,20 +226,31 @@ export function SnapshotFormPanel({
       toast.showWarning(t("finance.messages.noEntries"));
       return;
     }
+    const snapshotTimestamp =
+      preset.timeMode === "instant"
+        ? localDateTimeToIso(snapshotTs, activeTimezone)
+        : null;
+    const periodStartTimestamp =
+      preset.timeMode === "period"
+        ? dateToStartIso(periodStart, activeTimezone)
+        : null;
+    const periodEndTimestamp =
+      preset.timeMode === "period"
+        ? dateToEndIso(periodEnd, activeTimezone)
+        : null;
+    if (
+      (preset.timeMode === "instant" && !snapshotTimestamp) ||
+      (preset.timeMode === "period" &&
+        (!periodStartTimestamp || !periodEndTimestamp))
+    ) {
+      toast.showWarning(t("finance.messages.invalidDateTime"));
+      return;
+    }
     onSubmit({
       title: title.trim() || null,
-      snapshot_ts:
-        preset.timeMode === "instant"
-          ? localDateTimeToIso(snapshotTs, activeTimezone)
-          : null,
-      period_start:
-        preset.timeMode === "period"
-          ? dateToStartIso(periodStart, activeTimezone)
-          : null,
-      period_end:
-        preset.timeMode === "period"
-          ? dateToEndIso(periodEnd, activeTimezone)
-          : null,
+      snapshot_ts: snapshotTimestamp,
+      period_start: periodStartTimestamp,
+      period_end: periodEndTimestamp,
       primary_currency: settlementCurrency,
       rate_snapshot_id: selectedRateSnapshotId || null,
       note: snapshotNote || null,
@@ -360,6 +371,7 @@ export function SnapshotFormPanel({
           rateSnapshots={rateSnapshots}
           selectedRateSnapshotId={selectedRateSnapshotId}
           onSelectRateSnapshot={setSelectedRateSnapshotId}
+          timezone={activeTimezone}
         />
       </div>
 
@@ -370,12 +382,14 @@ export function SnapshotFormPanel({
           assets={assets}
           rateSnapshotLabelText={
             selectedRateSnapshot
-              ? rateSnapshotLabel(selectedRateSnapshot)
+              ? rateSnapshotLabel(selectedRateSnapshot, activeTimezone)
               : t("finance.rates.noRateSnapshot")
           }
           rateInfoByCurrency={rateInfoByCurrency}
           rateSnapshotTooltip={
-            selectedRateSnapshot ? rateSnapshotTooltip(selectedRateSnapshot, assets) : ""
+            selectedRateSnapshot
+              ? rateSnapshotTooltip(selectedRateSnapshot, assets, activeTimezone)
+              : ""
           }
           showConversions
         />
@@ -433,17 +447,19 @@ function RateSnapshotSelectPanel({
   rateSnapshots,
   selectedRateSnapshotId,
   onSelectRateSnapshot,
+  timezone,
 }: {
   rateSnapshots: FinanceRateSnapshot[];
   selectedRateSnapshotId: UUID | "";
   onSelectRateSnapshot: (rateSnapshotId: UUID | "") => void;
+  timezone: string;
 }) {
   const { t } = useTranslation();
   const options = [
     { value: "", label: t("finance.rates.noRateSnapshot") },
     ...rateSnapshots.map((snapshot) => ({
       value: snapshot.id,
-      label: rateSnapshotLabel(snapshot),
+      label: rateSnapshotLabel(snapshot, timezone),
     })),
   ];
 
@@ -1025,6 +1041,7 @@ export function SnapshotDetail({
   rateSnapshots: FinanceRateSnapshot[];
 }) {
   const { t } = useTranslation();
+  const activeTimezone = useSystemTimezone().timezone;
   const usesConvertedAggregation = getSummaryAggregationMode(snapshot.summary) === "converted";
   const displayTree = useMemo(
     () =>
@@ -1085,9 +1102,15 @@ export function SnapshotDetail({
         primaryCurrency={snapshot.primary_currency}
         assets={assets}
         rateSnapshotLabelText={
-          rateSnapshot ? rateSnapshotLabel(rateSnapshot) : t("finance.rates.noRateSnapshot")
+          rateSnapshot
+            ? rateSnapshotLabel(rateSnapshot, activeTimezone)
+            : t("finance.rates.noRateSnapshot")
         }
-        rateSnapshotTooltip={rateSnapshot ? rateSnapshotTooltip(rateSnapshot, assets) : ""}
+        rateSnapshotTooltip={
+          rateSnapshot
+            ? rateSnapshotTooltip(rateSnapshot, assets, activeTimezone)
+            : ""
+        }
         rateInfoByCurrency={rateInfoByCurrency}
         showConversions
       />
@@ -1488,13 +1511,19 @@ function formatSharePercentage(value: number): string {
   return `${(value * 100).toFixed(2)}%`;
 }
 
-function rateSnapshotTooltip(snapshot: FinanceRateSnapshot, assets: FinanceAsset[]): string {
+function rateSnapshotTooltip(
+  snapshot: FinanceRateSnapshot,
+  assets: FinanceAsset[],
+  timezone: string,
+): string {
   const lines = (snapshot.entries ?? []).map((entry) => {
     const baseAmount = formatAmountForAsset("1", entry.base_currency, assets);
     const quoteAmount = formatAmountForAsset(entry.rate, entry.quote_currency, assets);
     return `${baseAmount} ${entry.base_currency} = ${quoteAmount} ${entry.quote_currency}`;
   });
-  return lines.length ? lines.join("\n") : rateSnapshotLabel(snapshot);
+  return lines.length
+    ? lines.join("\n")
+    : rateSnapshotLabel(snapshot, timezone);
 }
 
 function includeFinanceNodeIds(nodes: TreeNodeWithChildren[], target: Set<UUID>) {

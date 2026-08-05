@@ -162,20 +162,23 @@ export const flattenTree = (nodes: TreeNodeWithChildren[]): TreeNodeWithChildren
   return result;
 };
 
-export function snapshotLabel(snapshot: FinanceSnapshot) {
+export function snapshotLabel(snapshot: FinanceSnapshot, timezone: string) {
   const title = snapshot.title?.trim();
   if (title) {
     return title;
   }
   if (snapshot.period_start && snapshot.period_end) {
-    return `${formatDate(snapshot.period_start)} - ${formatDate(snapshot.period_end)}`;
+    return `${formatDate(snapshot.period_start, timezone)} - ${formatDate(snapshot.period_end, timezone)}`;
   }
   if (snapshot.snapshot_ts) {
-    return formatDateTime(snapshot.snapshot_ts);
+    return formatDateTime(snapshot.snapshot_ts, timezone);
   }
   return snapshot.created_at;
 }
 
-export function rateSnapshotLabel(snapshot: FinanceRateSnapshot) {
-  return formatDateTime(snapshot.captured_at);
+export function rateSnapshotLabel(
+  snapshot: FinanceRateSnapshot,
+  timezone: string,
+) {
+  return formatDateTime(snapshot.captured_at, timezone);
 }

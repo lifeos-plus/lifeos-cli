@@ -12,7 +12,7 @@ import {
   parseDateKey,
   parseDateOnlyToLocalDate,
   resolvePreferredTimezone,
-  zonedDateTimeToUtc,
+  localDateTimeLocalToUtcIso,
 } from "@/utils/datetime";
 import {
   parseBulkTimelogInput,
@@ -105,20 +105,10 @@ const convertToUtcIso = (
   timeString: string,
   timezone: string,
 ): string => {
-  const [year, month, day] = dateString
-    .split("-")
-    .map((token) => Number(token));
-  const [hour, minute] = timeString.split(":").map((token) => Number(token));
-  return zonedDateTimeToUtc(
-    year,
-    month,
-    day,
-    hour,
-    minute,
-    0,
-    0,
+  return localDateTimeLocalToUtcIso(
+    `${dateString}T${timeString}`,
     timezone,
-  ).toISOString();
+  );
 };
 
 const buildProcessedEntry = (

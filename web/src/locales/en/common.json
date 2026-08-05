@@ -1586,6 +1586,7 @@
       "snapshotDeleted": "Finance snapshot deleted",
       "noEntries": "Enter at least one amount before saving.",
       "holdingAssetRequired": "Select or create an asset for every holding with an amount.",
+      "invalidDateTime": "Choose a date and time that exists in the configured timezone.",
       "rateSnapshotMissingRates": "The selected rate snapshot is missing: {{currencies}}.",
       "rateSnapshotRatesRequired": "Enter a positive rate for every required currency."
     }

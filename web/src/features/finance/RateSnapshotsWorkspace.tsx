@@ -207,8 +207,16 @@ export function RateSnapshotsWorkspace() {
       toast.showWarning(t("finance.messages.rateSnapshotRatesRequired"));
       return;
     }
+    const capturedAtTimestamp = localDateTimeToIso(
+      capturedAt,
+      activeTimezone,
+    );
+    if (!capturedAtTimestamp) {
+      toast.showWarning(t("finance.messages.invalidDateTime"));
+      return;
+    }
     const payload = {
-      captured_at: localDateTimeToIso(capturedAt, activeTimezone),
+      captured_at: capturedAtTimestamp,
       source: source.trim() || "manual",
       note: note.trim() || null,
       entries,
@@ -234,7 +242,7 @@ export function RateSnapshotsWorkspace() {
   const hasNext = currentPosition > 0 && currentPosition < snapshots.length;
   const snapshotOptions = snapshots.map((snapshot) => ({
     value: snapshot.id,
-    label: rateSnapshotLabel(snapshot),
+    label: rateSnapshotLabel(snapshot, activeTimezone),
   }));
 
   const selectRateSnapshot = (snapshotId: UUID) => {
@@ -509,7 +517,7 @@ export function RateSnapshotsWorkspace() {
         ) : currentSnapshot ? (
           <>
             <SnapshotNavigator
-              title={rateSnapshotLabel(currentSnapshot)}
+              title={rateSnapshotLabel(currentSnapshot, activeTimezone)}
               rightSlot={
                 <SnapshotActionButtons
                   editLabel={t("common.edit")}
@@ -602,7 +610,9 @@ export function RateSnapshotsWorkspace() {
         isOpen={Boolean(pendingDeleteRateSnapshot)}
         title={t("finance.rates.deleteTitle")}
         message={t("finance.rates.deleteMessage", {
-          name: pendingDeleteRateSnapshot ? rateSnapshotLabel(pendingDeleteRateSnapshot) : "",
+          name: pendingDeleteRateSnapshot
+            ? rateSnapshotLabel(pendingDeleteRateSnapshot, activeTimezone)
+            : "",
         })}
         confirmText={t("finance.rates.deleteConfirm")}
         onCancel={() => setPendingDeleteRateSnapshot(null)}
