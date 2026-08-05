@@ -112,20 +112,38 @@ function CalendarPage() {
   const [startISO, setStartISO] = useState<string | null>(null);
   const [endISO, setEndISO] = useState<string | null>(null);
 
+  const handleVisibleRange = useCallback(
+    (date: Date) =>
+      getFullCalendarVisibleRange(
+        calendarAdapter,
+        viewType,
+        date,
+        activeTimezone,
+      ),
+    [calendarAdapter, viewType, activeTimezone],
+  );
+
   const handleDatesSet = useCallback(
     (info: { start: Date; end: Date; startStr: string }) => {
-      setStartISO(info.start.toISOString());
-      setEndISO(info.end.toISOString());
-      const api = calendarRef.current?.getApi();
-      if (api) {
-        setCalendarTitle(api.view?.title ?? "");
-        const type = api.view?.type;
-        if (type === "timeGridWeek") setViewType("week");
-        if (type === "timeGridDay") setViewType("day");
-      }
-      setCurrentDate(parseDateKey(info.startStr.slice(0, 10)));
+      const nextStartISO = info.start.toISOString();
+      const nextEndISO = info.end.toISOString();
+      const nextDateKey = info.startStr.slice(0, 10);
+      const nextTitle = calendarRef.current?.getApi().view?.title ?? "";
+
+      setStartISO((current) =>
+        current === nextStartISO ? current : nextStartISO,
+      );
+      setEndISO((current) => (current === nextEndISO ? current : nextEndISO));
+      setCalendarTitle((current) =>
+        current === nextTitle ? current : nextTitle,
+      );
+      setCurrentDate((current) =>
+        formatDateKey(current) === nextDateKey
+          ? current
+          : parseDateKey(nextDateKey),
+      );
     },
-    [setViewType],
+    [],
   );
 
   const {
@@ -322,14 +340,7 @@ function CalendarPage() {
           weekends
           timeZone={activeTimezone}
           firstDay={fullCalendarFirstDay}
-          visibleRange={(date) =>
-            getFullCalendarVisibleRange(
-              calendarAdapter,
-              viewType,
-              date,
-              activeTimezone,
-            )
-          }
+          visibleRange={handleVisibleRange}
           datesSet={handleDatesSet}
           select={handleDateSelect}
           eventClick={handlePlannedEventClick}
