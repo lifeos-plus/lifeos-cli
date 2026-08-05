@@ -50,6 +50,21 @@ export const normalizePlanningViewType = (
 ): "sevenYear" | "year" | "month" | "week" | "day" =>
   viewType === "7years" ? "sevenYear" : viewType;
 
+export const countInclusiveLocalDates = (
+  startDate: string,
+  endDate: string,
+): number => {
+  const start = parseLocalDateString(startDate);
+  const end = parseLocalDateString(endDate);
+  const startOrdinal = Date.UTC(
+    start.getFullYear(),
+    start.getMonth(),
+    start.getDate(),
+  );
+  const endOrdinal = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+  return Math.floor((endOrdinal - startOrdinal) / (24 * 60 * 60 * 1000)) + 1;
+};
+
 export interface PlanningGroup {
   id: string;
   label: string;
@@ -99,7 +114,10 @@ export interface CalendarAdapter {
   /**
    * Get the number of days in a planning cycle
    */
-  getPlanningCycleDays(cycleType: ExtendedPlanningViewType): number;
+  getPlanningCycleDays(
+    cycleType: ExtendedPlanningViewType,
+    baseDate?: Date,
+  ): number;
 
   /**
    * Check if a date is a special day (e.g., Day Out of Time for Mayan calendar)

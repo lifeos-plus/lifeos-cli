@@ -5,6 +5,7 @@ import PageLayout from "@/layouts/PageLayout";
 import { useVisions } from "@/hooks/queries/useVisions";
 import { useCalendarAdapter } from "@/hooks/useCalendarAdapter";
 import type { PlanningViewType } from "@/utils/calendar";
+import { parseLocalDateString } from "@/utils/calendar";
 import PlanningTaskList from "@/components/PlanningTaskList";
 import ToolbarContainer from "@/components/ToolbarContainer";
 import { SegmentedControl } from "@/components/forms";
@@ -29,6 +30,7 @@ const PlanningPage: React.FC = () => {
     adapter: calendarAdapter,
     calendarSystem,
     firstDayOfWeek,
+    sevenYearAnchorDate,
   } = useCalendarAdapter();
 
   React.useEffect(() => {
@@ -36,25 +38,8 @@ const PlanningPage: React.FC = () => {
   }, [setHeader]);
 
   const normalizedDate = useMemo(() => {
-    if (!calendarAdapter) return selectedDate;
-    switch (viewType) {
-      case "7years":
-        return calendarAdapter.getYearStart(selectedDate);
-      case "year":
-        return calendarAdapter.getYearStart(selectedDate);
-      case "month": {
-        const monthInfo = calendarAdapter.getMonthInfo(selectedDate);
-        if (monthInfo.isValidMonth && monthInfo.monthStart) {
-          return monthInfo.monthStart;
-        }
-        return calendarAdapter.getYearStart(selectedDate);
-      }
-      case "week":
-        return calendarAdapter.getWeekStart(selectedDate);
-      case "day":
-      default:
-        return selectedDate;
-    }
+    const range = calendarAdapter.getPeriodRange(viewType, selectedDate);
+    return parseLocalDateString(range.start);
   }, [calendarAdapter, viewType, selectedDate]);
 
   const {
@@ -65,6 +50,7 @@ const PlanningPage: React.FC = () => {
     limit: 100,
     calendarSystem,
     firstDayOfWeek,
+    sevenYearAnchorDate,
   });
 
   useEffect(() => {
@@ -76,26 +62,8 @@ const PlanningPage: React.FC = () => {
       "day",
     ].filter((vt) => vt !== viewType) as PlanningViewType[];
     others.forEach((vt) => {
-      const dateForPrefetch = (() => {
-        switch (vt) {
-          case "7years":
-            return calendarAdapter.getYearStart(selectedDate);
-          case "year":
-            return calendarAdapter.getYearStart(selectedDate);
-          case "month": {
-            const monthInfo = calendarAdapter.getMonthInfo(selectedDate);
-            if (monthInfo.isValidMonth && monthInfo.monthStart) {
-              return monthInfo.monthStart;
-            }
-            return calendarAdapter.getYearStart(selectedDate);
-          }
-          case "week":
-            return calendarAdapter.getWeekStart(selectedDate);
-          case "day":
-          default:
-            return selectedDate;
-        }
-      })();
+      const range = calendarAdapter.getPeriodRange(vt, selectedDate);
+      const dateForPrefetch = parseLocalDateString(range.start);
       void prefetch(vt, dateForPrefetch);
     });
   }, [viewType, selectedDate, prefetch, calendarAdapter]);

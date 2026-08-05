@@ -82,6 +82,20 @@ describe("GregorianCalendarAdapter", () => {
     });
   });
 
+  it("derives planning duration from Gregorian period boundaries", () => {
+    const adapter = new GregorianCalendarAdapter();
+
+    expect(adapter.getPlanningCycleDays("month", new Date(2024, 1, 15))).toBe(
+      29,
+    );
+    expect(adapter.getPlanningCycleDays("month", new Date(2025, 1, 15))).toBe(
+      28,
+    );
+    expect(adapter.getPlanningCycleDays("year", new Date(2024, 6, 1))).toBe(
+      366,
+    );
+  });
+
   it("builds week groups with nested day children", () => {
     const adapter = new GregorianCalendarAdapter(1);
     const base = new Date("2025-01-08T00:00:00Z");

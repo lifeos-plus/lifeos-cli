@@ -52,6 +52,7 @@ export function usePlanningTasks(
     gcTimeMs?: number;
     calendarSystem?: CalendarSystem;
     firstDayOfWeek?: number;
+    sevenYearAnchorDate?: string;
   },
 ) {
   const queryClient = useQueryClient();
@@ -60,6 +61,7 @@ export function usePlanningTasks(
   const gcTime = opts?.gcTimeMs ?? 5 * 60 * 1000;
   const calendarSystem = opts?.calendarSystem ?? "gregorian";
   const firstDayOfWeek = opts?.firstDayOfWeek ?? 1;
+  const sevenYearAnchorDate = opts?.sevenYearAnchorDate;
 
   const query = useQuery({
     queryKey: tasksKeys.list({
@@ -67,6 +69,7 @@ export function usePlanningTasks(
       planning_cycle_start_date: toISODate(selectedDate),
       calendar_system: calendarSystem,
       first_day_of_week: firstDayOfWeek,
+      seven_year_anchor_date: sevenYearAnchorDate,
       fields: "full",
       size,
     }),
@@ -76,6 +79,7 @@ export function usePlanningTasks(
         planning_cycle_start_date: toISODate(selectedDate),
         calendar_system: calendarSystem,
         first_day_of_week: firstDayOfWeek,
+        seven_year_anchor_date: sevenYearAnchorDate,
         fields: "full",
         size,
       });
@@ -99,6 +103,7 @@ export function usePlanningTasks(
           planning_cycle_start_date: toISODate(prefetchDate),
           calendar_system: calendarSystem,
           first_day_of_week: firstDayOfWeek,
+          seven_year_anchor_date: sevenYearAnchorDate,
           fields: "full",
           size,
         }),
@@ -108,6 +113,7 @@ export function usePlanningTasks(
             planning_cycle_start_date: toISODate(prefetchDate),
             calendar_system: calendarSystem,
             first_day_of_week: firstDayOfWeek,
+            seven_year_anchor_date: sevenYearAnchorDate,
             fields: "full",
             size,
           });
@@ -123,7 +129,15 @@ export function usePlanningTasks(
         gcTime,
       });
     },
-    [calendarSystem, firstDayOfWeek, gcTime, queryClient, size, staleTime],
+    [
+      calendarSystem,
+      firstDayOfWeek,
+      gcTime,
+      queryClient,
+      sevenYearAnchorDate,
+      size,
+      staleTime,
+    ],
   );
 
   return {

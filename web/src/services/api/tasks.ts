@@ -90,6 +90,7 @@ interface TaskListMeta {
   planning_cycle_start_date?: string | null;
   calendar_system?: string | null;
   first_day_of_week?: number | null;
+  seven_year_anchor_date?: string | null;
   query?: string | null;
   fields?: TaskFieldsMode | null;
 }
@@ -111,6 +112,7 @@ export interface TaskListFilters {
   planning_cycle_start_date?: string; // YYYY-MM-DD
   calendar_system?: string;
   first_day_of_week?: number;
+  seven_year_anchor_date?: string;
   query?: string;
   fields?: TaskFieldsMode;
 }
@@ -157,6 +159,8 @@ export const tasksApi = {
     if (extra?.calendar_system) params.calendar_system = extra.calendar_system;
     if (typeof extra?.first_day_of_week === "number")
       params.first_day_of_week = extra.first_day_of_week;
+    if (extra?.seven_year_anchor_date)
+      params.seven_year_anchor_date = extra.seven_year_anchor_date;
     if (extra?.query) params.query = extra.query;
     const fields: TaskFieldsMode = extra?.fields ?? "basic";
     params.fields = fields;

@@ -4,12 +4,14 @@ import type {
   PlanningGroup,
 } from "./CalendarAdapter";
 import {
+  countInclusiveLocalDates,
   DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
   isLocalDateString,
   normalizePlanningViewType,
   parseLocalDateString,
 } from "./CalendarAdapter";
 import type { TaskWithSubtasks } from "@/services/api";
+import { formatDateKey } from "@/utils/datetime";
 
 /**
  * Mayan 13-Moon calendar adapter implementation
@@ -350,48 +352,84 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   }
 
   getNextPeriod(currentDate: Date, cycleType: ExtendedPlanningViewType): Date {
-    return this.getAdjacentPeriodStart(currentDate, cycleType, 1);
+    const nextDate = new Date(currentDate);
+    const normalizedCycleType = normalizePlanningViewType(cycleType);
+
+    switch (normalizedCycleType) {
+      case "year": {
+        const start = this.getMayanYearStart(currentDate);
+        start.setFullYear(start.getFullYear() + 1);
+        return start;
+      }
+      case "sevenYear": {
+        const start = this.getSevenYearPeriodStart(currentDate);
+        start.setFullYear(start.getFullYear() + 7);
+        return start;
+      }
+      case "month": {
+        const range = this.getPeriodRange("month", currentDate);
+        return parseLocalDateString(
+          this.shiftAdjacentPeriodRange("month", range.start, 1).start,
+        );
+      }
+      case "week": {
+        const range = this.getPeriodRange("week", currentDate);
+        return parseLocalDateString(
+          this.shiftAdjacentPeriodRange("week", range.start, 1).start,
+        );
+      }
+      case "day":
+        nextDate.setDate(nextDate.getDate() + 1);
+        return nextDate;
+      default:
+        return nextDate;
+    }
   }
 
   getPreviousPeriod(
     currentDate: Date,
     cycleType: ExtendedPlanningViewType,
   ): Date {
-    return this.getAdjacentPeriodStart(currentDate, cycleType, -1);
-  }
-
-  private getAdjacentPeriodStart(
-    currentDate: Date,
-    cycleType: ExtendedPlanningViewType,
-    step: 1 | -1,
-  ): Date {
-    const currentRange = this.getPeriodRange(cycleType, currentDate);
-    const adjacentRange = this.shiftPeriodRange(
-      cycleType,
-      currentRange.start,
-      currentRange.end,
-      step,
-    );
-    return parseLocalDateString(adjacentRange.start);
-  }
-
-  getPlanningCycleDays(cycleType: ExtendedPlanningViewType): number {
+    const previousDate = new Date(currentDate);
     const normalizedCycleType = normalizePlanningViewType(cycleType);
 
     switch (normalizedCycleType) {
-      case "year":
-        return 365;
-      case "sevenYear":
-        return 365 * 7;
-      case "month":
-        return 28; // Mayan months are always 28 days
-      case "week":
-        return 7;
+      case "year": {
+        const start = this.getMayanYearStart(currentDate);
+        start.setFullYear(start.getFullYear() - 1);
+        return start;
+      }
+      case "sevenYear": {
+        const start = this.getSevenYearPeriodStart(currentDate);
+        start.setFullYear(start.getFullYear() - 7);
+        return start;
+      }
+      case "month": {
+        const range = this.getPeriodRange("month", currentDate);
+        return parseLocalDateString(
+          this.shiftAdjacentPeriodRange("month", range.start, -1).start,
+        );
+      }
+      case "week": {
+        const range = this.getPeriodRange("week", currentDate);
+        return parseLocalDateString(
+          this.shiftAdjacentPeriodRange("week", range.start, -1).start,
+        );
+      }
       case "day":
-        return 1;
+        previousDate.setDate(previousDate.getDate() - 1);
+        return previousDate;
       default:
-        return 1;
+        return previousDate;
     }
+  }
+
+  getPlanningCycleDays(
+    cycleType: ExtendedPlanningViewType,
+    baseDate: Date = new Date(),
+  ): number {
+    const range = this.getPeriodRange(cycleType, baseDate);
+    return countInclusiveLocalDates(range.start, range.end);
   }
 
   isSpecialDay(date: Date): boolean {
@@ -450,7 +488,7 @@ export class MayanCalendarAdapter implements CalendarAdapter {
 
     return [
       {
-        id: `mayan-seven-year-${start.toLocaleDateString("en-CA")}`,
+        id: `mayan-seven-year-${formatDateKey(start)}`,
         label: `${start.getFullYear()}-${start.getFullYear() + 6}`,
         date: start,
         tasks: tasksInCurrentPeriod,
@@ -715,8 +753,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   getCurrentWeekRange(): { start: string; end: string } {
     const range = this.getMayanWeekRange(new Date());
     return {
-      start: range.start.toLocaleDateString("en-CA"),
-      end: range.end.toLocaleDateString("en-CA"),
+      start: formatDateKey(range.start),
+      end: formatDateKey(range.end),
     };
   }
 
@@ -726,8 +764,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   getCurrentMonthRange(): { start: string; end: string } {
     const info = this.getMayanMoonInfo(new Date());
     return {
-      start: info.start.toLocaleDateString("en-CA"),
-      end: info.end.toLocaleDateString("en-CA"),
+      start: formatDateKey(info.start),
+      end: formatDateKey(info.end),
     };
   }
 
@@ -754,8 +792,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         end.setFullYear(start.getFullYear() + 1);
         end.setDate(end.getDate() - 1);
         return {
-          start: start.toLocaleDateString("en-CA"),
-          end: end.toLocaleDateString("en-CA"),
+          start: formatDateKey(start),
+          end: formatDateKey(end),
         };
       }
       case "sevenYear": {
@@ -764,34 +802,34 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         end.setFullYear(start.getFullYear() + 7);
         end.setDate(end.getDate() - 1);
         return {
-          start: start.toLocaleDateString("en-CA"),
-          end: end.toLocaleDateString("en-CA"),
+          start: formatDateKey(start),
+          end: formatDateKey(end),
         };
       }
       case "month": {
         const info = this.getMayanMoonInfo(date);
         return {
-          start: info.start.toLocaleDateString("en-CA"),
-          end: info.end.toLocaleDateString("en-CA"),
+          start: formatDateKey(info.start),
+          end: formatDateKey(info.end),
         };
       }
       case "week": {
         const r = this.getMayanWeekRange(date);
         return {
-          start: r.start.toLocaleDateString("en-CA"),
-          end: r.end.toLocaleDateString("en-CA"),
+          start: formatDateKey(r.start),
+          end: formatDateKey(r.end),
         };
       }
       case "day": {
         const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const iso = d.toLocaleDateString("en-CA");
+        const iso = formatDateKey(d);
         return { start: iso, end: iso };
       }
       default: {
         const r = this.getMayanWeekRange(date);
         return {
-          start: r.start.toLocaleDateString("en-CA"),
-          end: r.end.toLocaleDateString("en-CA"),
+          start: formatDateKey(r.start),
+          end: formatDateKey(r.end),
         };
       }
     }
@@ -812,8 +850,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         s.setFullYear(s.getFullYear() + step);
         e.setFullYear(e.getFullYear() + step);
         return {
-          start: s.toLocaleDateString("en-CA"),
-          end: e.toLocaleDateString("en-CA"),
+          start: formatDateKey(s),
+          end: formatDateKey(e),
         };
       }
       case "sevenYear": {
@@ -822,8 +860,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         s.setFullYear(s.getFullYear() + 7 * step);
         e.setFullYear(e.getFullYear() + 7 * step);
         return {
-          start: s.toLocaleDateString("en-CA"),
-          end: e.toLocaleDateString("en-CA"),
+          start: formatDateKey(s),
+          end: formatDateKey(e),
         };
       }
       case "month": {
@@ -838,8 +876,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         s.setDate(s.getDate() + step);
         e.setDate(e.getDate() + step);
         return {
-          start: s.toLocaleDateString("en-CA"),
-          end: e.toLocaleDateString("en-CA"),
+          start: formatDateKey(s),
+          end: formatDateKey(e),
         };
       }
       default:
@@ -853,7 +891,7 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     const s = new Date(startDate + "T00:00:00");
     const e = new Date(endDate + "T00:00:00");
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      res.push(d.toLocaleDateString("en-CA"));
+      res.push(formatDateKey(d));
     }
     return res;
   }
@@ -877,15 +915,13 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       return year;
     } else {
       // For other dates, use the Mayan year calculation
-      const date = new Date(storedDate);
+      const date = parseLocalDateString(storedDate);
       const mayanYearStart = this.getMayanYearStart(date);
       return mayanYearStart.getFullYear();
     }
   }
 
   getDateForYearSelection(year: number): Date {
-    // For Mayan calendar, the year starts on July 26
-    // Create date at noon to avoid timezone issues
-    return new Date(Date.UTC(year, 6, 26, 12, 0, 0)); // July 26, noon UTC of the selected year
+    return new Date(year, 6, 26);
   }
 }

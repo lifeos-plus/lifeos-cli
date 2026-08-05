@@ -162,9 +162,10 @@ def _planning_cycle_date_filter_range(
     planning_cycle_start_date: date,
     calendar_system: str | None,
     first_day_of_week: int | None,
+    seven_year_anchor_date: date | None,
 ) -> tuple[date, date] | None:
     """Return a calendar-aware planning-cycle filter range when requested."""
-    if calendar_system is None and first_day_of_week is None:
+    if calendar_system is None and first_day_of_week is None and seven_year_anchor_date is None:
         return None
     if planning_cycle_type not in {"day", "week", "month", "year", "7years"}:
         return None
@@ -174,6 +175,7 @@ def _planning_cycle_date_filter_range(
             planning_cycle_start_date,
             calendar_system=calendar_system,
             first_day_of_week=first_day_of_week,
+            seven_year_anchor_date=seven_year_anchor_date,
         )
     except (ConfigurationError, ValueError) as exc:
         raise ValueError(str(exc)) from exc
@@ -193,6 +195,7 @@ def _apply_task_filters(
     planning_cycle_start_date: date | None = None,
     calendar_system: str | None = None,
     first_day_of_week: int | None = None,
+    seven_year_anchor_date: date | None = None,
     content: str | None = None,
     query: str | None = None,
 ) -> Any:
@@ -239,6 +242,7 @@ def _apply_task_filters(
                 planning_cycle_start_date=planning_cycle_start_date,
                 calendar_system=calendar_system,
                 first_day_of_week=first_day_of_week,
+                seven_year_anchor_date=seven_year_anchor_date,
             )
         else:
             cycle_range = None
@@ -345,6 +349,7 @@ async def list_tasks(
     planning_cycle_start_date: date | None = None,
     calendar_system: str | None = None,
     first_day_of_week: int | None = None,
+    seven_year_anchor_date: date | None = None,
     content: str | None = None,
     query: str | None = None,
     limit: int = 100,
@@ -364,6 +369,7 @@ async def list_tasks(
         planning_cycle_start_date=planning_cycle_start_date,
         calendar_system=calendar_system,
         first_day_of_week=first_day_of_week,
+        seven_year_anchor_date=seven_year_anchor_date,
         content=content,
         query=query,
     )
@@ -390,6 +396,7 @@ async def count_tasks(
     planning_cycle_start_date: date | None = None,
     calendar_system: str | None = None,
     first_day_of_week: int | None = None,
+    seven_year_anchor_date: date | None = None,
     content: str | None = None,
     query: str | None = None,
 ) -> int:
@@ -407,6 +414,7 @@ async def count_tasks(
         planning_cycle_start_date=planning_cycle_start_date,
         calendar_system=calendar_system,
         first_day_of_week=first_day_of_week,
+        seven_year_anchor_date=seven_year_anchor_date,
         content=content,
         query=query,
     )

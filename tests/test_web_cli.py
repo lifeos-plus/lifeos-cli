@@ -916,6 +916,7 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
         "planning_cycle_start_date": None,
         "calendar_system": None,
         "first_day_of_week": None,
+        "seven_year_anchor_date": None,
         "query": "Needle",
         "limit": 50,
         "offset": 50,
@@ -930,6 +931,7 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
         "planning_cycle_start_date": None,
         "calendar_system": None,
         "first_day_of_week": None,
+        "seven_year_anchor_date": None,
         "query": "Needle",
     }
     assert response.pagination.total == 123

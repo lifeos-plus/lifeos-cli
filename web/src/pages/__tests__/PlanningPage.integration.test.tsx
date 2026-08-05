@@ -83,6 +83,10 @@ const calendarAdapter = {
   getWeekStart: vi.fn(() => new Date("2025-01-06T00:00:00.000Z")),
   getPreviousPeriod: vi.fn(() => new Date("2024-12-31T00:00:00.000Z")),
   getNextPeriod: vi.fn(() => new Date("2025-01-02T00:00:00.000Z")),
+  getPeriodRange: vi.fn((viewType: string, date: Date) => {
+    const start = date.toLocaleDateString("en-CA");
+    return { start, end: start, viewType };
+  }),
   buildPlanningGroups: vi.fn((_, __, tasks: unknown[]) => [
     { id: "group-1", tasks },
   ]),

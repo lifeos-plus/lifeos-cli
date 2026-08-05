@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getFullCalendarFirstDay,
+  getFullCalendarVisibleRange,
   GregorianCalendarAdapter,
   MayanCalendarAdapter,
 } from "@/utils/calendar";
@@ -57,5 +58,37 @@ describe("getFullCalendarFirstDay", () => {
         1,
       ),
     ).toBe(new Date(2026, 6, 26).getDay());
+  });
+});
+
+describe("getFullCalendarVisibleRange", () => {
+  it("uses the configured Gregorian week boundary", () => {
+    expect(
+      getFullCalendarVisibleRange(
+        new GregorianCalendarAdapter(1),
+        "week",
+        new Date(2026, 6, 30),
+      ),
+    ).toEqual({ start: "2026-07-27", end: "2026-08-03" });
+  });
+
+  it("uses Mayan physical ranges including an intercalary leap day", () => {
+    expect(
+      getFullCalendarVisibleRange(
+        new MayanCalendarAdapter(),
+        "week",
+        new Date(2028, 1, 29),
+      ),
+    ).toEqual({ start: "2028-02-28", end: "2028-03-07" });
+  });
+
+  it("shows Day Out of Time as its own Mayan week", () => {
+    expect(
+      getFullCalendarVisibleRange(
+        new MayanCalendarAdapter(),
+        "week",
+        new Date(2028, 6, 25),
+      ),
+    ).toEqual({ start: "2028-07-25", end: "2028-07-26" });
   });
 });

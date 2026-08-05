@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { usePlanningCycle } from "@/hooks/useCalendarAdapter";
 import { parseLocalDateString } from "@/utils/calendar";
+import { formatDateKey } from "@/utils/datetime";
 import EnumSelect from "./selects/EnumSelect";
 import { TextInput } from "./forms";
 
@@ -64,7 +65,7 @@ export const PlanningCycleDateInput: React.FC<PlanningCycleDateInputProps> = ({
               const monthIndex = parseInt(value);
               const yearStart = adapter.getYearStart(currentDate);
               const monthStart = adapter.getMonthStart(yearStart, monthIndex);
-              onStartDateChange(monthStart.toLocaleDateString("en-CA"));
+              onStartDateChange(formatDateKey(monthStart));
             }
           }}
           disabled={disabled}
@@ -115,7 +116,7 @@ export const PlanningCycleDateInput: React.FC<PlanningCycleDateInputProps> = ({
             adapter.getDateForYearSelection
           ) {
             const newStart = adapter.getDateForYearSelection(year);
-            onStartDateChange(newStart.toLocaleDateString("en-CA"));
+            onStartDateChange(formatDateKey(newStart));
           }
         }}
         disabled={disabled}
@@ -176,9 +177,9 @@ export const PlanningCycleDateInput: React.FC<PlanningCycleDateInputProps> = ({
         break;
       }
       case "week": {
-        const selectedDate = new Date(e.target.value);
+        const selectedDate = parseLocalDateString(e.target.value);
         const weekStart = adapter.getWeekStart(selectedDate);
-        newStartDate = weekStart.toLocaleDateString("en-CA");
+        newStartDate = formatDateKey(weekStart);
         break;
       }
       case "day": {

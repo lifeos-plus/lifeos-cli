@@ -15,6 +15,7 @@ export {
 } from "./createCalendarAdapter";
 export {
   getFullCalendarFirstDay,
+  getFullCalendarVisibleRange,
 } from "./fullCalendar";
 
 // Export concrete adapters for tests and advanced callers.

@@ -76,6 +76,21 @@ describe("MayanCalendarAdapter", () => {
     expect(leapWeek.children?.[7]?.date).toEqual(new Date(2028, 2, 6));
   });
 
+  it("derives physical planning duration from Mayan boundaries", () => {
+    expect(adapter.getPlanningCycleDays("month", new Date(2028, 1, 29))).toBe(
+      29,
+    );
+    expect(adapter.getPlanningCycleDays("week", new Date(2028, 1, 29))).toBe(
+      8,
+    );
+    expect(adapter.getPlanningCycleDays("week", new Date(2028, 6, 25))).toBe(
+      1,
+    );
+    expect(adapter.getPlanningCycleDays("year", new Date(2027, 6, 26))).toBe(
+      366,
+    );
+  });
+
   it("calculates Mayan days independently of daylight-saving transitions", () => {
     expect(adapter.getPeriodRange("week", new Date(2026, 3, 1))).toEqual({
       start: "2026-03-28",

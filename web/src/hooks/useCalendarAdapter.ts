@@ -16,6 +16,7 @@ interface CalendarAdapterState {
   adapter: CalendarAdapter;
   calendarSystem: CalendarSystem;
   firstDayOfWeek: number;
+  sevenYearAnchorDate: string;
   loading: boolean;
 }
 
@@ -67,6 +68,7 @@ export function useCalendarAdapter(): CalendarAdapterState {
     adapter,
     calendarSystem,
     firstDayOfWeek,
+    sevenYearAnchorDate,
     loading:
       calendarSystemPreference.loading ||
       firstDayPreference.loading ||
@@ -88,39 +90,12 @@ export function usePlanningCycle() {
     cycleType: ExtendedPlanningViewType,
     baseDate: Date = new Date(),
   ) => {
-    const yearStart = adapter.getYearStart(baseDate);
-    const monthInfo = adapter.getMonthInfo(baseDate);
-    const startDate = monthInfo.monthStart || baseDate;
-    const days = adapter.getPlanningCycleDays(cycleType);
-
-    // Override start date based on cycle type
-    switch (cycleType) {
-      case "year":
-        startDate.setTime(yearStart.getTime());
-        break;
-      case "7years":
-      case "sevenYear":
-        startDate.setTime(
-          parseLocalDateString(
-            adapter.getPeriodRange("7years", baseDate).start,
-          ).getTime(),
-        );
-        break;
-      case "month":
-        if (monthInfo.monthStart) {
-          startDate.setTime(monthInfo.monthStart.getTime());
-        }
-        break;
-      case "week":
-        startDate.setTime(adapter.getWeekStart(baseDate).getTime());
-        break;
-      case "day":
-        startDate.setTime(baseDate.getTime());
-        break;
-    }
+    const range = adapter.getPeriodRange(cycleType, baseDate);
+    const startDate = parseLocalDateString(range.start);
+    const days = adapter.getPlanningCycleDays(cycleType, startDate);
 
     return {
-      startDate: startDate.toLocaleDateString("en-CA"),
+      startDate: range.start,
       days,
     };
   };

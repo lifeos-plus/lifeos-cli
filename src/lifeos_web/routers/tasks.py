@@ -146,6 +146,7 @@ async def list_tasks(
     planning_cycle_start_date: date | None = None,
     calendar_system: str | None = None,
     first_day_of_week: Annotated[int | None, Query(ge=1, le=7)] = None,
+    seven_year_anchor_date: date | None = None,
     query: str | None = None,
     fields: Annotated[str, Query(pattern="^(basic|full)$")] = "basic",
 ) -> ListResponse:
@@ -164,6 +165,7 @@ async def list_tasks(
             planning_cycle_start_date=planning_cycle_start_date,
             calendar_system=calendar_system,
             first_day_of_week=first_day_of_week,
+            seven_year_anchor_date=seven_year_anchor_date,
             query=query,
             limit=size,
             offset=(page - 1) * size,
@@ -179,6 +181,7 @@ async def list_tasks(
             planning_cycle_start_date=planning_cycle_start_date,
             calendar_system=calendar_system,
             first_day_of_week=first_day_of_week,
+            seven_year_anchor_date=seven_year_anchor_date,
             query=query,
         )
     except ValueError as exc:
@@ -212,6 +215,9 @@ async def list_tasks(
             ),
             "calendar_system": calendar_system,
             "first_day_of_week": first_day_of_week,
+            "seven_year_anchor_date": (
+                seven_year_anchor_date.isoformat() if seven_year_anchor_date else None
+            ),
             "query": query,
             "fields": fields,
         },

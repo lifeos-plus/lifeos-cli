@@ -9,12 +9,14 @@ from typing import Literal, Protocol
 
 from lifeos_cli.config import (
     DEFAULT_CALENDAR_FIRST_DAY_OF_WEEK,
+    DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_DATE,
     DEFAULT_CALENDAR_SYSTEM,
     validate_calendar_first_day_of_week,
     validate_calendar_system,
 )
 
 CalendarGranularity = Literal["day", "week", "month", "year", "7years"]
+DEFAULT_SEVEN_YEAR_ANCHOR = date.fromisoformat(DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_DATE)
 
 
 class CalendarAdapter(Protocol):
@@ -30,12 +32,14 @@ class CalendarAdapter(Protocol):
         """Return inclusive year boundaries for the target date."""
 
     def seven_year_range(self, target: date) -> tuple[date, date]:
-        """Return inclusive seven-year boundaries starting with the target year."""
+        """Return inclusive seven-year boundaries containing the target date."""
 
 
 @dataclass(frozen=True)
 class GregorianCalendarAdapter:
     """Standard Gregorian calendar adapter."""
+
+    seven_year_anchor_date: date = DEFAULT_SEVEN_YEAR_ANCHOR
 
     def week_range(self, target: date, first_day_of_week: int) -> tuple[date, date]:
         normalized_first_day = validate_calendar_first_day_of_week(first_day_of_week)
@@ -55,8 +59,10 @@ class GregorianCalendarAdapter:
         return date(target.year, 1, 1), date(target.year, 12, 31)
 
     def seven_year_range(self, target: date) -> tuple[date, date]:
-        start = date(target.year, 1, 1)
-        end = date(target.year + 7, 1, 1) - timedelta(days=1)
+        anchor_year = self.seven_year_anchor_date.year
+        offset_years = ((target.year - anchor_year) // 7) * 7
+        start = date(anchor_year + offset_years, 1, 1)
+        end = date(start.year + 7, 1, 1) - timedelta(days=1)
         return start, end
 
 
@@ -65,6 +71,7 @@ class MayanCalendarAdapter:
     """Mayan 13 Moon calendar adapter with 13 28-day moons and Day Out of Time."""
 
     moon_length_days: int = 28
+    seven_year_anchor_date: date = DEFAULT_SEVEN_YEAR_ANCHOR
 
     def year_start(self, target: date) -> date:
         july_26 = date(target.year, 7, 26)
@@ -128,16 +135,24 @@ class MayanCalendarAdapter:
         return start, start.replace(year=start.year + 1) - timedelta(days=1)
 
     def seven_year_range(self, target: date) -> tuple[date, date]:
-        start = self.year_start(target)
+        anchor_start = self.year_start(self.seven_year_anchor_date)
+        target_start = self.year_start(target)
+        offset_years = ((target_start.year - anchor_start.year) // 7) * 7
+        start = anchor_start.replace(year=anchor_start.year + offset_years)
         return start, start.replace(year=start.year + 7) - timedelta(days=1)
 
 
-def get_calendar_adapter(system: str | None = None) -> CalendarAdapter:
+def get_calendar_adapter(
+    system: str | None = None,
+    *,
+    seven_year_anchor_date: date | None = None,
+) -> CalendarAdapter:
     """Return the adapter for a validated calendar system."""
     normalized = validate_calendar_system(system or DEFAULT_CALENDAR_SYSTEM)
+    anchor_date = seven_year_anchor_date or DEFAULT_SEVEN_YEAR_ANCHOR
     if normalized == "mayan_13_moon":
-        return MayanCalendarAdapter()
-    return GregorianCalendarAdapter()
+        return MayanCalendarAdapter(seven_year_anchor_date=anchor_date)
+    return GregorianCalendarAdapter(seven_year_anchor_date=anchor_date)
 
 
 def get_calendar_period_range(
@@ -146,12 +161,16 @@ def get_calendar_period_range(
     *,
     calendar_system: str | None = None,
     first_day_of_week: int | None = None,
+    seven_year_anchor_date: date | None = None,
 ) -> tuple[date, date]:
     """Return inclusive period boundaries for a target date."""
     if granularity == "day":
         return target, target
 
-    adapter = get_calendar_adapter(calendar_system)
+    adapter = get_calendar_adapter(
+        calendar_system,
+        seven_year_anchor_date=seven_year_anchor_date,
+    )
     normalized_first_day = validate_calendar_first_day_of_week(
         first_day_of_week or DEFAULT_CALENDAR_FIRST_DAY_OF_WEEK
     )
@@ -173,6 +192,7 @@ def iter_calendar_periods(
     granularity: CalendarGranularity,
     calendar_system: str | None = None,
     first_day_of_week: int | None = None,
+    seven_year_anchor_date: date | None = None,
 ) -> tuple[tuple[date, date], ...]:
     """Return sorted unique period buckets touched by an inclusive date range."""
     if end < start:
@@ -187,6 +207,7 @@ def iter_calendar_periods(
                 cursor,
                 calendar_system=calendar_system,
                 first_day_of_week=first_day_of_week,
+                seven_year_anchor_date=seven_year_anchor_date,
             ),
             None,
         )

@@ -81,7 +81,7 @@ def test_calendar_period_helpers_validate_calendar_system() -> None:
         "7years",
         date(2026, 4, 10),
         calendar_system="gregorian",
-    ) == (date(2026, 1, 1), date(2032, 12, 31))
+    ) == (date(2025, 1, 1), date(2031, 12, 31))
 
     assert get_calendar_period_range(
         "month",
@@ -127,6 +127,7 @@ def test_task_planning_cycle_filter_range_is_opt_in() -> None:
             planning_cycle_start_date=date(2026, 7, 26),
             calendar_system=None,
             first_day_of_week=None,
+            seven_year_anchor_date=None,
         )
         is None
     )
@@ -138,6 +139,7 @@ def test_task_planning_cycle_filter_range_uses_mayan_periods() -> None:
         planning_cycle_start_date=date(2026, 7, 26),
         calendar_system="mayan_13_moon",
         first_day_of_week=1,
+        seven_year_anchor_date=None,
     ) == (date(2026, 7, 26), date(2026, 8, 22))
 
     assert _planning_cycle_date_filter_range(
@@ -145,11 +147,30 @@ def test_task_planning_cycle_filter_range_uses_mayan_periods() -> None:
         planning_cycle_start_date=date(2026, 7, 26),
         calendar_system="mayan_13_moon",
         first_day_of_week=1,
-    ) == (date(2026, 7, 26), date(2033, 7, 25))
+        seven_year_anchor_date=date(2025, 7, 26),
+    ) == (date(2025, 7, 26), date(2032, 7, 25))
 
     assert _planning_cycle_date_filter_range(
         planning_cycle_type="week",
         planning_cycle_start_date=date(2027, 7, 25),
         calendar_system="mayan_13_moon",
         first_day_of_week=7,
+        seven_year_anchor_date=None,
     ) == (date(2027, 7, 25), date(2027, 7, 25))
+
+
+def test_seven_year_ranges_follow_the_configured_anchor_for_each_calendar() -> None:
+    anchor = date(2028, 3, 15)
+
+    assert get_calendar_period_range(
+        "7years",
+        date(2027, 12, 31),
+        calendar_system="gregorian",
+        seven_year_anchor_date=anchor,
+    ) == (date(2021, 1, 1), date(2027, 12, 31))
+    assert get_calendar_period_range(
+        "7years",
+        date(2028, 1, 1),
+        calendar_system="mayan_13_moon",
+        seven_year_anchor_date=anchor,
+    ) == (date(2027, 7, 26), date(2034, 7, 25))

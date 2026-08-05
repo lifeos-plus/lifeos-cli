@@ -18,6 +18,7 @@ import type {
   PlanningGroup,
   PlanningViewType,
 } from "@/utils/calendar";
+import { parseLocalDateString } from "@/utils/calendar";
 import {
   formatDateInTimezone,
   formatDateKey,
@@ -125,7 +126,10 @@ export function isTopLevelPlanningGroup(
 ): boolean {
   if (!planningCycleType) return false;
   if (planningCycleType === "7years") {
-    return groupId.startsWith("seven-year-");
+    return (
+      groupId.startsWith("seven-year-") ||
+      groupId.startsWith("mayan-seven-year-")
+    );
   }
   return (
     groupId.startsWith(`${planningCycleType}-`) ||
@@ -149,8 +153,8 @@ export function buildHabitActionRange(
   if (!cadenceFrequency) return null;
   const periodRange = calendarAdapter.getPeriodRange(planningCycleType, groupDate);
   return {
-    startDate: formatDateKey(new Date(periodRange.start)),
-    endDate: formatDateKey(new Date(periodRange.end)),
+    startDate: periodRange.start,
+    endDate: periodRange.end,
     referenceDate: formatDateKey(referenceDate),
     cadenceFrequency,
   };
@@ -456,8 +460,8 @@ export function usePlanningTaskGroup(
       planningCycleType,
       group.date,
     );
-    const startDate = new Date(periodRange.start);
-    const endDate = new Date(periodRange.end);
+    const startDate = parseLocalDateString(periodRange.start);
+    const endDate = parseLocalDateString(periodRange.end);
 
     const startLabel = formatDateInTimezone(startDate);
 
@@ -568,7 +572,7 @@ export function usePlanningTaskGroup(
         const updatedTask = await tasksApi.update(taskId, {
           planning_cycle_type: planningCycleType,
           planning_cycle_days: cycleSettings.days,
-          planning_cycle_start_date: group.date.toLocaleDateString("en-CA"),
+          planning_cycle_start_date: formatDateKey(group.date),
         });
 
         const originalPlanningSnapshot = {
@@ -577,7 +581,7 @@ export function usePlanningTaskGroup(
         };
         const newPlanningSnapshot = {
           planning_cycle_type: planningCycleType,
-          planning_cycle_start_date: group.date.toLocaleDateString("en-CA"),
+          planning_cycle_start_date: formatDateKey(group.date),
         };
 
         updateTaskCaches(queryClient, updatedTask);
@@ -651,7 +655,7 @@ export function usePlanningTaskGroup(
         planningCycleType,
         group.date,
       );
-      const planningStartDate = group.date.toLocaleDateString("en-CA");
+      const planningStartDate = formatDateKey(group.date);
 
       const createdTask = await tasksApi.create({
         content: newTaskContent.trim(),
@@ -768,7 +772,7 @@ export function usePlanningTaskGroup(
 
       const cycleSettings = getDefaultCycleSettings(
         planningCycleType,
-        group.date,
+        nextPeriodStart,
       );
 
       const results = await Promise.allSettled(
@@ -777,7 +781,7 @@ export function usePlanningTaskGroup(
             planning_cycle_type: planningCycleType,
             planning_cycle_days: cycleSettings.days,
             planning_cycle_start_date:
-              nextPeriodStart.toLocaleDateString("en-CA"),
+              formatDateKey(nextPeriodStart),
           }),
         ),
       );
@@ -816,8 +820,8 @@ export function usePlanningTaskGroup(
       }
 
       // Invalidate cache for both current and next periods
-      const currentPeriodDate = group.date.toLocaleDateString("en-CA");
-      const nextPeriodDate = nextPeriodStart.toLocaleDateString("en-CA");
+      const currentPeriodDate = formatDateKey(group.date);
+      const nextPeriodDate = formatDateKey(nextPeriodStart);
 
       const succeededIds = succeededTasks.map((task) => task.id);
       await invalidateTasksByIds(queryClient, succeededIds, {

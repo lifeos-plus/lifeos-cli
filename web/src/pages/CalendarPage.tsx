@@ -18,7 +18,10 @@ import ToolbarContainer from "@/components/ToolbarContainer";
 import { usePreferenceWithBootstrap } from "@/hooks/queries/usePreferenceWithBootstrap";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { useCalendarAdapter } from "@/hooks/useCalendarAdapter";
-import { getFullCalendarFirstDay } from "@/utils/calendar";
+import {
+  getFullCalendarFirstDay,
+  getFullCalendarVisibleRange,
+} from "@/utils/calendar";
 import { Icon } from "@/components/icons";
 import { useVisions } from "@/hooks/queries/useVisions";
 import { useAllTasks } from "@/hooks/queries/useTasks";
@@ -320,6 +323,9 @@ function CalendarPage() {
           weekends
           timeZone={activeTimezone}
           firstDay={fullCalendarFirstDay}
+          visibleRange={(date) =>
+            getFullCalendarVisibleRange(calendarAdapter, viewType, date)
+          }
           datesSet={handleDatesSet}
           select={handleDateSelect}
           eventClick={handlePlannedEventClick}

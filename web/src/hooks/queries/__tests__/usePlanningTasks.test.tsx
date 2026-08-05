@@ -115,6 +115,7 @@ describe("usePlanningTasks", () => {
         usePlanningTasks("month", new Date("2026-07-26T00:00:00Z"), {
           calendarSystem: "mayan_13_moon",
           firstDayOfWeek: 7,
+          sevenYearAnchorDate: "2025-07-26",
         }),
       { wrapper },
     );
@@ -126,6 +127,7 @@ describe("usePlanningTasks", () => {
       planning_cycle_start_date: "2026-07-26",
       calendar_system: "mayan_13_moon",
       first_day_of_week: 7,
+      seven_year_anchor_date: "2025-07-26",
     });
   });
 
@@ -137,7 +139,10 @@ describe("usePlanningTasks", () => {
     });
 
     renderHook(
-      () => usePlanningTasks("7years", new Date("2026-01-01T00:00:00Z")),
+      () =>
+        usePlanningTasks("7years", new Date("2025-01-01T00:00:00Z"), {
+          sevenYearAnchorDate: "2025-07-26",
+        }),
       { wrapper },
     );
 
@@ -145,7 +150,8 @@ describe("usePlanningTasks", () => {
     const [, , filters] = tasksGetAllMock.mock.calls[0];
     expect(filters).toMatchObject({
       planning_cycle_type: "7years",
-      planning_cycle_start_date: "2026-01-01",
+      planning_cycle_start_date: "2025-01-01",
+      seven_year_anchor_date: "2025-07-26",
     });
   });
 });
