@@ -11,13 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.calendar_adapter import iter_calendar_periods
-from lifeos_cli.config import (
-    DEFAULT_CALENDAR_FIRST_DAY_OF_WEEK,
-    DEFAULT_CALENDAR_SYSTEM,
-    ConfigurationError,
-    validate_calendar_first_day_of_week,
-    validate_calendar_system,
-)
+from lifeos_cli.config import get_preferences_settings
 from lifeos_cli.db.services import tags as tag_services
 from lifeos_cli.db.services import timelog_stats
 from lifeos_web.deps import get_db_session
@@ -48,20 +42,9 @@ def _parse_area_ids(values: list[UUID] | None) -> set[UUID] | None:
     return set(values)
 
 
-def _resolve_calendar_preferences(
-    *,
-    calendar_system: str | None,
-    first_day_of_week: int | None,
-) -> tuple[str, int]:
-    try:
-        return (
-            validate_calendar_system(calendar_system or DEFAULT_CALENDAR_SYSTEM),
-            validate_calendar_first_day_of_week(
-                first_day_of_week or DEFAULT_CALENDAR_FIRST_DAY_OF_WEEK
-            ),
-        )
-    except ConfigurationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+def _resolve_calendar_preferences() -> tuple[str, int]:
+    preferences = get_preferences_settings()
+    return preferences.calendar_system, preferences.calendar_first_day_of_week
 
 
 @router.get("/daily-areas", response_model=ListResponse)
@@ -70,7 +53,6 @@ async def list_daily_areas(
     start: date,
     end: date,
     area_ids: Annotated[list[UUID] | None, Query()] = None,
-    timezone: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=1000)] = 1000,
 ) -> ListResponse:
@@ -95,6 +77,7 @@ async def list_daily_areas(
                     }
                 )
         cursor += timedelta(days=1)
+    timezone = get_preferences_settings().timezone
     return ListResponse(
         items=_page_items(rows, page=page, size=size),
         pagination=_pagination(page=page, size=size, total=len(rows)),
@@ -111,7 +94,6 @@ async def list_daily_areas(
 async def get_day_breakdown(
     session: SessionDep,
     day: date,
-    timezone: str | None = None,
 ) -> ListResponse:
     """Return one local day's timelog minutes by LifeOS area."""
     report = await timelog_stats.get_timelog_stats_groupby_area_for_day(
@@ -128,7 +110,7 @@ async def get_day_breakdown(
     return ListResponse(
         items=rows,
         pagination=Pagination(page=1, size=100, total=len(rows), pages=1 if rows else 0),
-        meta={"day": day.isoformat(), "timezone": timezone or report.timezone},
+        meta={"day": day.isoformat(), "timezone": report.timezone},
     )
 
 
@@ -139,19 +121,14 @@ async def list_aggregated_areas(
     start: date,
     end: date,
     area_ids: Annotated[list[UUID] | None, Query()] = None,
-    timezone: str | None = None,
-    first_day_of_week: int | None = None,
-    calendar_system: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=1000)] = 1000,
 ) -> ListResponse:
     """Return aggregated timelog minutes by LifeOS area."""
     if end < start:
         raise HTTPException(status_code=400, detail="end must be on or after start")
-    resolved_calendar_system, resolved_first_day = _resolve_calendar_preferences(
-        calendar_system=calendar_system,
-        first_day_of_week=first_day_of_week,
-    )
+    preferences = get_preferences_settings()
+    resolved_calendar_system, resolved_first_day = _resolve_calendar_preferences()
     selected_areas = _parse_area_ids(area_ids)
     rows: list[dict[str, object]] = []
     periods = iter_calendar_periods(
@@ -185,7 +162,7 @@ async def list_aggregated_areas(
             "granularity": granularity,
             "start": start.isoformat(),
             "end": end.isoformat(),
-            "timezone": timezone,
+            "timezone": preferences.timezone,
             "area_ids": [str(item) for item in area_ids] if area_ids else None,
             "first_day_of_week": resolved_first_day,
             "calendar_system": resolved_calendar_system,
@@ -198,10 +175,8 @@ async def recompute_daily_areas(
     session: SessionDep,
     start: date,
     end: date,
-    timezone: str | None = None,
 ) -> dict[str, object]:
     """Rebuild persisted LifeOS timelog stats for a local date range."""
-    del timezone
     if end < start:
         raise HTTPException(status_code=400, detail="end must be on or after start")
     try:

@@ -10,6 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from lifeos_cli.config import get_preferences_settings
 from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services import tasks as task_services
 from lifeos_web.deps import get_db_session
@@ -144,15 +145,20 @@ async def list_tasks(
     exclude_status: str | None = None,
     planning_cycle_type: str | None = None,
     planning_cycle_start_date: date | None = None,
-    calendar_system: str | None = None,
-    first_day_of_week: Annotated[int | None, Query(ge=1, le=7)] = None,
-    seven_year_anchor_date: date | None = None,
     query: str | None = None,
     fields: Annotated[str, Query(pattern="^(basic|full)$")] = "basic",
 ) -> ListResponse:
     """List tasks using the frontend planning query shape."""
     if fields not in TASK_LIST_FIELD_MODES:
         raise HTTPException(status_code=400, detail=f"Unsupported task fields mode: {fields}")
+    calendar_system: str | None = None
+    first_day_of_week: int | None = None
+    seven_year_anchor_date: date | None = None
+    if planning_cycle_type is not None and planning_cycle_start_date is not None:
+        preferences = get_preferences_settings()
+        calendar_system = preferences.calendar_system
+        first_day_of_week = preferences.calendar_first_day_of_week
+        seven_year_anchor_date = date.fromisoformat(preferences.calendar_seven_year_anchor_date)
     try:
         rows = await task_services.list_tasks(
             session,

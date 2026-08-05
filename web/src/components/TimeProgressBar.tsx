@@ -57,7 +57,7 @@ const TimeProgressBar: React.FC<TimeProgressBarProps> = ({
       return;
     }
     statsApi
-      .getLocalDayBreakdown(localDateISO!, timezone)
+      .getLocalDayBreakdown(localDateISO!)
       .then((response) => {
         const rows = response.items ?? [];
         const map: Record<UUID, number> = {};

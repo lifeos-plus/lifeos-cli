@@ -6,12 +6,14 @@ import type {
 import {
   countInclusiveLocalDates,
   DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
-  isLocalDateString,
   normalizePlanningViewType,
-  parseLocalDateString,
 } from "./CalendarAdapter";
 import type { TaskWithSubtasks } from "@/services/api";
-import { formatDateKey } from "@/utils/datetime";
+import {
+  formatDateKey,
+  isDateKey,
+  parseDateKey,
+} from "@/utils/datetime";
 
 /**
  * Mayan 13-Moon calendar adapter implementation
@@ -311,7 +313,7 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   }
 
   private getSevenYearAnchorStart(): Date {
-    return this.getMayanYearStart(parseLocalDateString(this.sevenYearAnchorDate));
+    return this.getMayanYearStart(parseDateKey(this.sevenYearAnchorDate));
   }
 
   private getSevenYearPeriodStart(date: Date): Date {
@@ -336,12 +338,12 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   ): { start: string; end: string } {
     let range = this.getPeriodRange(
       viewType,
-      parseLocalDateString(startDate),
+      parseDateKey(startDate),
     );
     const direction = Math.sign(step);
 
     for (let index = 0; index < Math.abs(Math.trunc(step)); index += 1) {
-      const boundary = parseLocalDateString(
+      const boundary = parseDateKey(
         direction > 0 ? range.end : range.start,
       );
       boundary.setDate(boundary.getDate() + direction);
@@ -368,13 +370,13 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       }
       case "month": {
         const range = this.getPeriodRange("month", currentDate);
-        return parseLocalDateString(
+        return parseDateKey(
           this.shiftAdjacentPeriodRange("month", range.start, 1).start,
         );
       }
       case "week": {
         const range = this.getPeriodRange("week", currentDate);
-        return parseLocalDateString(
+        return parseDateKey(
           this.shiftAdjacentPeriodRange("week", range.start, 1).start,
         );
       }
@@ -406,13 +408,13 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       }
       case "month": {
         const range = this.getPeriodRange("month", currentDate);
-        return parseLocalDateString(
+        return parseDateKey(
           this.shiftAdjacentPeriodRange("month", range.start, -1).start,
         );
       }
       case "week": {
         const range = this.getPeriodRange("week", currentDate);
-        return parseLocalDateString(
+        return parseDateKey(
           this.shiftAdjacentPeriodRange("week", range.start, -1).start,
         );
       }
@@ -466,8 +468,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
 
   private getPlanningCycleDate(task: TaskWithSubtasks): Date | null {
     const value = task.planning_cycle_start_date;
-    if (!value || !isLocalDateString(value)) return null;
-    return parseLocalDateString(value);
+    if (!value || !isDateKey(value)) return null;
+    return parseDateKey(value);
   }
 
   private buildSevenYearGroups(
@@ -845,8 +847,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
 
     switch (normalizedViewType) {
       case "year": {
-        const s = new Date(startDate + "T00:00:00");
-        const e = new Date(endDate + "T00:00:00");
+        const s = parseDateKey(startDate);
+        const e = parseDateKey(endDate);
         s.setFullYear(s.getFullYear() + step);
         e.setFullYear(e.getFullYear() + step);
         return {
@@ -855,8 +857,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         };
       }
       case "sevenYear": {
-        const s = new Date(startDate + "T00:00:00");
-        const e = new Date(endDate + "T00:00:00");
+        const s = parseDateKey(startDate);
+        const e = parseDateKey(endDate);
         s.setFullYear(s.getFullYear() + 7 * step);
         e.setFullYear(e.getFullYear() + 7 * step);
         return {
@@ -871,8 +873,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         return this.shiftWeekRange(startDate, endDate, step);
       }
       case "day": {
-        const s = new Date(startDate + "T00:00:00");
-        const e = new Date(endDate + "T00:00:00");
+        const s = parseDateKey(startDate);
+        const e = parseDateKey(endDate);
         s.setDate(s.getDate() + step);
         e.setDate(e.getDate() + step);
         return {
@@ -888,8 +890,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   enumerateDates(startDate: string, endDate: string): string[] {
     const res: string[] = [];
     if (!startDate || !endDate) return res;
-    const s = new Date(startDate + "T00:00:00");
-    const e = new Date(endDate + "T00:00:00");
+    const s = parseDateKey(startDate);
+    const e = parseDateKey(endDate);
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
       res.push(formatDateKey(d));
     }
@@ -915,7 +917,7 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       return year;
     } else {
       // For other dates, use the Mayan year calculation
-      const date = parseLocalDateString(storedDate);
+      const date = parseDateKey(storedDate);
       const mayanYearStart = this.getMayanYearStart(date);
       return mayanYearStart.getFullYear();
     }

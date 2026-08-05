@@ -14,7 +14,7 @@ import { useVisibleModules } from "@/hooks/queries/useVisibleModules";
 import { useTheme } from "@/contexts/ThemeContext";
 import { SettingsLayout } from "@/components/settings";
 import { useSettingsConfig } from "@/config/settingsConfig";
-import { resolvePreferredTimezone } from "@/utils/datetime";
+import { isDateKey, resolvePreferredTimezone } from "@/utils/datetime";
 import type { UUID } from "@/types/primitive";
 import { VISION_EXPERIENCE_RATE_MAX } from "@/utils/constants";
 import { useToast } from "@/contexts/ToastContext";
@@ -23,10 +23,7 @@ import {
   coerceNoteCollapseValue,
   useNoteCollapsePreference,
 } from "@/hooks/notes/useNoteCollapsePreference";
-import {
-  DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
-  isLocalDateString,
-} from "@/utils/calendar";
+import { DEFAULT_SEVEN_YEAR_ANCHOR_DATE } from "@/utils/calendar";
 
 function SettingsPage() {
   const { t } = useTranslation();
@@ -58,7 +55,7 @@ function SettingsPage() {
       key: "calendar.seven_year_anchor_date",
       defaultValue: DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
       module: "calendar",
-      validator: isLocalDateString,
+    validator: isDateKey,
     });
 
   const visionExperienceSettings = usePreferenceWithBootstrap<number>({
@@ -226,11 +223,11 @@ function SettingsPage() {
         ...calendarSevenYearAnchorDateSettings,
         saveValue: async (value: unknown) =>
           await calendarSevenYearAnchorDateSettings.saveValue(
-            isLocalDateString(value) ? value : DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
+            isDateKey(value) ? value : DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
           ),
         updateValue: (value: unknown) =>
           calendarSevenYearAnchorDateSettings.updateValue(
-            isLocalDateString(value) ? value : DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
+            isDateKey(value) ? value : DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
           ),
       },
       "visions.experienceRatePerHour": {

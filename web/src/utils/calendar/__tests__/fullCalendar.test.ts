@@ -67,7 +67,8 @@ describe("getFullCalendarVisibleRange", () => {
       getFullCalendarVisibleRange(
         new GregorianCalendarAdapter(1),
         "week",
-        new Date(2026, 6, 30),
+        new Date("2026-07-30T12:00:00.000Z"),
+        "UTC",
       ),
     ).toEqual({ start: "2026-07-27", end: "2026-08-03" });
   });
@@ -77,7 +78,8 @@ describe("getFullCalendarVisibleRange", () => {
       getFullCalendarVisibleRange(
         new MayanCalendarAdapter(),
         "week",
-        new Date(2028, 1, 29),
+        new Date("2028-02-29T12:00:00.000Z"),
+        "UTC",
       ),
     ).toEqual({ start: "2028-02-28", end: "2028-03-07" });
   });
@@ -87,7 +89,8 @@ describe("getFullCalendarVisibleRange", () => {
       getFullCalendarVisibleRange(
         new MayanCalendarAdapter(),
         "week",
-        new Date(2028, 6, 25),
+        new Date("2028-07-25T12:00:00.000Z"),
+        "UTC",
       ),
     ).toEqual({ start: "2028-07-25", end: "2028-07-26" });
   });

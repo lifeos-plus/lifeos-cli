@@ -18,9 +18,8 @@ import type {
   PlanningGroup,
   PlanningViewType,
 } from "@/utils/calendar";
-import { parseLocalDateString } from "@/utils/calendar";
 import {
-  formatDateInTimezone,
+  formatDate,
   formatDateKey,
   formatDuration,
 } from "@/utils/datetime";
@@ -460,16 +459,13 @@ export function usePlanningTaskGroup(
       planningCycleType,
       group.date,
     );
-    const startDate = parseLocalDateString(periodRange.start);
-    const endDate = parseLocalDateString(periodRange.end);
+    const startLabel = formatDate(periodRange.start);
 
-    const startLabel = formatDateInTimezone(startDate);
-
-    if (startDate.toDateString() === endDate.toDateString()) {
+    if (periodRange.start === periodRange.end) {
       return startLabel;
     }
 
-    const endLabel = formatDateInTimezone(endDate);
+    const endLabel = formatDate(periodRange.end);
 
     return `${startLabel} - ${endLabel}`;
   }, [adapter, calendarAdapter, group.date, planningCycleType]);

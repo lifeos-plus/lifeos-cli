@@ -240,8 +240,8 @@ export function getCurrentWeekRange(firstDayOfWeek: number = 1): {
   weekEnd.setDate(weekStart.getDate() + 6);
 
   return {
-    start: weekStart.toLocaleDateString("en-CA"),
-    end: weekEnd.toLocaleDateString("en-CA"),
+    start: formatDateKey(weekStart),
+    end: formatDateKey(weekEnd),
   };
 }
 
@@ -261,8 +261,8 @@ export function getCurrentMonthRangeLocal(): { start: string; end: string } {
   const lastDay = new Date(year, month + 1, 0, 23, 59, 59);
 
   return {
-    start: firstDay.toLocaleDateString("en-CA"),
-    end: lastDay.toLocaleDateString("en-CA"),
+    start: formatDateKey(firstDay),
+    end: formatDateKey(lastDay),
   };
 }
 
@@ -306,8 +306,8 @@ export function shiftMonthRange(
   newEnd.setDate(newEnd.getDate() - 1);
 
   return {
-    start: newStart.toLocaleDateString("en-CA"),
-    end: newEnd.toLocaleDateString("en-CA"),
+    start: formatDateKey(newStart),
+    end: formatDateKey(newEnd),
   };
 }
 
@@ -471,7 +471,7 @@ export function getTodayDateString(): string {
   return `${year}-${month}-${day}`;
 }
 
-function parseDateOnlyToLocalDate(dateString: string): Date | null {
+export function parseDateOnlyToLocalDate(dateString: string): Date | null {
   if (!DATE_ONLY_RE.test(dateString)) return null;
   const [yearStr, monthStr, dayStr] = dateString.split("-");
   const year = parseInt(yearStr, 10);
@@ -484,7 +484,27 @@ function parseDateOnlyToLocalDate(dateString: string): Date | null {
   ) {
     return null;
   }
-  return new Date(year, month - 1, day);
+  const parsed = new Date(year, month - 1, day);
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+  return parsed;
+}
+
+export function isDateKey(value: unknown): value is string {
+  return typeof value === "string" && parseDateOnlyToLocalDate(value) !== null;
+}
+
+export function parseDateKey(value: string): Date {
+  const parsed = parseDateOnlyToLocalDate(value);
+  if (!parsed) {
+    throw new RangeError(`Invalid date-only value: ${value}`);
+  }
+  return parsed;
 }
 
 export function parseDateStringToLocalDate(value: string): Date {

@@ -6,8 +6,6 @@ export type {
 } from "./CalendarAdapter";
 export {
   DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
-  isLocalDateString,
-  parseLocalDateString,
 } from "./CalendarAdapter";
 export {
   createCalendarAdapter,

@@ -896,6 +896,15 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
         "load_task_relation_counts",
         fake_load_task_relation_counts,
     )
+    monkeypatch.setattr(
+        task_router,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=7,
+            calendar_seven_year_anchor_date="2025-07-26",
+        ),
+    )
 
     response = asyncio.run(
         task_router.list_tasks(
@@ -903,6 +912,8 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
             page=2,
             size=50,
             query="Needle",
+            planning_cycle_type="7years",
+            planning_cycle_start_date=date(2026, 7, 26),
         )
     )
 
@@ -912,11 +923,11 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
         "status": None,
         "status_in": None,
         "exclude_status": None,
-        "planning_cycle_type": None,
-        "planning_cycle_start_date": None,
-        "calendar_system": None,
-        "first_day_of_week": None,
-        "seven_year_anchor_date": None,
+        "planning_cycle_type": "7years",
+        "planning_cycle_start_date": date(2026, 7, 26),
+        "calendar_system": "mayan_13_moon",
+        "first_day_of_week": 7,
+        "seven_year_anchor_date": date(2025, 7, 26),
         "query": "Needle",
         "limit": 50,
         "offset": 50,
@@ -927,16 +938,17 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
         "status": None,
         "status_in": None,
         "exclude_status": None,
-        "planning_cycle_type": None,
-        "planning_cycle_start_date": None,
-        "calendar_system": None,
-        "first_day_of_week": None,
-        "seven_year_anchor_date": None,
+        "planning_cycle_type": "7years",
+        "planning_cycle_start_date": date(2026, 7, 26),
+        "calendar_system": "mayan_13_moon",
+        "first_day_of_week": 7,
+        "seven_year_anchor_date": date(2025, 7, 26),
         "query": "Needle",
     }
     assert response.pagination.total == 123
     assert response.pagination.pages == 3
     assert response.meta["query"] == "Needle"
+    assert response.meta["seven_year_anchor_date"] == "2025-07-26"
 
 
 def test_web_tasks_reorder_route_precedes_task_id_route(
@@ -2612,6 +2624,15 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
         "get_timelog_stats_groupby_area_for_range",
         fake_get_range,
     )
+    monkeypatch.setattr(
+        stats,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=1,
+            timezone="America/Toronto",
+        ),
+    )
 
     response = asyncio.run(
         stats.list_aggregated_areas(
@@ -2619,8 +2640,6 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
             granularity="month",
             start=date(2026, 7, 24),
             end=date(2026, 7, 27),
-            calendar_system="mayan_13_moon",
-            first_day_of_week=1,
         )
     )
 
@@ -2655,26 +2674,23 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
     ]
 
 
-def test_web_stats_aggregated_areas_rejects_invalid_calendar_system() -> None:
+def test_web_stats_calendar_context_comes_from_backend_preferences(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     pytest.importorskip("fastapi")
-
-    from fastapi import HTTPException
 
     from lifeos_web.routers import stats
 
-    with pytest.raises(HTTPException) as exc_info:
-        asyncio.run(
-            stats.list_aggregated_areas(
-                cast(AsyncSession, object()),
-                granularity="month",
-                start=date(2026, 7, 24),
-                end=date(2026, 7, 27),
-                calendar_system="martian",
-            )
-        )
+    monkeypatch.setattr(
+        stats,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=6,
+        ),
+    )
 
-    assert exc_info.value.status_code == 400
-    assert "calendar_system" in str(exc_info.value.detail)
+    assert stats._resolve_calendar_preferences() == ("mayan_13_moon", 6)
 
 
 def test_web_note_person_usage_stats_endpoint_returns_counts(

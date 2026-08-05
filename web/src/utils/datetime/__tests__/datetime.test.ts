@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   formatDate,
   formatDateTime,
+  formatDateKey,
   formatDuration,
   formatDurationFromTimes,
   hhmmOnDateToISO,
+  isDateKey,
+  parseDateKey,
   utcToLocalDateTimeLocal,
 } from "@/utils/datetime";
 
@@ -71,6 +74,13 @@ describe("datetime helpers", () => {
   it("formats date-only strings as floating days (no UTC shift)", () => {
     // If this were parsed as UTC midnight and then rendered in LA, it would become 2023-12-31.
     expect(formatDate("2024-01-01", "America/Los_Angeles")).toBe("2024-01-01");
+  });
+
+  it("uses one strict contract for date-only parsing and formatting", () => {
+    expect(isDateKey("2028-02-29")).toBe(true);
+    expect(isDateKey("2026-02-29")).toBe(false);
+    expect(formatDateKey(parseDateKey("2028-02-29"))).toBe("2028-02-29");
+    expect(() => parseDateKey("2026-02-29")).toThrow(RangeError);
   });
 
   it("handles DST transitions in named time zones", () => {

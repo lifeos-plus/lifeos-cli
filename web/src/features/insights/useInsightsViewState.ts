@@ -3,7 +3,7 @@ import type {
   CalendarAdapter,
   ExtendedPlanningViewType,
 } from "@/utils/calendar";
-import { parseLocalDateString } from "@/utils/calendar";
+import { parseDateKey } from "@/utils/datetime";
 import type { AggregationGranularity } from "@/services/api/stats";
 
 export type InsightViewType = "year" | "month" | "week" | "sevenYear";
@@ -82,7 +82,7 @@ export function useInsightsViewState({
 
   useEffect(() => {
     if (startDate) {
-      setSelectedDate(parseLocalDateString(startDate));
+      setSelectedDate(parseDateKey(startDate));
     }
   }, [startDate]);
 

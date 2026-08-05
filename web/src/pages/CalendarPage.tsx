@@ -28,7 +28,12 @@ import { useAllTasks } from "@/hooks/queries/useTasks";
 import "@/styles/calendar.css";
 import Container from "@/layouts/Container";
 import type { UUID } from "@/types/primitive";
-import { normalizeTimezone, resolvePreferredTimezone } from "@/utils/datetime";
+import {
+  formatDateKey,
+  normalizeTimezone,
+  parseDateKey,
+  resolvePreferredTimezone,
+} from "@/utils/datetime";
 import { useCalendarScheduleController } from "@/features/calendar/controller/useCalendarScheduleController";
 
 function CalendarPage() {
@@ -50,6 +55,7 @@ function CalendarPage() {
     adapter: calendarAdapter,
     calendarSystem,
     firstDayOfWeek,
+    loading: calendarPreferencesLoading,
   } = useCalendarAdapter();
   const fullCalendarFirstDay = useMemo(
     () =>
@@ -72,6 +78,8 @@ function CalendarPage() {
     () => normalizeTimezone(resolvePreferredTimezone(timezonePreference.value)),
     [timezonePreference.value],
   );
+  const calendarConfigurationLoading =
+    calendarPreferencesLoading || timezonePreference.loading;
 
   const [showPlannedEvents, setShowPlannedEvents] = useState(true);
   const [showTimelogs, setShowTimelogs] = useState(false);
@@ -115,7 +123,7 @@ function CalendarPage() {
   const [endISO, setEndISO] = useState<string | null>(null);
 
   const handleDatesSet = useCallback(
-    (info: { start: Date; end: Date }) => {
+    (info: { start: Date; end: Date; startStr: string }) => {
       setStartISO(info.start.toISOString());
       setEndISO(info.end.toISOString());
       const api = calendarRef.current?.getApi();
@@ -125,7 +133,7 @@ function CalendarPage() {
         if (type === "timeGridWeek") setViewType("week");
         if (type === "timeGridDay") setViewType("day");
       }
-      setCurrentDate(info.start);
+      setCurrentDate(parseDateKey(info.startStr.slice(0, 10)));
     },
     [setViewType],
   );
@@ -206,7 +214,7 @@ function CalendarPage() {
                 currentDate,
                 viewType === "week" ? "week" : "day",
               );
-              api.gotoDate(target);
+              api.gotoDate(formatDateKey(target));
               setCalendarTitle(api.view?.title ?? "");
             }}
             onNext={() => {
@@ -216,20 +224,19 @@ function CalendarPage() {
                 currentDate,
                 viewType === "week" ? "week" : "day",
               );
-              api.gotoDate(target);
+              api.gotoDate(formatDateKey(target));
               setCalendarTitle(api.view?.title ?? "");
             }}
             onCurrent={() => {
               const api = calendarRef.current?.getApi();
               if (!api) return;
-              const target = new Date();
-              api.gotoDate(target);
+              api.today();
               setCalendarTitle(api.view?.title ?? "");
             }}
             onSelectDate={(date) => {
               const api = calendarRef.current?.getApi();
               if (!api) return;
-              api.gotoDate(date);
+              api.gotoDate(formatDateKey(date));
               setCalendarTitle(api.view?.title ?? "");
               setCurrentDate(date);
             }}
@@ -286,7 +293,9 @@ function CalendarPage() {
         </div>
       </ToolbarContainer>
 
-      {loading && <LoadingSpinner message={t("modules.calendar.loading")} />}
+      {(loading || calendarConfigurationLoading) && (
+        <LoadingSpinner message={t("modules.calendar.loading")} />
+      )}
       <ErrorDisplay error={error} className="mb-6" />
 
       <Container>
@@ -303,7 +312,7 @@ function CalendarPage() {
             </div>
           </div>
         )}
-        <FullCalendar
+        {!calendarConfigurationLoading && <FullCalendar
           ref={calendarRef}
           plugins={[luxon3Plugin, timeGridPlugin, interactionPlugin]}
           initialView={viewType === "week" ? "timeGridWeek" : "timeGridDay"}
@@ -324,7 +333,12 @@ function CalendarPage() {
           timeZone={activeTimezone}
           firstDay={fullCalendarFirstDay}
           visibleRange={(date) =>
-            getFullCalendarVisibleRange(calendarAdapter, viewType, date)
+            getFullCalendarVisibleRange(
+              calendarAdapter,
+              viewType,
+              date,
+              activeTimezone,
+            )
           }
           datesSet={handleDatesSet}
           select={handleDateSelect}
@@ -357,7 +371,7 @@ function CalendarPage() {
               ? "planned-event-custom"
               : "timelog-event-custom";
           }}
-        />
+        />}
       </Container>
 
       {showPlannedEventModal && <PlannedEventModal {...plannedEventModalProps} />}

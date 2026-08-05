@@ -17,6 +17,7 @@ import { ALL_TASK_STATUSES, ALL_VISION_STATUSES } from "@/utils/constants";
 import type { ExtendedPlanningViewType } from "@/utils/calendar";
 import type { UUID } from "@/types/primitive";
 import { logger } from "@/utils/core";
+import { parseDateKey } from "@/utils/datetime";
 import { invalidateTasksByIds, updateTaskCaches } from "@/utils/query";
 import {
   invalidatePlanningSnapshots,
@@ -511,7 +512,7 @@ export function useTaskEditor(
           cycleType && startDate
             ? getDefaultCycleSettings(
                 cycleType as ExtendedPlanningViewType,
-                new Date(`${startDate}T00:00:00`),
+                parseDateKey(startDate),
               ).days
             : prev.planning_cycle_days;
 

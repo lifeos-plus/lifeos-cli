@@ -1,8 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { usePlanningCycle } from "@/hooks/useCalendarAdapter";
-import { parseLocalDateString } from "@/utils/calendar";
-import { formatDateKey } from "@/utils/datetime";
+import { formatDateKey, parseDateKey } from "@/utils/datetime";
 import EnumSelect from "./selects/EnumSelect";
 import { TextInput } from "./forms";
 
@@ -40,14 +39,14 @@ export const PlanningCycleDateInput: React.FC<PlanningCycleDateInputProps> = ({
   // Handle month selection for any calendar system
   if (cycleType === "month") {
     const monthInfo = startDate
-      ? adapter.getMonthInfo(parseLocalDateString(startDate))
+      ? adapter.getMonthInfo(parseDateKey(startDate))
       : null;
     const isValidMonth = monthInfo?.isValidMonth;
 
     if (isValidMonth) {
       // Pass current date to get month options with start date information
       const currentDate = startDate
-        ? parseLocalDateString(startDate)
+        ? parseDateKey(startDate)
         : new Date();
 
       // Get localized month names for Gregorian calendar
@@ -177,7 +176,7 @@ export const PlanningCycleDateInput: React.FC<PlanningCycleDateInputProps> = ({
         break;
       }
       case "week": {
-        const selectedDate = parseLocalDateString(e.target.value);
+        const selectedDate = parseDateKey(e.target.value);
         const weekStart = adapter.getWeekStart(selectedDate);
         newStartDate = formatDateKey(weekStart);
         break;

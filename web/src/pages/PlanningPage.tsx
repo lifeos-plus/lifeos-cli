@@ -5,7 +5,7 @@ import PageLayout from "@/layouts/PageLayout";
 import { useVisions } from "@/hooks/queries/useVisions";
 import { useCalendarAdapter } from "@/hooks/useCalendarAdapter";
 import type { PlanningViewType } from "@/utils/calendar";
-import { parseLocalDateString } from "@/utils/calendar";
+import { parseDateKey } from "@/utils/datetime";
 import PlanningTaskList from "@/components/PlanningTaskList";
 import ToolbarContainer from "@/components/ToolbarContainer";
 import { SegmentedControl } from "@/components/forms";
@@ -28,9 +28,8 @@ const PlanningPage: React.FC = () => {
   const { setHeader } = usePageHeader();
   const {
     adapter: calendarAdapter,
-    calendarSystem,
     firstDayOfWeek,
-    sevenYearAnchorDate,
+    loading: calendarLoading,
   } = useCalendarAdapter();
 
   React.useEffect(() => {
@@ -39,7 +38,7 @@ const PlanningPage: React.FC = () => {
 
   const normalizedDate = useMemo(() => {
     const range = calendarAdapter.getPeriodRange(viewType, selectedDate);
-    return parseLocalDateString(range.start);
+    return parseDateKey(range.start);
   }, [calendarAdapter, viewType, selectedDate]);
 
   const {
@@ -48,12 +47,11 @@ const PlanningPage: React.FC = () => {
     prefetch,
   } = usePlanningTasks(viewType, normalizedDate, {
     limit: 100,
-    calendarSystem,
-    firstDayOfWeek,
-    sevenYearAnchorDate,
+    enabled: !calendarLoading,
   });
 
   useEffect(() => {
+    if (calendarLoading) return;
     const others: PlanningViewType[] = [
       "7years",
       "year",
@@ -63,10 +61,10 @@ const PlanningPage: React.FC = () => {
     ].filter((vt) => vt !== viewType) as PlanningViewType[];
     others.forEach((vt) => {
       const range = calendarAdapter.getPeriodRange(vt, selectedDate);
-      const dateForPrefetch = parseLocalDateString(range.start);
+      const dateForPrefetch = parseDateKey(range.start);
       void prefetch(vt, dateForPrefetch);
     });
-  }, [viewType, selectedDate, prefetch, calendarAdapter]);
+  }, [viewType, selectedDate, prefetch, calendarAdapter, calendarLoading]);
 
   useEffect(() => {
     setLoading(tasksQuery.isLoading);

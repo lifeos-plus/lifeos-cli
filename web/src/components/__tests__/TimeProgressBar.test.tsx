@@ -14,8 +14,8 @@ setupTranslationMock();
 
 vi.mock("@/services/api/stats", () => ({
   statsApi: {
-    getLocalDayBreakdown: (localDateISO: string, timezone?: string) =>
-      getLocalDayBreakdown(localDateISO, timezone),
+    getLocalDayBreakdown: (localDateISO: string) =>
+      getLocalDayBreakdown(localDateISO),
   },
 }));
 
@@ -109,7 +109,7 @@ describe("TimeProgressBar", () => {
       />,
     );
 
-    expect(getLocalDayBreakdown).toHaveBeenCalledWith("2025-10-10", "UTC");
+    expect(getLocalDayBreakdown).toHaveBeenCalledWith("2025-10-10");
 
     await waitFor(() => {
       expect(screen.getByText("Deep Work")).toBeInTheDocument();
@@ -183,10 +183,7 @@ describe("TimeProgressBar", () => {
     );
 
     await waitFor(() => {
-      expect(getLocalDayBreakdown).toHaveBeenCalledWith(
-        "2025-10-11",
-        undefined,
-      );
+      expect(getLocalDayBreakdown).toHaveBeenCalledWith("2025-10-11");
     });
 
     expect(

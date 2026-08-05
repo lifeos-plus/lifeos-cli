@@ -18,6 +18,7 @@ import { PRIORITY } from "@/utils/constants";
 import type { UseTaskEditorHandlers } from "@/hooks/tasks/useTaskEditor";
 import { usePlanningCycle } from "@/hooks/useCalendarAdapter";
 import { Icon } from "@/components/icons";
+import { formatDateKey, parseDateKey } from "@/utils/datetime";
 
 interface TaskEditModalViewProps {
   isOpen: boolean;
@@ -95,9 +96,9 @@ export const TaskEditModalView: React.FC<TaskEditModalViewProps> = ({
       handlers.handlePlanningStartDateChange(undefined);
       return;
     }
-    const selectedYearStart = new Date(`${yearStartDate}T00:00:00`);
+    const selectedYearStart = parseDateKey(yearStartDate);
     const currentMonthIndex = formData.planning_cycle_start_date
-      ? adapter.getMonthInfo(new Date(`${formData.planning_cycle_start_date}T00:00:00`))
+      ? adapter.getMonthInfo(parseDateKey(formData.planning_cycle_start_date))
           .monthIndex
       : adapter.getMonthInfo(new Date()).monthIndex;
     if (!currentMonthIndex || Number.isNaN(selectedYearStart.getTime())) {
@@ -105,7 +106,7 @@ export const TaskEditModalView: React.FC<TaskEditModalViewProps> = ({
       return;
     }
     const monthStart = adapter.getMonthStart(selectedYearStart, currentMonthIndex);
-    handlers.handlePlanningStartDateChange(monthStart.toLocaleDateString("en-CA"));
+    handlers.handlePlanningStartDateChange(formatDateKey(monthStart));
   };
 
   return (

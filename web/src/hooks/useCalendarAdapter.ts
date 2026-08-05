@@ -3,9 +3,8 @@ import { usePreferenceWithBootstrap } from "./queries/usePreferenceWithBootstrap
 import {
   DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
   createCalendarAdapter,
-  isLocalDateString,
-  parseLocalDateString,
 } from "@/utils/calendar";
+import { isDateKey, parseDateKey } from "@/utils/datetime";
 import type {
   CalendarAdapter,
   CalendarSystem,
@@ -42,7 +41,7 @@ export function useCalendarAdapter(): CalendarAdapterState {
     key: "calendar.seven_year_anchor_date",
     defaultValue: DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
     module: "calendar",
-    validator: isLocalDateString,
+    validator: isDateKey,
   });
 
   const calendarSystem: CalendarSystem =
@@ -52,7 +51,7 @@ export function useCalendarAdapter(): CalendarAdapterState {
   const firstDayOfWeek = Number.isFinite(firstDayPreference.value)
     ? firstDayPreference.value
     : 1;
-  const sevenYearAnchorDate = isLocalDateString(sevenYearAnchorPreference.value)
+  const sevenYearAnchorDate = isDateKey(sevenYearAnchorPreference.value)
     ? sevenYearAnchorPreference.value
     : DEFAULT_SEVEN_YEAR_ANCHOR_DATE;
 
@@ -91,7 +90,7 @@ export function usePlanningCycle() {
     baseDate: Date = new Date(),
   ) => {
     const range = adapter.getPeriodRange(cycleType, baseDate);
-    const startDate = parseLocalDateString(range.start);
+    const startDate = parseDateKey(range.start);
     const days = adapter.getPlanningCycleDays(cycleType, startDate);
 
     return {
