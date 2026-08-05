@@ -52,9 +52,9 @@ web = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/liujuanjuan1984/lifeos-cli"
-Repository = "https://github.com/liujuanjuan1984/lifeos-cli"
-Issues = "https://github.com/liujuanjuan1984/lifeos-cli/issues"
+Homepage = "https://github.com/lifeos-plus/lifeos-cli"
+Repository = "https://github.com/lifeos-plus/lifeos-cli"
+Issues = "https://github.com/lifeos-plus/lifeos-cli/issues"
 
 [tool.ruff]
 line-length = 100

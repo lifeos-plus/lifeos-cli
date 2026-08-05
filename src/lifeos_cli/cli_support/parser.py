@@ -38,8 +38,8 @@ from lifeos_cli.i18n import configure_argparse_translations
 
 CLI_BRAND_TEXT = "LifeOS"
 CLI_BRAND_FONT = "ansi_shadow"
-PROJECT_REPOSITORY_URL_FALLBACK = "https://github.com/liujuanjuan1984/lifeos-cli"
-PROJECT_ISSUES_URL_FALLBACK = "https://github.com/liujuanjuan1984/lifeos-cli/issues"
+PROJECT_REPOSITORY_URL_FALLBACK = "https://github.com/lifeos-plus/lifeos-cli"
+PROJECT_ISSUES_URL_FALLBACK = "https://github.com/lifeos-plus/lifeos-cli/issues"
 HELP_FLAGS = frozenset({"-h", "--help"})
 
 
@@ -185,7 +185,7 @@ def build_parser() -> argparse.ArgumentParser:
                 ),
                 _("app.parser.run_lifeos_init_to_initialize_lifeos_before_getting_started"),
                 _(
-                    "app.parser.welcome_bug_reports_and_suggestions_through_https_github_com_liujuanjuan1984_lifeos_cli"
+                    "app.parser.welcome_bug_reports_and_suggestions_through_https_github_com_lifeos_plus_lifeos_cli"
                 ),
             ),
         ),
