@@ -42,54 +42,14 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
   }
 
   getNextPeriod(currentDate: Date, cycleType: ExtendedPlanningViewType): Date {
-    const nextDate = new Date(currentDate);
-    const normalizedCycleType = normalizePlanningViewType(cycleType);
-
-    switch (normalizedCycleType) {
-      case "year":
-        nextDate.setUTCFullYear(nextDate.getUTCFullYear() + 1);
-        return this.normalizePeriodDate(nextDate);
-      case "sevenYear":
-        return this.shiftSevenYearPeriodStart(currentDate, 1);
-      case "month":
-        nextDate.setUTCMonth(nextDate.getUTCMonth() + 1);
-        return this.normalizePeriodDate(nextDate);
-      case "week":
-        nextDate.setUTCDate(nextDate.getUTCDate() + 7);
-        return this.normalizePeriodDate(nextDate);
-      case "day":
-        nextDate.setUTCDate(nextDate.getUTCDate() + 1);
-        return this.normalizePeriodDate(nextDate);
-      default:
-        return this.normalizePeriodDate(nextDate);
-    }
+    return this.getAdjacentPeriodStart(currentDate, cycleType, 1);
   }
 
   getPreviousPeriod(
     currentDate: Date,
     cycleType: ExtendedPlanningViewType,
   ): Date {
-    const prevDate = new Date(currentDate);
-    const normalizedCycleType = normalizePlanningViewType(cycleType);
-
-    switch (normalizedCycleType) {
-      case "year":
-        prevDate.setUTCFullYear(prevDate.getUTCFullYear() - 1);
-        return this.normalizePeriodDate(prevDate);
-      case "sevenYear":
-        return this.shiftSevenYearPeriodStart(currentDate, -1);
-      case "month":
-        prevDate.setUTCMonth(prevDate.getUTCMonth() - 1);
-        return this.normalizePeriodDate(prevDate);
-      case "week":
-        prevDate.setUTCDate(prevDate.getUTCDate() - 7);
-        return this.normalizePeriodDate(prevDate);
-      case "day":
-        prevDate.setUTCDate(prevDate.getUTCDate() - 1);
-        return this.normalizePeriodDate(prevDate);
-      default:
-        return this.normalizePeriodDate(prevDate);
-    }
+    return this.getAdjacentPeriodStart(currentDate, cycleType, -1);
   }
 
   getPlanningCycleDays(cycleType: ExtendedPlanningViewType): number {
@@ -111,9 +71,19 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
     }
   }
 
-  private normalizePeriodDate(date: Date): Date {
-    date.setUTCHours(12, 0, 0, 0);
-    return date;
+  private getAdjacentPeriodStart(
+    currentDate: Date,
+    cycleType: ExtendedPlanningViewType,
+    step: 1 | -1,
+  ): Date {
+    const currentRange = this.getPeriodRange(cycleType, currentDate);
+    const adjacentRange = this.shiftPeriodRange(
+      cycleType,
+      currentRange.start,
+      currentRange.end,
+      step,
+    );
+    return parseLocalDateString(adjacentRange.start);
   }
 
   private getSevenYearAnchorStart(): Date {
@@ -127,13 +97,6 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
     const deltaYears = targetYear - anchorStart.getFullYear();
     const periodOffsetYears = Math.floor(deltaYears / 7) * 7;
     return new Date(anchorStart.getFullYear() + periodOffsetYears, 0, 1);
-  }
-
-  private shiftSevenYearPeriodStart(date: Date, step: number): Date {
-    const start = this.getSevenYearPeriodStart(date);
-    start.setFullYear(start.getFullYear() + 7 * step);
-    start.setHours(12, 0, 0, 0);
-    return start;
   }
 
   buildPlanningGroups(

@@ -350,76 +350,29 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   }
 
   getNextPeriod(currentDate: Date, cycleType: ExtendedPlanningViewType): Date {
-    const nextDate = new Date(currentDate);
-    const normalizedCycleType = normalizePlanningViewType(cycleType);
-
-    switch (normalizedCycleType) {
-      case "year": {
-        const start = this.getMayanYearStart(currentDate);
-        start.setFullYear(start.getFullYear() + 1);
-        return start;
-      }
-      case "sevenYear": {
-        const start = this.getSevenYearPeriodStart(currentDate);
-        start.setFullYear(start.getFullYear() + 7);
-        return start;
-      }
-      case "month": {
-        const range = this.getPeriodRange("month", currentDate);
-        return parseLocalDateString(
-          this.shiftAdjacentPeriodRange("month", range.start, 1).start,
-        );
-      }
-      case "week": {
-        const range = this.getPeriodRange("week", currentDate);
-        return parseLocalDateString(
-          this.shiftAdjacentPeriodRange("week", range.start, 1).start,
-        );
-      }
-      case "day":
-        nextDate.setDate(nextDate.getDate() + 1);
-        return nextDate;
-      default:
-        return nextDate;
-    }
+    return this.getAdjacentPeriodStart(currentDate, cycleType, 1);
   }
 
   getPreviousPeriod(
     currentDate: Date,
     cycleType: ExtendedPlanningViewType,
   ): Date {
-    const prevDate = new Date(currentDate);
-    const normalizedCycleType = normalizePlanningViewType(cycleType);
+    return this.getAdjacentPeriodStart(currentDate, cycleType, -1);
+  }
 
-    switch (normalizedCycleType) {
-      case "year": {
-        const start = this.getMayanYearStart(currentDate);
-        start.setFullYear(start.getFullYear() - 1);
-        return start;
-      }
-      case "sevenYear": {
-        const start = this.getSevenYearPeriodStart(currentDate);
-        start.setFullYear(start.getFullYear() - 7);
-        return start;
-      }
-      case "month": {
-        const range = this.getPeriodRange("month", currentDate);
-        return parseLocalDateString(
-          this.shiftAdjacentPeriodRange("month", range.start, -1).start,
-        );
-      }
-      case "week": {
-        const range = this.getPeriodRange("week", currentDate);
-        return parseLocalDateString(
-          this.shiftAdjacentPeriodRange("week", range.start, -1).start,
-        );
-      }
-      case "day":
-        prevDate.setDate(prevDate.getDate() - 1);
-        return prevDate;
-      default:
-        return prevDate;
-    }
+  private getAdjacentPeriodStart(
+    currentDate: Date,
+    cycleType: ExtendedPlanningViewType,
+    step: 1 | -1,
+  ): Date {
+    const currentRange = this.getPeriodRange(cycleType, currentDate);
+    const adjacentRange = this.shiftPeriodRange(
+      cycleType,
+      currentRange.start,
+      currentRange.end,
+      step,
+    );
+    return parseLocalDateString(adjacentRange.start);
   }
 
   getPlanningCycleDays(cycleType: ExtendedPlanningViewType): number {

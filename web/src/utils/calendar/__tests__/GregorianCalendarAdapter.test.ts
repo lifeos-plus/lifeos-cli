@@ -45,14 +45,28 @@ describe("GregorianCalendarAdapter", () => {
     const adapter = new GregorianCalendarAdapter();
     const base = new Date("2025-01-01T12:00:00Z");
 
-    expect(adapter.getNextPeriod(base, "year").getUTCFullYear()).toBe(2026);
-    expect(adapter.getPreviousPeriod(base, "year").getUTCFullYear()).toBe(2024);
+    expect(adapter.getNextPeriod(base, "year").getFullYear()).toBe(2026);
+    expect(adapter.getPreviousPeriod(base, "year").getFullYear()).toBe(2024);
     expect(adapter.getNextPeriod(base, "7years").getFullYear()).toBe(2032);
     expect(adapter.getPreviousPeriod(base, "7years").getFullYear()).toBe(
       2018,
     );
-    expect(adapter.getNextPeriod(base, "month").getUTCMonth()).toBe(1);
-    expect(adapter.getPreviousPeriod(base, "day").getUTCDate()).toBe(31);
+    expect(adapter.getNextPeriod(base, "month").getMonth()).toBe(1);
+    expect(adapter.getPreviousPeriod(base, "day").getDate()).toBe(31);
+  });
+
+  it("navigates months by their complete calendar ranges at short-month boundaries", () => {
+    const adapter = new GregorianCalendarAdapter();
+
+    expect(adapter.getNextPeriod(new Date(2025, 0, 31), "month")).toEqual(
+      new Date(2025, 1, 1),
+    );
+    expect(adapter.getPreviousPeriod(new Date(2025, 2, 31), "month")).toEqual(
+      new Date(2025, 1, 1),
+    );
+    expect(adapter.getNextPeriod(new Date(2024, 0, 31), "month")).toEqual(
+      new Date(2024, 1, 1),
+    );
   });
 
   it("computes 7-year ranges from the configured anchor year", () => {
