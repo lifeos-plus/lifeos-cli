@@ -472,6 +472,11 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     return parseDateKey(value);
   }
 
+  private isTaskOnDate(task: TaskWithSubtasks, date: Date): boolean {
+    const taskDate = this.getPlanningCycleDate(task);
+    return taskDate !== null && formatDateKey(taskDate) === formatDateKey(date);
+  }
+
   private buildSevenYearGroups(
     date: Date,
     tasks: TaskWithSubtasks[],
@@ -551,14 +556,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
 
     // Day out of time (single day)
     const outOfTimeDate = new Date(mayanYearStart.getFullYear() + 1, 6, 25);
-    const outOfTimeTasks = dayTasks.filter((task) => {
-      const taskDate = this.getPlanningCycleDate(task);
-      if (!taskDate) return false;
-      return (
-        this.isMayanDayOutOfTime(taskDate) &&
-        this.getMayanYearStart(taskDate).getTime() === mayanYearStart.getTime()
-      );
-    });
+    const outOfTimeTasks = dayTasks.filter((task) =>
+      this.isTaskOnDate(task, outOfTimeDate),
+    );
     yearGroup.children!.push({
       id: `mayan-day-out-of-time-${mayanYearStart.getFullYear()}`,
       label: `无时间日`,
@@ -584,7 +584,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
           id: `mayan-month-out-of-time-${info.start.toISOString()}`,
           label: "无时间日",
           date: info.start,
-          tasks: [],
+          tasks: monthTasks.filter((task) =>
+            this.isTaskOnDate(task, info.start),
+          ),
           children: [],
         },
       ];
@@ -638,12 +640,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
           id: `mayan-week-out-of-time-${range.start.toISOString()}`,
           label: "无时间日",
           date: range.start,
-          tasks: dayTasks.filter((task) => {
-            const taskDate = this.getPlanningCycleDate(task);
-            return (
-              taskDate !== null && this.isMayanDayOutOfTime(taskDate)
-            );
-          }),
+          tasks: weekTasks.filter((task) =>
+            this.isTaskOnDate(task, range.start),
+          ),
           children: [],
         },
       ];
@@ -704,12 +703,7 @@ export class MayanCalendarAdapter implements CalendarAdapter {
           id: `mayan-day-out-of-time-${date.toISOString()}`,
           label: `无时间日`,
           date: date,
-          tasks: dayTasks.filter((task) => {
-            const taskDate = this.getPlanningCycleDate(task);
-            return (
-              taskDate !== null && this.isMayanDayOutOfTime(taskDate)
-            );
-          }),
+          tasks: dayTasks.filter((task) => this.isTaskOnDate(task, date)),
           children: [],
         },
       ];

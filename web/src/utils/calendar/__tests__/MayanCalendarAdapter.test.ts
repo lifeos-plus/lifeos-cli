@@ -170,6 +170,54 @@ describe("MayanCalendarAdapter", () => {
     });
   });
 
+  it("shows cycle-matched tasks on Day Out of Time", () => {
+    const monthTask = createTask({
+      id: "month-task",
+      planning_cycle_type: "month",
+      planning_cycle_days: 1,
+      planning_cycle_start_date: "2026-07-25",
+    });
+    const weekTask = createTask({
+      id: "week-task",
+      planning_cycle_type: "week",
+      planning_cycle_days: 1,
+      planning_cycle_start_date: "2026-07-25",
+    });
+    const dayTask = createTask({
+      id: "day-task",
+      planning_cycle_type: "day",
+      planning_cycle_days: 1,
+      planning_cycle_start_date: "2026-07-25",
+    });
+    const otherYearDayTask = createTask({
+      id: "other-year-day-task",
+      planning_cycle_type: "day",
+      planning_cycle_days: 1,
+      planning_cycle_start_date: "2027-07-25",
+    });
+    const tasks = [monthTask, weekTask, dayTask, otherYearDayTask];
+
+    const [monthGroup] = adapter.buildPlanningGroups(
+      "month",
+      new Date(2026, 6, 25),
+      tasks,
+    );
+    const [weekGroup] = adapter.buildPlanningGroups(
+      "week",
+      new Date(2026, 6, 25),
+      tasks,
+    );
+    const [dayGroup] = adapter.buildPlanningGroups(
+      "day",
+      new Date(2026, 6, 25),
+      tasks,
+    );
+
+    expect(monthGroup.tasks.map((task) => task.id)).toEqual(["month-task"]);
+    expect(weekGroup.tasks.map((task) => task.id)).toEqual(["week-task"]);
+    expect(dayGroup.tasks.map((task) => task.id)).toEqual(["day-task"]);
+  });
+
   it("uses calendar boundaries for planning period navigation", () => {
     expect(adapter.getPreviousPeriod(new Date(2026, 6, 26), "week")).toEqual(
       new Date(2026, 6, 25),
