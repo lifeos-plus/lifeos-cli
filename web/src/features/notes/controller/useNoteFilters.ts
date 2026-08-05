@@ -257,12 +257,7 @@ export function useNoteFilters(
   }, [onLoadFilteredNotes]);
 
   return {
-    // Filter state (backward compatibility)
-    selectedFilterTag: selectedFilterTags[0] || null,
-    selectedFilterPerson: selectedFilterPersons[0] || null,
     selectedFilterTaskId,
-
-    // New multi-select state
     selectedFilterTags,
     selectedFilterPersons,
     showUntaggedOnly,

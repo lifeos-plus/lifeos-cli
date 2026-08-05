@@ -372,59 +372,6 @@ export function addDays(date: Date, days: number): Date {
   return d;
 }
 
-export function addMonths(date: Date, months: number): Date {
-  const d = new Date(date);
-  const day = d.getDate();
-  d.setDate(1);
-  d.setMonth(d.getMonth() + months);
-  // Clamp to end of month if the original day doesn't exist in target month
-  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  d.setDate(Math.min(day, lastDay));
-  return d;
-}
-
-export function subMonths(date: Date, months: number): Date {
-  return addMonths(date, -months);
-}
-
-export function startOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-export function endOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-}
-
-export function startOfWeek(date: Date, weekStartsOn: number = 0): Date {
-  const d = new Date(date);
-  const day = d.getDay(); // 0..6 (Sun..Sat)
-  const diff = (day - weekStartsOn + 7) % 7;
-  d.setDate(d.getDate() - diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-export function endOfWeek(date: Date, weekStartsOn: number = 0): Date {
-  return addDays(startOfWeek(date, weekStartsOn), 6);
-}
-
-export function eachDayOfInterval(interval: {
-  start: Date;
-  end: Date;
-}): Date[] {
-  const days: Date[] = [];
-  const cursor = new Date(interval.start);
-  cursor.setHours(0, 0, 0, 0);
-  const end = new Date(interval.end);
-  end.setHours(0, 0, 0, 0);
-
-  while (cursor <= end) {
-    days.push(new Date(cursor));
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return days;
-}
-
 export function isSameDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -496,11 +443,4 @@ export function formatDateKey(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-export function formatMonthKey(date: Date): string {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
 }

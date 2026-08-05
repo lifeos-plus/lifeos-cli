@@ -109,7 +109,7 @@ interface PlanningTaskGroupHookResult {
   showHabitActionsCard: boolean;
   defaultInboxVision: UUID | null;
   handlers: PlanningTaskGroupHandlers;
-  getExpandedTasksForDraggable: (groupId: string) => Set<UUID>;
+  getExpandedTasks: (groupId: string) => Set<UUID>;
   toggleTaskExpansion: (groupId: string, taskId: string) => void;
 }
 
@@ -196,11 +196,10 @@ export function usePlanningTaskGroup(
   const [isCarryingForward, setIsCarryingForward] = useState(false);
   const [showCarryForwardConfirm, setShowCarryForwardConfirm] = useState(false);
 
-  const { getExpandedTasksForDraggable, toggleTaskExpansion } =
-    useTaskExpansionState({
-      key: `planning_group_${group.id}`,
-      expireInHours: 24,
-    });
+  const { getExpandedTasks, toggleTaskExpansion } = useTaskExpansionState({
+    key: `planning_group_${group.id}`,
+    expireInHours: 24,
+  });
 
   const taskIds = useMemo(
     () => group.tasks.map((task) => task.id),
@@ -940,7 +939,7 @@ export function usePlanningTaskGroup(
     showHabitActionsCard,
     defaultInboxVision,
     handlers,
-    getExpandedTasksForDraggable,
+    getExpandedTasks,
     toggleTaskExpansion,
   };
 }

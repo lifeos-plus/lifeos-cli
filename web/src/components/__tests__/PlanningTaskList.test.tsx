@@ -44,7 +44,7 @@ vi.mock("@/hooks/planning/usePlanningTaskGroup", () => ({
       habitActions: [],
       carryForwardableTasks: [],
       handlers: {},
-      getExpandedTasksForDraggable: vi.fn(),
+      getExpandedTasks: vi.fn(),
       toggleTaskExpansion: vi.fn(),
       planningTaskFilterStatus: ["all"],
       periodRangeLabel: "2025-01-01",

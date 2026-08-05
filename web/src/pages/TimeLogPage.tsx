@@ -80,7 +80,6 @@ const TimeLogPage = () => {
     allFlatTasks,
     areasFromCache,
     areaMap,
-    loadEntries,
   } = useTimeLogPageData({
     selectedDate,
     sortOrder,
@@ -358,7 +357,6 @@ const TimeLogPage = () => {
           onCancel={() => switchToSingleMode()}
           onImported={() => {
             switchToSingleMode();
-            loadEntries();
           }}
         />
       ) : (

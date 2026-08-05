@@ -307,16 +307,6 @@ async def get_task(task_id: UUID, session: SessionDep) -> dict[str, object]:
     )
 
 
-@router.put("/{task_id}")
-async def replace_task(
-    task_id: UUID,
-    payload: TaskUpdate,
-    session: SessionDep,
-) -> dict[str, object]:
-    """Frontend-compatible alias for partial task update."""
-    return await update_task(task_id=task_id, payload=payload, session=session)
-
-
 @router.patch("/{task_id}")
 async def update_task(
     task_id: UUID,

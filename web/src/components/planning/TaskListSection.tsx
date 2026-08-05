@@ -19,7 +19,7 @@ interface TaskListSectionProps {
   selectedVisionFilterName: string;
   onTaskUpdate?: () => void;
   onTaskStatusUpdate?: (taskId: UUID, newStatus: string) => Promise<void>;
-  getExpandedTasksForDraggable: (groupId: string) => Set<UUID>;
+  getExpandedTasks: (groupId: string) => Set<UUID>;
   toggleTaskExpansion: (groupId: string, taskId: string) => void;
 }
 
@@ -33,7 +33,7 @@ export const TaskListSection: React.FC<TaskListSectionProps> = ({
   selectedVisionFilterName,
   onTaskUpdate,
   onTaskStatusUpdate,
-  getExpandedTasksForDraggable,
+  getExpandedTasks,
   toggleTaskExpansion,
 }) => {
   const { t } = useTranslation();
@@ -113,7 +113,7 @@ export const TaskListSection: React.FC<TaskListSectionProps> = ({
               onCreateTimeRecord={
                 taskManagement.actions.handleOpenCreateTimelogModal
               }
-              expandedTasks={getExpandedTasksForDraggable(groupId)}
+              expandedTasks={getExpandedTasks(groupId)}
               onToggleExpansion={(taskId) =>
                 toggleTaskExpansion(groupId, taskId)
               }

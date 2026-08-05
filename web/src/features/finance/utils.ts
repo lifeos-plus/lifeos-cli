@@ -38,7 +38,7 @@ export type TreeNodeWithChildren = FinanceTreeNode & {
   children: TreeNodeWithChildren[];
 };
 
-export type SnapshotHoldingState = {
+type SnapshotHoldingState = {
   id: string;
   currencyCode: string;
   amount: string;

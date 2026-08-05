@@ -107,8 +107,6 @@ function NotesPage() {
   });
   const {
     filteredNotes: displayNotes,
-    selectedFilterTag,
-    selectedFilterPerson,
     selectedFilterTaskId,
     selectedFilterTags,
     selectedFilterPersons,
@@ -126,6 +124,8 @@ function NotesPage() {
     clearAllFilters,
     setSearchKeyword,
   } = noteFilters;
+  const selectedFilterTag = selectedFilterTags[0] ?? null;
+  const selectedFilterPerson = selectedFilterPersons[0] ?? null;
 
   // Create person lookup map for efficient access
   const handleAdvancedParamsChange = useCallback(

@@ -59,7 +59,7 @@ export interface HabitAction {
   linked_notes_count?: number;
 }
 
-export interface HabitActionHabitSummary {
+interface HabitActionHabitSummary {
   title: string;
   description?: string | null;
   start_date: string;

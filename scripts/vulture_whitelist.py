@@ -86,8 +86,6 @@ _keep(
     delete_timelog_template,
     bump_timelog_template_usage,
     get_vision_hierarchy,
-    replace_task,
-    replace_vision,
     update_action,
     update_action_by_date,
     get_preference,

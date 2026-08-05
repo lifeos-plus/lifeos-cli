@@ -35,24 +35,13 @@ export function useVisionUIState() {
   const {
     expandedTasksByScope,
     isLoaded: tasksLoaded,
-    toggleTaskExpansion: toggleScopeTaskExpansion,
+    toggleTaskExpansion,
     removeScope,
     clearExpandedTasks,
   } = useTaskExpansionState({
     key: "vision_expanded_tasks",
     expireInHours: 48, // 2 days
   });
-
-  // Convert scope-based state to vision-specific format for backward compatibility
-  const expandedTasksInVision: Record<UUID, Set<UUID>> = Object.keys(
-    expandedTasksByScope,
-  ).reduce(
-    (prev, scope) => {
-      prev[scope as UUID] = expandedTasksByScope[scope];
-      return prev;
-    },
-    {} as Record<UUID, Set<UUID>>,
-  );
 
   // Scroll position state
   const {
@@ -80,14 +69,6 @@ export function useVisionUIState() {
       });
     },
     [setExpandedVisions],
-  );
-
-  // Toggle task expansion - delegate to generic hook
-  const toggleTaskExpansion = useCallback(
-    (visionId: UUID, taskId: UUID) => {
-      toggleScopeTaskExpansion(visionId.toString(), taskId);
-    },
-    [toggleScopeTaskExpansion],
   );
 
   // Remove vision from expanded state (when vision is deleted)
@@ -132,7 +113,7 @@ export function useVisionUIState() {
   return {
     // State
     expandedVisions,
-    expandedTasksInVision,
+    expandedTasksByScope,
     scrollPosition,
     isFullyLoaded,
 

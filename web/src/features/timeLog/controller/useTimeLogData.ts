@@ -31,7 +31,6 @@ interface UseTimeLogDataReturn {
   isSelectMode: boolean;
   deletingEntryId: UUID | null;
   deletingEntryCount: number;
-  loadEntries: (opts?: { background?: boolean }) => Promise<void>;
   requestDeleteEntry: (entryId: UUID) => void;
   confirmDeleteEntry: () => Promise<void>;
   cancelDeleteEntry: () => void;
@@ -94,7 +93,6 @@ export const useTimeLogData = ({
     data: singleDayData,
     isLoading: isLoadingSingleDay,
     error: singleDayError,
-    refetch: refetchSingleDay,
   } = useQuery({
     queryKey: timelogsKeys.list(singleDayListFilters),
     queryFn: async () => {
@@ -131,18 +129,6 @@ export const useTimeLogData = ({
   const loading = queryMode === "single" ? isLoadingSingleDay : false;
   const error =
     queryMode === "single" ? (singleDayError?.message ?? null) : null;
-
-  // Legacy loadEntries function for backward compatibility
-  const loadEntries = useCallback(
-    async (opts?: { background?: boolean }) => {
-      if (queryMode !== "single") return;
-
-      if (opts?.background !== true) {
-        await refetchSingleDay();
-      }
-    },
-    [queryMode, refetchSingleDay],
-  );
 
   // Delete single entry mutation
   const deleteEntryMutation = useMutation({
@@ -301,7 +287,6 @@ export const useTimeLogData = ({
     isSelectMode,
     deletingEntryId,
     deletingEntryCount,
-    loadEntries,
     requestDeleteEntry,
     confirmDeleteEntry,
     cancelDeleteEntry,
