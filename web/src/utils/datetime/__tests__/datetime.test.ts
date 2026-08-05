@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   formatDate,
   formatDateTime,
+  formatDateKey,
   formatDuration,
   formatDurationFromTimes,
   hhmmOnDateToISO,
+  isDateKey,
+  localDateTimeLocalToUtcIso,
+  parseDateKey,
   utcToLocalDateTimeLocal,
 } from "@/utils/datetime";
 
@@ -68,9 +72,46 @@ describe("datetime helpers", () => {
     );
   });
 
+  it("converts datetime-local input using the explicit timezone", () => {
+    expect(
+      localDateTimeLocalToUtcIso("2024-01-01T08:00", "Asia/Shanghai"),
+    ).toBe("2024-01-01T00:00:00.000Z");
+  });
+
+  it("uses the named timezone offset across DST boundaries", () => {
+    expect(
+      localDateTimeLocalToUtcIso(
+        "2024-03-10T01:30",
+        "America/Los_Angeles",
+      ),
+    ).toBe("2024-03-10T09:30:00.000Z");
+    expect(
+      localDateTimeLocalToUtcIso(
+        "2024-03-10T03:30",
+        "America/Los_Angeles",
+      ),
+    ).toBe("2024-03-10T10:30:00.000Z");
+  });
+
+  it("rejects local wall times skipped by a DST transition", () => {
+    expect(
+      localDateTimeLocalToUtcIso(
+        "2024-03-10T02:30",
+        "America/Los_Angeles",
+      ),
+    ).toBe("");
+  });
+
   it("formats date-only strings as floating days (no UTC shift)", () => {
     // If this were parsed as UTC midnight and then rendered in LA, it would become 2023-12-31.
     expect(formatDate("2024-01-01", "America/Los_Angeles")).toBe("2024-01-01");
+  });
+
+  it("uses one strict contract for date-only parsing and formatting", () => {
+    expect(isDateKey("2028-02-29")).toBe(true);
+    expect(isDateKey("2026-02-29")).toBe(false);
+    expect(formatDateKey(parseDateKey("2028-02-29"))).toBe("2028-02-29");
+    expect(() => parseDateKey("2026-02-29")).toThrow(RangeError);
   });
 
   it("handles DST transitions in named time zones", () => {

@@ -10,8 +10,6 @@ import { tasksKeys } from "@/services/api/queryKeys";
 import type { UUID } from "@/types/primitive";
 
 type PlanningCycleType = "7years" | "year" | "month" | "week" | "day";
-type CalendarSystem = "gregorian" | "mayan_13_moon";
-
 function buildTaskHierarchy(flatTasks: Task[]): TaskWithSubtasks[] {
   const taskMap = new Map<UUID, TaskWithSubtasks>();
   const rootTasks: TaskWithSubtasks[] = [];
@@ -50,23 +48,19 @@ export function usePlanningTasks(
     limit?: number;
     staleTimeMs?: number;
     gcTimeMs?: number;
-    calendarSystem?: CalendarSystem;
-    firstDayOfWeek?: number;
+    enabled?: boolean;
   },
 ) {
   const queryClient = useQueryClient();
   const size = opts?.limit ?? 100;
   const staleTime = opts?.staleTimeMs ?? 60 * 1000;
   const gcTime = opts?.gcTimeMs ?? 5 * 60 * 1000;
-  const calendarSystem = opts?.calendarSystem ?? "gregorian";
-  const firstDayOfWeek = opts?.firstDayOfWeek ?? 1;
+  const enabled = opts?.enabled ?? true;
 
   const query = useQuery({
     queryKey: tasksKeys.list({
       planning_cycle_type: viewType,
       planning_cycle_start_date: toISODate(selectedDate),
-      calendar_system: calendarSystem,
-      first_day_of_week: firstDayOfWeek,
       fields: "full",
       size,
     }),
@@ -74,8 +68,6 @@ export function usePlanningTasks(
       const response = await tasksApi.getAll(undefined, undefined, {
         planning_cycle_type: viewType,
         planning_cycle_start_date: toISODate(selectedDate),
-        calendar_system: calendarSystem,
-        first_day_of_week: firstDayOfWeek,
         fields: "full",
         size,
       });
@@ -89,6 +81,7 @@ export function usePlanningTasks(
     },
     staleTime,
     gcTime,
+    enabled,
   });
 
   const prefetch = useCallback(
@@ -97,8 +90,6 @@ export function usePlanningTasks(
         queryKey: tasksKeys.list({
           planning_cycle_type: type,
           planning_cycle_start_date: toISODate(prefetchDate),
-          calendar_system: calendarSystem,
-          first_day_of_week: firstDayOfWeek,
           fields: "full",
           size,
         }),
@@ -106,8 +97,6 @@ export function usePlanningTasks(
           const response = await tasksApi.getAll(undefined, undefined, {
             planning_cycle_type: type,
             planning_cycle_start_date: toISODate(prefetchDate),
-            calendar_system: calendarSystem,
-            first_day_of_week: firstDayOfWeek,
             fields: "full",
             size,
           });
@@ -123,7 +112,12 @@ export function usePlanningTasks(
         gcTime,
       });
     },
-    [calendarSystem, firstDayOfWeek, gcTime, queryClient, size, staleTime],
+    [
+      gcTime,
+      queryClient,
+      size,
+      staleTime,
+    ],
   );
 
   return {

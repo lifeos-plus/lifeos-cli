@@ -55,7 +55,6 @@ export function useInsightsStatsController({
         startDate,
         endDate,
         undefined,
-        activeTimezone,
       );
       return response.items ?? [];
     },
@@ -81,11 +80,6 @@ export function useInsightsStatsController({
         granularity,
         startDate,
         endDate,
-        {
-          timezone: activeTimezone,
-          firstDayOfWeek: normalizedFirstDayOfWeek,
-          calendarSystem,
-        },
       );
       return response.items ?? [];
     },
@@ -130,7 +124,6 @@ export function useInsightsStatsController({
       await statsApi.recomputeDailyAreas(
         startDate,
         endDate,
-        activeTimezone,
       );
       await Promise.all([
         queryClient.invalidateQueries({

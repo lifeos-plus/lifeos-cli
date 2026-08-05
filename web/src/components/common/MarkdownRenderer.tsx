@@ -4,7 +4,7 @@ import remarkGfm from "remark-gfm";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import type { Schema } from "hast-util-sanitize";
 
-export interface MarkdownRendererProps {
+interface MarkdownRendererProps {
   content: string;
   className?: string;
   isStreaming?: boolean;

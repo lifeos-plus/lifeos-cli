@@ -9,7 +9,13 @@ import type {
 import { tasksApi } from "@/services/api/tasks";
 import PersonSelector from "./selects/PersonSelector";
 import TaskSelector from "./selects/TaskSelector";
-import { hhmmOnDateToISO, formatTime, formatDate } from "@/utils/datetime";
+import {
+  addMinutesToIso,
+  formatDate,
+  formatTime,
+  getNearestFiveMinuteTime,
+  hhmmOnDateToISO,
+} from "@/utils/datetime";
 import { logger } from "@/utils/core";
 import ModalBase from "@/layouts/ModalBase";
 import { FormActions } from "./ActionButton";
@@ -22,7 +28,7 @@ import { usePreferenceWithBootstrap } from "@/hooks/queries/usePreferenceWithBoo
 import { ALL_TASK_STATUSES } from "@/utils/constants";
 import type { UUID } from "@/types/primitive";
 import { useTimelogMutations } from "@/hooks/useTimelogMutations";
-import { resolvePreferredTimezone } from "@/utils/datetime";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 
 interface TimeEntryModalProps {
   isOpen: boolean;
@@ -91,13 +97,8 @@ const TimeEntryModal = ({
       return false;
     },
   });
-  const timezonePreference = usePreferenceWithBootstrap<string>({
-    key: "system.timezone",
-    defaultValue: resolvePreferredTimezone(),
-    module: "system",
-    validator: (value) => typeof value === "string" && value.length > 0,
-  });
-  const activeTimezone = resolvePreferredTimezone(timezonePreference.value);
+  const timezonePreference = useSystemTimezone();
+  const activeTimezone = timezonePreference.timezone;
 
   // Ref for auto-focusing title input
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -121,17 +122,20 @@ const TimeEntryModal = ({
         });
       } else {
         // Create mode - initialize with defaults
-        const now = new Date();
-        const defaultEndTime = new Date(selectedDate);
-        defaultEndTime.setHours(now.getHours(), now.getMinutes(), 0, 0);
-
-        const defaultStartTime = new Date(defaultEndTime);
-        defaultStartTime.setHours(defaultStartTime.getHours() - 1);
+        const currentTime = getNearestFiveMinuteTime(
+          new Date(),
+          activeTimezone,
+        );
+        const defaultEndTime = hhmmOnDateToISO(
+          selectedDate,
+          currentTime,
+          activeTimezone,
+        );
 
         setFormData({
           title: "",
-          start_time: defaultStartTime.toISOString(),
-          end_time: defaultEndTime.toISOString(),
+          start_time: addMinutesToIso(defaultEndTime, -60),
+          end_time: defaultEndTime,
           area_id: null,
           notes: "",
           energy_level: 3,
@@ -146,7 +150,13 @@ const TimeEntryModal = ({
         titleInputRef.current?.focus();
       }, 100);
     }
-  }, [isOpen, entry, selectedDate, preloadedTasks]); // 添加依赖项以确保数据更新时重新执行
+  }, [
+    activeTimezone,
+    entry,
+    isOpen,
+    preloadedTasks,
+    selectedDate,
+  ]);
 
   // Removed user-edited flag effect
 

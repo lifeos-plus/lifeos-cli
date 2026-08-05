@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
+import pytest
+
 from lifeos_cli.application.time_preferences import (
     apply_preferred_timezone,
     get_operational_date,
@@ -31,6 +33,16 @@ def test_apply_preferred_timezone_attaches_configured_timezone(monkeypatch, tmp_
 
     assert converted.isoformat() == "2026-04-10T09:00:00-04:00"
     clear_config_cache()
+
+
+def test_apply_preferred_timezone_rejects_skipped_dst_time(monkeypatch, tmp_path) -> None:
+    install_test_config(monkeypatch=monkeypatch, tmp_path=tmp_path, include_preferences=True)
+
+    try:
+        with pytest.raises(ValueError, match="does not exist"):
+            apply_preferred_timezone(datetime(2026, 3, 8, 2, 30))
+    finally:
+        clear_config_cache()
 
 
 def test_to_storage_timezone_preserves_explicit_timezone(monkeypatch, tmp_path) -> None:

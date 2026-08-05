@@ -16,7 +16,7 @@ const createTask = (
   display_order: 0,
   estimated_effort: null,
   planning_cycle_type: overrides.planning_cycle_type ?? "day",
-  planning_cycle_days: null,
+  planning_cycle_days: overrides.planning_cycle_days ?? 1,
   planning_cycle_start_date:
     overrides.planning_cycle_start_date ?? "2026-07-26",
   actual_effort_self: 0,
@@ -74,6 +74,21 @@ describe("MayanCalendarAdapter", () => {
     expect(leapWeek.children).toHaveLength(8);
     expect(leapWeek.children?.[0]?.date).toEqual(new Date(2028, 1, 28));
     expect(leapWeek.children?.[7]?.date).toEqual(new Date(2028, 2, 6));
+  });
+
+  it("derives physical planning duration from Mayan boundaries", () => {
+    expect(adapter.getPlanningCycleDays("month", new Date(2028, 1, 29))).toBe(
+      29,
+    );
+    expect(adapter.getPlanningCycleDays("week", new Date(2028, 1, 29))).toBe(
+      8,
+    );
+    expect(adapter.getPlanningCycleDays("week", new Date(2028, 6, 25))).toBe(
+      1,
+    );
+    expect(adapter.getPlanningCycleDays("year", new Date(2027, 6, 26))).toBe(
+      366,
+    );
   });
 
   it("calculates Mayan days independently of daylight-saving transitions", () => {
@@ -153,6 +168,69 @@ describe("MayanCalendarAdapter", () => {
       start: "2026-07-26",
       end: "2026-08-22",
     });
+  });
+
+  it("shows cycle-matched tasks on Day Out of Time", () => {
+    const monthTask = createTask({
+      id: "month-task",
+      planning_cycle_type: "month",
+      planning_cycle_days: 1,
+      planning_cycle_start_date: "2026-07-25",
+    });
+    const overlappingMonthTask = createTask({
+      id: "overlapping-month-task",
+      planning_cycle_type: "month",
+      planning_cycle_days: 2,
+      planning_cycle_start_date: "2026-07-24",
+    });
+    const weekTask = createTask({
+      id: "week-task",
+      planning_cycle_type: "week",
+      planning_cycle_days: 1,
+      planning_cycle_start_date: "2026-07-25",
+    });
+    const dayTask = createTask({
+      id: "day-task",
+      planning_cycle_type: "day",
+      planning_cycle_days: 1,
+      planning_cycle_start_date: "2026-07-25",
+    });
+    const otherYearDayTask = createTask({
+      id: "other-year-day-task",
+      planning_cycle_type: "day",
+      planning_cycle_days: 1,
+      planning_cycle_start_date: "2027-07-25",
+    });
+    const tasks = [
+      monthTask,
+      overlappingMonthTask,
+      weekTask,
+      dayTask,
+      otherYearDayTask,
+    ];
+
+    const [monthGroup] = adapter.buildPlanningGroups(
+      "month",
+      new Date(2026, 6, 25),
+      tasks,
+    );
+    const [weekGroup] = adapter.buildPlanningGroups(
+      "week",
+      new Date(2026, 6, 25),
+      tasks,
+    );
+    const [dayGroup] = adapter.buildPlanningGroups(
+      "day",
+      new Date(2026, 6, 25),
+      tasks,
+    );
+
+    expect(monthGroup.tasks.map((task) => task.id)).toEqual([
+      "month-task",
+      "overlapping-month-task",
+    ]);
+    expect(weekGroup.tasks.map((task) => task.id)).toEqual(["week-task"]);
+    expect(dayGroup.tasks.map((task) => task.id)).toEqual(["day-task"]);
   });
 
   it("uses calendar boundaries for planning period navigation", () => {

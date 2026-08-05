@@ -63,13 +63,10 @@ const VisionManager = forwardRef<VisionManagerHandle, VisionManagerProps>(
       visionTasks,
       visionTasksLoading,
       expandedVisions,
-      expandedTasksInVision,
+      expandedTasksByScope,
       habitTaskAssociations,
-
-      habitAssociationsLoaded: _habitAssociationsLoaded,
       deletingVision,
       harvestingVision,
-      deletingTaskInfo,
       loadVisions,
       loadVisionTasks,
       requestDeleteVision,
@@ -79,12 +76,6 @@ const VisionManager = forwardRef<VisionManagerHandle, VisionManagerProps>(
       requestHarvestVision: _requestHarvestVision,
       confirmHarvestVision,
       cancelHarvestVision,
-
-      requestDeleteTask: _requestDeleteTask,
-      confirmDeleteTask,
-      cancelDeleteTask,
-
-      updateTaskStatus: _updateTaskStatus,
       toggleVisionExpansion,
       toggleTaskExpansion,
       applyTaskAttributesUpdate,
@@ -660,7 +651,7 @@ const VisionManager = forwardRef<VisionManagerHandle, VisionManagerProps>(
                                   .handleOpenCreateTimelogModal
                               }
                               expandedTasks={
-                                expandedTasksInVision[vision.id] || new Set()
+                                expandedTasksByScope[vision.id] || new Set()
                               }
                               onToggleExpansion={(taskId) =>
                                 toggleTaskExpansion(vision.id, taskId)
@@ -745,18 +736,6 @@ const VisionManager = forwardRef<VisionManagerHandle, VisionManagerProps>(
             confirmText={t("visions.modal.harvestVision")}
             onConfirm={confirmHarvestVision}
             onCancel={cancelHarvestVision}
-          />
-        )}
-        {deletingTaskInfo && (
-          <ConfirmDialog
-            isOpen={!!deletingTaskInfo}
-            title={t("visions.modal.deleteTask")}
-            message={t("visions.confirm.deleteTask", {
-              content: deletingTaskInfo.task.content,
-            })}
-            confirmText={t("common.delete")}
-            onConfirm={confirmDeleteTask}
-            onCancel={cancelDeleteTask}
           />
         )}
       </div>

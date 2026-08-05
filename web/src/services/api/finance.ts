@@ -30,7 +30,7 @@ export interface FinanceTree {
   nodes?: FinanceTreeNode[];
 }
 
-export interface FinanceSnapshotEntry {
+interface FinanceSnapshotEntry {
   id: UUID;
   node_id: UUID;
   node_name: string | null;
@@ -58,7 +58,7 @@ export interface FinanceSnapshot {
   created_at: string;
 }
 
-export interface FinanceRateSnapshotEntry {
+interface FinanceRateSnapshotEntry {
   id: UUID;
   base_currency: string;
   quote_currency: string;
@@ -131,7 +131,7 @@ export interface FinanceSnapshotUpdate {
   entries?: FinanceSnapshotEntryCreate[];
 }
 
-export interface FinanceRateSnapshotEntryCreate {
+interface FinanceRateSnapshotEntryCreate {
   base_currency: string;
   quote_currency: string;
   rate: string;

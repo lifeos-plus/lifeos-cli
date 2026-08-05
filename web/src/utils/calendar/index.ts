@@ -6,8 +6,6 @@ export type {
 } from "./CalendarAdapter";
 export {
   DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
-  isLocalDateString,
-  parseLocalDateString,
 } from "./CalendarAdapter";
 export {
   createCalendarAdapter,
@@ -15,6 +13,7 @@ export {
 } from "./createCalendarAdapter";
 export {
   getFullCalendarFirstDay,
+  getFullCalendarVisibleRange,
 } from "./fullCalendar";
 
 // Export concrete adapters for tests and advanced callers.

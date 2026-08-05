@@ -19,7 +19,7 @@ import type {
   PlanningViewType,
 } from "@/utils/calendar";
 import {
-  formatDateInTimezone,
+  formatDate,
   formatDateKey,
   formatDuration,
 } from "@/utils/datetime";
@@ -109,7 +109,7 @@ interface PlanningTaskGroupHookResult {
   showHabitActionsCard: boolean;
   defaultInboxVision: UUID | null;
   handlers: PlanningTaskGroupHandlers;
-  getExpandedTasksForDraggable: (groupId: string) => Set<UUID>;
+  getExpandedTasks: (groupId: string) => Set<UUID>;
   toggleTaskExpansion: (groupId: string, taskId: string) => void;
 }
 
@@ -125,7 +125,10 @@ export function isTopLevelPlanningGroup(
 ): boolean {
   if (!planningCycleType) return false;
   if (planningCycleType === "7years") {
-    return groupId.startsWith("seven-year-");
+    return (
+      groupId.startsWith("seven-year-") ||
+      groupId.startsWith("mayan-seven-year-")
+    );
   }
   return (
     groupId.startsWith(`${planningCycleType}-`) ||
@@ -149,8 +152,8 @@ export function buildHabitActionRange(
   if (!cadenceFrequency) return null;
   const periodRange = calendarAdapter.getPeriodRange(planningCycleType, groupDate);
   return {
-    startDate: formatDateKey(new Date(periodRange.start)),
-    endDate: formatDateKey(new Date(periodRange.end)),
+    startDate: periodRange.start,
+    endDate: periodRange.end,
     referenceDate: formatDateKey(referenceDate),
     cadenceFrequency,
   };
@@ -193,11 +196,10 @@ export function usePlanningTaskGroup(
   const [isCarryingForward, setIsCarryingForward] = useState(false);
   const [showCarryForwardConfirm, setShowCarryForwardConfirm] = useState(false);
 
-  const { getExpandedTasksForDraggable, toggleTaskExpansion } =
-    useTaskExpansionState({
-      key: `planning_group_${group.id}`,
-      expireInHours: 24,
-    });
+  const { getExpandedTasks, toggleTaskExpansion } = useTaskExpansionState({
+    key: `planning_group_${group.id}`,
+    expireInHours: 24,
+  });
 
   const taskIds = useMemo(
     () => group.tasks.map((task) => task.id),
@@ -456,16 +458,13 @@ export function usePlanningTaskGroup(
       planningCycleType,
       group.date,
     );
-    const startDate = new Date(periodRange.start);
-    const endDate = new Date(periodRange.end);
+    const startLabel = formatDate(periodRange.start);
 
-    const startLabel = formatDateInTimezone(startDate);
-
-    if (startDate.toDateString() === endDate.toDateString()) {
+    if (periodRange.start === periodRange.end) {
       return startLabel;
     }
 
-    const endLabel = formatDateInTimezone(endDate);
+    const endLabel = formatDate(periodRange.end);
 
     return `${startLabel} - ${endLabel}`;
   }, [adapter, calendarAdapter, group.date, planningCycleType]);
@@ -568,7 +567,7 @@ export function usePlanningTaskGroup(
         const updatedTask = await tasksApi.update(taskId, {
           planning_cycle_type: planningCycleType,
           planning_cycle_days: cycleSettings.days,
-          planning_cycle_start_date: group.date.toLocaleDateString("en-CA"),
+          planning_cycle_start_date: formatDateKey(group.date),
         });
 
         const originalPlanningSnapshot = {
@@ -577,7 +576,7 @@ export function usePlanningTaskGroup(
         };
         const newPlanningSnapshot = {
           planning_cycle_type: planningCycleType,
-          planning_cycle_start_date: group.date.toLocaleDateString("en-CA"),
+          planning_cycle_start_date: formatDateKey(group.date),
         };
 
         updateTaskCaches(queryClient, updatedTask);
@@ -651,7 +650,7 @@ export function usePlanningTaskGroup(
         planningCycleType,
         group.date,
       );
-      const planningStartDate = group.date.toLocaleDateString("en-CA");
+      const planningStartDate = formatDateKey(group.date);
 
       const createdTask = await tasksApi.create({
         content: newTaskContent.trim(),
@@ -768,7 +767,7 @@ export function usePlanningTaskGroup(
 
       const cycleSettings = getDefaultCycleSettings(
         planningCycleType,
-        group.date,
+        nextPeriodStart,
       );
 
       const results = await Promise.allSettled(
@@ -777,7 +776,7 @@ export function usePlanningTaskGroup(
             planning_cycle_type: planningCycleType,
             planning_cycle_days: cycleSettings.days,
             planning_cycle_start_date:
-              nextPeriodStart.toLocaleDateString("en-CA"),
+              formatDateKey(nextPeriodStart),
           }),
         ),
       );
@@ -816,8 +815,8 @@ export function usePlanningTaskGroup(
       }
 
       // Invalidate cache for both current and next periods
-      const currentPeriodDate = group.date.toLocaleDateString("en-CA");
-      const nextPeriodDate = nextPeriodStart.toLocaleDateString("en-CA");
+      const currentPeriodDate = formatDateKey(group.date);
+      const nextPeriodDate = formatDateKey(nextPeriodStart);
 
       const succeededIds = succeededTasks.map((task) => task.id);
       await invalidateTasksByIds(queryClient, succeededIds, {
@@ -940,7 +939,7 @@ export function usePlanningTaskGroup(
     showHabitActionsCard,
     defaultInboxVision,
     handlers,
-    getExpandedTasksForDraggable,
+    getExpandedTasks,
     toggleTaskExpansion,
   };
 }

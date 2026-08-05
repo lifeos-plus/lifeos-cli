@@ -65,19 +65,16 @@ export const statsApi = {
     start: string,
     end: string,
     areaIds?: UUID[],
-    timezone?: string,
   ) {
     return http.get<DailyAreaListResponse>("/api/v1/stats/daily-areas", {
       start,
       end,
-      timezone,
       area_ids: areaIds,
     });
   },
-  async getLocalDayBreakdown(day: string, timezone?: string) {
+  async getLocalDayBreakdown(day: string) {
     return http.get<DayBreakdownListResponse>("/api/v1/stats/day-breakdown", {
       day,
-      timezone,
     });
   },
   async getAggregatedAreas(
@@ -86,9 +83,6 @@ export const statsApi = {
     end: string,
     options?: {
       areaIds?: UUID[];
-      timezone?: string;
-      firstDayOfWeek?: number;
-      calendarSystem?: string;
     },
   ) {
     return http.get<AggregatedAreaListResponse>(
@@ -97,22 +91,18 @@ export const statsApi = {
         granularity,
         start,
         end,
-        timezone: options?.timezone,
         area_ids: options?.areaIds,
-        first_day_of_week: options?.firstDayOfWeek,
-        calendar_system: options?.calendarSystem,
       },
     );
   },
   async recomputeDailyAreas(
     start: string,
     end: string,
-    timezone?: string,
   ) {
     return http.post<{ days_recomputed: number }>(
       "/api/v1/stats/daily-areas/recompute",
       undefined,
-      { start, end, timezone },
+      { start, end },
     );
   },
 };

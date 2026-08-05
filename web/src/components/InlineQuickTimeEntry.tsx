@@ -428,11 +428,11 @@ export default function InlineQuickTimeEntry({
 
     // If start time is empty, use current time
     const effectiveStartTime =
-      initialStartTime || getNearestFiveMinuteTime(selectedDate);
+      initialStartTime || getNearestFiveMinuteTime(selectedDate, timezone);
 
     const normalizedEnd =
       initialEndTime === "23:59"
-        ? getNearestFiveMinuteTime(selectedDate)
+        ? getNearestFiveMinuteTime(selectedDate, timezone)
         : initialEndTime;
 
     const startISO = hhmmToISO(selectedDate, effectiveStartTime);
@@ -459,6 +459,7 @@ export default function InlineQuickTimeEntry({
     shouldInitializeFromProps,
     setFormDataWithSync,
     hhmmToISO,
+    timezone,
   ]);
 
   // Focus title input when component mounts
@@ -550,7 +551,7 @@ export default function InlineQuickTimeEntry({
       if (isLatestSession) {
         // Reset form state for next entry
         const now = new Date();
-        const currentTime = getNearestFiveMinuteTime(now);
+        const currentTime = getNearestFiveMinuteTime(now, timezone);
         const startISO = hhmmToISO(selectedDate, currentTime);
         const parsedDuration = getEffectiveDurationMinutes();
         const resetEndIso = addMinutesToIso(startISO, parsedDuration ?? 0);

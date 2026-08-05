@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { usePlanningCycle } from "@/hooks/useCalendarAdapter";
+import { formatDateKey, parseDateKey } from "@/utils/datetime";
 import EnumSelect from "./selects/EnumSelect";
 import { TextInput } from "./forms";
 
@@ -38,13 +39,15 @@ export const PlanningCycleDateInput: React.FC<PlanningCycleDateInputProps> = ({
   // Handle month selection for any calendar system
   if (cycleType === "month") {
     const monthInfo = startDate
-      ? adapter.getMonthInfo(new Date(startDate))
+      ? adapter.getMonthInfo(parseDateKey(startDate))
       : null;
     const isValidMonth = monthInfo?.isValidMonth;
 
     if (isValidMonth) {
       // Pass current date to get month options with start date information
-      const currentDate = startDate ? new Date(startDate) : new Date();
+      const currentDate = startDate
+        ? parseDateKey(startDate)
+        : new Date();
 
       // Get localized month names for Gregorian calendar
       const monthNames = Array.from({ length: 12 }, (_, i) =>
@@ -61,7 +64,7 @@ export const PlanningCycleDateInput: React.FC<PlanningCycleDateInputProps> = ({
               const monthIndex = parseInt(value);
               const yearStart = adapter.getYearStart(currentDate);
               const monthStart = adapter.getMonthStart(yearStart, monthIndex);
-              onStartDateChange(monthStart.toLocaleDateString("en-CA"));
+              onStartDateChange(formatDateKey(monthStart));
             }
           }}
           disabled={disabled}
@@ -112,7 +115,7 @@ export const PlanningCycleDateInput: React.FC<PlanningCycleDateInputProps> = ({
             adapter.getDateForYearSelection
           ) {
             const newStart = adapter.getDateForYearSelection(year);
-            onStartDateChange(newStart.toISOString().split("T")[0]);
+            onStartDateChange(formatDateKey(newStart));
           }
         }}
         disabled={disabled}
@@ -173,9 +176,9 @@ export const PlanningCycleDateInput: React.FC<PlanningCycleDateInputProps> = ({
         break;
       }
       case "week": {
-        const selectedDate = new Date(e.target.value);
+        const selectedDate = parseDateKey(e.target.value);
         const weekStart = adapter.getWeekStart(selectedDate);
-        newStartDate = weekStart.toLocaleDateString("en-CA");
+        newStartDate = formatDateKey(weekStart);
         break;
       }
       case "day": {

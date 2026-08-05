@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  dateToEndIso,
+  dateToStartIso,
   formatAmountForAsset,
   formatNumberForAsset,
+  isoToDateInput,
+  isoToDateTimeLocal,
+  localDateTimeToIso,
   rateSnapshotLabel,
   snapshotLabel,
 } from "@/features/finance/utils";
@@ -24,7 +29,7 @@ describe("finance snapshot labels", () => {
       snapshotLabel({
         ...baseSnapshot,
         title: "June net worth",
-      } as FinanceSnapshot),
+      } as FinanceSnapshot, "UTC"),
     ).toBe("June net worth");
   });
 
@@ -33,26 +38,29 @@ describe("finance snapshot labels", () => {
       snapshotLabel({
         ...baseSnapshot,
         title: " ",
-      } as FinanceSnapshot),
+      } as FinanceSnapshot, "UTC"),
     ).not.toBe(" ");
   });
 });
 
 describe("finance rate snapshot labels", () => {
   it("uses only the captured timestamp", () => {
-    const label = rateSnapshotLabel({
-      id: "rate-snapshot-1",
-      captured_at: "2026-06-25T12:00:00.000Z",
-      source: "manual",
-      entries: [
-        {
-          id: "rate-entry-1",
-          base_currency: "BTC",
-          quote_currency: "USDT",
-          rate: "100000",
-        },
-      ],
-    } as FinanceRateSnapshot);
+    const label = rateSnapshotLabel(
+      {
+        id: "rate-snapshot-1",
+        captured_at: "2026-06-25T12:00:00.000Z",
+        source: "manual",
+        entries: [
+          {
+            id: "rate-entry-1",
+            base_currency: "BTC",
+            quote_currency: "USDT",
+            rate: "100000",
+          },
+        ],
+      } as FinanceRateSnapshot,
+      "UTC",
+    );
 
     expect(label).not.toContain("BTC/USDT");
   });
@@ -87,5 +95,28 @@ describe("finance asset amount formatting", () => {
         [{ id: "asset-eth", code: "ETH", decimal_places: 8, is_default: true }],
       ),
     ).toBe("1");
+  });
+});
+
+describe("finance timestamp conversion", () => {
+  it("interprets datetime-local values in the configured timezone", () => {
+    expect(localDateTimeToIso("2026-07-01T08:30", "Asia/Shanghai")).toBe(
+      "2026-07-01T00:30:00.000Z",
+    );
+    expect(
+      isoToDateTimeLocal("2026-07-01T00:30:00.000Z", "Asia/Shanghai"),
+    ).toBe("2026-07-01T08:30");
+  });
+
+  it("interprets finance period boundaries in the configured timezone", () => {
+    expect(dateToStartIso("2024-03-10", "America/Los_Angeles")).toBe(
+      "2024-03-10T08:00:00.000Z",
+    );
+    expect(dateToEndIso("2024-03-10", "America/Los_Angeles")).toBe(
+      "2024-03-11T06:59:59.999Z",
+    );
+    expect(
+      isoToDateInput("2024-03-11T06:59:59.999Z", "America/Los_Angeles"),
+    ).toBe("2024-03-10");
   });
 });

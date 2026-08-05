@@ -71,15 +71,11 @@ export const useVisionManager = (statusFilter: string = "active") => {
   // Confirmation states
   const [deletingVision, setDeletingVision] = useState<Vision | null>(null);
   const [harvestingVision, setHarvestingVision] = useState<Vision | null>(null);
-  const [deletingTaskInfo, setDeletingTaskInfo] = useState<{
-    visionId: UUID;
-    task: TaskWithSubtasks;
-  } | null>(null);
 
   // UI state management with persistence
   const {
     expandedVisions,
-    expandedTasksInVision,
+    expandedTasksByScope,
     isFullyLoaded: uiStateLoaded,
     toggleVisionExpansion,
     toggleTaskExpansion,
@@ -405,74 +401,6 @@ export const useVisionManager = (statusFilter: string = "active") => {
     harvestVisionMutation.mutate(payload);
   }, [harvestingVision, harvestVisionMutation]);
 
-  // 6. 任务操作 - 使用 useMutation
-  const requestDeleteTask = useCallback(
-    (visionId: UUID, task: TaskWithSubtasks) => {
-      setDeletingTaskInfo({ visionId, task });
-    },
-    [],
-  );
-
-  const deleteTaskMutation = useMutation<
-    void,
-    Error,
-    { taskId: UUID; visionId: UUID; taskContent: string }
-  >({
-    mutationFn: ({ taskId }) => tasksApi.delete(taskId),
-    onSuccess: (_, variables) => {
-      loadVisionTasks(variables.visionId, true);
-      toast.showSuccess(
-        "任务删除成功",
-        `任务"${variables.taskContent}"已成功删除`,
-      );
-    },
-    onError: (err: Error) => {
-      handleError(err, "删除任务失败");
-    },
-  });
-
-  const confirmDeleteTask = useCallback(() => {
-    if (!deletingTaskInfo) return;
-
-    const payload = {
-      taskId: deletingTaskInfo.task.id,
-      visionId: deletingTaskInfo.visionId,
-      taskContent: deletingTaskInfo.task.content,
-    };
-
-    setDeletingTaskInfo(null);
-    deleteTaskMutation.mutate(payload);
-  }, [deletingTaskInfo, deleteTaskMutation]);
-
-  const updateTaskStatusMutation = useMutation({
-    mutationFn: ({ taskId, status }: { taskId: UUID; status: string }) =>
-      tasksApi.updateStatus(taskId, status),
-    onSuccess: (_, variables) => {
-      // 找到对应的愿景ID并重新加载任务
-      const visionEntry = Object.entries(visionTasks).find(([, tasks]) =>
-        tasks?.some((task) => task.id === variables.taskId),
-      );
-      const visionId = visionEntry?.[0];
-      if (visionId) {
-        loadVisionTasks(visionId, true);
-      }
-      toast.showSuccess(
-        "任务状态更新成功",
-        `任务状态已更新为${variables.status}`,
-      );
-    },
-    onError: (err: Error) => {
-      handleError(err, "更新任务状态失败");
-    },
-  });
-
-  const updateTaskStatus = useCallback(
-    async (_visionId: UUID, task: TaskWithSubtasks, newStatus: string) => {
-      updateTaskStatusMutation.mutate({ taskId: task.id, status: newStatus });
-    },
-    [updateTaskStatusMutation],
-  );
-
   // Enhanced expansion state management with task loading
   const handleVisionExpansion = useCallback(
     async (visionId: UUID) => {
@@ -496,27 +424,20 @@ export const useVisionManager = (statusFilter: string = "active") => {
     expandedVisions,
     visionTasks,
     visionTasksLoading,
-    expandedTasksInVision,
+    expandedTasksByScope,
     habitTaskAssociations,
-    habitAssociationsLoaded: true, // 现在通过 useQuery 自动管理
     deletingVision,
     harvestingVision,
-    deletingTaskInfo,
 
     // Operations
     loadVisions,
     loadVisionTasks,
-    loadHabitTaskAssociations: () => {}, // 已废弃，通过 useQuery 自动管理
     requestDeleteVision,
     confirmDeleteVision,
     cancelDeleteVision: () => setDeletingVision(null),
     requestHarvestVision,
     confirmHarvestVision,
     cancelHarvestVision: () => setHarvestingVision(null),
-    requestDeleteTask,
-    confirmDeleteTask,
-    cancelDeleteTask: () => setDeletingTaskInfo(null),
-    updateTaskStatus,
     toggleVisionExpansion: handleVisionExpansion,
     toggleTaskExpansion,
 

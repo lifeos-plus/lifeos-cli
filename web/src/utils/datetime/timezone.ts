@@ -11,7 +11,6 @@ const FALLBACK_TIMEZONES = [
   "Australia/Sydney",
 ];
 
-const dtfCache = new Map<string, Intl.DateTimeFormat>();
 const PREFERRED_TIMEZONE_STORAGE_KEY = "cc_preferred_timezone";
 let preferredTimezoneCache: string | null = null;
 
@@ -49,62 +48,6 @@ export function resolvePreferredTimezone(preferred?: string | null): string {
   }
   const cached = getPreferredTimezone();
   return cached ?? "UTC";
-}
-
-function getFormatter(timeZone: string): Intl.DateTimeFormat {
-  let formatter = dtfCache.get(timeZone);
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      hour12: false,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-    dtfCache.set(timeZone, formatter);
-  }
-  return formatter;
-}
-
-function getTimeZoneOffset(date: Date, timeZone: string): number {
-  const formatter = getFormatter(timeZone);
-  const parts = formatter.formatToParts(date);
-  const values: Record<string, number> = {};
-  for (const part of parts) {
-    if (part.type !== "literal") {
-      values[part.type] = Number(part.value);
-    }
-  }
-  const asUTC = Date.UTC(
-    values.year,
-    (values.month || 1) - 1,
-    values.day || 1,
-    values.hour || 0,
-    values.minute || 0,
-    values.second || 0,
-    date.getUTCMilliseconds(),
-  );
-  return asUTC - date.getTime();
-}
-
-export function zonedDateTimeToUtc(
-  year: number,
-  month: number,
-  day: number,
-  hour: number,
-  minute: number,
-  second: number,
-  millisecond: number,
-  timeZone: string,
-): Date {
-  const utcReference = new Date(
-    Date.UTC(year, month - 1, day, hour, minute, second, millisecond),
-  );
-  const offset = getTimeZoneOffset(utcReference, timeZone);
-  return new Date(utcReference.getTime() - offset);
 }
 
 function isValidTimezone(value?: string | null): boolean {

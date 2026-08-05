@@ -13,7 +13,16 @@ def apply_preferred_timezone(value: datetime) -> datetime:
     if value.tzinfo is not None and value.utcoffset() is not None:
         return value
     preferred_timezone = ZoneInfo(get_preferences_settings().timezone)
-    return value.replace(tzinfo=preferred_timezone)
+    localized = value.replace(tzinfo=preferred_timezone)
+    round_trip = (
+        localized.astimezone(timezone.utc).astimezone(preferred_timezone).replace(tzinfo=None)
+    )
+    if round_trip != value:
+        raise ValueError(
+            f"Local datetime {value.isoformat()} does not exist in timezone "
+            f"{preferred_timezone.key}"
+        )
+    return localized
 
 
 def to_storage_timezone(value: datetime) -> datetime:

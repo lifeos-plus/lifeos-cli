@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from lifeos_cli.application.time_preferences import to_storage_timezone
 from lifeos_cli.db.base import utc_now
 from lifeos_cli.db.models.finance import (
     FinanceAsset,
@@ -706,17 +707,26 @@ def _validate_snapshot_time_fields(
     period_start: datetime | None,
     period_end: datetime | None,
 ) -> tuple[datetime | None, datetime | None, datetime | None]:
-    has_period_start = period_start is not None
-    has_period_end = period_end is not None
+    normalized_snapshot_ts = to_storage_timezone(snapshot_ts) if snapshot_ts is not None else None
+    normalized_period_start = (
+        to_storage_timezone(period_start) if period_start is not None else None
+    )
+    normalized_period_end = to_storage_timezone(period_end) if period_end is not None else None
+    has_period_start = normalized_period_start is not None
+    has_period_end = normalized_period_end is not None
     if has_period_start or has_period_end:
-        if period_start is None or period_end is None:
+        if normalized_period_start is None or normalized_period_end is None:
             raise FinanceValidationError(
                 "Period finance snapshots require period_start and period_end"
             )
-        if period_end < period_start:
+        if normalized_period_end < normalized_period_start:
             raise FinanceValidationError("Finance snapshot period_end must be after period_start")
-        return snapshot_ts or utc_now(), period_start, period_end
-    return snapshot_ts or utc_now(), None, None
+        return (
+            normalized_snapshot_ts or utc_now(),
+            normalized_period_start,
+            normalized_period_end,
+        )
+    return normalized_snapshot_ts or utc_now(), None, None
 
 
 async def _load_entry_nodes(
@@ -829,7 +839,9 @@ async def create_finance_rate_snapshot(
     """Create one exchange-rate snapshot."""
     if not entries:
         raise FinanceValidationError("Finance rate snapshot requires at least one rate entry")
-    resolved_captured_at = captured_at or utc_now()
+    resolved_captured_at = (
+        to_storage_timezone(captured_at) if captured_at is not None else utc_now()
+    )
     rate_snapshot = FinanceRateSnapshot(
         captured_at=resolved_captured_at,
         source=_rate_snapshot_source(source),
@@ -876,7 +888,11 @@ async def _create_finance_rate_snapshot_entries(
             quote_currency=quote_currency,
             rate=_validate_rate(entry_input.rate),
             source=entry_input.source,
-            captured_at=entry_input.captured_at,
+            captured_at=(
+                to_storage_timezone(entry_input.captured_at)
+                if entry_input.captured_at is not None
+                else None
+            ),
             is_derived=entry_input.is_derived,
             metadata_json=entry_input.metadata,
         )
@@ -957,7 +973,9 @@ async def update_finance_rate_snapshot(
         )
 
     if update_captured_at:
-        rate_snapshot.captured_at = captured_at or utc_now()
+        rate_snapshot.captured_at = (
+            to_storage_timezone(captured_at) if captured_at is not None else utc_now()
+        )
     if update_source:
         rate_snapshot.source = _rate_snapshot_source(source)
     if update_note:

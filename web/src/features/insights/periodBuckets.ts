@@ -1,5 +1,6 @@
 import type { AggregationGranularity } from "@/services/api/stats";
 import type { CalendarAdapter, ExtendedPlanningViewType } from "@/utils/calendar";
+import { formatDateKey, parseDateKey } from "@/utils/datetime";
 
 export interface PeriodBucketBoundary {
   start: string;
@@ -7,16 +8,12 @@ export interface PeriodBucketBoundary {
 }
 
 export const parseLocalDate = (isoDate: string): Date => {
-  const [yearStr, monthStr, dayStr] = isoDate.split("-");
-  const year = Number(yearStr);
-  const month = Number(monthStr) - 1;
-  const day = Number(dayStr);
-  return new Date(year, month, day, 0, 0, 0, 0);
+  return parseDateKey(isoDate);
 };
 
 const toIsoDate = (date: Date): string => {
   const normalized = normalizeDate(date);
-  return normalized.toLocaleDateString("en-CA");
+  return formatDateKey(normalized);
 };
 
 const normalizeDate = (date: Date): Date => {

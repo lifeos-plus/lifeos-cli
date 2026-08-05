@@ -11,7 +11,6 @@ import {
   formatDuration,
   formatDurationFromTimes,
   formatTime,
-  resolvePreferredTimezone,
 } from "@/utils/datetime";
 import type { PersonSummary } from "@/services/api";
 import type {
@@ -19,7 +18,7 @@ import type {
   PersonActivityType,
 } from "@/services/api/persons";
 import { useAreas } from "@/hooks/queries/useAreas";
-import { usePreferenceWithBootstrap } from "@/hooks/queries/usePreferenceWithBootstrap";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 import AreaBadge from "./AreaBadge";
 
 interface PersonTimelineModalProps {
@@ -66,13 +65,8 @@ const PersonTimelineModal: React.FC<PersonTimelineModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const parentRef = useRef<HTMLDivElement>(null);
-  const timezonePreference = usePreferenceWithBootstrap<string>({
-    key: "system.timezone",
-    defaultValue: resolvePreferredTimezone(),
-    module: "system",
-    validator: (value) => typeof value === "string" && value.length > 0,
-  });
-  const activeTimezone = resolvePreferredTimezone(timezonePreference.value);
+  const timezonePreference = useSystemTimezone();
+  const activeTimezone = timezonePreference.timezone;
   const { areaMap } = useAreas();
 
   useEffect(() => {

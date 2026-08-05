@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { usePreferenceWithBootstrap } from "@/hooks/queries/usePreferenceWithBootstrap";
-import { resolvePreferredTimezone } from "@/utils/datetime";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 import { useTimeLogData } from "@/features/timeLog/controller/useTimeLogData";
 import { useAdvancedSearchWithPagination } from "@/hooks/queries/useAdvancedSearch";
 import { useAllTasks } from "@/hooks/queries/useTasks";
@@ -20,7 +19,7 @@ interface TimeLogPageDataOptions {
 type TimeLogDataResult = ReturnType<typeof useTimeLogData>;
 
 export interface TimeLogPageData extends TimeLogDataResult {
-  timezonePreference: ReturnType<typeof usePreferenceWithBootstrap<string>>;
+  timezonePreference: ReturnType<typeof useSystemTimezone>;
   activeTimezone: string;
   advancedSearchParams: {
     start_date: string;
@@ -54,14 +53,8 @@ export function useTimeLogPageData(
 ): TimeLogPageData {
   const { selectedDate, sortOrder, queryMode, saveScrollPosition } = options;
 
-  const timezonePreference = usePreferenceWithBootstrap<string>({
-    key: "system.timezone",
-    defaultValue: resolvePreferredTimezone(),
-    module: "system",
-    validator: (value) => typeof value === "string" && value.length > 0,
-  });
-
-  const activeTimezone = resolvePreferredTimezone(timezonePreference.value);
+  const timezonePreference = useSystemTimezone();
+  const activeTimezone = timezonePreference.timezone;
 
   const timeLogData = useTimeLogData({
     selectedDate,
@@ -69,6 +62,7 @@ export function useTimeLogPageData(
     queryMode,
     saveScrollPosition,
     timezone: activeTimezone,
+    ready: !timezonePreference.loading,
   });
 
   const [advancedSearchParams, setAdvancedSearchParams] = useState(() => {

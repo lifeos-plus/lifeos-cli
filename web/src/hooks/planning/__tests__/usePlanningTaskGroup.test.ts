@@ -7,8 +7,8 @@ import {
 
 const calendarAdapter = {
   getPeriodRange: () => ({
-    start: new Date("2026-07-06T00:00:00"),
-    end: new Date("2026-07-12T00:00:00"),
+    start: "2026-07-06",
+    end: "2026-07-12",
   }),
 } as unknown as CalendarAdapter;
 
@@ -34,5 +34,8 @@ describe("planning habit action helpers", () => {
     expect(isTopLevelPlanningGroup("day-2026-6-6-0", "week")).toBe(false);
     expect(isTopLevelPlanningGroup("mayan-month-2026-0", "month")).toBe(true);
     expect(isTopLevelPlanningGroup("mayan-week-2026-0", "month")).toBe(false);
+    expect(
+      isTopLevelPlanningGroup("mayan-seven-year-2025-07-26", "7years"),
+    ).toBe(true);
   });
 });

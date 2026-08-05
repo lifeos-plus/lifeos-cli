@@ -8,6 +8,7 @@ import { FormField, TextInput } from "@/components/forms";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import AssetSelect from "@/components/selects/AssetSelect";
 import { useToast } from "@/contexts/ToastContext";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 import ModalBase from "@/layouts/ModalBase";
 import Surface from "@/layouts/Surface";
 import {
@@ -53,6 +54,8 @@ export function RateSnapshotsWorkspace() {
   const { t } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const timezonePreference = useSystemTimezone();
+  const activeTimezone = timezonePreference.timezone;
   const { assets, createAsset } = useFinanceAssetSource();
   const [selectedRateSnapshotId, setSelectedRateSnapshotId] = useState<UUID | null>(null);
   const [rateFormVisible, setRateFormVisible] = useState(false);
@@ -62,7 +65,9 @@ export function RateSnapshotsWorkspace() {
   const [deletedRateSnapshotIds, setDeletedRateSnapshotIds] = useState<Set<UUID>>(
     () => new Set(),
   );
-  const [capturedAt, setCapturedAt] = useState(nowDateTimeLocal());
+  const [capturedAt, setCapturedAt] = useState(() =>
+    nowDateTimeLocal(activeTimezone),
+  );
   const [source, setSource] = useState("manual");
   const [note, setNote] = useState("");
   const [rateRows, setRateRows] = useState<RateRowState[]>([
@@ -161,6 +166,7 @@ export function RateSnapshotsWorkspace() {
 
   const submitRateSnapshot = (event: React.FormEvent) => {
     event.preventDefault();
+    if (timezonePreference.loading) return;
     const entries = rateRows
       .map((row) => {
         const baseAmountValue = row.baseAmount.trim();
@@ -201,8 +207,16 @@ export function RateSnapshotsWorkspace() {
       toast.showWarning(t("finance.messages.rateSnapshotRatesRequired"));
       return;
     }
+    const capturedAtTimestamp = localDateTimeToIso(
+      capturedAt,
+      activeTimezone,
+    );
+    if (!capturedAtTimestamp) {
+      toast.showWarning(t("finance.messages.invalidDateTime"));
+      return;
+    }
     const payload = {
-      captured_at: localDateTimeToIso(capturedAt),
+      captured_at: capturedAtTimestamp,
       source: source.trim() || "manual",
       note: note.trim() || null,
       entries,
@@ -228,7 +242,7 @@ export function RateSnapshotsWorkspace() {
   const hasNext = currentPosition > 0 && currentPosition < snapshots.length;
   const snapshotOptions = snapshots.map((snapshot) => ({
     value: snapshot.id,
-    label: rateSnapshotLabel(snapshot),
+    label: rateSnapshotLabel(snapshot, activeTimezone),
   }));
 
   const selectRateSnapshot = (snapshotId: UUID) => {
@@ -238,7 +252,7 @@ export function RateSnapshotsWorkspace() {
   };
 
   const resetRateSnapshotForm = () => {
-    setCapturedAt(nowDateTimeLocal());
+    setCapturedAt(nowDateTimeLocal(activeTimezone));
     setSource("manual");
     setNote("");
     setRateRows([
@@ -247,14 +261,17 @@ export function RateSnapshotsWorkspace() {
   };
 
   const openCreateRateSnapshotForm = () => {
+    if (timezonePreference.loading) return;
     resetRateSnapshotForm();
     setRateFormMode("create");
     setRateFormVisible(true);
   };
 
   const openEditRateSnapshotForm = () => {
-    if (!currentSnapshot) return;
-    setCapturedAt(isoToDateTimeLocal(currentSnapshot.captured_at));
+    if (!currentSnapshot || timezonePreference.loading) return;
+    setCapturedAt(
+      isoToDateTimeLocal(currentSnapshot.captured_at, activeTimezone),
+    );
     setSource(currentSnapshot.source || "manual");
     setNote(currentSnapshot.note ?? "");
     setRateRows(
@@ -270,8 +287,8 @@ export function RateSnapshotsWorkspace() {
   };
 
   const openCopyRateSnapshotForm = () => {
-    if (!currentSnapshot) return;
-    setCapturedAt(nowDateTimeLocal());
+    if (!currentSnapshot || timezonePreference.loading) return;
+    setCapturedAt(nowDateTimeLocal(activeTimezone));
     setSource(currentSnapshot.source || "manual");
     setNote(currentSnapshot.note ?? "");
     setRateRows(
@@ -340,7 +357,9 @@ export function RateSnapshotsWorkspace() {
                 size="sm"
                 variant="ghost"
                 disabled={
-                  createRateSnapshotMutation.isPending || updateRateSnapshotMutation.isPending
+                  timezonePreference.loading ||
+                  createRateSnapshotMutation.isPending ||
+                  updateRateSnapshotMutation.isPending
                 }
               />
               <ActionButton
@@ -498,7 +517,7 @@ export function RateSnapshotsWorkspace() {
         ) : currentSnapshot ? (
           <>
             <SnapshotNavigator
-              title={rateSnapshotLabel(currentSnapshot)}
+              title={rateSnapshotLabel(currentSnapshot, activeTimezone)}
               rightSlot={
                 <SnapshotActionButtons
                   editLabel={t("common.edit")}
@@ -591,7 +610,9 @@ export function RateSnapshotsWorkspace() {
         isOpen={Boolean(pendingDeleteRateSnapshot)}
         title={t("finance.rates.deleteTitle")}
         message={t("finance.rates.deleteMessage", {
-          name: pendingDeleteRateSnapshot ? rateSnapshotLabel(pendingDeleteRateSnapshot) : "",
+          name: pendingDeleteRateSnapshot
+            ? rateSnapshotLabel(pendingDeleteRateSnapshot, activeTimezone)
+            : "",
         })}
         confirmText={t("finance.rates.deleteConfirm")}
         onCancel={() => setPendingDeleteRateSnapshot(null)}

@@ -8,7 +8,12 @@ import ActionButton from "@/components/ActionButton";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import TimeEntriesTable from "@/components/TimeEntriesTable";
 import TimeEntryModal from "@/components/TimeEntryModal";
-import { resolvePreferredTimezone, zonedDateTimeToUtc } from "@/utils/datetime";
+import {
+  parseDateKey,
+  parseDateOnlyToLocalDate,
+  resolvePreferredTimezone,
+  localDateTimeLocalToUtcIso,
+} from "@/utils/datetime";
 import {
   parseBulkTimelogInput,
   BULK_IMPORT_MAX_ENTRIES,
@@ -100,20 +105,10 @@ const convertToUtcIso = (
   timeString: string,
   timezone: string,
 ): string => {
-  const [year, month, day] = dateString
-    .split("-")
-    .map((token) => Number(token));
-  const [hour, minute] = timeString.split(":").map((token) => Number(token));
-  return zonedDateTimeToUtc(
-    year,
-    month,
-    day,
-    hour,
-    minute,
-    0,
-    0,
+  return localDateTimeLocalToUtcIso(
+    `${dateString}T${timeString}`,
     timezone,
-  ).toISOString();
+  );
 };
 
 const buildProcessedEntry = (
@@ -175,11 +170,9 @@ const buildProcessedEntry = (
 
 const computeDayOffset = (baseDate: string, target: string): number | null => {
   if (!DATE_REGEX.test(baseDate) || !DATE_REGEX.test(target)) return null;
-  const base = new Date(`${baseDate}T00:00:00`);
-  const targetDate = new Date(`${target}T00:00:00`);
-  if (Number.isNaN(base.getTime()) || Number.isNaN(targetDate.getTime())) {
-    return null;
-  }
+  const base = parseDateOnlyToLocalDate(baseDate);
+  const targetDate = parseDateOnlyToLocalDate(target);
+  if (!base || !targetDate) return null;
   return Math.floor((targetDate.getTime() - base.getTime()) / MS_PER_DAY);
 };
 
@@ -354,7 +347,7 @@ const TimeLogBulkImportPanel: React.FC<TimeLogBulkImportPanelProps> = ({
   );
 
   const parseDate = useMemo(
-    () => new Date(`${baseDateString}T00:00:00`),
+    () => parseDateKey(baseDateString),
     [baseDateString],
   );
 
@@ -538,7 +531,7 @@ const TimeLogBulkImportPanel: React.FC<TimeLogBulkImportPanelProps> = ({
   );
 
   const editingSelectedDate = useMemo(
-    () => (activeRow ? new Date(`${activeRow.date}T00:00:00`) : selectedDate),
+    () => (activeRow ? parseDateKey(activeRow.date) : selectedDate),
     [activeRow, selectedDate],
   );
 

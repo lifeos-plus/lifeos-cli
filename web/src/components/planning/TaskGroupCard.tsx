@@ -44,7 +44,7 @@ interface TaskGroupCardProps {
   handlers: PlanningTaskGroupHandlers;
   onTaskUpdate?: () => void;
   onTaskStatusUpdate?: (taskId: UUID, newStatus: string) => Promise<void>;
-  getExpandedTasksForDraggable: (groupId: string) => Set<UUID>;
+  getExpandedTasks: (groupId: string) => Set<UUID>;
   toggleTaskExpansion: (groupId: string, taskId: string) => void;
   planningTaskFilterStatus: readonly string[];
   periodRangeLabel?: string;
@@ -80,7 +80,7 @@ export const TaskGroupCard: React.FC<TaskGroupCardProps> = ({
   handlers,
   onTaskUpdate,
   onTaskStatusUpdate,
-  getExpandedTasksForDraggable,
+  getExpandedTasks,
   toggleTaskExpansion,
   planningTaskFilterStatus,
   periodRangeLabel,
@@ -158,7 +158,7 @@ export const TaskGroupCard: React.FC<TaskGroupCardProps> = ({
         selectedVisionFilterName={selectedVisionFilterName}
         onTaskUpdate={onTaskUpdate}
         onTaskStatusUpdate={onTaskStatusUpdate}
-        getExpandedTasksForDraggable={getExpandedTasksForDraggable}
+        getExpandedTasks={getExpandedTasks}
         toggleTaskExpansion={toggleTaskExpansion}
       />
 

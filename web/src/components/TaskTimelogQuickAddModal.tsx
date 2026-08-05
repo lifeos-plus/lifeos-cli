@@ -9,8 +9,8 @@ import type {
 } from "@/services/api";
 import { tasksApi } from "@/services/api/tasks";
 import { tasksKeys } from "@/services/api/queryKeys";
-import { usePreferenceWithBootstrap } from "@/hooks/queries/usePreferenceWithBootstrap";
-import { formatTime, resolvePreferredTimezone } from "@/utils/datetime";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
+import { formatTime } from "@/utils/datetime";
 import { createModalSessionId } from "@/utils/session";
 
 interface TaskTimelogQuickAddModalProps {
@@ -27,13 +27,8 @@ export default function TaskTimelogQuickAddModal({
   onTimelogCreated,
 }: TaskTimelogQuickAddModalProps) {
   const { t } = useTranslation();
-  const timezonePreference = usePreferenceWithBootstrap<string>({
-    key: "system.timezone",
-    defaultValue: resolvePreferredTimezone(),
-    module: "system",
-    validator: (value) => typeof value === "string" && value.length > 0,
-  });
-  const activeTimezone = resolvePreferredTimezone(timezonePreference.value);
+  const timezonePreference = useSystemTimezone();
+  const activeTimezone = timezonePreference.timezone;
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {

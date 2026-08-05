@@ -1,10 +1,10 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@test/utils";
 import type { HabitAction } from "@/services/api/habits";
 import type { UUID } from "@/types/primitive";
 import { HabitActionList } from "@/components/habits/HabitActionList";
-import { GregorianCalendarAdapter } from "@/utils/calendar";
+import { GregorianCalendarAdapter, MayanCalendarAdapter } from "@/utils/calendar";
 
 const action: HabitAction = {
   id: "action-1" as UUID,
@@ -43,6 +43,7 @@ describe("HabitActionList", () => {
         startDate="2026-07-02"
         cadenceFrequency="daily"
         calendarAdapter={new GregorianCalendarAdapter()}
+        calendarSystem="gregorian"
         centerDate={new Date("2026-07-04T00:00:00")}
         onCenterDateChange={vi.fn()}
         onStatusUpdate={vi.fn()}
@@ -90,6 +91,7 @@ describe("HabitActionList", () => {
         startDate="2026-07-01"
         cadenceFrequency="weekly"
         calendarAdapter={new GregorianCalendarAdapter(1)}
+        calendarSystem="gregorian"
         centerDate={new Date("2026-07-20T00:00:00")}
         onCenterDateChange={vi.fn()}
         onStatusUpdate={vi.fn()}
@@ -124,6 +126,7 @@ describe("HabitActionList", () => {
         startDate="2026-07-01"
         cadenceFrequency="weekly"
         calendarAdapter={new GregorianCalendarAdapter(6)}
+        calendarSystem="gregorian"
         centerDate={new Date("2026-07-06T00:00:00")}
         onCenterDateChange={vi.fn()}
         onStatusUpdate={vi.fn()}
@@ -134,5 +137,33 @@ describe("HabitActionList", () => {
     expect(
       container.querySelector("#status-select-weekly-current-action"),
     ).toBeInTheDocument();
+  });
+
+  it("uses 13 Moon month ranges for the calendar grid and navigation", () => {
+    const { container } = renderWithProviders(
+      <HabitActionList
+        actions={[]}
+        habitId={"habit-1" as UUID}
+        habitTitle="Morning Walk"
+        durationDays={90}
+        startDate="2026-07-26"
+        cadenceFrequency="daily"
+        calendarAdapter={new MayanCalendarAdapter()}
+        calendarSystem="mayan_13_moon"
+        centerDate={new Date("2026-08-01T00:00:00")}
+        onCenterDateChange={vi.fn()}
+        onStatusUpdate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("2026-07-26 – 2026-08-22")).toBeInTheDocument();
+    expect(container.querySelector('[title^="2026-07-26 -"]')).toBeInTheDocument();
+    expect(container.querySelector('[title^="2026-08-22 -"]')).toBeInTheDocument();
+    expect(container.querySelector('[title^="2026-08-23 -"]')).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "habits.actionList.nextMonth" }),
+    );
+    expect(screen.getByText("2026-08-23 – 2026-09-19")).toBeInTheDocument();
   });
 });

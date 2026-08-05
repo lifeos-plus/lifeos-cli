@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from sqlalchemy.ext.asyncio import (
@@ -12,8 +13,10 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from lifeos_cli.config import clear_config_cache
 from lifeos_cli.db.base import Base
 from lifeos_cli.db.services import finance
+from tests.config_support import install_test_config
 
 
 async def _create_sqlite_session_factory() -> tuple[
@@ -76,6 +79,79 @@ def test_finance_default_tree_and_snapshot_rollups() -> None:
             await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_finance_services_apply_configured_timezone_to_naive_timestamps(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    install_test_config(monkeypatch=monkeypatch, tmp_path=tmp_path, include_preferences=True)
+
+    async def run() -> None:
+        engine, session_factory = await _create_sqlite_session_factory()
+        try:
+            async with session_factory() as session:
+                tree = await finance.ensure_default_finance_tree(
+                    session,
+                    primary_currency="USD",
+                )
+                assets = next(
+                    node
+                    for node in await finance.list_finance_nodes(session, tree_id=tree.id)
+                    if node.name == "Assets"
+                )
+                account = await finance.create_finance_node(
+                    session,
+                    tree_id=tree.id,
+                    parent_id=assets.id,
+                    name="Checking",
+                    currency_code="USD",
+                )
+                snapshot = await finance.create_finance_snapshot(
+                    session,
+                    tree_id=tree.id,
+                    snapshot_ts=datetime(2026, 4, 10, 9, 0),
+                    period_start=datetime(2026, 4, 1, 0, 0),
+                    period_end=datetime(2026, 4, 30, 23, 59, 59),
+                    entries=[
+                        finance.FinanceSnapshotEntryInput(
+                            node_id=account.id,
+                            amount=Decimal("1"),
+                            currency_code="USD",
+                        )
+                    ],
+                )
+                rate_snapshot = await finance.create_finance_rate_snapshot(
+                    session,
+                    captured_at=datetime(2026, 4, 10, 9, 0),
+                    entries=[
+                        finance.FinanceRateSnapshotEntryInput(
+                            base_currency="USD",
+                            quote_currency="CNY",
+                            rate=Decimal("7"),
+                            captured_at=datetime(2026, 4, 10, 9, 30),
+                        )
+                    ],
+                )
+
+                assert snapshot.snapshot_ts is not None
+                assert snapshot.period_start is not None
+                assert snapshot.period_end is not None
+                assert snapshot.snapshot_ts.isoformat() == "2026-04-10T13:00:00+00:00"
+                assert snapshot.period_start.isoformat() == "2026-04-01T04:00:00+00:00"
+                assert snapshot.period_end.isoformat() == "2026-05-01T03:59:59+00:00"
+                assert rate_snapshot.captured_at.isoformat() == "2026-04-10T13:00:00+00:00"
+                assert rate_snapshot.entries[0].captured_at is not None
+                assert (
+                    rate_snapshot.entries[0].captured_at.isoformat() == "2026-04-10T13:30:00+00:00"
+                )
+        finally:
+            await engine.dispose()
+
+    try:
+        asyncio.run(run())
+    finally:
+        clear_config_cache()
 
 
 def test_finance_snapshot_title_can_be_created_updated_and_cleared() -> None:

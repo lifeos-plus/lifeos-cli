@@ -3,9 +3,8 @@ import { usePreferenceWithBootstrap } from "./queries/usePreferenceWithBootstrap
 import {
   DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
   createCalendarAdapter,
-  isLocalDateString,
-  parseLocalDateString,
 } from "@/utils/calendar";
+import { isDateKey, parseDateKey } from "@/utils/datetime";
 import type {
   CalendarAdapter,
   CalendarSystem,
@@ -16,6 +15,7 @@ interface CalendarAdapterState {
   adapter: CalendarAdapter;
   calendarSystem: CalendarSystem;
   firstDayOfWeek: number;
+  sevenYearAnchorDate: string;
   loading: boolean;
 }
 
@@ -41,7 +41,7 @@ export function useCalendarAdapter(): CalendarAdapterState {
     key: "calendar.seven_year_anchor_date",
     defaultValue: DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
     module: "calendar",
-    validator: isLocalDateString,
+    validator: isDateKey,
   });
 
   const calendarSystem: CalendarSystem =
@@ -51,7 +51,7 @@ export function useCalendarAdapter(): CalendarAdapterState {
   const firstDayOfWeek = Number.isFinite(firstDayPreference.value)
     ? firstDayPreference.value
     : 1;
-  const sevenYearAnchorDate = isLocalDateString(sevenYearAnchorPreference.value)
+  const sevenYearAnchorDate = isDateKey(sevenYearAnchorPreference.value)
     ? sevenYearAnchorPreference.value
     : DEFAULT_SEVEN_YEAR_ANCHOR_DATE;
 
@@ -67,6 +67,7 @@ export function useCalendarAdapter(): CalendarAdapterState {
     adapter,
     calendarSystem,
     firstDayOfWeek,
+    sevenYearAnchorDate,
     loading:
       calendarSystemPreference.loading ||
       firstDayPreference.loading ||
@@ -88,39 +89,12 @@ export function usePlanningCycle() {
     cycleType: ExtendedPlanningViewType,
     baseDate: Date = new Date(),
   ) => {
-    const yearStart = adapter.getYearStart(baseDate);
-    const monthInfo = adapter.getMonthInfo(baseDate);
-    const startDate = monthInfo.monthStart || baseDate;
-    const days = adapter.getPlanningCycleDays(cycleType);
-
-    // Override start date based on cycle type
-    switch (cycleType) {
-      case "year":
-        startDate.setTime(yearStart.getTime());
-        break;
-      case "7years":
-      case "sevenYear":
-        startDate.setTime(
-          parseLocalDateString(
-            adapter.getPeriodRange("7years", baseDate).start,
-          ).getTime(),
-        );
-        break;
-      case "month":
-        if (monthInfo.monthStart) {
-          startDate.setTime(monthInfo.monthStart.getTime());
-        }
-        break;
-      case "week":
-        startDate.setTime(adapter.getWeekStart(baseDate).getTime());
-        break;
-      case "day":
-        startDate.setTime(baseDate.getTime());
-        break;
-    }
+    const range = adapter.getPeriodRange(cycleType, baseDate);
+    const startDate = parseDateKey(range.start);
+    const days = adapter.getPlanningCycleDays(cycleType, startDate);
 
     return {
-      startDate: startDate.toLocaleDateString("en-CA"),
+      startDate: range.start,
       days,
     };
   };

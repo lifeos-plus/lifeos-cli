@@ -4,12 +4,16 @@ import type {
   PlanningGroup,
 } from "./CalendarAdapter";
 import {
+  countInclusiveLocalDates,
   DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
-  isLocalDateString,
   normalizePlanningViewType,
-  parseLocalDateString,
+  taskPlanningWindowOverlaps,
 } from "./CalendarAdapter";
 import type { TaskWithSubtasks } from "@/services/api";
+import {
+  formatDateKey,
+  parseDateKey,
+} from "@/utils/datetime";
 
 /**
  * Mayan 13-Moon calendar adapter implementation
@@ -309,7 +313,7 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   }
 
   private getSevenYearAnchorStart(): Date {
-    return this.getMayanYearStart(parseLocalDateString(this.sevenYearAnchorDate));
+    return this.getMayanYearStart(parseDateKey(this.sevenYearAnchorDate));
   }
 
   private getSevenYearPeriodStart(date: Date): Date {
@@ -334,12 +338,12 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   ): { start: string; end: string } {
     let range = this.getPeriodRange(
       viewType,
-      parseLocalDateString(startDate),
+      parseDateKey(startDate),
     );
     const direction = Math.sign(step);
 
     for (let index = 0; index < Math.abs(Math.trunc(step)); index += 1) {
-      const boundary = parseLocalDateString(
+      const boundary = parseDateKey(
         direction > 0 ? range.end : range.start,
       );
       boundary.setDate(boundary.getDate() + direction);
@@ -366,13 +370,13 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       }
       case "month": {
         const range = this.getPeriodRange("month", currentDate);
-        return parseLocalDateString(
+        return parseDateKey(
           this.shiftAdjacentPeriodRange("month", range.start, 1).start,
         );
       }
       case "week": {
         const range = this.getPeriodRange("week", currentDate);
-        return parseLocalDateString(
+        return parseDateKey(
           this.shiftAdjacentPeriodRange("week", range.start, 1).start,
         );
       }
@@ -388,7 +392,7 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     currentDate: Date,
     cycleType: ExtendedPlanningViewType,
   ): Date {
-    const prevDate = new Date(currentDate);
+    const previousDate = new Date(currentDate);
     const normalizedCycleType = normalizePlanningViewType(cycleType);
 
     switch (normalizedCycleType) {
@@ -404,41 +408,30 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       }
       case "month": {
         const range = this.getPeriodRange("month", currentDate);
-        return parseLocalDateString(
+        return parseDateKey(
           this.shiftAdjacentPeriodRange("month", range.start, -1).start,
         );
       }
       case "week": {
         const range = this.getPeriodRange("week", currentDate);
-        return parseLocalDateString(
+        return parseDateKey(
           this.shiftAdjacentPeriodRange("week", range.start, -1).start,
         );
       }
       case "day":
-        prevDate.setDate(prevDate.getDate() - 1);
-        return prevDate;
+        previousDate.setDate(previousDate.getDate() - 1);
+        return previousDate;
       default:
-        return prevDate;
+        return previousDate;
     }
   }
 
-  getPlanningCycleDays(cycleType: ExtendedPlanningViewType): number {
-    const normalizedCycleType = normalizePlanningViewType(cycleType);
-
-    switch (normalizedCycleType) {
-      case "year":
-        return 365;
-      case "sevenYear":
-        return 365 * 7;
-      case "month":
-        return 28; // Mayan months are always 28 days
-      case "week":
-        return 7;
-      case "day":
-        return 1;
-      default:
-        return 1;
-    }
+  getPlanningCycleDays(
+    cycleType: ExtendedPlanningViewType,
+    baseDate: Date = new Date(),
+  ): number {
+    const range = this.getPeriodRange(cycleType, baseDate);
+    return countInclusiveLocalDates(range.start, range.end);
   }
 
   isSpecialDay(date: Date): boolean {
@@ -473,12 +466,6 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     return groups;
   }
 
-  private getPlanningCycleDate(task: TaskWithSubtasks): Date | null {
-    const value = task.planning_cycle_start_date;
-    if (!value || !isLocalDateString(value)) return null;
-    return parseLocalDateString(value);
-  }
-
   private buildSevenYearGroups(
     date: Date,
     tasks: TaskWithSubtasks[],
@@ -489,15 +476,13 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     end.setDate(end.getDate() - 1);
     const sevenYearTasks = this.getTasksByPlanningType(tasks, "7years");
 
-    const tasksInCurrentPeriod = sevenYearTasks.filter((task) => {
-      const taskDate = this.getPlanningCycleDate(task);
-      if (!taskDate) return false;
-      return taskDate >= start && taskDate <= end;
-    });
+    const tasksInCurrentPeriod = sevenYearTasks.filter((task) =>
+      taskPlanningWindowOverlaps(task, start, end),
+    );
 
     return [
       {
-        id: `mayan-seven-year-${start.toLocaleDateString("en-CA")}`,
+        id: `mayan-seven-year-${formatDateKey(start)}`,
         label: `${start.getFullYear()}-${start.getFullYear() + 6}`,
         date: start,
         tasks: tasksInCurrentPeriod,
@@ -513,18 +498,15 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     const mayanYearStart = this.getMayanYearStart(date);
     const nextMayanYearStart = new Date(mayanYearStart);
     nextMayanYearStart.setFullYear(mayanYearStart.getFullYear() + 1);
+    const mayanYearEnd = new Date(nextMayanYearStart);
+    mayanYearEnd.setDate(mayanYearEnd.getDate() - 1);
     const yearTasks = this.getTasksByPlanningType(tasks, "year");
     const monthTasks = this.getTasksByPlanningType(tasks, "month");
     const dayTasks = this.getTasksByPlanningType(tasks, "day");
 
-    const tasksInMayanYear = yearTasks.filter((task) => {
-      const taskDate = this.getPlanningCycleDate(task);
-      return (
-        taskDate !== null &&
-        taskDate >= mayanYearStart &&
-        taskDate < nextMayanYearStart
-      );
-    });
+    const tasksInMayanYear = yearTasks.filter((task) =>
+      taskPlanningWindowOverlaps(task, mayanYearStart, mayanYearEnd),
+    );
 
     const yearGroup: PlanningGroup = {
       id: `mayan-year-${mayanYearStart.getFullYear()}`,
@@ -541,12 +523,13 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         mayanYearStart,
         firstDayOfMoon,
       );
-      const tasksInMoon = monthTasks.filter((task) => {
-        const taskDate = this.getPlanningCycleDate(task);
-        if (!taskDate) return false;
-        const parts = this.toMayanParts(taskDate);
-        return !parts.isDayOutOfTime && parts.moonIndex === m;
-      });
+      const moonEnd = this.getDateForMayanDay(
+        mayanYearStart,
+        firstDayOfMoon + 27,
+      );
+      const tasksInMoon = monthTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, moonStart, moonEnd),
+      );
       yearGroup.children!.push({
         id: `mayan-month-${mayanYearStart.getFullYear()}-${m}`,
         label: `第${m}月`,
@@ -558,14 +541,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
 
     // Day out of time (single day)
     const outOfTimeDate = new Date(mayanYearStart.getFullYear() + 1, 6, 25);
-    const outOfTimeTasks = dayTasks.filter((task) => {
-      const taskDate = this.getPlanningCycleDate(task);
-      if (!taskDate) return false;
-      return (
-        this.isMayanDayOutOfTime(taskDate) &&
-        this.getMayanYearStart(taskDate).getTime() === mayanYearStart.getTime()
-      );
-    });
+    const outOfTimeTasks = dayTasks.filter((task) =>
+      taskPlanningWindowOverlaps(task, outOfTimeDate, outOfTimeDate),
+    );
     yearGroup.children!.push({
       id: `mayan-day-out-of-time-${mayanYearStart.getFullYear()}`,
       label: `无时间日`,
@@ -591,7 +569,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
           id: `mayan-month-out-of-time-${info.start.toISOString()}`,
           label: "无时间日",
           date: info.start,
-          tasks: [],
+          tasks: monthTasks.filter((task) =>
+            taskPlanningWindowOverlaps(task, info.start, info.end),
+          ),
           children: [],
         },
       ];
@@ -601,24 +581,16 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       id: `mayan-month-${info.start.getFullYear()}-${info.moonIndex}`,
       label: `第${info.moonIndex}月`,
       date: info.start,
-      tasks: monthTasks.filter((task) => {
-        const taskDate = this.getPlanningCycleDate(task);
-        if (!taskDate) return false;
-        const parts = this.toMayanParts(taskDate);
-        return !parts.isDayOutOfTime && parts.moonIndex === info.moonIndex;
-      }),
+      tasks: monthTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, info.start, info.end),
+      ),
       children: [],
     };
 
     info.weeks.forEach((w) => {
-      const weekTasksIn = weekTasks.filter((task) => {
-        const taskDate = this.getPlanningCycleDate(task);
-        if (!taskDate) return false;
-        const range = this.getMayanWeekRange(taskDate);
-        return (
-          !range.isDayOutOfTime && range.start.getTime() === w.start.getTime()
-        );
-      });
+      const weekTasksIn = weekTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, w.start, w.end),
+      );
       monthGroup.children!.push({
         id: `mayan-week-${w.start.toISOString()}`,
         label: `第${w.weekIndexWithinYear}周`,
@@ -645,23 +617,17 @@ export class MayanCalendarAdapter implements CalendarAdapter {
           id: `mayan-week-out-of-time-${range.start.toISOString()}`,
           label: "无时间日",
           date: range.start,
-          tasks: dayTasks.filter((task) => {
-            const taskDate = this.getPlanningCycleDate(task);
-            return (
-              taskDate !== null && this.isMayanDayOutOfTime(taskDate)
-            );
-          }),
+          tasks: weekTasks.filter((task) =>
+            taskPlanningWindowOverlaps(task, range.start, range.end),
+          ),
           children: [],
         },
       ];
     }
 
-    const weekTasksInWeek = weekTasks.filter((task) => {
-      const taskDate = this.getPlanningCycleDate(task);
-      if (!taskDate) return false;
-      const r = this.getMayanWeekRange(taskDate);
-      return !r.isDayOutOfTime && r.start.getTime() === range.start.getTime();
-    });
+    const weekTasksInWeek = weekTasks.filter((task) =>
+      taskPlanningWindowOverlaps(task, range.start, range.end),
+    );
 
     const weekGroup: PlanningGroup = {
       id: `mayan-week-${range.start.toISOString()}`,
@@ -680,13 +646,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       days.push(new Date(current));
     }
     days.forEach((dayDate, index) => {
-      const dayTasksInWeek = dayTasks.filter((task) => {
-        const taskDate = this.getPlanningCycleDate(task);
-        return (
-          taskDate !== null &&
-          taskDate.toDateString() === dayDate.toDateString()
-        );
-      });
+      const dayTasksInWeek = dayTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, dayDate, dayDate),
+      );
       weekGroup.children!.push({
         id: `mayan-day-${range.start.toISOString()}-${index}`,
         label: `${dayDate.getMonth() + 1}月${dayDate.getDate()}日`,
@@ -711,12 +673,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
           id: `mayan-day-out-of-time-${date.toISOString()}`,
           label: `无时间日`,
           date: date,
-          tasks: dayTasks.filter((task) => {
-            const taskDate = this.getPlanningCycleDate(task);
-            return (
-              taskDate !== null && this.isMayanDayOutOfTime(taskDate)
-            );
-          }),
+          tasks: dayTasks.filter((task) =>
+            taskPlanningWindowOverlaps(task, date, date),
+          ),
           children: [],
         },
       ];
@@ -729,12 +688,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       id: `day-${year}-${month}-${day}`,
       label: `${year}年${month + 1}月${day}日`,
       date: date,
-      tasks: dayTasks.filter((task) => {
-        const taskDate = this.getPlanningCycleDate(task);
-        return (
-          taskDate !== null && taskDate.toDateString() === date.toDateString()
-        );
-      }),
+      tasks: dayTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, date, date),
+      ),
       children: [],
     };
 
@@ -762,8 +718,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   getCurrentWeekRange(): { start: string; end: string } {
     const range = this.getMayanWeekRange(new Date());
     return {
-      start: range.start.toLocaleDateString("en-CA"),
-      end: range.end.toLocaleDateString("en-CA"),
+      start: formatDateKey(range.start),
+      end: formatDateKey(range.end),
     };
   }
 
@@ -773,8 +729,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   getCurrentMonthRange(): { start: string; end: string } {
     const info = this.getMayanMoonInfo(new Date());
     return {
-      start: info.start.toLocaleDateString("en-CA"),
-      end: info.end.toLocaleDateString("en-CA"),
+      start: formatDateKey(info.start),
+      end: formatDateKey(info.end),
     };
   }
 
@@ -801,8 +757,8 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         end.setFullYear(start.getFullYear() + 1);
         end.setDate(end.getDate() - 1);
         return {
-          start: start.toLocaleDateString("en-CA"),
-          end: end.toLocaleDateString("en-CA"),
+          start: formatDateKey(start),
+          end: formatDateKey(end),
         };
       }
       case "sevenYear": {
@@ -811,34 +767,34 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         end.setFullYear(start.getFullYear() + 7);
         end.setDate(end.getDate() - 1);
         return {
-          start: start.toLocaleDateString("en-CA"),
-          end: end.toLocaleDateString("en-CA"),
+          start: formatDateKey(start),
+          end: formatDateKey(end),
         };
       }
       case "month": {
         const info = this.getMayanMoonInfo(date);
         return {
-          start: info.start.toLocaleDateString("en-CA"),
-          end: info.end.toLocaleDateString("en-CA"),
+          start: formatDateKey(info.start),
+          end: formatDateKey(info.end),
         };
       }
       case "week": {
         const r = this.getMayanWeekRange(date);
         return {
-          start: r.start.toLocaleDateString("en-CA"),
-          end: r.end.toLocaleDateString("en-CA"),
+          start: formatDateKey(r.start),
+          end: formatDateKey(r.end),
         };
       }
       case "day": {
         const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const iso = d.toLocaleDateString("en-CA");
+        const iso = formatDateKey(d);
         return { start: iso, end: iso };
       }
       default: {
         const r = this.getMayanWeekRange(date);
         return {
-          start: r.start.toLocaleDateString("en-CA"),
-          end: r.end.toLocaleDateString("en-CA"),
+          start: formatDateKey(r.start),
+          end: formatDateKey(r.end),
         };
       }
     }
@@ -854,23 +810,23 @@ export class MayanCalendarAdapter implements CalendarAdapter {
 
     switch (normalizedViewType) {
       case "year": {
-        const s = new Date(startDate + "T00:00:00");
-        const e = new Date(endDate + "T00:00:00");
+        const s = parseDateKey(startDate);
+        const e = parseDateKey(endDate);
         s.setFullYear(s.getFullYear() + step);
         e.setFullYear(e.getFullYear() + step);
         return {
-          start: s.toLocaleDateString("en-CA"),
-          end: e.toLocaleDateString("en-CA"),
+          start: formatDateKey(s),
+          end: formatDateKey(e),
         };
       }
       case "sevenYear": {
-        const s = new Date(startDate + "T00:00:00");
-        const e = new Date(endDate + "T00:00:00");
+        const s = parseDateKey(startDate);
+        const e = parseDateKey(endDate);
         s.setFullYear(s.getFullYear() + 7 * step);
         e.setFullYear(e.getFullYear() + 7 * step);
         return {
-          start: s.toLocaleDateString("en-CA"),
-          end: e.toLocaleDateString("en-CA"),
+          start: formatDateKey(s),
+          end: formatDateKey(e),
         };
       }
       case "month": {
@@ -880,13 +836,13 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         return this.shiftWeekRange(startDate, endDate, step);
       }
       case "day": {
-        const s = new Date(startDate + "T00:00:00");
-        const e = new Date(endDate + "T00:00:00");
+        const s = parseDateKey(startDate);
+        const e = parseDateKey(endDate);
         s.setDate(s.getDate() + step);
         e.setDate(e.getDate() + step);
         return {
-          start: s.toLocaleDateString("en-CA"),
-          end: e.toLocaleDateString("en-CA"),
+          start: formatDateKey(s),
+          end: formatDateKey(e),
         };
       }
       default:
@@ -897,10 +853,10 @@ export class MayanCalendarAdapter implements CalendarAdapter {
   enumerateDates(startDate: string, endDate: string): string[] {
     const res: string[] = [];
     if (!startDate || !endDate) return res;
-    const s = new Date(startDate + "T00:00:00");
-    const e = new Date(endDate + "T00:00:00");
+    const s = parseDateKey(startDate);
+    const e = parseDateKey(endDate);
     for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      res.push(d.toLocaleDateString("en-CA"));
+      res.push(formatDateKey(d));
     }
     return res;
   }
@@ -924,15 +880,13 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       return year;
     } else {
       // For other dates, use the Mayan year calculation
-      const date = new Date(storedDate);
+      const date = parseDateKey(storedDate);
       const mayanYearStart = this.getMayanYearStart(date);
       return mayanYearStart.getFullYear();
     }
   }
 
   getDateForYearSelection(year: number): Date {
-    // For Mayan calendar, the year starts on July 26
-    // Create date at noon to avoid timezone issues
-    return new Date(Date.UTC(year, 6, 26, 12, 0, 0)); // July 26, noon UTC of the selected year
+    return new Date(year, 6, 26);
   }
 }

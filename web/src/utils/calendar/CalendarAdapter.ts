@@ -1,54 +1,56 @@
 import type { TaskWithSubtasks } from "@/services/api";
+import { parseDateKey } from "@/utils/datetime";
 
 export type PlanningViewType = "7years" | "year" | "month" | "week" | "day";
 export type ExtendedPlanningViewType = PlanningViewType | "sevenYear";
 
 export const DEFAULT_SEVEN_YEAR_ANCHOR_DATE = "2025-07-26";
 
-export const isLocalDateString = (value: unknown): value is string => {
-  if (typeof value !== "string") return false;
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return false;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const parsed = new Date(year, month - 1, day);
-  return (
-    parsed.getFullYear() === year &&
-    parsed.getMonth() === month - 1 &&
-    parsed.getDate() === day
-  );
-};
-
-export const parseLocalDateString = (
-  dateValue: string,
-  fallback: string = DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
-): Date => {
-  const value = isLocalDateString(dateValue) ? dateValue : fallback;
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) {
-    return parseLocalDateString(fallback, DEFAULT_SEVEN_YEAR_ANCHOR_DATE);
-  }
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const parsed = new Date(year, month - 1, day);
-  if (
-    parsed.getFullYear() !== year ||
-    parsed.getMonth() !== month - 1 ||
-    parsed.getDate() !== day
-  ) {
-    return parseLocalDateString(fallback, DEFAULT_SEVEN_YEAR_ANCHOR_DATE);
-  }
-  return parsed;
-};
-
 export const normalizePlanningViewType = (
   viewType: ExtendedPlanningViewType,
 ): "sevenYear" | "year" | "month" | "week" | "day" =>
   viewType === "7years" ? "sevenYear" : viewType;
+
+const localDateOrdinal = (date: Date): number =>
+  Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+
+export const countInclusiveLocalDates = (
+  startDate: string,
+  endDate: string,
+): number => {
+  const start = parseDateKey(startDate);
+  const end = parseDateKey(endDate);
+  const startOrdinal = localDateOrdinal(start);
+  const endOrdinal = localDateOrdinal(end);
+  return Math.floor((endOrdinal - startOrdinal) / (24 * 60 * 60 * 1000)) + 1;
+};
+
+export const taskPlanningWindowOverlaps = (
+  task: TaskWithSubtasks,
+  periodStart: Date,
+  periodEnd: Date,
+): boolean => {
+  const startValue = task.planning_cycle_start_date;
+  if (!startValue) return false;
+
+  const taskStart = parseDateKey(startValue);
+  const configuredDays = task.planning_cycle_days;
+  if (
+    typeof configuredDays !== "number" ||
+    !Number.isInteger(configuredDays) ||
+    configuredDays <= 0
+  ) {
+    return false;
+  }
+  const taskStartOrdinal = localDateOrdinal(taskStart);
+  const taskEndOrdinal =
+    taskStartOrdinal + (configuredDays - 1) * 86_400_000;
+
+  return (
+    taskStartOrdinal <= localDateOrdinal(periodEnd) &&
+    taskEndOrdinal >= localDateOrdinal(periodStart)
+  );
+};
 
 export interface PlanningGroup {
   id: string;
@@ -99,7 +101,10 @@ export interface CalendarAdapter {
   /**
    * Get the number of days in a planning cycle
    */
-  getPlanningCycleDays(cycleType: ExtendedPlanningViewType): number;
+  getPlanningCycleDays(
+    cycleType: ExtendedPlanningViewType,
+    baseDate?: Date,
+  ): number;
 
   /**
    * Check if a date is a special day (e.g., Day Out of Time for Mayan calendar)

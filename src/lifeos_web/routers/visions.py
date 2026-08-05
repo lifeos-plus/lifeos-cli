@@ -94,16 +94,6 @@ async def create_vision(
     return _vision_payload(vision, include_tasks=True)
 
 
-@router.put("/{vision_id}")
-async def replace_vision(
-    vision_id: UUID,
-    payload: VisionUpdate,
-    session: SessionDep,
-) -> dict[str, object]:
-    """Frontend-compatible alias for partial vision update."""
-    return await update_vision(vision_id=vision_id, payload=payload, session=session)
-
-
 @router.patch("/{vision_id}")
 async def update_vision(
     vision_id: UUID,

@@ -6,6 +6,7 @@ import { FormField, TextArea, TextInput } from "@/components/forms";
 import AssetSelect from "@/components/selects/AssetSelect";
 import EnumSelect from "@/components/selects/EnumSelect";
 import { useToast } from "@/contexts/ToastContext";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 import type {
   FinanceAsset,
   FinanceRateSnapshot,
@@ -81,9 +82,16 @@ export function SnapshotFormPanel({
 }) {
   const { t } = useTranslation();
   const toast = useToast();
-  const [snapshotTs, setSnapshotTs] = useState(nowDateTimeLocal());
-  const [periodStart, setPeriodStart] = useState(todayDate().slice(0, 8) + "01");
-  const [periodEnd, setPeriodEnd] = useState(todayDate());
+  const timezonePreference = useSystemTimezone();
+  const activeTimezone = timezonePreference.timezone;
+  const initialToday = todayDate(activeTimezone);
+  const [snapshotTs, setSnapshotTs] = useState(() =>
+    nowDateTimeLocal(activeTimezone),
+  );
+  const [periodStart, setPeriodStart] = useState(
+    initialToday.slice(0, 8) + "01",
+  );
+  const [periodEnd, setPeriodEnd] = useState(initialToday);
   const [title, setTitle] = useState("");
   const [amounts, setAmounts] = useState<SnapshotAmountState>({});
   const [snapshotNote, setSnapshotNote] = useState("");
@@ -136,9 +144,10 @@ export function SnapshotFormPanel({
 
   useEffect(() => {
     if (!initialSnapshot || mode === "create") {
-      setSnapshotTs(nowDateTimeLocal());
-      setPeriodStart(todayDate().slice(0, 8) + "01");
-      setPeriodEnd(todayDate());
+      const currentDate = todayDate(activeTimezone);
+      setSnapshotTs(nowDateTimeLocal(activeTimezone));
+      setPeriodStart(currentDate.slice(0, 8) + "01");
+      setPeriodEnd(currentDate);
       setTitle("");
       setAmounts({});
       setSnapshotNote("");
@@ -148,10 +157,12 @@ export function SnapshotFormPanel({
     }
 
     setSnapshotTs(
-      mode === "copy" ? nowDateTimeLocal() : isoToDateTimeLocal(initialSnapshot.snapshot_ts),
+      mode === "copy"
+        ? nowDateTimeLocal(activeTimezone)
+        : isoToDateTimeLocal(initialSnapshot.snapshot_ts, activeTimezone),
     );
-    setPeriodStart(isoToDateInput(initialSnapshot.period_start));
-    setPeriodEnd(isoToDateInput(initialSnapshot.period_end));
+    setPeriodStart(isoToDateInput(initialSnapshot.period_start, activeTimezone));
+    setPeriodEnd(isoToDateInput(initialSnapshot.period_end, activeTimezone));
     setTitle(initialSnapshot.title ?? "");
     setSnapshotNote(initialSnapshot.note ?? "");
     setSelectedRateSnapshotId(initialSnapshot.rate_snapshot_id ?? "");
@@ -171,7 +182,7 @@ export function SnapshotFormPanel({
         ];
       });
     setAmounts(nextAmounts);
-  }, [assets, initialSnapshot, mode, tree.primary_currency]);
+  }, [activeTimezone, assets, initialSnapshot, mode, tree.primary_currency]);
 
   useEffect(() => {
     if (mode === "create") {
@@ -181,6 +192,7 @@ export function SnapshotFormPanel({
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (timezonePreference.loading) return;
     let hasHoldingWithoutAsset = false;
     const entryNodes = flatNodes.filter(
       (node) => !node.children.length || (amounts[node.id] ?? []).length > 0,
@@ -214,11 +226,31 @@ export function SnapshotFormPanel({
       toast.showWarning(t("finance.messages.noEntries"));
       return;
     }
+    const snapshotTimestamp =
+      preset.timeMode === "instant"
+        ? localDateTimeToIso(snapshotTs, activeTimezone)
+        : null;
+    const periodStartTimestamp =
+      preset.timeMode === "period"
+        ? dateToStartIso(periodStart, activeTimezone)
+        : null;
+    const periodEndTimestamp =
+      preset.timeMode === "period"
+        ? dateToEndIso(periodEnd, activeTimezone)
+        : null;
+    if (
+      (preset.timeMode === "instant" && !snapshotTimestamp) ||
+      (preset.timeMode === "period" &&
+        (!periodStartTimestamp || !periodEndTimestamp))
+    ) {
+      toast.showWarning(t("finance.messages.invalidDateTime"));
+      return;
+    }
     onSubmit({
       title: title.trim() || null,
-      snapshot_ts: preset.timeMode === "instant" ? localDateTimeToIso(snapshotTs) : null,
-      period_start: preset.timeMode === "period" ? dateToStartIso(periodStart) : null,
-      period_end: preset.timeMode === "period" ? dateToEndIso(periodEnd) : null,
+      snapshot_ts: snapshotTimestamp,
+      period_start: periodStartTimestamp,
+      period_end: periodEndTimestamp,
       primary_currency: settlementCurrency,
       rate_snapshot_id: selectedRateSnapshotId || null,
       note: snapshotNote || null,
@@ -265,7 +297,9 @@ export function SnapshotFormPanel({
             color="primary"
             variant="solid"
             iconName="check"
-            disabled={submitting || !flatNodes.length}
+            disabled={
+              submitting || timezonePreference.loading || !flatNodes.length
+            }
           />
         </div>
         {mode !== "create" ? <span className="hidden lg:block" aria-hidden="true" /> : null}
@@ -337,6 +371,7 @@ export function SnapshotFormPanel({
           rateSnapshots={rateSnapshots}
           selectedRateSnapshotId={selectedRateSnapshotId}
           onSelectRateSnapshot={setSelectedRateSnapshotId}
+          timezone={activeTimezone}
         />
       </div>
 
@@ -347,12 +382,14 @@ export function SnapshotFormPanel({
           assets={assets}
           rateSnapshotLabelText={
             selectedRateSnapshot
-              ? rateSnapshotLabel(selectedRateSnapshot)
+              ? rateSnapshotLabel(selectedRateSnapshot, activeTimezone)
               : t("finance.rates.noRateSnapshot")
           }
           rateInfoByCurrency={rateInfoByCurrency}
           rateSnapshotTooltip={
-            selectedRateSnapshot ? rateSnapshotTooltip(selectedRateSnapshot, assets) : ""
+            selectedRateSnapshot
+              ? rateSnapshotTooltip(selectedRateSnapshot, assets, activeTimezone)
+              : ""
           }
           showConversions
         />
@@ -410,17 +447,19 @@ function RateSnapshotSelectPanel({
   rateSnapshots,
   selectedRateSnapshotId,
   onSelectRateSnapshot,
+  timezone,
 }: {
   rateSnapshots: FinanceRateSnapshot[];
   selectedRateSnapshotId: UUID | "";
   onSelectRateSnapshot: (rateSnapshotId: UUID | "") => void;
+  timezone: string;
 }) {
   const { t } = useTranslation();
   const options = [
     { value: "", label: t("finance.rates.noRateSnapshot") },
     ...rateSnapshots.map((snapshot) => ({
       value: snapshot.id,
-      label: rateSnapshotLabel(snapshot),
+      label: rateSnapshotLabel(snapshot, timezone),
     })),
   ];
 
@@ -1002,6 +1041,7 @@ export function SnapshotDetail({
   rateSnapshots: FinanceRateSnapshot[];
 }) {
   const { t } = useTranslation();
+  const activeTimezone = useSystemTimezone().timezone;
   const usesConvertedAggregation = getSummaryAggregationMode(snapshot.summary) === "converted";
   const displayTree = useMemo(
     () =>
@@ -1062,9 +1102,15 @@ export function SnapshotDetail({
         primaryCurrency={snapshot.primary_currency}
         assets={assets}
         rateSnapshotLabelText={
-          rateSnapshot ? rateSnapshotLabel(rateSnapshot) : t("finance.rates.noRateSnapshot")
+          rateSnapshot
+            ? rateSnapshotLabel(rateSnapshot, activeTimezone)
+            : t("finance.rates.noRateSnapshot")
         }
-        rateSnapshotTooltip={rateSnapshot ? rateSnapshotTooltip(rateSnapshot, assets) : ""}
+        rateSnapshotTooltip={
+          rateSnapshot
+            ? rateSnapshotTooltip(rateSnapshot, assets, activeTimezone)
+            : ""
+        }
         rateInfoByCurrency={rateInfoByCurrency}
         showConversions
       />
@@ -1465,13 +1511,19 @@ function formatSharePercentage(value: number): string {
   return `${(value * 100).toFixed(2)}%`;
 }
 
-function rateSnapshotTooltip(snapshot: FinanceRateSnapshot, assets: FinanceAsset[]): string {
+function rateSnapshotTooltip(
+  snapshot: FinanceRateSnapshot,
+  assets: FinanceAsset[],
+  timezone: string,
+): string {
   const lines = (snapshot.entries ?? []).map((entry) => {
     const baseAmount = formatAmountForAsset("1", entry.base_currency, assets);
     const quoteAmount = formatAmountForAsset(entry.rate, entry.quote_currency, assets);
     return `${baseAmount} ${entry.base_currency} = ${quoteAmount} ${entry.quote_currency}`;
   });
-  return lines.length ? lines.join("\n") : rateSnapshotLabel(snapshot);
+  return lines.length
+    ? lines.join("\n")
+    : rateSnapshotLabel(snapshot, timezone);
 }
 
 function includeFinanceNodeIds(nodes: TreeNodeWithChildren[], target: Set<UUID>) {

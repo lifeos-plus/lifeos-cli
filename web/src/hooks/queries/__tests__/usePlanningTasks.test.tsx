@@ -103,7 +103,7 @@ describe("usePlanningTasks", () => {
     expect(filters).toMatchObject({ planning_cycle_type: "week" });
   });
 
-  it("includes calendar context in planning queries", async () => {
+  it("leaves calendar authority to the backend", async () => {
     tasksGetAllMock.mockResolvedValue({
       items: [],
       pagination: { page: 1, size: 100, total: 0, pages: 0 },
@@ -112,10 +112,7 @@ describe("usePlanningTasks", () => {
 
     renderHook(
       () =>
-        usePlanningTasks("month", new Date("2026-07-26T00:00:00Z"), {
-          calendarSystem: "mayan_13_moon",
-          firstDayOfWeek: 7,
-        }),
+        usePlanningTasks("month", new Date("2026-07-26T00:00:00Z")),
       { wrapper },
     );
 
@@ -124,9 +121,10 @@ describe("usePlanningTasks", () => {
     expect(filters).toMatchObject({
       planning_cycle_type: "month",
       planning_cycle_start_date: "2026-07-26",
-      calendar_system: "mayan_13_moon",
-      first_day_of_week: 7,
     });
+    expect(filters).not.toHaveProperty("calendar_system");
+    expect(filters).not.toHaveProperty("first_day_of_week");
+    expect(filters).not.toHaveProperty("seven_year_anchor_date");
   });
 
   it("uses 7years as the planning cycle query value", async () => {
@@ -137,7 +135,7 @@ describe("usePlanningTasks", () => {
     });
 
     renderHook(
-      () => usePlanningTasks("7years", new Date("2026-01-01T00:00:00Z")),
+      () => usePlanningTasks("7years", new Date("2025-01-01T00:00:00Z")),
       { wrapper },
     );
 
@@ -145,7 +143,7 @@ describe("usePlanningTasks", () => {
     const [, , filters] = tasksGetAllMock.mock.calls[0];
     expect(filters).toMatchObject({
       planning_cycle_type: "7years",
-      planning_cycle_start_date: "2026-01-01",
+      planning_cycle_start_date: "2025-01-01",
     });
   });
 });

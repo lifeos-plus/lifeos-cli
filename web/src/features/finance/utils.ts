@@ -5,7 +5,14 @@ import type {
   FinanceTreeNode,
 } from "@/services/api/finance";
 import type { UUID } from "@/types/primitive";
-import { formatDate, formatDateTime } from "@/utils/datetime";
+import {
+  dateStringToISO,
+  formatDate,
+  formatDateInTimezone,
+  formatDateTime,
+  localDateTimeLocalToUtcIso,
+  utcToLocalDateTimeLocal,
+} from "@/utils/datetime";
 
 export type PresetConfig = {
   report: "balance" | "cashflow";
@@ -31,7 +38,7 @@ export type TreeNodeWithChildren = FinanceTreeNode & {
   children: TreeNodeWithChildren[];
 };
 
-export type SnapshotHoldingState = {
+type SnapshotHoldingState = {
   id: string;
   currencyCode: string;
   amount: string;
@@ -55,41 +62,38 @@ export type FinanceNodeFormState =
   | { mode: "create"; parentId?: UUID | null }
   | { mode: "edit"; node: TreeNodeWithChildren };
 
-export const todayDate = () => new Date().toISOString().slice(0, 10);
+export const todayDate = (timezone: string) =>
+  formatDateInTimezone(new Date(), timezone);
 
-export const nowDateTimeLocal = () => {
-  const now = new Date();
-  const offsetMs = now.getTimezoneOffset() * 60_000;
-  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 16);
-};
+export const nowDateTimeLocal = (timezone: string) =>
+  utcToLocalDateTimeLocal(new Date().toISOString(), timezone);
 
-export const localDateTimeToIso = (value: string) => {
+export const localDateTimeToIso = (value: string, timezone: string) => {
   if (!value) return null;
-  return new Date(value).toISOString();
+  return localDateTimeLocalToUtcIso(value, timezone) || null;
 };
 
-export const isoToDateTimeLocal = (value?: string | null) => {
-  if (!value) return nowDateTimeLocal();
-  const date = new Date(value);
-  const offsetMs = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
-};
+export const isoToDateTimeLocal = (
+  value: string | null | undefined,
+  timezone: string,
+) =>
+  value
+    ? utcToLocalDateTimeLocal(value, timezone)
+    : nowDateTimeLocal(timezone);
 
-export const isoToDateInput = (value?: string | null) => {
-  if (!value) return todayDate();
-  const date = new Date(value);
-  const offsetMs = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 10);
-};
+export const isoToDateInput = (
+  value: string | null | undefined,
+  timezone: string,
+) => (value ? formatDate(value, timezone) : todayDate(timezone));
 
-export const dateToStartIso = (value: string) => {
+export const dateToStartIso = (value: string, timezone: string) => {
   if (!value) return null;
-  return new Date(`${value}T00:00:00`).toISOString();
+  return dateStringToISO(value, timezone, false) || null;
 };
 
-export const dateToEndIso = (value: string) => {
+export const dateToEndIso = (value: string, timezone: string) => {
   if (!value) return null;
-  return new Date(`${value}T23:59:59`).toISOString();
+  return dateStringToISO(value, timezone, true) || null;
 };
 
 export const assetDecimalPlaces = (assets: FinanceAsset[], currency = "") => {
@@ -158,20 +162,23 @@ export const flattenTree = (nodes: TreeNodeWithChildren[]): TreeNodeWithChildren
   return result;
 };
 
-export function snapshotLabel(snapshot: FinanceSnapshot) {
+export function snapshotLabel(snapshot: FinanceSnapshot, timezone: string) {
   const title = snapshot.title?.trim();
   if (title) {
     return title;
   }
   if (snapshot.period_start && snapshot.period_end) {
-    return `${formatDate(snapshot.period_start)} - ${formatDate(snapshot.period_end)}`;
+    return `${formatDate(snapshot.period_start, timezone)} - ${formatDate(snapshot.period_end, timezone)}`;
   }
   if (snapshot.snapshot_ts) {
-    return formatDateTime(snapshot.snapshot_ts);
+    return formatDateTime(snapshot.snapshot_ts, timezone);
   }
   return snapshot.created_at;
 }
 
-export function rateSnapshotLabel(snapshot: FinanceRateSnapshot) {
-  return formatDateTime(snapshot.captured_at);
+export function rateSnapshotLabel(
+  snapshot: FinanceRateSnapshot,
+  timezone: string,
+) {
+  return formatDateTime(snapshot.captured_at, timezone);
 }

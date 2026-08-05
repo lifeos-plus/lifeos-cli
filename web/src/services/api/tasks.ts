@@ -5,6 +5,7 @@ import type { TimelogListResponse } from "./timelogs";
 import type { UUID } from "@/types/primitive";
 import type { ListResponse } from "@/types/pagination";
 import { MAX_TASKS_PAGE_SIZE } from "@/utils/constants";
+import { formatDateKey } from "@/utils/datetime";
 
 // Types local to tasks
 export interface Task {
@@ -90,6 +91,7 @@ interface TaskListMeta {
   planning_cycle_start_date?: string | null;
   calendar_system?: string | null;
   first_day_of_week?: number | null;
+  seven_year_anchor_date?: string | null;
   query?: string | null;
   fields?: TaskFieldsMode | null;
 }
@@ -109,8 +111,6 @@ export interface TaskListFilters {
   size?: number;
   planning_cycle_type?: string;
   planning_cycle_start_date?: string; // YYYY-MM-DD
-  calendar_system?: string;
-  first_day_of_week?: number;
   query?: string;
   fields?: TaskFieldsMode;
 }
@@ -118,15 +118,7 @@ export interface TaskListFilters {
 // Small helper: convert Date to YYYY-MM-DD in user's timezone (or undefined)
 export const toISODate = (d?: Date): string | undefined => {
   if (!d) return undefined;
-
-  // For timezone-aware date handling, use the user's local timezone
-  // This ensures that when a user selects "2025-01-01" in their timezone,
-  // we send the correct date to the API, accounting for timezone offsets
-  const year = d.getFullYear();
-  const month = d.getMonth() + 1; // 1-12
-  const day = d.getDate();
-
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return formatDateKey(d);
 };
 
 export const tasksApi = {
@@ -154,9 +146,6 @@ export const tasksApi = {
       params.planning_cycle_type = extra.planning_cycle_type;
     if (extra?.planning_cycle_start_date)
       params.planning_cycle_start_date = extra.planning_cycle_start_date;
-    if (extra?.calendar_system) params.calendar_system = extra.calendar_system;
-    if (typeof extra?.first_day_of_week === "number")
-      params.first_day_of_week = extra.first_day_of_week;
     if (extra?.query) params.query = extra.query;
     const fields: TaskFieldsMode = extra?.fields ?? "basic";
     params.fields = fields;

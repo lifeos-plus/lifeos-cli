@@ -100,14 +100,6 @@ export function useTaskExpansionState(options: UseTaskExpansionStateOptions) {
     [setExpandedTasksByScope],
   );
 
-  // Export specific expanded tasks for DraggableTaskList component
-  const getExpandedTasksForDraggable = useCallback(
-    (scope: string): Set<UUID> => {
-      return getExpandedTasks(scope);
-    },
-    [getExpandedTasks],
-  );
-
   return {
     // State
     expandedTasksByScope,
@@ -117,7 +109,6 @@ export function useTaskExpansionState(options: UseTaskExpansionStateOptions) {
     getExpandedTasks,
     toggleTaskExpansion,
     removeScope,
-    getExpandedTasksForDraggable,
 
     // Utilities
     clearExpandedTasks,

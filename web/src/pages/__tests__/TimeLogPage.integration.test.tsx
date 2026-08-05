@@ -332,7 +332,6 @@ const buildDataReturn = (
   isSelectMode: false,
   deletingEntryId: null,
   deletingEntryCount: 0,
-  loadEntries: vi.fn(),
   requestDeleteEntry: vi.fn(),
   confirmDeleteEntry: vi.fn(),
   cancelDeleteEntry: vi.fn(),

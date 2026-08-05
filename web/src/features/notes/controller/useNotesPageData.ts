@@ -13,12 +13,11 @@ import {
   type NotesAdvancedSearchParams,
 } from "@/hooks/queries/useNotesAdvancedSearch";
 import { useAllTasks } from "@/hooks/queries/useTasks";
-import { usePreferenceWithBootstrap } from "@/hooks/queries/usePreferenceWithBootstrap";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 import { useNoteCollapsePreference } from "@/hooks/notes/useNoteCollapsePreference";
 import type { QueryMode } from "@/hooks/useQueryMode";
 import type { PersonSummary, Task as ApiTask } from "@/services/api";
 import { createDateBoundaries } from "@/utils/datetime";
-import { resolvePreferredTimezone } from "@/utils/datetime";
 import type { Note } from "@/types/newNotes";
 
 export const NOTES_ADVANCED_PAGE_SIZE = 100;
@@ -50,7 +49,7 @@ export interface NotesPageData {
   createNote: ReturnType<typeof useNotes>["createNote"];
   deleteNote: ReturnType<typeof useNotes>["deleteNote"];
   loadMoreNotes: ReturnType<typeof useNotes>["loadMoreNotes"];
-  timezonePreference: ReturnType<typeof usePreferenceWithBootstrap<string>>;
+  timezonePreference: ReturnType<typeof useSystemTimezone>;
   activeTimezone: string;
   noteCollapsePreference: ReturnType<typeof useNoteCollapsePreference>;
   noteFilters: ReturnType<typeof useNoteFilters>;
@@ -129,13 +128,8 @@ export function useNotesPageData(
     loadMoreNotes,
   } = useNotes(filters);
 
-  const timezonePreference = usePreferenceWithBootstrap<string>({
-    key: "system.timezone",
-    defaultValue: resolvePreferredTimezone(),
-    module: "system",
-    validator: (value) => typeof value === "string" && value.length > 0,
-  });
-  const activeTimezone = resolvePreferredTimezone(timezonePreference.value);
+  const timezonePreference = useSystemTimezone();
+  const activeTimezone = timezonePreference.timezone;
   const noteCollapsePreference = useNoteCollapsePreference();
 
   const [advancedSearchParams, setAdvancedSearchParams] = useState(() => {

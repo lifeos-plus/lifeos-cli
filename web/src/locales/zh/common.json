@@ -1586,6 +1586,7 @@
       "snapshotDeleted": "财务快照已删除",
       "noEntries": "保存前请至少填写一个金额。",
       "holdingAssetRequired": "请为每条已填写金额的持仓选择或创建资产。",
+      "invalidDateTime": "请选择在当前配置时区中实际存在的日期和时间。",
       "rateSnapshotMissingRates": "当前汇率快照缺少这些币种：{{currencies}}。",
       "rateSnapshotRatesRequired": "请为每个必需币种填写正数汇率。"
     }

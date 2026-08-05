@@ -44,7 +44,7 @@ const PlanningTaskList: React.FC<PlanningTaskListProps> = (props) => {
     habitActions,
     carryForwardableTasks,
     handlers,
-    getExpandedTasksForDraggable,
+    getExpandedTasks,
     toggleTaskExpansion,
     planningTaskFilterStatus,
     periodRangeLabel,
@@ -87,7 +87,7 @@ const PlanningTaskList: React.FC<PlanningTaskListProps> = (props) => {
       handlers={handlers}
       onTaskUpdate={props.onTaskUpdate}
       onTaskStatusUpdate={props.onTaskStatusUpdate}
-      getExpandedTasksForDraggable={getExpandedTasksForDraggable}
+      getExpandedTasks={getExpandedTasks}
       toggleTaskExpansion={toggleTaskExpansion}
       planningTaskFilterStatus={planningTaskFilterStatus}
       periodRangeLabel={periodRangeLabel}

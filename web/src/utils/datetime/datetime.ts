@@ -2,7 +2,7 @@
 
 import { DateTime } from "luxon";
 
-import { resolvePreferredTimezone, zonedDateTimeToUtc } from "./timezone";
+import { resolvePreferredTimezone } from "./timezone";
 
 function resolveTimezoneInput(timezone?: string): string {
   const trimmed = timezone?.trim();
@@ -83,57 +83,49 @@ export function utcToLocalDateTimeLocal(
   return dt.toFormat("yyyy-LL-dd'T'HH:mm");
 }
 
+/*
+ * Interpret an HTML datetime-local value in the configured timezone and
+ * convert it to the UTC timestamp used by the API.
+ */
+export function localDateTimeLocalToUtcIso(
+  localDateTime: string,
+  timezone?: string,
+): string {
+  if (!localDateTime) return "";
+  const dt = DateTime.fromISO(localDateTime, {
+    zone: resolveTimezoneInput(timezone),
+  });
+  if (!dt.isValid) return "";
+  if (dt.toFormat("yyyy-LL-dd'T'HH:mm") !== localDateTime.slice(0, 16)) {
+    return "";
+  }
+  return dt.toUTC().toJSDate().toISOString();
+}
+
 export function hhmmOnDateToISO(
   baseDate: Date,
   hhmm: string,
   timezone?: string,
 ): string {
-  const [hours, minutes] = hhmm.split(":").map((v) => parseInt(v, 10));
   const tz = resolveTimezoneInput(timezone);
   const dateOnly = formatDateInTimezone(baseDate, tz);
   if (!dateOnly) return "";
-  const [yearStr, monthStr, dayStr] = dateOnly.split("-");
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-  const day = parseInt(dayStr, 10);
-  if (
-    !Number.isFinite(year) ||
-    !Number.isFinite(month) ||
-    !Number.isFinite(day)
-  ) {
-    return "";
-  }
-  return zonedDateTimeToUtc(
-    year,
-    month,
-    day,
-    Number.isFinite(hours) ? hours : 0,
-    Number.isFinite(minutes) ? minutes : 0,
-    0,
-    0,
-    tz,
-  ).toISOString();
+  return localDateTimeLocalToUtcIso(`${dateOnly}T${hhmm}`, tz);
 }
 
 // ---- Time helpers (from timeUtils.ts)
-export function getNearestFiveMinuteTime(date: Date = new Date()): string {
-  const minutes = date.getMinutes();
-  const hours = date.getHours();
+export function getNearestFiveMinuteTime(
+  date: Date = new Date(),
+  timezone?: string,
+): string {
+  const dt = DateTime.fromJSDate(date).setZone(resolveTimezoneInput(timezone));
+  if (!dt.isValid) return "";
+  const minutes = dt.minute;
   const roundedMinutes = Math.round(minutes / 5) * 5;
-  let finalHours = hours;
-  let finalMinutes = roundedMinutes;
-  if (roundedMinutes === 60) {
-    finalHours = (hours + 1) % 24;
-    finalMinutes = 0;
-  }
-
-  const d = new Date(date);
-  d.setHours(finalHours, finalMinutes, 0, 0);
-  return d.toLocaleTimeString("en-CA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  return dt
+    .startOf("hour")
+    .plus({ minutes: roundedMinutes })
+    .toFormat("HH:mm");
 }
 
 export function formatDuration(minutes: number): string {
@@ -166,8 +158,7 @@ export function addMinutesToIso(startIso: string, minutes: number): string {
   if (!startIso || !Number.isFinite(minutes)) return startIso;
   const base = new Date(startIso);
   if (Number.isNaN(base.getTime())) return startIso;
-  const result = new Date(base);
-  result.setMinutes(result.getMinutes() + minutes);
+  const result = new Date(base.getTime() + minutes * 60 * 1000);
   return result.toISOString();
 }
 
@@ -240,8 +231,8 @@ export function getCurrentWeekRange(firstDayOfWeek: number = 1): {
   weekEnd.setDate(weekStart.getDate() + 6);
 
   return {
-    start: weekStart.toLocaleDateString("en-CA"),
-    end: weekEnd.toLocaleDateString("en-CA"),
+    start: formatDateKey(weekStart),
+    end: formatDateKey(weekEnd),
   };
 }
 
@@ -261,8 +252,8 @@ export function getCurrentMonthRangeLocal(): { start: string; end: string } {
   const lastDay = new Date(year, month + 1, 0, 23, 59, 59);
 
   return {
-    start: firstDay.toLocaleDateString("en-CA"),
-    end: lastDay.toLocaleDateString("en-CA"),
+    start: formatDateKey(firstDay),
+    end: formatDateKey(lastDay),
   };
 }
 
@@ -306,8 +297,8 @@ export function shiftMonthRange(
   newEnd.setDate(newEnd.getDate() - 1);
 
   return {
-    start: newStart.toLocaleDateString("en-CA"),
-    end: newEnd.toLocaleDateString("en-CA"),
+    start: formatDateKey(newStart),
+    end: formatDateKey(newEnd),
   };
 }
 
@@ -360,37 +351,17 @@ export function dateStringToISO(
   isEndDate: boolean = false,
 ): string {
   const tz = resolveTimezoneInput(timezone);
-  if (!DATE_ONLY_RE.test(dateString)) {
+  if (!isDateKey(dateString)) {
     return "";
   }
-  const [yearStr, monthStr, dayStr] = dateString.split("-");
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-  const day = parseInt(dayStr, 10);
-  if (
-    !Number.isFinite(year) ||
-    !Number.isFinite(month) ||
-    !Number.isFinite(day)
-  ) {
+  const localDate = DateTime.fromISO(dateString, { zone: tz });
+  if (!localDate.isValid || localDate.toFormat("yyyy-LL-dd") !== dateString) {
     return "";
   }
-
-  if (isEndDate) {
-    // For end date, we want 23:59:59.999 in the user's timezone
-    return zonedDateTimeToUtc(
-      year,
-      month,
-      day,
-      23,
-      59,
-      59,
-      999,
-      tz,
-    ).toISOString();
-  } else {
-    // For start date, we want 00:00:00.000 in the user's timezone
-    return zonedDateTimeToUtc(year, month, day, 0, 0, 0, 0, tz).toISOString();
-  }
+  const boundary = isEndDate
+    ? localDate.endOf("day")
+    : localDate.startOf("day");
+  return boundary.toUTC().toJSDate().toISOString();
 }
 
 // ---- Calendar Arithmetic Helpers (local Date-based) ----
@@ -399,59 +370,6 @@ export function addDays(date: Date, days: number): Date {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
-}
-
-export function addMonths(date: Date, months: number): Date {
-  const d = new Date(date);
-  const day = d.getDate();
-  d.setDate(1);
-  d.setMonth(d.getMonth() + months);
-  // Clamp to end of month if the original day doesn't exist in target month
-  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  d.setDate(Math.min(day, lastDay));
-  return d;
-}
-
-export function subMonths(date: Date, months: number): Date {
-  return addMonths(date, -months);
-}
-
-export function startOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-export function endOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-}
-
-export function startOfWeek(date: Date, weekStartsOn: number = 0): Date {
-  const d = new Date(date);
-  const day = d.getDay(); // 0..6 (Sun..Sat)
-  const diff = (day - weekStartsOn + 7) % 7;
-  d.setDate(d.getDate() - diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-export function endOfWeek(date: Date, weekStartsOn: number = 0): Date {
-  return addDays(startOfWeek(date, weekStartsOn), 6);
-}
-
-export function eachDayOfInterval(interval: {
-  start: Date;
-  end: Date;
-}): Date[] {
-  const days: Date[] = [];
-  const cursor = new Date(interval.start);
-  cursor.setHours(0, 0, 0, 0);
-  const end = new Date(interval.end);
-  end.setHours(0, 0, 0, 0);
-
-  while (cursor <= end) {
-    days.push(new Date(cursor));
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return days;
 }
 
 export function isSameDay(a: Date, b: Date): boolean {
@@ -471,7 +389,7 @@ export function getTodayDateString(): string {
   return `${year}-${month}-${day}`;
 }
 
-function parseDateOnlyToLocalDate(dateString: string): Date | null {
+export function parseDateOnlyToLocalDate(dateString: string): Date | null {
   if (!DATE_ONLY_RE.test(dateString)) return null;
   const [yearStr, monthStr, dayStr] = dateString.split("-");
   const year = parseInt(yearStr, 10);
@@ -484,7 +402,27 @@ function parseDateOnlyToLocalDate(dateString: string): Date | null {
   ) {
     return null;
   }
-  return new Date(year, month - 1, day);
+  const parsed = new Date(year, month - 1, day);
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+  return parsed;
+}
+
+export function isDateKey(value: unknown): value is string {
+  return typeof value === "string" && parseDateOnlyToLocalDate(value) !== null;
+}
+
+export function parseDateKey(value: string): Date {
+  const parsed = parseDateOnlyToLocalDate(value);
+  if (!parsed) {
+    throw new RangeError(`Invalid date-only value: ${value}`);
+  }
+  return parsed;
 }
 
 export function parseDateStringToLocalDate(value: string): Date {
@@ -505,11 +443,4 @@ export function formatDateKey(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-export function formatMonthKey(date: Date): string {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
 }

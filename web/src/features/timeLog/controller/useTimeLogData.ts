@@ -20,6 +20,7 @@ interface UseTimeLogDataProps {
   queryMode: QueryMode;
   saveScrollPosition: (position: number) => void;
   timezone: string;
+  ready?: boolean;
 }
 
 interface UseTimeLogDataReturn {
@@ -30,7 +31,6 @@ interface UseTimeLogDataReturn {
   isSelectMode: boolean;
   deletingEntryId: UUID | null;
   deletingEntryCount: number;
-  loadEntries: (opts?: { background?: boolean }) => Promise<void>;
   requestDeleteEntry: (entryId: UUID) => void;
   confirmDeleteEntry: () => Promise<void>;
   cancelDeleteEntry: () => void;
@@ -54,6 +54,7 @@ export const useTimeLogData = ({
   queryMode,
   saveScrollPosition,
   timezone,
+  ready = true,
 }: UseTimeLogDataProps): UseTimeLogDataReturn => {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -92,7 +93,6 @@ export const useTimeLogData = ({
     data: singleDayData,
     isLoading: isLoadingSingleDay,
     error: singleDayError,
-    refetch: refetchSingleDay,
   } = useQuery({
     queryKey: timelogsKeys.list(singleDayListFilters),
     queryFn: async () => {
@@ -114,7 +114,7 @@ export const useTimeLogData = ({
 
       return processed;
     },
-    enabled: queryMode === "single",
+    enabled: ready && queryMode === "single",
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -129,18 +129,6 @@ export const useTimeLogData = ({
   const loading = queryMode === "single" ? isLoadingSingleDay : false;
   const error =
     queryMode === "single" ? (singleDayError?.message ?? null) : null;
-
-  // Legacy loadEntries function for backward compatibility
-  const loadEntries = useCallback(
-    async (opts?: { background?: boolean }) => {
-      if (queryMode !== "single") return;
-
-      if (opts?.background !== true) {
-        await refetchSingleDay();
-      }
-    },
-    [queryMode, refetchSingleDay],
-  );
 
   // Delete single entry mutation
   const deleteEntryMutation = useMutation({
@@ -299,7 +287,6 @@ export const useTimeLogData = ({
     isSelectMode,
     deletingEntryId,
     deletingEntryCount,
-    loadEntries,
     requestDeleteEntry,
     confirmDeleteEntry,
     cancelDeleteEntry,

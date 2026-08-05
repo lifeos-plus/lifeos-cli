@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { GregorianCalendarAdapter } from "@/utils/calendar";
 import type { TaskWithSubtasks } from "@/services/api";
@@ -16,7 +16,7 @@ const createTask = (
   display_order: 0,
   estimated_effort: null,
   planning_cycle_type: overrides.planning_cycle_type ?? "day",
-  planning_cycle_days: overrides.planning_cycle_days ?? null,
+  planning_cycle_days: overrides.planning_cycle_days ?? 1,
   planning_cycle_start_date:
     overrides.planning_cycle_start_date ?? "2025-01-01",
   actual_effort_self: 0,
@@ -41,18 +41,46 @@ describe("GregorianCalendarAdapter", () => {
     expect(sundayStart.getDay()).toBe(0);
   });
 
+  it("preserves non-Monday week starts in the current week range", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-08-05T12:00:00"));
+
+      expect(new GregorianCalendarAdapter(2).getCurrentWeekRange()).toEqual({
+        start: "2026-08-04",
+        end: "2026-08-10",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("computes next and previous periods", () => {
     const adapter = new GregorianCalendarAdapter();
     const base = new Date("2025-01-01T12:00:00Z");
 
-    expect(adapter.getNextPeriod(base, "year").getUTCFullYear()).toBe(2026);
-    expect(adapter.getPreviousPeriod(base, "year").getUTCFullYear()).toBe(2024);
+    expect(adapter.getNextPeriod(base, "year").getFullYear()).toBe(2026);
+    expect(adapter.getPreviousPeriod(base, "year").getFullYear()).toBe(2024);
     expect(adapter.getNextPeriod(base, "7years").getFullYear()).toBe(2032);
     expect(adapter.getPreviousPeriod(base, "7years").getFullYear()).toBe(
       2018,
     );
-    expect(adapter.getNextPeriod(base, "month").getUTCMonth()).toBe(1);
-    expect(adapter.getPreviousPeriod(base, "day").getUTCDate()).toBe(31);
+    expect(adapter.getNextPeriod(base, "month").getMonth()).toBe(1);
+    expect(adapter.getPreviousPeriod(base, "day").getDate()).toBe(31);
+  });
+
+  it("navigates months by their complete calendar ranges at short-month boundaries", () => {
+    const adapter = new GregorianCalendarAdapter();
+
+    expect(adapter.getNextPeriod(new Date(2025, 0, 31), "month")).toEqual(
+      new Date(2025, 1, 1),
+    );
+    expect(adapter.getPreviousPeriod(new Date(2025, 2, 31), "month")).toEqual(
+      new Date(2025, 1, 1),
+    );
+    expect(adapter.getNextPeriod(new Date(2024, 0, 31), "month")).toEqual(
+      new Date(2024, 1, 1),
+    );
   });
 
   it("computes 7-year ranges from the configured anchor year", () => {
@@ -66,6 +94,20 @@ describe("GregorianCalendarAdapter", () => {
       start: "2018-01-01",
       end: "2024-12-31",
     });
+  });
+
+  it("derives planning duration from Gregorian period boundaries", () => {
+    const adapter = new GregorianCalendarAdapter();
+
+    expect(adapter.getPlanningCycleDays("month", new Date(2024, 1, 15))).toBe(
+      29,
+    );
+    expect(adapter.getPlanningCycleDays("month", new Date(2025, 1, 15))).toBe(
+      28,
+    );
+    expect(adapter.getPlanningCycleDays("year", new Date(2024, 6, 1))).toBe(
+      366,
+    );
   });
 
   it("builds week groups with nested day children", () => {
@@ -133,6 +175,33 @@ describe("GregorianCalendarAdapter", () => {
     expect(yearGroup.children).toHaveLength(12);
     const mayGroup = yearGroup.children?.[4];
     expect(mayGroup?.tasks.map((task) => task.id)).toEqual(["month-5"]);
+  });
+
+  it("includes tasks whose physical windows overlap the displayed month", () => {
+    const adapter = new GregorianCalendarAdapter();
+    const overlappingTask = createTask({
+      id: "overlapping-month",
+      planning_cycle_type: "month",
+      planning_cycle_start_date: "2026-07-25",
+      planning_cycle_days: 22,
+    });
+    const previousTask = createTask({
+      id: "previous-month",
+      planning_cycle_type: "month",
+      planning_cycle_start_date: "2026-07-01",
+      planning_cycle_days: 24,
+    });
+
+    const [august] = adapter.buildPlanningGroups(
+      "month",
+      new Date(2026, 7, 1),
+      [overlappingTask, previousTask],
+      1,
+    );
+
+    expect(august.tasks.map((task) => task.id)).toEqual([
+      "overlapping-month",
+    ]);
   });
 
   it("builds 7-year groups for 7years tasks", () => {
