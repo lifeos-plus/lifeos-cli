@@ -7,11 +7,11 @@ import {
   countInclusiveLocalDates,
   DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
   normalizePlanningViewType,
+  taskPlanningWindowOverlaps,
 } from "./CalendarAdapter";
 import type { TaskWithSubtasks } from "@/services/api";
 import {
   formatDateKey,
-  isDateKey,
   parseDateKey,
 } from "@/utils/datetime";
 
@@ -466,17 +466,6 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     return groups;
   }
 
-  private getPlanningCycleDate(task: TaskWithSubtasks): Date | null {
-    const value = task.planning_cycle_start_date;
-    if (!value || !isDateKey(value)) return null;
-    return parseDateKey(value);
-  }
-
-  private isTaskOnDate(task: TaskWithSubtasks, date: Date): boolean {
-    const taskDate = this.getPlanningCycleDate(task);
-    return taskDate !== null && formatDateKey(taskDate) === formatDateKey(date);
-  }
-
   private buildSevenYearGroups(
     date: Date,
     tasks: TaskWithSubtasks[],
@@ -487,11 +476,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     end.setDate(end.getDate() - 1);
     const sevenYearTasks = this.getTasksByPlanningType(tasks, "7years");
 
-    const tasksInCurrentPeriod = sevenYearTasks.filter((task) => {
-      const taskDate = this.getPlanningCycleDate(task);
-      if (!taskDate) return false;
-      return taskDate >= start && taskDate <= end;
-    });
+    const tasksInCurrentPeriod = sevenYearTasks.filter((task) =>
+      taskPlanningWindowOverlaps(task, start, end),
+    );
 
     return [
       {
@@ -511,18 +498,15 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     const mayanYearStart = this.getMayanYearStart(date);
     const nextMayanYearStart = new Date(mayanYearStart);
     nextMayanYearStart.setFullYear(mayanYearStart.getFullYear() + 1);
+    const mayanYearEnd = new Date(nextMayanYearStart);
+    mayanYearEnd.setDate(mayanYearEnd.getDate() - 1);
     const yearTasks = this.getTasksByPlanningType(tasks, "year");
     const monthTasks = this.getTasksByPlanningType(tasks, "month");
     const dayTasks = this.getTasksByPlanningType(tasks, "day");
 
-    const tasksInMayanYear = yearTasks.filter((task) => {
-      const taskDate = this.getPlanningCycleDate(task);
-      return (
-        taskDate !== null &&
-        taskDate >= mayanYearStart &&
-        taskDate < nextMayanYearStart
-      );
-    });
+    const tasksInMayanYear = yearTasks.filter((task) =>
+      taskPlanningWindowOverlaps(task, mayanYearStart, mayanYearEnd),
+    );
 
     const yearGroup: PlanningGroup = {
       id: `mayan-year-${mayanYearStart.getFullYear()}`,
@@ -539,12 +523,13 @@ export class MayanCalendarAdapter implements CalendarAdapter {
         mayanYearStart,
         firstDayOfMoon,
       );
-      const tasksInMoon = monthTasks.filter((task) => {
-        const taskDate = this.getPlanningCycleDate(task);
-        if (!taskDate) return false;
-        const parts = this.toMayanParts(taskDate);
-        return !parts.isDayOutOfTime && parts.moonIndex === m;
-      });
+      const moonEnd = this.getDateForMayanDay(
+        mayanYearStart,
+        firstDayOfMoon + 27,
+      );
+      const tasksInMoon = monthTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, moonStart, moonEnd),
+      );
       yearGroup.children!.push({
         id: `mayan-month-${mayanYearStart.getFullYear()}-${m}`,
         label: `第${m}月`,
@@ -557,7 +542,7 @@ export class MayanCalendarAdapter implements CalendarAdapter {
     // Day out of time (single day)
     const outOfTimeDate = new Date(mayanYearStart.getFullYear() + 1, 6, 25);
     const outOfTimeTasks = dayTasks.filter((task) =>
-      this.isTaskOnDate(task, outOfTimeDate),
+      taskPlanningWindowOverlaps(task, outOfTimeDate, outOfTimeDate),
     );
     yearGroup.children!.push({
       id: `mayan-day-out-of-time-${mayanYearStart.getFullYear()}`,
@@ -585,7 +570,7 @@ export class MayanCalendarAdapter implements CalendarAdapter {
           label: "无时间日",
           date: info.start,
           tasks: monthTasks.filter((task) =>
-            this.isTaskOnDate(task, info.start),
+            taskPlanningWindowOverlaps(task, info.start, info.end),
           ),
           children: [],
         },
@@ -596,24 +581,16 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       id: `mayan-month-${info.start.getFullYear()}-${info.moonIndex}`,
       label: `第${info.moonIndex}月`,
       date: info.start,
-      tasks: monthTasks.filter((task) => {
-        const taskDate = this.getPlanningCycleDate(task);
-        if (!taskDate) return false;
-        const parts = this.toMayanParts(taskDate);
-        return !parts.isDayOutOfTime && parts.moonIndex === info.moonIndex;
-      }),
+      tasks: monthTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, info.start, info.end),
+      ),
       children: [],
     };
 
     info.weeks.forEach((w) => {
-      const weekTasksIn = weekTasks.filter((task) => {
-        const taskDate = this.getPlanningCycleDate(task);
-        if (!taskDate) return false;
-        const range = this.getMayanWeekRange(taskDate);
-        return (
-          !range.isDayOutOfTime && range.start.getTime() === w.start.getTime()
-        );
-      });
+      const weekTasksIn = weekTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, w.start, w.end),
+      );
       monthGroup.children!.push({
         id: `mayan-week-${w.start.toISOString()}`,
         label: `第${w.weekIndexWithinYear}周`,
@@ -641,19 +618,16 @@ export class MayanCalendarAdapter implements CalendarAdapter {
           label: "无时间日",
           date: range.start,
           tasks: weekTasks.filter((task) =>
-            this.isTaskOnDate(task, range.start),
+            taskPlanningWindowOverlaps(task, range.start, range.end),
           ),
           children: [],
         },
       ];
     }
 
-    const weekTasksInWeek = weekTasks.filter((task) => {
-      const taskDate = this.getPlanningCycleDate(task);
-      if (!taskDate) return false;
-      const r = this.getMayanWeekRange(taskDate);
-      return !r.isDayOutOfTime && r.start.getTime() === range.start.getTime();
-    });
+    const weekTasksInWeek = weekTasks.filter((task) =>
+      taskPlanningWindowOverlaps(task, range.start, range.end),
+    );
 
     const weekGroup: PlanningGroup = {
       id: `mayan-week-${range.start.toISOString()}`,
@@ -672,13 +646,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       days.push(new Date(current));
     }
     days.forEach((dayDate, index) => {
-      const dayTasksInWeek = dayTasks.filter((task) => {
-        const taskDate = this.getPlanningCycleDate(task);
-        return (
-          taskDate !== null &&
-          taskDate.toDateString() === dayDate.toDateString()
-        );
-      });
+      const dayTasksInWeek = dayTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, dayDate, dayDate),
+      );
       weekGroup.children!.push({
         id: `mayan-day-${range.start.toISOString()}-${index}`,
         label: `${dayDate.getMonth() + 1}月${dayDate.getDate()}日`,
@@ -703,7 +673,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
           id: `mayan-day-out-of-time-${date.toISOString()}`,
           label: `无时间日`,
           date: date,
-          tasks: dayTasks.filter((task) => this.isTaskOnDate(task, date)),
+          tasks: dayTasks.filter((task) =>
+            taskPlanningWindowOverlaps(task, date, date),
+          ),
           children: [],
         },
       ];
@@ -716,12 +688,9 @@ export class MayanCalendarAdapter implements CalendarAdapter {
       id: `day-${year}-${month}-${day}`,
       label: `${year}年${month + 1}月${day}日`,
       date: date,
-      tasks: dayTasks.filter((task) => {
-        const taskDate = this.getPlanningCycleDate(task);
-        return (
-          taskDate !== null && taskDate.toDateString() === date.toDateString()
-        );
-      }),
+      tasks: dayTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, date, date),
+      ),
       children: [],
     };
 

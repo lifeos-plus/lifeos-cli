@@ -11,19 +11,45 @@ export const normalizePlanningViewType = (
 ): "sevenYear" | "year" | "month" | "week" | "day" =>
   viewType === "7years" ? "sevenYear" : viewType;
 
+const localDateOrdinal = (date: Date): number =>
+  Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+
 export const countInclusiveLocalDates = (
   startDate: string,
   endDate: string,
 ): number => {
   const start = parseDateKey(startDate);
   const end = parseDateKey(endDate);
-  const startOrdinal = Date.UTC(
-    start.getFullYear(),
-    start.getMonth(),
-    start.getDate(),
-  );
-  const endOrdinal = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+  const startOrdinal = localDateOrdinal(start);
+  const endOrdinal = localDateOrdinal(end);
   return Math.floor((endOrdinal - startOrdinal) / (24 * 60 * 60 * 1000)) + 1;
+};
+
+export const taskPlanningWindowOverlaps = (
+  task: TaskWithSubtasks,
+  periodStart: Date,
+  periodEnd: Date,
+): boolean => {
+  const startValue = task.planning_cycle_start_date;
+  if (!startValue) return false;
+
+  const taskStart = parseDateKey(startValue);
+  const configuredDays = task.planning_cycle_days;
+  if (
+    typeof configuredDays !== "number" ||
+    !Number.isInteger(configuredDays) ||
+    configuredDays <= 0
+  ) {
+    return false;
+  }
+  const taskStartOrdinal = localDateOrdinal(taskStart);
+  const taskEndOrdinal =
+    taskStartOrdinal + (configuredDays - 1) * 86_400_000;
+
+  return (
+    taskStartOrdinal <= localDateOrdinal(periodEnd) &&
+    taskEndOrdinal >= localDateOrdinal(periodStart)
+  );
 };
 
 export interface PlanningGroup {

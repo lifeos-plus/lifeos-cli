@@ -7,6 +7,7 @@ import {
   countInclusiveLocalDates,
   DEFAULT_SEVEN_YEAR_ANCHOR_DATE,
   normalizePlanningViewType,
+  taskPlanningWindowOverlaps,
 } from "./CalendarAdapter";
 import type { TaskWithSubtasks } from "@/services/api";
 import {
@@ -14,7 +15,6 @@ import {
   getCurrentWeekRange,
   getCurrentMonthRangeLocal,
   formatDateKey,
-  isDateKey,
   parseDateKey,
   shiftMonthRange,
 } from "@/utils/datetime";
@@ -144,10 +144,7 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
     const sevenYearTasks = this.getTasksByPlanningType(tasks, "7years");
 
     const tasksInCurrentPeriod = sevenYearTasks.filter((task) => {
-      if (!task.planning_cycle_start_date) return false;
-      if (!isDateKey(task.planning_cycle_start_date)) return false;
-      const taskDate = parseDateKey(task.planning_cycle_start_date);
-      return taskDate >= periodStart && taskDate <= periodEnd;
+      return taskPlanningWindowOverlaps(task, periodStart, periodEnd);
     });
 
     return [
@@ -171,11 +168,11 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
     const monthTasks = this.getTasksByPlanningType(tasks, "month");
 
     // Filter year tasks for current year
-    const yearTasksInCurrentYear = yearTasks.filter((task) => {
-      if (!task.planning_cycle_start_date) return false;
-      const [taskYear] = task.planning_cycle_start_date.split("-");
-      return parseInt(taskYear) === year;
-    });
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31);
+    const yearTasksInCurrentYear = yearTasks.filter((task) =>
+      taskPlanningWindowOverlaps(task, yearStart, yearEnd),
+    );
 
     const yearGroup: PlanningGroup = {
       id: `year-${year}`,
@@ -188,11 +185,10 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
     // Add 12 months
     for (let month = 0; month < 12; month++) {
       const monthDate = new Date(year, month, 1);
-      const monthTasksInYear = monthTasks.filter((task) => {
-        if (!task.planning_cycle_start_date) return false;
-        const [taskYear, taskMonth] = task.planning_cycle_start_date.split("-");
-        return parseInt(taskYear) === year && parseInt(taskMonth) === month + 1;
-      });
+      const monthEnd = new Date(year, month + 1, 0);
+      const monthTasksInYear = monthTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, monthDate, monthEnd),
+      );
 
       yearGroup.children!.push({
         id: `month-${year}-${month}`,
@@ -216,11 +212,11 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
     const monthTasks = this.getTasksByPlanningType(tasks, "month");
     const weekTasks = this.getTasksByPlanningType(tasks, "week");
 
-    const monthTasksInCurrentMonth = monthTasks.filter((task) => {
-      if (!task.planning_cycle_start_date) return false;
-      const [taskYear, taskMonth] = task.planning_cycle_start_date.split("-");
-      return parseInt(taskYear) === year && parseInt(taskMonth) === month + 1;
-    });
+    const monthStart = new Date(year, month, 1);
+    const monthEnd = new Date(year, month + 1, 0);
+    const monthTasksInCurrentMonth = monthTasks.filter((task) =>
+      taskPlanningWindowOverlaps(task, monthStart, monthEnd),
+    );
 
     const monthGroup: PlanningGroup = {
       id: `month-${year}-${month}`,
@@ -233,29 +229,9 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
     const weeksInMonth = this.getWeeksInMonth(year, month, firstDayOfWeek);
 
     weeksInMonth.forEach((week) => {
-      const weekTasksInMonth = weekTasks.filter((task) => {
-        if (!task.planning_cycle_start_date) return false;
-        const taskDate = parseDateKey(task.planning_cycle_start_date);
-        const taskDateNormalized = new Date(
-          taskDate.getFullYear(),
-          taskDate.getMonth(),
-          taskDate.getDate(),
-        );
-        const weekStartNormalized = new Date(
-          week.start.getFullYear(),
-          week.start.getMonth(),
-          week.start.getDate(),
-        );
-        const weekEndNormalized = new Date(
-          week.end.getFullYear(),
-          week.end.getMonth(),
-          week.end.getDate(),
-        );
-        return (
-          taskDateNormalized >= weekStartNormalized &&
-          taskDateNormalized <= weekEndNormalized
-        );
-      });
+      const weekTasksInMonth = weekTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, week.start, week.end),
+      );
 
       monthGroup.children!.push({
         id: `week-${year}-${month}-${week.weekIndex}`,
@@ -280,29 +256,9 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
     const weekTasks = this.getTasksByPlanningType(tasks, "week");
     const dayTasks = this.getTasksByPlanningType(tasks, "day");
 
-    const weekTasksInWeek = weekTasks.filter((task) => {
-      if (!task.planning_cycle_start_date) return false;
-      const taskDate = this.parsePlanningDate(task.planning_cycle_start_date);
-      const taskDateNormalized = new Date(
-        taskDate.getFullYear(),
-        taskDate.getMonth(),
-        taskDate.getDate(),
-      );
-      const weekStartNormalized = new Date(
-        weekStart.getFullYear(),
-        weekStart.getMonth(),
-        weekStart.getDate(),
-      );
-      const weekEndNormalized = new Date(
-        weekEnd.getFullYear(),
-        weekEnd.getMonth(),
-        weekEnd.getDate(),
-      );
-      return (
-        taskDateNormalized >= weekStartNormalized &&
-        taskDateNormalized <= weekEndNormalized
-      );
-    });
+    const weekTasksInWeek = weekTasks.filter((task) =>
+      taskPlanningWindowOverlaps(task, weekStart, weekEnd),
+    );
 
     const weekGroup: PlanningGroup = {
       id: `week-${weekStart.getFullYear()}-${weekStart.getMonth()}-${weekStart.getDate()}`,
@@ -314,11 +270,9 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
 
     const daysInWeekArr = getDaysInWeek(weekStart);
     daysInWeekArr.forEach((dayDate, index) => {
-      const dayTasksInWeek = dayTasks.filter((task) => {
-        if (!task.planning_cycle_start_date) return false;
-        const taskDate = this.parsePlanningDate(task.planning_cycle_start_date);
-        return taskDate.toDateString() === dayDate.toDateString();
-      });
+      const dayTasksInWeek = dayTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, dayDate, dayDate),
+      );
       weekGroup.children!.push({
         id: `day-${weekStart.getFullYear()}-${weekStart.getMonth()}-${weekStart.getDate()}-${index}`,
         label: `${dayDate.getMonth() + 1}月${dayDate.getDate()}日`,
@@ -344,11 +298,9 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
       id: `day-${year}-${month}-${day}`,
       label: `${year}年${month + 1}月${day}日`,
       date: date,
-      tasks: dayTasks.filter((task) => {
-        if (!task.planning_cycle_start_date) return false;
-        const taskDate = this.parsePlanningDate(task.planning_cycle_start_date);
-        return taskDate.toDateString() === date.toDateString();
-      }),
+      tasks: dayTasks.filter((task) =>
+        taskPlanningWindowOverlaps(task, date, date),
+      ),
       children: [],
     };
 
@@ -441,18 +393,6 @@ export class GregorianCalendarAdapter implements CalendarAdapter {
       index: i + 1,
       name: namesToUse[i] || `Month ${i + 1}`, // Fallback if month name not provided
     }));
-  }
-
-  private parsePlanningDate(dateValue: string): Date {
-    if (!dateValue) {
-      return new Date(NaN);
-    }
-
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
-      return parseDateKey(dateValue);
-    }
-
-    return new Date(dateValue);
   }
 
   /**

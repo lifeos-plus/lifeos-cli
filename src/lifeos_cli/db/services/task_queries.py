@@ -37,6 +37,7 @@ from lifeos_cli.db.services.task_support import (
     load_task_subtree,
     validate_task_status,
 )
+from lifeos_cli.db.sql_expressions import AddDaysToDate
 
 
 @dataclass(frozen=True)
@@ -251,8 +252,9 @@ def _apply_task_filters(
         else:
             cycle_start, cycle_end = cycle_range
             stmt = stmt.where(
-                Task.planning_cycle_start_date >= cycle_start,
                 Task.planning_cycle_start_date <= cycle_end,
+                AddDaysToDate(Task.planning_cycle_start_date, Task.planning_cycle_days - 1)
+                >= cycle_start,
             )
     if content is not None:
         normalized_content = content.strip()

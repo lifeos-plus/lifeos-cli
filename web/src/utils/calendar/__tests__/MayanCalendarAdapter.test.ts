@@ -16,7 +16,7 @@ const createTask = (
   display_order: 0,
   estimated_effort: null,
   planning_cycle_type: overrides.planning_cycle_type ?? "day",
-  planning_cycle_days: null,
+  planning_cycle_days: overrides.planning_cycle_days ?? 1,
   planning_cycle_start_date:
     overrides.planning_cycle_start_date ?? "2026-07-26",
   actual_effort_self: 0,
@@ -177,6 +177,12 @@ describe("MayanCalendarAdapter", () => {
       planning_cycle_days: 1,
       planning_cycle_start_date: "2026-07-25",
     });
+    const overlappingMonthTask = createTask({
+      id: "overlapping-month-task",
+      planning_cycle_type: "month",
+      planning_cycle_days: 2,
+      planning_cycle_start_date: "2026-07-24",
+    });
     const weekTask = createTask({
       id: "week-task",
       planning_cycle_type: "week",
@@ -195,7 +201,13 @@ describe("MayanCalendarAdapter", () => {
       planning_cycle_days: 1,
       planning_cycle_start_date: "2027-07-25",
     });
-    const tasks = [monthTask, weekTask, dayTask, otherYearDayTask];
+    const tasks = [
+      monthTask,
+      overlappingMonthTask,
+      weekTask,
+      dayTask,
+      otherYearDayTask,
+    ];
 
     const [monthGroup] = adapter.buildPlanningGroups(
       "month",
@@ -213,7 +225,10 @@ describe("MayanCalendarAdapter", () => {
       tasks,
     );
 
-    expect(monthGroup.tasks.map((task) => task.id)).toEqual(["month-task"]);
+    expect(monthGroup.tasks.map((task) => task.id)).toEqual([
+      "month-task",
+      "overlapping-month-task",
+    ]);
     expect(weekGroup.tasks.map((task) => task.id)).toEqual(["week-task"]);
     expect(dayGroup.tasks.map((task) => task.id)).toEqual(["day-task"]);
   });
