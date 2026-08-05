@@ -136,7 +136,7 @@ describe("finance cache invalidation helpers", () => {
       items: [{ id: "snapshot-1" }, { id: "snapshot-2" }],
       pagination: { page: 1, size: 50, total: 2, pages: 1 },
       meta: { tree_id: "tree-1" },
-    } as FinanceSnapshotListResponse;
+    } as unknown as FinanceSnapshotListResponse;
 
     removeFinanceSnapshotFromListCache(queryClient, "tree-1", "snapshot-1");
 
@@ -156,7 +156,7 @@ describe("finance cache invalidation helpers", () => {
       items: [{ id: "snapshot-1" }, { id: "snapshot-2" }],
       pagination: { page: 1, size: 50, total: 2, pages: 1 },
       meta: { tree_id: null },
-    } as FinanceSnapshotListResponse;
+    } as unknown as FinanceSnapshotListResponse;
 
     removeFinanceSnapshotFromAllListCache(queryClient, "snapshot-1");
 

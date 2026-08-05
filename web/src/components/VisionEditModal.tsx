@@ -254,7 +254,7 @@ const VisionEditModal: React.FC<VisionEditModalProps> = ({
           <TextArea
             id={visionDescriptionId}
             name="vision-description"
-            value={formData.description}
+            value={formData.description ?? ""}
             onChange={(e) =>
               setFormData({ ...formData, description: e.target.value })
             }

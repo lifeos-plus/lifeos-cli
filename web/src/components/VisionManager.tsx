@@ -25,7 +25,7 @@ import AreaBadge from "./AreaBadge";
 import { Icon } from "./icons";
 import type { Vision, TaskWithSubtasks } from "@/services/api";
 import { visionsApi } from "@/services/api";
-import { formatDuration, formatDate } from "@/utils/datetime";
+import { formatDate } from "@/utils/datetime";
 import { logger } from "@/utils/core";
 import { useVisionManager } from "@/features/visions/controller/useVisionManager";
 import { useVisionUIState } from "@/features/visions/controller/useVisionUIState";
@@ -483,17 +483,6 @@ const VisionManager = forwardRef<VisionManagerHandle, VisionManagerProps>(
                   </span>
                   <span className="truncate">{vision.experience_points}</span>
                 </div>
-                {vision.total_actual_effort &&
-                  vision.total_actual_effort > 0 && (
-                    <div className="flex items-center gap-1 min-w-0">
-                      <span className="text-base-content/50 flex-shrink-0">
-                        {t("visions.vision.totalEffort")}
-                      </span>
-                      <span className="truncate">
-                        {formatDuration(vision.total_actual_effort)}
-                      </span>
-                    </div>
-                  )}
               </div>
             );
 

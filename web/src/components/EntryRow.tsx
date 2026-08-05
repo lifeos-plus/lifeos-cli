@@ -223,7 +223,7 @@ const EntryRowComponent: React.FC<EntryRowProps> = ({
                 e.stopPropagation();
                 // Narrow type via runtime guard instead of double assertion
                 if (entry.isPlaceholder) {
-                  onPlaceholderClick(entry as PlaceholderEntry);
+                  onPlaceholderClick(entry as unknown as PlaceholderEntry);
                 }
               }}
             />

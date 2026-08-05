@@ -1,85 +1,47 @@
 import { http } from "./client";
 import { ENDPOINTS } from "./endpoints";
+import type { components } from "./generated/schema";
 import type { PersonSummary } from "./types/common";
 import type { UUID } from "@/types/primitive";
 import { DataCleaner } from "@/utils/protocol";
-import type { ListResponse } from "@/types/pagination";
 import type { NoteSummary } from "./notes";
 
-// Types local to timelogs
-interface AreaSummary {
-  id: UUID;
-  name: string;
-  color?: string | null;
-}
-
-interface VisionSummary {
-  id: UUID;
-  name: string;
-  status?: string | null;
-  area_id?: UUID | null;
-}
-
-export interface TimelogTaskSummary {
-  id: UUID;
-  content: string;
-  vision_id: UUID | null;
-  status?: string;
-  vision_summary?: VisionSummary | null;
-}
-
-export interface Timelog {
-  id: UUID;
-  title: string;
-  start_time: string;
-  end_time: string;
-  area_id: UUID | null;
-  task_id?: UUID | null;
-  area_summary?: AreaSummary | null;
-  tracking_method: string;
-  location?: string | null;
-  energy_level?: number | null;
-  notes?: string | null;
-  tags?: string[] | null;
+type TimelogTransport = components["schemas"]["TimelogResponse"];
+type TimelogCreateTransport = components["schemas"]["TimelogCreate"];
+type TimelogUpdateTransport = components["schemas"]["TimelogUpdate"];
+type TimelogClientFields = {
   extra_data?: Record<string, unknown> | null;
-  created_at: string;
-  updated_at: string;
-  people?: PersonSummary[];
-  // Preferred single associated task summary
-  task?: TimelogTaskSummary | null;
   linked_notes?: NoteSummary[];
-  linked_notes_count?: number;
-}
-
-export interface TimelogCreate {
-  title: string;
-  start_time: string;
-  end_time: string;
-  area_id: UUID | null;
-  tracking_method?: string;
-  location?: string;
-  energy_level?: number;
-  notes?: string;
-  tags?: string[];
+};
+type TimelogDraftFields = {
   extra_data?: Record<string, unknown>;
-  task_id?: UUID | null; // single associated task
-  person_ids?: UUID[];
-  [key: string]: unknown;
-}
+  tags?: string[];
+};
 
-export type TimelogUpdate = Partial<TimelogCreate>;
-
-interface EnergyInjectionResult {
-  vision_id: UUID;
-  experience_gained: number;
-  stage_evolved: boolean;
-  new_stage: number;
-  total_experience: number;
-}
-
-export interface TimelogWithEnergyResponse extends Timelog {
-  energy_injections?: EnergyInjectionResult[];
-}
+type TimelogTaskTransport = components["schemas"]["TaskSummaryResponse"];
+export type TimelogTaskSummary = Omit<
+  TimelogTaskTransport,
+  "parent_task_id" | "status" | "vision_id"
+> & {
+  parent_task_id?: UUID | null;
+  status?: string;
+  vision_id: UUID | null;
+  vision_summary?: { id: UUID; name: string } | null;
+};
+export type Timelog = Omit<
+  TimelogTransport,
+  "deleted_at" | "linked_notes_count" | "people" | "task" | "task_id"
+> &
+  TimelogClientFields & {
+    deleted_at?: string | null;
+    linked_notes_count?: number;
+    people?: PersonSummary[] | null;
+    task?: TimelogTaskSummary | null;
+    task_id?: UUID | null;
+  };
+export type TimelogCreate = TimelogCreateTransport & TimelogDraftFields;
+export type TimelogUpdate = TimelogUpdateTransport & TimelogDraftFields;
+export type TimelogWithEnergyResponse = TimelogTransport;
 
 export interface TimelogAdvancedSearchRequest {
   start_date: string;
@@ -93,42 +55,25 @@ export interface TimelogAdvancedSearchRequest {
   with_task?: boolean;
 }
 
-export interface TimelogAdvancedSearchMetadata {
-  start_date?: string | null;
-  end_date?: string | null;
-  window_start?: string | null;
-  window_end?: string | null;
-  tracking_method?: string | null;
-  area_id?: UUID | null;
-  without_area?: boolean | null;
-  area_name?: string | null;
+export type TimelogListTransport = components["schemas"]["ListResponse_TimelogResponse_TimelogListMeta_"];
+export type TimelogAdvancedSearchMetadata = Partial<components["schemas"]["TimelogListMeta"]> & {
   description_keyword?: string | null;
-  task_id?: UUID | null;
-  without_task?: boolean | null;
-  with_task?: boolean | null;
-  limit?: number | null;
-  returned_count?: number | null;
-  total_count?: number | null;
-  truncated?: boolean | null;
-}
-
-export type TimelogListResponse = ListResponse<
-  Timelog,
-  TimelogAdvancedSearchMetadata
->;
-
-export type TimelogAdvancedSearchResponse = TimelogListResponse;
-
-export interface LatestTimelogEndTimeResponse {
-  end_time: string | null;
-}
+};
+export type TimelogListResponse = Omit<TimelogListTransport, "items" | "meta"> & {
+  items: Timelog[];
+  meta: Partial<TimelogListTransport["meta"]>;
+};
+export type TimelogAdvancedSearchResponse = Omit<TimelogListTransport, "meta"> & {
+  meta: TimelogAdvancedSearchMetadata;
+};
+export type LatestTimelogEndTimeResponse = components["schemas"]["LatestTimelogEndResponse"];
 
 const TIMELOG_PAGE_SIZE = 500;
 const MAX_TIMELOG_RANGE_PAGES = 100;
 
 function toTimelogPayload(
   payload: TimelogCreate | TimelogUpdate,
-): Record<string, unknown> {
+): TimelogCreateTransport | TimelogUpdateTransport {
   return {
     title: payload.title,
     start_time: payload.start_time,
@@ -157,7 +102,7 @@ export const timelogsApi = {
     let totalPages = 0;
 
     while (page <= MAX_TIMELOG_RANGE_PAGES) {
-      const response = await http.get<TimelogListResponse>(
+      const response = await http.get<TimelogListTransport>(
         ENDPOINTS.TIMELOGS.BASE,
         {
           window_start: start,
@@ -213,7 +158,7 @@ export const timelogsApi = {
 
   create: (payload: TimelogCreate) => {
     const cleanedData = DataCleaner.create(toTimelogPayload(payload));
-    return http.post<TimelogWithEnergyResponse>(
+    return http.post<TimelogTransport>(
       ENDPOINTS.TIMELOGS.BASE,
       cleanedData,
     );
@@ -226,7 +171,7 @@ export const timelogsApi = {
 
     return Promise.all(
       cleanedTimelogs.map((timelog) =>
-        http.post<Timelog>(ENDPOINTS.TIMELOGS.BASE, timelog),
+        http.post<TimelogTransport>(ENDPOINTS.TIMELOGS.BASE, timelog),
       ),
     ).then((createdTimelogs) => ({
       created_count: createdTimelogs.length,
@@ -239,14 +184,14 @@ export const timelogsApi = {
   update: (id: UUID, payload: TimelogUpdate) => {
     const cleanedData = DataCleaner.update(toTimelogPayload(payload));
 
-    return http.patch<Timelog>(
+    return http.patch<TimelogTransport>(
       ENDPOINTS.TIMELOGS.BY_ID(id),
       cleanedData,
     );
   },
 
   quickEnd: (id: UUID) =>
-    http.patch<Timelog>(ENDPOINTS.TIMELOGS.BY_ID(id), {
+    http.patch<TimelogTransport>(ENDPOINTS.TIMELOGS.BY_ID(id), {
       end_time: new Date().toISOString(),
     }),
 
@@ -280,7 +225,7 @@ export const timelogsApi = {
     const withoutTask =
       params.without_task ?? params.task_id === null;
     const withTask = params.with_task ?? false;
-    const response = await http.get<TimelogAdvancedSearchResponse>(
+    const response = await http.get<TimelogListTransport>(
       ENDPOINTS.TIMELOGS.BASE,
       {
         window_start: params.start_date,
@@ -317,7 +262,7 @@ export const timelogsApi = {
         area_name:
           response.meta?.area_name ?? params.area_name ?? null,
         description_keyword:
-          response.meta?.description_keyword ??
+          response.meta?.query ??
           params.description_keyword ??
           null,
         task_id: response.meta?.task_id ?? params.task_id ?? null,
@@ -352,10 +297,8 @@ export const timelogsApi = {
       area_id: UUID | null;
     };
   }) =>
-    http.post<{
-      updated_count: number;
-      unchanged_ids?: UUID[];
-      failed_ids: UUID[];
-      errors: string[];
-    }>(ENDPOINTS.TIMELOGS.BATCH_UPDATE, params),
+    http.post<components["schemas"]["TimelogBatchUpdateResponse"]>(
+      ENDPOINTS.TIMELOGS.BATCH_UPDATE,
+      params satisfies components["schemas"]["TimelogBatchUpdate"],
+    ),
 };

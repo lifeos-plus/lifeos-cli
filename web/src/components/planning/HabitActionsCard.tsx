@@ -60,7 +60,7 @@ export const HabitActionsCard: React.FC<HabitActionsCardProps> = ({
   const buildHabitActionSummary = (
     action: HabitActionWithHabit,
   ): NoteHabitActionSummary => ({
-    id: action.id,
+    id: action.id ?? "",
     habit_id: action.habit_id,
     habit_title: action.habit.title,
     action_date: action.action_date,
@@ -173,6 +173,7 @@ export const HabitActionsCard: React.FC<HabitActionsCardProps> = ({
                         <EnumSelect
                           value={action.status}
                           onChange={(value) =>
+                            action.id &&
                             onStatusChange(
                               action.id,
                               action.habit_id,
@@ -196,7 +197,7 @@ export const HabitActionsCard: React.FC<HabitActionsCardProps> = ({
         <CreateNoteModal
           isOpen={!!creatingNoteForAction}
           onClose={() => setCreatingNoteForAction(null)}
-          preSelectedHabitActionId={creatingNoteForAction.id}
+          preSelectedHabitActionId={creatingNoteForAction.id ?? undefined}
           preSelectedHabitAction={buildHabitActionSummary(creatingNoteForAction)}
           onNoteCreated={() => {
             setCreatingNoteForAction(null);

@@ -207,7 +207,7 @@ const PersonFormModal: React.FC<PersonFormModalProps> = ({
         );
         const cleanedData = {
           ...formData,
-          name: formData.name?.trim() || undefined,
+          name: formData.name?.trim() || "",
           birth_date: formData.birth_date?.trim() || undefined,
           location: formData.location?.trim() || undefined,
           nicknames: formData.nicknames?.filter((n) => n.trim()) || undefined,
@@ -352,7 +352,7 @@ const PersonFormModal: React.FC<PersonFormModalProps> = ({
             id="person-birth-date-input"
             name="person-birth-date-input"
             type="date"
-            value={formData.birth_date}
+            value={formData.birth_date ?? ""}
             onChange={(e) => handleInputChange("birth_date", e.target.value)}
             disabled={loading}
           />

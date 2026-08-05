@@ -49,7 +49,7 @@ const TagTooltipContent: React.FC<TagTooltipContentProps> = ({ tag }) => {
             {t("notes.tooltip.tag.createdAt")}:
           </dt>
           <dd className="text-base-content">
-            {formatDateTime(tag.created_at)}
+            {formatDateTime(tag.created_at ?? "")}
           </dd>
         </div>
         <div className="flex items-start gap-2">
@@ -57,7 +57,7 @@ const TagTooltipContent: React.FC<TagTooltipContentProps> = ({ tag }) => {
             {t("notes.tooltip.tag.updatedAt")}:
           </dt>
           <dd className="text-base-content">
-            {formatDateTime(tag.updated_at)}
+            {formatDateTime(tag.updated_at ?? "")}
           </dd>
         </div>
       </dl>

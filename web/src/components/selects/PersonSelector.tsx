@@ -35,9 +35,11 @@ const filterValidUUIDs = (ids: UUID[]): UUID[] =>
 const matchesPerson = (person: PersonSummary, query: string) => {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return true;
-  if (person.display_name.toLowerCase().includes(normalized)) return true;
+  if ((person.display_name ?? person.name ?? "").toLowerCase().includes(normalized)) return true;
   if (person.primary_nickname?.toLowerCase().includes(normalized)) return true;
-  return person.tags.some((tag) => tag.name.toLowerCase().includes(normalized));
+  return (person.tags ?? []).some((tag) =>
+    tag.name.toLowerCase().includes(normalized),
+  );
 };
 
 const PersonSelector: React.FC<PersonSelectorProps> = ({
@@ -145,7 +147,7 @@ const PersonSelector: React.FC<PersonSelectorProps> = ({
     });
     return Array.from(unique.values()).map((person) => ({
       id: person.id,
-      label: person.display_name,
+      label: person.display_name ?? person.name ?? "",
       data: person,
     }));
   }, [availablePersons, knownPersonsMap, sanitizedSelectedIds]);
@@ -160,7 +162,7 @@ const PersonSelector: React.FC<PersonSelectorProps> = ({
         if (person?.primary_nickname?.toLowerCase().includes(normalized)) {
           return true;
         }
-        return person?.tags.some((tag) =>
+        return person?.tags?.some((tag) =>
           tag.name.toLowerCase().includes(normalized),
         );
       });

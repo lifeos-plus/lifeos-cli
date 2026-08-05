@@ -1,64 +1,13 @@
 import type { UUID } from "@/types/primitive";
-import type { ListResponse } from "@/types/pagination";
 import { http } from "./client";
+import type { components } from "./generated/schema";
 
-export interface DailyAreaRow {
-  date: string;
-  area_id: UUID;
-  minutes: number;
-}
-
-export type AggregationGranularity = "day" | "week" | "month" | "year";
-
-export interface AggregatedAreaRow {
-  granularity: AggregationGranularity;
-  period_start: string;
-  period_end: string;
-  area_id: UUID;
-  minutes: number;
-}
-
-interface DailyAreaStatsMeta {
-  start?: string | null;
-  end?: string | null;
-  timezone?: string | null;
-  area_ids?: string[] | null;
-}
-
-export type DailyAreaListResponse = ListResponse<
-  DailyAreaRow,
-  DailyAreaStatsMeta
->;
-
-interface AggregatedAreaStatsMeta {
-  granularity?: AggregationGranularity | null;
-  start?: string | null;
-  end?: string | null;
-  timezone?: string | null;
-  area_ids?: string[] | null;
-  first_day_of_week?: number | null;
-  calendar_system?: string | null;
-}
-
-export type AggregatedAreaListResponse = ListResponse<
-  AggregatedAreaRow,
-  AggregatedAreaStatsMeta
->;
-
-interface DayBreakdownRow {
-  area_id: UUID;
-  minutes: number;
-}
-
-interface DayBreakdownMeta {
-  day?: string | null;
-  timezone?: string | null;
-}
-
-export type DayBreakdownListResponse = ListResponse<
-  DayBreakdownRow,
-  DayBreakdownMeta
->;
+export type DailyAreaRow = components["schemas"]["DailyAreaResponse"];
+export type AggregationGranularity = components["schemas"]["AggregatedAreaResponse"]["granularity"];
+export type AggregatedAreaRow = components["schemas"]["AggregatedAreaResponse"];
+export type DailyAreaListResponse = components["schemas"]["ListResponse_DailyAreaResponse_DailyAreaMeta_"];
+export type AggregatedAreaListResponse = components["schemas"]["ListResponse_AggregatedAreaResponse_AggregatedAreaMeta_"];
+export type DayBreakdownListResponse = components["schemas"]["ListResponse_DayBreakdownResponse_DayBreakdownMeta_"];
 
 export const statsApi = {
   async getDailyAreas(
@@ -99,7 +48,7 @@ export const statsApi = {
     start: string,
     end: string,
   ) {
-    return http.post<{ days_recomputed: number }>(
+    return http.post<components["schemas"]["RecomputeDailyAreasResponse"]>(
       "/api/v1/stats/daily-areas/recompute",
       undefined,
       { start, end },

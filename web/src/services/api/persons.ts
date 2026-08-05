@@ -1,19 +1,11 @@
-import type { Tag } from "./tags";
-import type { PersonSummary } from "./types/common";
 import { ENDPOINTS } from "./endpoints";
 import { http } from "./client";
+import type { components } from "./generated/schema";
 import type { UUID } from "@/types/primitive";
-import type { ListResponse } from "@/types/pagination";
 
-export interface Anniversary {
-  id: UUID;
-  person_id: UUID;
-  name: string;
-  date: string;
-  created_at: string;
-  updated_at: string;
-}
+export type Anniversary = components["schemas"]["AnniversaryResponse"];
 
+// UI-only drafts for unsupported anniversary mutations; no network DTO exists yet.
 export interface AnniversaryCreate {
   name: string;
   date: string;
@@ -24,78 +16,17 @@ export interface AnniversaryUpdate {
   date?: string;
 }
 
-interface AnniversaryListMeta {
-  person_id?: UUID | null;
-}
-
-export type AnniversaryListResponse = ListResponse<
-  Anniversary,
-  AnniversaryListMeta
->;
-
-export interface Person extends PersonSummary {
-  name?: string | null;
-  nicknames?: string[] | null;
-  birth_date?: string | null;
-  location?: string | null;
-  tags: Tag[];
-  anniversaries: Anniversary[];
-  display_name: string;
-  primary_nickname: string;
-}
-
-export interface PersonCreate {
-  name?: string;
-  description?: string;
-  nicknames?: string[];
-  birth_date?: string;
-  location?: string;
-  tag_ids?: UUID[];
-}
-
-export interface PersonUpdate {
-  name?: string;
-  description?: string;
-  nicknames?: string[];
-  birth_date?: string;
-  location?: string;
-  tag_ids?: UUID[];
-}
-
-interface PersonListMeta {
-  search?: string | null;
-  tag_filter?: string | null;
-  tag_id?: UUID | null;
-}
-
-export interface PersonActivityItem {
-  id: UUID;
-  type: "vision" | "task" | "planned_event" | "timelog" | "note";
-  title: string;
-  description?: string | null;
-  date: string;
-  status?: string | null;
-  start_time?: string | null;
-  end_time?: string | null;
-  area_id?: UUID | null;
-}
+export type AnniversaryListResponse = components["schemas"]["ListResponse_AnniversaryResponse_AnniversaryListMeta_"];
+export type Person = components["schemas"]["PersonResponse"];
+export type PersonCreate = components["schemas"]["PersonCreate"];
+export type PersonUpdate = components["schemas"]["PersonUpdate"];
+export type PersonActivityItem = components["schemas"]["PersonActivityResponse"];
 
 export type PersonActivityType = PersonActivityItem["type"];
 
-interface PersonActivitiesMeta {
-  person_id: UUID;
-  person_name: string;
-  activity_type?: PersonActivityType | null;
-  timelog_count?: number | null;
-  timelog_total_minutes?: number | null;
-}
-
-export type PersonListResponse = ListResponse<PersonSummary, PersonListMeta>;
-export type PersonDetailListResponse = ListResponse<Person, PersonListMeta>;
-export type PersonActivitiesResponse = ListResponse<
-  PersonActivityItem,
-  PersonActivitiesMeta
->;
+export type PersonListResponse = components["schemas"]["ListResponse_PersonResponse_PersonListMeta_"];
+export type PersonDetailListResponse = PersonListResponse;
+export type PersonActivitiesResponse = components["schemas"]["ListResponse_PersonActivityResponse_PersonActivityMeta_"];
 
 const unsupported = () =>
   Promise.reject(new Error("This person sub-feature is not supported by LifeOS Web UI yet."));

@@ -1,102 +1,57 @@
 import { http } from "./client";
 import { ENDPOINTS } from "./endpoints";
-import type { PersonSummary } from "./types/common";
-import type { TimelogListResponse } from "./timelogs";
+import type { components } from "./generated/schema";
+import type { TimelogListResponse, TimelogListTransport } from "./timelogs";
 import type { UUID } from "@/types/primitive";
-import type { ListResponse } from "@/types/pagination";
 import { MAX_TASKS_PAGE_SIZE } from "@/utils/constants";
 import { formatDateKey } from "@/utils/datetime";
 
-// Types local to tasks
-export interface Task {
-  id: UUID;
-  vision_id: UUID | null;
-  parent_task_id?: UUID | null;
-  content: string;
-  status: string;
-  priority: number;
-  display_order: number;
-  estimated_effort?: number | null;
-  // Planning cycle fields
-  planning_cycle_type?: string | null;
-  planning_cycle_days?: number | null;
-  planning_cycle_start_date?: string | null;
-  // New fields for precise time investment rendering
-  actual_effort_self: number;
-  actual_effort_total: number;
-  notes_count: number;
-  timelogs_count?: number;
-  created_at: string;
-  updated_at: string;
-  deleted_at?: string | null;
-  people?: PersonSummary[];
-}
-
-export interface TaskMoveResponse extends Task {
-  updated_descendants: Task[];
-}
-
-export interface TaskCreate {
-  vision_id: UUID | null;
-  parent_task_id?: UUID | null;
-  content: string;
-  priority?: number;
-  estimated_effort?: number;
-  display_order?: number;
+type TaskTransport = components["schemas"]["TaskResponse"];
+type TaskCreateTransport = components["schemas"]["TaskCreate"];
+type TaskUpdateTransport = components["schemas"]["TaskUpdate"];
+type TaskOptionalFields =
+  | "parent_task_id"
+  | "planning_cycle_days"
+  | "planning_cycle_start_date"
+  | "planning_cycle_type";
+export type Task = Omit<TaskTransport, TaskOptionalFields> &
+  Partial<Pick<TaskTransport, TaskOptionalFields>>;
+export type TaskMoveResponse = components["schemas"]["TaskMoveResponse"];
+export type TaskCreate = Omit<TaskCreateTransport, "vision_id"> & {
   person_ids?: UUID[];
-  planning_cycle_type?: string;
-  planning_cycle_days?: number;
-  planning_cycle_start_date?: string;
-}
-
-export interface TaskUpdate {
-  content?: string;
-  status?: string;
-  priority?: number;
-  estimated_effort?: number;
-  display_order?: number;
-  parent_task_id?: UUID | null;
-  person_ids?: UUID[];
-  planning_cycle_type?: string | null;
-  planning_cycle_days?: number | null;
-  planning_cycle_start_date?: string | null;
-}
-
-export interface TaskWithSubtasks extends Task {
+  vision_id: UUID | null;
+};
+export type TaskUpdate = TaskUpdateTransport & { person_ids?: UUID[] };
+type TaskTreeTransport = components["schemas"]["TaskTreeResponse"];
+export type TaskWithSubtasks = Task & {
   subtasks: TaskWithSubtasks[];
   completion_percentage: number;
   depth: number;
-}
+};
+export type TaskHierarchy = Omit<
+  components["schemas"]["TaskHierarchyResponse"],
+  "root_tasks"
+> & { root_tasks: TaskWithSubtasks[] };
+export type TaskStatsResponse = components["schemas"]["TaskStatsResponse"];
+type TaskListTransport = components["schemas"]["ListResponse_TaskResponse_TaskListMeta_"];
+export type TaskListResponse = Omit<TaskListTransport, "items" | "meta"> & {
+  items: Task[];
+  meta: Partial<TaskListTransport["meta"]>;
+};
 
-export interface TaskHierarchy {
-  vision_id: UUID;
-  root_tasks: TaskWithSubtasks[];
-}
+const toTaskCreateTransport = ({
+  person_ids: _personIds,
+  vision_id: visionId,
+  ...payload
+}: TaskCreate): TaskCreateTransport => {
+  if (!visionId) throw new Error("A vision is required to create a task.");
+  return { ...payload, vision_id: visionId };
+};
 
-export interface TaskStatsResponse {
-  total_subtasks: number;
-  completed_subtasks: number;
-  completion_percentage: number;
-  total_estimated_effort?: number | null;
-  total_actual_effort?: number | null;
-}
-
-interface TaskListMeta {
-  vision_id?: UUID | null;
-  vision_in?: string | null;
-  status_filter?: string | null;
-  status_in?: string | null;
-  exclude_status?: string | null;
-  planning_cycle_type?: string | null;
-  planning_cycle_start_date?: string | null;
-  calendar_system?: string | null;
-  first_day_of_week?: number | null;
-  seven_year_anchor_date?: string | null;
-  query?: string | null;
-  fields?: TaskFieldsMode | null;
-}
-
-export type TaskListResponse = ListResponse<Task, TaskListMeta>;
+const toTaskUpdateTransport = ({
+  person_ids: _personIds,
+  ...payload
+}: TaskUpdate): TaskUpdateTransport => payload;
 
 // Shared filters for listing tasks (keep snake_case to match query params)
 export type TaskFieldsMode = "basic" | "full";
@@ -149,7 +104,7 @@ export const tasksApi = {
     if (extra?.query) params.query = extra.query;
     const fields: TaskFieldsMode = extra?.fields ?? "basic";
     params.fields = fields;
-    return http.get<TaskListResponse>(ENDPOINTS.TASKS.BASE, params);
+    return http.get<TaskListTransport>(ENDPOINTS.TASKS.BASE, params);
   },
 
   async searchSelectorPage(opts: {
@@ -242,17 +197,17 @@ export const tasksApi = {
   },
 
   async getVisionHierarchy(visionId: UUID): Promise<TaskHierarchy> {
-    return http.get<TaskHierarchy>(
+    return http.get<components["schemas"]["TaskHierarchyResponse"]>(
       ENDPOINTS.TASKS.BY_VISION_HIERARCHY(visionId),
     );
   },
 
   async getById(id: UUID): Promise<Task> {
-    return http.get<Task>(ENDPOINTS.TASKS.BY_ID(id));
+    return http.get<TaskTransport>(ENDPOINTS.TASKS.BY_ID(id));
   },
 
   async getWithSubtasks(id: UUID): Promise<TaskWithSubtasks> {
-    return http.get<TaskWithSubtasks>(ENDPOINTS.TASKS.WITH_SUBTASKS(id));
+    return http.get<TaskTreeTransport>(ENDPOINTS.TASKS.WITH_SUBTASKS(id));
   },
 
   async create(task: TaskCreate): Promise<Task> {
@@ -260,7 +215,10 @@ export const tasksApi = {
     if (task.parent_task_id === "") {
       task = { ...task, parent_task_id: null };
     }
-    return http.post<Task>(ENDPOINTS.TASKS.BASE, task);
+    return http.post<TaskTransport>(
+      ENDPOINTS.TASKS.BASE,
+      toTaskCreateTransport(task),
+    );
   },
 
   async update(id: UUID, task: TaskUpdate): Promise<Task> {
@@ -268,11 +226,14 @@ export const tasksApi = {
     if (task.parent_task_id === "") {
       task = { ...task, parent_task_id: null };
     }
-    return http.patch<Task>(ENDPOINTS.TASKS.BY_ID(id), task);
+    return http.patch<TaskTransport>(
+      ENDPOINTS.TASKS.BY_ID(id),
+      toTaskUpdateTransport(task),
+    );
   },
 
   async updateStatus(id: UUID, status: string): Promise<Task> {
-    return http.patch<Task>(ENDPOINTS.TASKS.STATUS(id), { status });
+    return http.patch<TaskTransport>(ENDPOINTS.TASKS.STATUS(id), { status });
   },
 
   async delete(id: UUID): Promise<void> {
@@ -323,7 +284,7 @@ export const tasksApi = {
     page: number = 1,
     size: number = 100,
   ): Promise<TimelogListResponse> {
-    return http.get<TimelogListResponse>(ENDPOINTS.TIMELOGS.BASE, {
+    return http.get<TimelogListTransport>(ENDPOINTS.TIMELOGS.BASE, {
       task_id: id,
       page,
       size,

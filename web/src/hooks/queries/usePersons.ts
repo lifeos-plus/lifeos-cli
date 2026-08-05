@@ -256,6 +256,8 @@ export function usePersonActivitiesPage(
             person_id: "",
             person_name: "",
             activity_type: normalizedType ?? null,
+            timelog_count: 0,
+            timelog_total_minutes: 0,
           },
         });
       }

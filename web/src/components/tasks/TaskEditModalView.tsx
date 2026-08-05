@@ -382,7 +382,7 @@ export const TaskEditModalView: React.FC<TaskEditModalViewProps> = ({
                 </label>
                 <PlanningCycleDateInput
                   cycleType="year"
-                  startDate={formData.planning_cycle_start_date}
+                  startDate={formData.planning_cycle_start_date ?? undefined}
                   id={planningCycleYearId}
                   name="planning_cycle_start_year"
                   className="input-sm"
@@ -412,7 +412,7 @@ export const TaskEditModalView: React.FC<TaskEditModalViewProps> = ({
                   </label>
                   <PlanningCycleDateInput
                     cycleType={formData.planning_cycle_type || ""}
-                    startDate={formData.planning_cycle_start_date}
+                    startDate={formData.planning_cycle_start_date ?? undefined}
                     id={planningCycleStartDateId}
                     name="planning_cycle_start_date"
                     className="input-sm"

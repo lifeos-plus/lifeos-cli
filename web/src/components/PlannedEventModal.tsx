@@ -363,7 +363,7 @@ export default function PlannedEventModal({
                     updateType: effectiveScope,
                     instanceId:
                       allowScopedEditing && effectiveScope !== "all"
-                        ? plannedEvent.instance_id
+                        ? (plannedEvent.instance_id ?? undefined)
                         : undefined,
                     instanceStart:
                       allowScopedEditing && effectiveScope !== "all"
@@ -433,7 +433,7 @@ export default function PlannedEventModal({
             deleteType: type,
             instanceId:
               requiresInstanceContext && plannedEvent.is_instance
-                ? plannedEvent.instance_id
+                ? (plannedEvent.instance_id ?? undefined)
                 : undefined,
             instanceStart: requiresInstanceContext
               ? plannedEvent.start_time
@@ -727,7 +727,7 @@ export default function PlannedEventModal({
 
         <div>
           <RecurrenceSelector
-            value={formData.rrule_string}
+            value={formData.rrule_string ?? undefined}
             onChange={handleRecurrenceChange}
             startDate={
               formData.start_time ? new Date(formData.start_time) : undefined

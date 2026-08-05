@@ -1,20 +1,10 @@
-// Common, cross-domain types
-import type { UUID } from "@/types/primitive";
-export interface PersonSummary {
-  id: UUID;
-  name?: string | null;
-  display_name: string;
-  primary_nickname: string;
-  birth_date?: string | null;
-  location?: string | null;
-  tags: Array<{
-    id: UUID;
-    name: string;
-    entity_type: string;
-    category: string;
-    description?: string | null;
-    color?: string | null;
-    created_at: string;
-    updated_at: string;
-  }>;
-}
+// Common, cross-domain API types
+import type { components } from "@/services/api/generated/schema";
+
+type PersonSummaryTransport = components["schemas"]["PersonSummaryResponse"];
+type PersonTagSummary = PersonSummaryTransport["tags"][number];
+export type PersonSummary = Pick<PersonSummaryTransport, "id"> &
+  Partial<Omit<PersonSummaryTransport, "id" | "tags">> & {
+    tags?: Array<Pick<PersonTagSummary, "category" | "entity_type" | "id" | "name"> &
+      Partial<Omit<PersonTagSummary, "category" | "entity_type" | "id" | "name">>>;
+  };

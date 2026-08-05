@@ -1,137 +1,24 @@
 import { http } from "./client";
 import { ENDPOINTS } from "./endpoints";
-import type { Task } from "./tasks";
+import type { components } from "./generated/schema";
 import type { UUID } from "@/types/primitive";
-import type { ListResponse } from "@/types/pagination";
 
-// Types for habits
-export interface Habit {
-  id: UUID;
-  title: string;
-  description?: string | null;
-  start_date: string;
-  duration_days: number;
-  cadence_frequency?: string | null;
-  cadence_weekdays?: string[] | null;
-  cadence_monthdays?: number[] | null;
-  target_per_cycle?: number | null;
-  status: string;
-  stats?: HabitStats | null;
-  task_id?: UUID | null;
-  task?: Task | null;
-}
-
-export interface HabitCreate {
-  title: string;
-  description?: string;
-  start_date: string;
-  duration_days?: number;
-  end_date?: string | null;
-  repeat_count?: number | null;
-  cadence_frequency?: string | null;
-  cadence_weekdays?: string[] | null;
-  cadence_monthdays?: number[] | null;
-  target_per_cycle?: number | null;
-  task_id?: UUID | null;
-}
-
-export interface HabitUpdate {
-  title?: string;
-  description?: string;
-  start_date?: string;
-  duration_days?: number;
-  end_date?: string | null;
-  repeat_count?: number | null;
-  cadence_frequency?: string | null;
-  cadence_weekdays?: string[] | null;
-  cadence_monthdays?: number[] | null;
-  target_per_cycle?: number | null;
-  status?: string;
-  task_id?: UUID | null;
-}
-
-export interface HabitAction {
-  id: UUID;
-  habit_id: UUID;
-  action_date: string;
-  status: string;
-  notes?: string | null;
-  linked_notes_count?: number;
-}
-
-interface HabitActionHabitSummary {
-  title: string;
-  description?: string | null;
-  start_date: string;
-  duration_days: number;
-  cadence_frequency?: string | null;
-}
-
-export interface HabitActionUpdate {
-  status?: string;
-  notes?: string;
-}
-
-export interface HabitStats {
-  habit_id: UUID;
-  total_actions: number;
-  completed_actions: number;
-  missed_actions: number;
-  skipped_actions: number;
-  progress_percentage: number;
-  current_streak: number;
-  longest_streak: number;
-}
-
-interface HabitOverview {
-  habit: Habit;
-  stats: HabitStats;
-}
-
-export type HabitOverviewResponse = HabitOverview;
-
-interface HabitListMeta {
-  status_filter?: string | null;
-}
-
-interface HabitActionListMeta {
-  status_filter?: string | null;
-  center_date?: string | null;
-  days_before?: number | null;
-  days_after?: number | null;
-}
-
-interface HabitActionRangeListMeta {
-  start_date?: string | null;
-  end_date?: string | null;
-  reference_date?: string | null;
-  cadence_frequency?: string | null;
-}
-
-export type HabitOverviewListResponse = ListResponse<
-  HabitOverview,
-  HabitListMeta
->;
-
-export type HabitListResponse = ListResponse<Habit, HabitListMeta>;
-
-export type HabitActionListResponse = ListResponse<
-  HabitAction,
-  HabitActionListMeta
->;
-
-export interface HabitActionWithHabit extends HabitAction {
-  habit: HabitActionHabitSummary;
-}
-
-export type HabitActionRangeListResponse = ListResponse<
-  HabitActionWithHabit,
-  HabitActionRangeListMeta
->;
-
-export interface HabitTaskAssociationsResponse {
-  associations: Record<UUID, Habit[]>;
-}
+type HabitTransport = components["schemas"]["HabitResponse"];
+export type HabitStats = components["schemas"]["HabitStatsResponse"];
+type HabitRequiredFields = "duration_days" | "id" | "start_date" | "status" | "title";
+export type Habit = Pick<HabitTransport, HabitRequiredFields> &
+  Partial<Omit<HabitTransport, HabitRequiredFields>> & { stats?: HabitStats | null };
+export type HabitCreate = components["schemas"]["HabitCreate"];
+export type HabitUpdate = components["schemas"]["HabitUpdate"];
+export type HabitAction = components["schemas"]["HabitActionResponse"];
+export type HabitActionUpdate = components["schemas"]["HabitActionUpdate"];
+export type HabitOverviewResponse = components["schemas"]["HabitOverviewResponse"];
+export type HabitOverviewListResponse = components["schemas"]["ListResponse_HabitOverviewResponse_HabitListMeta_"];
+export type HabitListResponse = components["schemas"]["ListResponse_HabitResponse_HabitListMeta_"];
+export type HabitActionListResponse = components["schemas"]["ListResponse_HabitActionResponse_HabitActionListMeta_"];
+export type HabitActionWithHabit = components["schemas"]["HabitActionWithHabitResponse"];
+export type HabitActionRangeListResponse = components["schemas"]["ListResponse_HabitActionWithHabitResponse_HabitActionRangeMeta_"];
+export type HabitTaskAssociationsResponse = components["schemas"]["HabitAssociationsResponse"];
 
 export interface HabitActionsQueryParams {
   page?: number;
@@ -187,7 +74,7 @@ export const habitsApi = {
   },
 
   async getById(id: UUID): Promise<Habit> {
-    return http.get<Habit>(ENDPOINTS.HABITS.BY_ID(id));
+    return http.get<HabitTransport>(ENDPOINTS.HABITS.BY_ID(id));
   },
 
   async getOverview(id: UUID): Promise<HabitOverviewResponse> {
@@ -195,11 +82,11 @@ export const habitsApi = {
   },
 
   async create(habit: HabitCreate): Promise<Habit> {
-    return http.post<Habit>(ENDPOINTS.HABITS.BASE, habit);
+    return http.post<HabitTransport>(ENDPOINTS.HABITS.BASE, habit);
   },
 
   async update(id: UUID, habit: HabitUpdate): Promise<Habit> {
-    return http.patch<Habit>(ENDPOINTS.HABITS.BY_ID(id), habit);
+    return http.patch<HabitTransport>(ENDPOINTS.HABITS.BY_ID(id), habit);
   },
 
   async delete(id: UUID): Promise<void> {
