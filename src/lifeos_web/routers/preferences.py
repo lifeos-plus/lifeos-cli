@@ -18,6 +18,7 @@ from lifeos_cli.config import (
 )
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import visions as vision_services
+from lifeos_web.response_schemas.preferences import PreferenceResponse
 
 router = APIRouter(prefix="/preferences", tags=["preferences"])
 
@@ -200,13 +201,13 @@ async def _sync_config_preference_dependents(key: str) -> None:
         await vision_services.sync_default_rate_vision_experience(session)
 
 
-@router.get("/{key}")
+@router.get("/{key}", response_model=PreferenceResponse, response_model_exclude_unset=True)
 async def get_preference(key: str) -> dict[str, Any]:
     """Return local Web preference values."""
     return _preference_response(key)
 
 
-@router.put("/{key}")
+@router.put("/{key}", response_model=PreferenceResponse, response_model_exclude_unset=True)
 async def set_preference(key: str, payload: PreferenceUpdate) -> dict[str, Any]:
     """Persist local Web preference values."""
     config_key = _CONFIG_KEY_MAP.get(key)

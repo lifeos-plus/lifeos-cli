@@ -22,6 +22,15 @@ from lifeos_cli.db.models.finance import (
 )
 from lifeos_cli.db.services import finance as finance_services
 from lifeos_web.deps import get_db_session
+from lifeos_web.response_schemas.common import EmptyMeta
+from lifeos_web.response_schemas.finance import (
+    FinanceAssetResponse,
+    FinanceNodeResponse,
+    FinanceRateSnapshotResponse,
+    FinanceSnapshotResponse,
+    FinanceTreeResponse,
+    FinanceTreeSnapshotMeta,
+)
 from lifeos_web.schemas import ListResponse, Pagination
 from lifeos_web.serialization import to_jsonable
 
@@ -369,7 +378,7 @@ def _snapshot_payload(
     return payload
 
 
-@router.get("/assets", response_model=ListResponse)
+@router.get("/assets", response_model=ListResponse[FinanceAssetResponse, EmptyMeta])
 async def list_assets(
     session: SessionDep,
     page: int = Query(1, ge=1),
@@ -390,7 +399,7 @@ async def list_assets(
     )
 
 
-@router.post("/assets")
+@router.post("/assets", response_model=FinanceAssetResponse)
 async def create_asset(payload: FinanceAssetCreate, session: SessionDep) -> dict[str, object]:
     """Create a finance asset."""
     try:
@@ -408,7 +417,7 @@ async def create_asset(payload: FinanceAssetCreate, session: SessionDep) -> dict
     return _asset_payload(asset)
 
 
-@router.patch("/assets/{asset_id}")
+@router.patch("/assets/{asset_id}", response_model=FinanceAssetResponse)
 async def update_asset(
     asset_id: UUID,
     payload: FinanceAssetUpdate,
@@ -440,7 +449,11 @@ async def delete_asset(asset_id: UUID, session: SessionDep) -> None:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.get("/trees", response_model=ListResponse)
+@router.get(
+    "/trees",
+    response_model=ListResponse[FinanceTreeResponse, EmptyMeta],
+    response_model_exclude_unset=True,
+)
 async def list_trees(
     session: SessionDep,
     page: int = Query(1, ge=1),
@@ -464,7 +477,11 @@ async def list_trees(
     )
 
 
-@router.get("/rate-snapshots", response_model=ListResponse)
+@router.get(
+    "/rate-snapshots",
+    response_model=ListResponse[FinanceRateSnapshotResponse, EmptyMeta],
+    response_model_exclude_unset=True,
+)
 async def list_rate_snapshots(
     session: SessionDep,
     page: int = Query(1, ge=1),
@@ -488,7 +505,11 @@ async def list_rate_snapshots(
     )
 
 
-@router.post("/rate-snapshots")
+@router.post(
+    "/rate-snapshots",
+    response_model=FinanceRateSnapshotResponse,
+    response_model_exclude_unset=True,
+)
 async def create_rate_snapshot(
     payload: FinanceRateSnapshotCreate,
     session: SessionDep,
@@ -519,7 +540,11 @@ async def create_rate_snapshot(
     return _rate_snapshot_payload(rate_snapshot)
 
 
-@router.get("/rate-snapshots/{rate_snapshot_id}")
+@router.get(
+    "/rate-snapshots/{rate_snapshot_id}",
+    response_model=FinanceRateSnapshotResponse,
+    response_model_exclude_unset=True,
+)
 async def get_rate_snapshot(
     rate_snapshot_id: UUID,
     session: SessionDep,
@@ -537,7 +562,11 @@ async def get_rate_snapshot(
     return _rate_snapshot_payload(rate_snapshot)
 
 
-@router.patch("/rate-snapshots/{rate_snapshot_id}")
+@router.patch(
+    "/rate-snapshots/{rate_snapshot_id}",
+    response_model=FinanceRateSnapshotResponse,
+    response_model_exclude_unset=True,
+)
 async def update_rate_snapshot(
     rate_snapshot_id: UUID,
     payload: FinanceRateSnapshotUpdate,
@@ -593,7 +622,7 @@ async def delete_rate_snapshot(rate_snapshot_id: UUID, session: SessionDep) -> R
     return Response(status_code=204)
 
 
-@router.post("/trees")
+@router.post("/trees", response_model=FinanceTreeResponse, response_model_exclude_unset=True)
 async def create_tree(payload: FinanceTreeCreate, session: SessionDep) -> dict[str, object]:
     """Create a finance tree."""
     try:
@@ -610,7 +639,11 @@ async def create_tree(payload: FinanceTreeCreate, session: SessionDep) -> dict[s
     return _tree_payload(tree)
 
 
-@router.patch("/trees/{tree_id}")
+@router.patch(
+    "/trees/{tree_id}",
+    response_model=FinanceTreeResponse,
+    response_model_exclude_unset=True,
+)
 async def update_tree(
     tree_id: UUID,
     payload: FinanceTreeUpdate,
@@ -648,7 +681,11 @@ async def delete_tree(tree_id: UUID, session: SessionDep) -> Response:
     return Response(status_code=204)
 
 
-@router.post("/trees/ensure-default")
+@router.post(
+    "/trees/ensure-default",
+    response_model=FinanceTreeResponse,
+    response_model_exclude_unset=True,
+)
 async def ensure_default_tree(
     session: SessionDep,
     primary_currency: str | None = None,
@@ -665,7 +702,11 @@ async def ensure_default_tree(
     return _tree_payload(tree, nodes=nodes)
 
 
-@router.get("/trees/{tree_id}")
+@router.get(
+    "/trees/{tree_id}",
+    response_model=FinanceTreeResponse,
+    response_model_exclude_unset=True,
+)
 async def get_finance_tree(tree_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load one finance tree with nodes."""
     tree = await finance_services.get_finance_tree_with_nodes(session, tree_id=tree_id)
@@ -674,7 +715,7 @@ async def get_finance_tree(tree_id: UUID, session: SessionDep) -> dict[str, obje
     return _tree_payload(tree, nodes=list(tree.nodes))
 
 
-@router.post("/trees/{tree_id}/nodes")
+@router.post("/trees/{tree_id}/nodes", response_model=FinanceNodeResponse)
 async def create_finance_node(
     tree_id: UUID,
     payload: FinanceNodeCreate,
@@ -698,7 +739,7 @@ async def create_finance_node(
     return _node_payload(node)
 
 
-@router.patch("/nodes/{node_id}")
+@router.patch("/nodes/{node_id}", response_model=FinanceNodeResponse)
 async def update_finance_node(
     node_id: UUID,
     payload: FinanceNodeUpdate,
@@ -729,7 +770,11 @@ async def delete_finance_node(node_id: UUID, session: SessionDep) -> None:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.get("/trees/{tree_id}/snapshots", response_model=ListResponse)
+@router.get(
+    "/trees/{tree_id}/snapshots",
+    response_model=ListResponse[FinanceSnapshotResponse, FinanceTreeSnapshotMeta],
+    response_model_exclude_unset=True,
+)
 async def list_tree_snapshots(
     tree_id: UUID,
     session: SessionDep,
@@ -757,7 +802,11 @@ async def list_tree_snapshots(
     )
 
 
-@router.post("/trees/{tree_id}/snapshots")
+@router.post(
+    "/trees/{tree_id}/snapshots",
+    response_model=FinanceSnapshotResponse,
+    response_model_exclude_unset=True,
+)
 async def create_snapshot(
     tree_id: UUID,
     payload: FinanceSnapshotCreate,
@@ -797,7 +846,11 @@ async def create_snapshot(
     )
 
 
-@router.get("/snapshots", response_model=ListResponse)
+@router.get(
+    "/snapshots",
+    response_model=ListResponse[FinanceSnapshotResponse, EmptyMeta],
+    response_model_exclude_unset=True,
+)
 async def list_snapshots(
     session: SessionDep,
     page: int = Query(1, ge=1),
@@ -822,7 +875,11 @@ async def list_snapshots(
     )
 
 
-@router.get("/snapshots/{snapshot_id}")
+@router.get(
+    "/snapshots/{snapshot_id}",
+    response_model=FinanceSnapshotResponse,
+    response_model_exclude_unset=True,
+)
 async def get_snapshot(snapshot_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load one finance snapshot with entries."""
     snapshot = await finance_services.get_finance_snapshot(session, snapshot_id=snapshot_id)
@@ -836,7 +893,11 @@ async def get_snapshot(snapshot_id: UUID, session: SessionDep) -> dict[str, obje
     )
 
 
-@router.patch("/snapshots/{snapshot_id}")
+@router.patch(
+    "/snapshots/{snapshot_id}",
+    response_model=FinanceSnapshotResponse,
+    response_model_exclude_unset=True,
+)
 async def update_snapshot(
     snapshot_id: UUID,
     payload: FinanceSnapshotUpdate,

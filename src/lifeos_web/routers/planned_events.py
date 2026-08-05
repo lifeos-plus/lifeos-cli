@@ -24,6 +24,10 @@ from lifeos_cli.db.services.events import EventOccurrence
 from lifeos_cli.db.services.read_models import EventView
 from lifeos_cli.db.services.recurrence_core import normalize_recurrence_rule_details
 from lifeos_web.deps import get_db_session
+from lifeos_web.response_schemas.planned_events import (
+    PlannedEventListMeta,
+    PlannedEventResponse,
+)
 from lifeos_web.schemas import ListResponse, Pagination, PlannedEventCreate, PlannedEventUpdate
 
 router = APIRouter(prefix="/planned-events", tags=["planned-events"])
@@ -346,7 +350,7 @@ async def _list_events(
     )
 
 
-@router.get("/", response_model=ListResponse)
+@router.get("/", response_model=ListResponse[PlannedEventResponse, PlannedEventListMeta])
 async def list_planned_events(
     session: SessionDep,
     start: datetime | None = None,
@@ -359,7 +363,7 @@ async def list_planned_events(
     return await _list_events(session, start=start, end=end, status=status, page=page, size=size)
 
 
-@router.get("/raw", response_model=ListResponse)
+@router.get("/raw", response_model=ListResponse[PlannedEventResponse, PlannedEventListMeta])
 async def list_raw_planned_events(
     session: SessionDep,
     status: str | None = None,
@@ -370,7 +374,10 @@ async def list_raw_planned_events(
     return await _list_events(session, status=status, page=page, size=size)
 
 
-@router.get("/by-task/{task_id}", response_model=ListResponse)
+@router.get(
+    "/by-task/{task_id}",
+    response_model=ListResponse[PlannedEventResponse, PlannedEventListMeta],
+)
 async def list_planned_events_by_task(
     task_id: UUID,
     session: SessionDep,
@@ -381,7 +388,7 @@ async def list_planned_events_by_task(
     return await _list_events(session, task_id=task_id, page=page, size=size)
 
 
-@router.get("/{planned_event_id}")
+@router.get("/{planned_event_id}", response_model=PlannedEventResponse)
 async def get_planned_event(
     planned_event_id: UUID,
     session: SessionDep,
@@ -396,7 +403,7 @@ async def get_planned_event(
     return _planned_event_payload(planned_event_record)
 
 
-@router.post("/")
+@router.post("/", response_model=PlannedEventResponse)
 async def create_planned_event(
     payload: PlannedEventCreate,
     session: SessionDep,
@@ -412,7 +419,7 @@ async def create_planned_event(
     return _planned_event_payload(planned_event_record)
 
 
-@router.patch("/{planned_event_id}")
+@router.patch("/{planned_event_id}", response_model=PlannedEventResponse)
 async def update_planned_event(
     planned_event_id: UUID,
     payload: PlannedEventUpdate,

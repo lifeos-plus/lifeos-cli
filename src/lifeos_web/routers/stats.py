@@ -15,6 +15,16 @@ from lifeos_cli.config import get_preferences_settings
 from lifeos_cli.db.services import tags as tag_services
 from lifeos_cli.db.services import timelog_stats
 from lifeos_web.deps import get_db_session
+from lifeos_web.response_schemas.stats import (
+    AggregatedAreaMeta,
+    AggregatedAreaResponse,
+    DailyAreaMeta,
+    DailyAreaResponse,
+    DayBreakdownMeta,
+    DayBreakdownResponse,
+    RecomputeDailyAreasResponse,
+    TagUsageByEntityResponse,
+)
 from lifeos_web.schemas import ListResponse, Pagination
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -47,7 +57,7 @@ def _resolve_calendar_preferences() -> tuple[str, int]:
     return preferences.calendar_system, preferences.calendar_first_day_of_week
 
 
-@router.get("/daily-areas", response_model=ListResponse)
+@router.get("/daily-areas", response_model=ListResponse[DailyAreaResponse, DailyAreaMeta])
 async def list_daily_areas(
     session: SessionDep,
     start: date,
@@ -90,7 +100,10 @@ async def list_daily_areas(
     )
 
 
-@router.get("/day-breakdown", response_model=ListResponse)
+@router.get(
+    "/day-breakdown",
+    response_model=ListResponse[DayBreakdownResponse, DayBreakdownMeta],
+)
 async def get_day_breakdown(
     session: SessionDep,
     day: date,
@@ -114,7 +127,10 @@ async def get_day_breakdown(
     )
 
 
-@router.get("/aggregated-areas", response_model=ListResponse)
+@router.get(
+    "/aggregated-areas",
+    response_model=ListResponse[AggregatedAreaResponse, AggregatedAreaMeta],
+)
 async def list_aggregated_areas(
     session: SessionDep,
     granularity: Granularity,
@@ -170,7 +186,7 @@ async def list_aggregated_areas(
     )
 
 
-@router.post("/daily-areas/recompute")
+@router.post("/daily-areas/recompute", response_model=RecomputeDailyAreasResponse)
 async def recompute_daily_areas(
     session: SessionDep,
     start: date,
@@ -190,7 +206,7 @@ async def recompute_daily_areas(
     return {"days_recomputed": len(rebuilt_dates)}
 
 
-@router.get("/tags/usage/{entity_type}")
+@router.get("/tags/usage/{entity_type}", response_model=TagUsageByEntityResponse)
 async def get_tag_usage_by_entity_type(
     entity_type: str,
     session: SessionDep,

@@ -14,6 +14,14 @@ from lifeos_cli.config import get_preferences_settings
 from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services import tasks as task_services
 from lifeos_web.deps import get_db_session
+from lifeos_web.response_schemas.tasks import (
+    TaskHierarchyResponse,
+    TaskListMeta,
+    TaskMoveResponse,
+    TaskResponse,
+    TaskStatsResponse,
+    TaskTreeResponse,
+)
 from lifeos_web.schemas import (
     ListResponse,
     Pagination,
@@ -133,7 +141,11 @@ def _task_list_payload(
     return payload
 
 
-@router.get("/", response_model=ListResponse)
+@router.get(
+    "/",
+    response_model=ListResponse[TaskResponse, TaskListMeta],
+    response_model_exclude_unset=True,
+)
 async def list_tasks(
     session: SessionDep,
     page: Annotated[int, Query(ge=1)] = 1,
@@ -230,7 +242,7 @@ async def list_tasks(
     )
 
 
-@router.post("/")
+@router.post("/", response_model=TaskResponse, response_model_exclude_unset=True)
 async def create_task(
     payload: TaskCreate,
     session: SessionDep,
@@ -254,7 +266,11 @@ async def create_task(
     return to_jsonable_dict(task)
 
 
-@router.get("/vision/{vision_id}/hierarchy")
+@router.get(
+    "/vision/{vision_id}/hierarchy",
+    response_model=TaskHierarchyResponse,
+    response_model_exclude_unset=True,
+)
 async def get_vision_hierarchy(vision_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load a frontend-compatible task hierarchy for one vision."""
     try:
@@ -289,7 +305,7 @@ async def reorder_tasks(payload: TaskReorderRequest, session: SessionDep) -> Non
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.get("/{task_id}")
+@router.get("/{task_id}", response_model=TaskResponse, response_model_exclude_unset=True)
 async def get_task(task_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load one task."""
     task = await task_services.get_task(session, task_id=task_id)
@@ -307,7 +323,7 @@ async def get_task(task_id: UUID, session: SessionDep) -> dict[str, object]:
     )
 
 
-@router.patch("/{task_id}")
+@router.patch("/{task_id}", response_model=TaskResponse, response_model_exclude_unset=True)
 async def update_task(
     task_id: UUID,
     payload: TaskUpdate,
@@ -351,7 +367,11 @@ async def delete_task(task_id: UUID, session: SessionDep) -> None:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.patch("/{task_id}/status")
+@router.patch(
+    "/{task_id}/status",
+    response_model=TaskResponse,
+    response_model_exclude_unset=True,
+)
 async def update_task_status(
     task_id: UUID,
     payload: TaskStatusUpdate,
@@ -371,7 +391,11 @@ async def update_task_status(
     return to_jsonable_dict(task)
 
 
-@router.get("/{task_id}/with-subtasks")
+@router.get(
+    "/{task_id}/with-subtasks",
+    response_model=TaskTreeResponse,
+    response_model_exclude_unset=True,
+)
 async def get_task_with_subtasks(task_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load one task with nested subtasks."""
     task = await task_services.get_task_with_subtasks(session, task_id=task_id)
@@ -389,7 +413,7 @@ async def get_task_with_subtasks(task_id: UUID, session: SessionDep) -> dict[str
     )
 
 
-@router.get("/{task_id}/stats")
+@router.get("/{task_id}/stats", response_model=TaskStatsResponse)
 async def get_task_stats(task_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load task subtree stats."""
     try:
@@ -399,7 +423,11 @@ async def get_task_stats(task_id: UUID, session: SessionDep) -> dict[str, object
     return to_jsonable_dict(stats)
 
 
-@router.post("/{task_id}/move")
+@router.post(
+    "/{task_id}/move",
+    response_model=TaskMoveResponse,
+    response_model_exclude_unset=True,
+)
 async def move_task(
     task_id: UUID,
     payload: dict[str, Any],

@@ -11,6 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.services import notes as note_services
 from lifeos_web.deps import get_db_session
+from lifeos_web.response_schemas.notes import (
+    NoteListMeta,
+    NotePersonStatsResponse,
+    NoteResponse,
+)
 from lifeos_web.schemas import ListResponse, NoteCreate, NoteUpdate, Pagination
 from lifeos_web.serialization import to_jsonable_dict
 
@@ -66,7 +71,7 @@ def _note_payload(note: object) -> dict[str, object]:
     return payload
 
 
-@router.get("/", response_model=ListResponse)
+@router.get("/", response_model=ListResponse[NoteResponse, NoteListMeta])
 async def list_notes(
     session: SessionDep,
     page: int = Query(1, ge=1),
@@ -124,7 +129,7 @@ async def list_notes(
     )
 
 
-@router.get("/stats/persons")
+@router.get("/stats/persons", response_model=NotePersonStatsResponse)
 async def get_note_person_usage_stats(session: SessionDep) -> dict[str, object]:
     """Return active-note usage counts grouped by associated person."""
     person_stats = await note_services.count_note_usage_by_person(session)
@@ -142,7 +147,7 @@ async def get_note_person_usage_stats(session: SessionDep) -> dict[str, object]:
     }
 
 
-@router.post("/")
+@router.post("/", response_model=NoteResponse)
 async def create_note(
     payload: NoteCreate,
     session: SessionDep,
@@ -163,7 +168,7 @@ async def create_note(
     return _note_payload(note)
 
 
-@router.patch("/{note_id}")
+@router.patch("/{note_id}", response_model=NoteResponse)
 async def update_note(
     note_id: UUID,
     payload: NoteUpdate,
