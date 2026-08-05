@@ -7,6 +7,7 @@ import {
   formatDurationFromTimes,
   hhmmOnDateToISO,
   isDateKey,
+  localDateTimeLocalToUtcIso,
   parseDateKey,
   utcToLocalDateTimeLocal,
 } from "@/utils/datetime";
@@ -69,6 +70,27 @@ describe("datetime helpers", () => {
     expect(utcToLocalDateTimeLocal(value, "Asia/Shanghai")).toBe(
       "2024-01-01T20:00",
     );
+  });
+
+  it("converts datetime-local input using the explicit timezone", () => {
+    expect(
+      localDateTimeLocalToUtcIso("2024-01-01T08:00", "Asia/Shanghai"),
+    ).toBe("2024-01-01T00:00:00.000Z");
+  });
+
+  it("uses the named timezone offset across DST boundaries", () => {
+    expect(
+      localDateTimeLocalToUtcIso(
+        "2024-03-10T01:30",
+        "America/Los_Angeles",
+      ),
+    ).toBe("2024-03-10T09:30:00.000Z");
+    expect(
+      localDateTimeLocalToUtcIso(
+        "2024-03-10T03:30",
+        "America/Los_Angeles",
+      ),
+    ).toBe("2024-03-10T10:30:00.000Z");
   });
 
   it("formats date-only strings as floating days (no UTC shift)", () => {

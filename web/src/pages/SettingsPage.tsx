@@ -14,7 +14,8 @@ import { useVisibleModules } from "@/hooks/queries/useVisibleModules";
 import { useTheme } from "@/contexts/ThemeContext";
 import { SettingsLayout } from "@/components/settings";
 import { useSettingsConfig } from "@/config/settingsConfig";
-import { isDateKey, resolvePreferredTimezone } from "@/utils/datetime";
+import { isDateKey } from "@/utils/datetime";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 import type { UUID } from "@/types/primitive";
 import { VISION_EXPERIENCE_RATE_MAX } from "@/utils/constants";
 import { useToast } from "@/contexts/ToastContext";
@@ -86,12 +87,7 @@ function SettingsPage() {
   });
   const defaultInboxVisionSettings = useDefaultInboxVision();
   const languageSettings = useLanguage();
-  const timezoneSettings = usePreferenceWithBootstrap<string>({
-    key: "system.timezone",
-    defaultValue: resolvePreferredTimezone(),
-    module: "system",
-    validator: (value) => typeof value === "string" && value.length > 0,
-  });
+  const timezoneSettings = useSystemTimezone();
   const noteCollapseSettings = useNoteCollapsePreference();
   const {
     visions,

@@ -15,7 +15,7 @@ import PeriodNavigation from "@/components/PeriodNavigation";
 import PageLayout from "@/layouts/PageLayout";
 import AreaSelect from "@/components/selects/AreaSelect";
 import ToolbarContainer from "@/components/ToolbarContainer";
-import { usePreferenceWithBootstrap } from "@/hooks/queries/usePreferenceWithBootstrap";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { useCalendarAdapter } from "@/hooks/useCalendarAdapter";
 import {
@@ -30,9 +30,7 @@ import Container from "@/layouts/Container";
 import type { UUID } from "@/types/primitive";
 import {
   formatDateKey,
-  normalizeTimezone,
   parseDateKey,
-  resolvePreferredTimezone,
 } from "@/utils/datetime";
 import { useCalendarScheduleController } from "@/features/calendar/controller/useCalendarScheduleController";
 
@@ -68,16 +66,8 @@ function CalendarPage() {
     [calendarSystem, calendarAdapter, currentDate, firstDayOfWeek],
   );
 
-  const timezonePreference = usePreferenceWithBootstrap<string>({
-    key: "system.timezone",
-    defaultValue: resolvePreferredTimezone(),
-    module: "system",
-    validator: (value) => typeof value === "string" && value.length > 0,
-  });
-  const activeTimezone = useMemo(
-    () => normalizeTimezone(resolvePreferredTimezone(timezonePreference.value)),
-    [timezonePreference.value],
-  );
+  const timezonePreference = useSystemTimezone();
+  const activeTimezone = timezonePreference.timezone;
   const calendarConfigurationLoading =
     calendarPreferencesLoading || timezonePreference.loading;
 

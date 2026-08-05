@@ -6,6 +6,7 @@ import { FormField, TextArea, TextInput } from "@/components/forms";
 import AssetSelect from "@/components/selects/AssetSelect";
 import EnumSelect from "@/components/selects/EnumSelect";
 import { useToast } from "@/contexts/ToastContext";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 import type {
   FinanceAsset,
   FinanceRateSnapshot,
@@ -81,9 +82,16 @@ export function SnapshotFormPanel({
 }) {
   const { t } = useTranslation();
   const toast = useToast();
-  const [snapshotTs, setSnapshotTs] = useState(nowDateTimeLocal());
-  const [periodStart, setPeriodStart] = useState(todayDate().slice(0, 8) + "01");
-  const [periodEnd, setPeriodEnd] = useState(todayDate());
+  const timezonePreference = useSystemTimezone();
+  const activeTimezone = timezonePreference.timezone;
+  const initialToday = todayDate(activeTimezone);
+  const [snapshotTs, setSnapshotTs] = useState(() =>
+    nowDateTimeLocal(activeTimezone),
+  );
+  const [periodStart, setPeriodStart] = useState(
+    initialToday.slice(0, 8) + "01",
+  );
+  const [periodEnd, setPeriodEnd] = useState(initialToday);
   const [title, setTitle] = useState("");
   const [amounts, setAmounts] = useState<SnapshotAmountState>({});
   const [snapshotNote, setSnapshotNote] = useState("");
@@ -136,9 +144,10 @@ export function SnapshotFormPanel({
 
   useEffect(() => {
     if (!initialSnapshot || mode === "create") {
-      setSnapshotTs(nowDateTimeLocal());
-      setPeriodStart(todayDate().slice(0, 8) + "01");
-      setPeriodEnd(todayDate());
+      const currentDate = todayDate(activeTimezone);
+      setSnapshotTs(nowDateTimeLocal(activeTimezone));
+      setPeriodStart(currentDate.slice(0, 8) + "01");
+      setPeriodEnd(currentDate);
       setTitle("");
       setAmounts({});
       setSnapshotNote("");
@@ -148,10 +157,12 @@ export function SnapshotFormPanel({
     }
 
     setSnapshotTs(
-      mode === "copy" ? nowDateTimeLocal() : isoToDateTimeLocal(initialSnapshot.snapshot_ts),
+      mode === "copy"
+        ? nowDateTimeLocal(activeTimezone)
+        : isoToDateTimeLocal(initialSnapshot.snapshot_ts, activeTimezone),
     );
-    setPeriodStart(isoToDateInput(initialSnapshot.period_start));
-    setPeriodEnd(isoToDateInput(initialSnapshot.period_end));
+    setPeriodStart(isoToDateInput(initialSnapshot.period_start, activeTimezone));
+    setPeriodEnd(isoToDateInput(initialSnapshot.period_end, activeTimezone));
     setTitle(initialSnapshot.title ?? "");
     setSnapshotNote(initialSnapshot.note ?? "");
     setSelectedRateSnapshotId(initialSnapshot.rate_snapshot_id ?? "");
@@ -171,7 +182,7 @@ export function SnapshotFormPanel({
         ];
       });
     setAmounts(nextAmounts);
-  }, [assets, initialSnapshot, mode, tree.primary_currency]);
+  }, [activeTimezone, assets, initialSnapshot, mode, tree.primary_currency]);
 
   useEffect(() => {
     if (mode === "create") {
@@ -181,6 +192,7 @@ export function SnapshotFormPanel({
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (timezonePreference.loading) return;
     let hasHoldingWithoutAsset = false;
     const entryNodes = flatNodes.filter(
       (node) => !node.children.length || (amounts[node.id] ?? []).length > 0,
@@ -216,9 +228,18 @@ export function SnapshotFormPanel({
     }
     onSubmit({
       title: title.trim() || null,
-      snapshot_ts: preset.timeMode === "instant" ? localDateTimeToIso(snapshotTs) : null,
-      period_start: preset.timeMode === "period" ? dateToStartIso(periodStart) : null,
-      period_end: preset.timeMode === "period" ? dateToEndIso(periodEnd) : null,
+      snapshot_ts:
+        preset.timeMode === "instant"
+          ? localDateTimeToIso(snapshotTs, activeTimezone)
+          : null,
+      period_start:
+        preset.timeMode === "period"
+          ? dateToStartIso(periodStart, activeTimezone)
+          : null,
+      period_end:
+        preset.timeMode === "period"
+          ? dateToEndIso(periodEnd, activeTimezone)
+          : null,
       primary_currency: settlementCurrency,
       rate_snapshot_id: selectedRateSnapshotId || null,
       note: snapshotNote || null,
@@ -265,7 +286,9 @@ export function SnapshotFormPanel({
             color="primary"
             variant="solid"
             iconName="check"
-            disabled={submitting || !flatNodes.length}
+            disabled={
+              submitting || timezonePreference.loading || !flatNodes.length
+            }
           />
         </div>
         {mode !== "create" ? <span className="hidden lg:block" aria-hidden="true" /> : null}

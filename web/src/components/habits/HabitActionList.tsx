@@ -16,23 +16,17 @@ import TaskNotesModal from "@/components/TaskNotesModal";
 import type { NoteHabitActionSummary } from "@/services/api/notes";
 import type {
   CalendarAdapter,
+  CalendarSystem,
   ExtendedPlanningViewType,
 } from "@/utils/calendar";
 import {
   addDays,
-  addMonths,
-  eachDayOfInterval,
-  endOfMonth,
-  endOfWeek,
   formatDate,
   formatDateKey,
-  formatMonthKey,
   isSameDay,
+  parseDateKey,
   parseDateStringToLocalDate,
-  startOfMonth,
   startOfLocalDay,
-  startOfWeek,
-  subMonths,
 } from "@/utils/datetime";
 
 interface HabitActionListProps {
@@ -43,6 +37,7 @@ interface HabitActionListProps {
   startDate: string;
   cadenceFrequency?: string | null;
   calendarAdapter: CalendarAdapter;
+  calendarSystem: CalendarSystem;
   centerDate: Date;
   onCenterDateChange: (date: Date) => void;
   onStatusUpdate: (
@@ -79,6 +74,7 @@ export function HabitActionList({
   startDate,
   cadenceFrequency,
   calendarAdapter,
+  calendarSystem,
   centerDate,
   onCenterDateChange,
   onStatusUpdate,
@@ -270,16 +266,48 @@ export function HabitActionList({
     );
   };
 
-  // Generate calendar days for selected month
-  const monthStart = startOfMonth(selectedMonth);
-  const monthEnd = endOfMonth(selectedMonth);
-  const calendarStart = startOfWeek(monthStart);
-  const calendarEnd = endOfWeek(monthEnd);
-
-  const calendarDays = eachDayOfInterval({
-    start: calendarStart,
-    end: calendarEnd,
-  });
+  const selectedMonthRange = calendarAdapter.getPeriodRange(
+    "month",
+    selectedMonth,
+  );
+  const usesMayanMonthSemantics = calendarSystem === "mayan_13_moon";
+  const calendarRange = usesMayanMonthSemantics
+    ? selectedMonthRange
+    : {
+        start: calendarAdapter.getPeriodRange(
+          "week",
+          parseDateKey(selectedMonthRange.start),
+        ).start,
+        end: calendarAdapter.getPeriodRange(
+          "week",
+          parseDateKey(selectedMonthRange.end),
+        ).end,
+      };
+  const calendarDays = calendarAdapter
+    .enumerateDates(calendarRange.start, calendarRange.end)
+    .map(parseDateKey);
+  const monthLabel =
+    selectedMonthRange.start.slice(0, 7) ===
+    selectedMonthRange.end.slice(0, 7)
+      ? selectedMonthRange.start.slice(0, 7)
+      : `${selectedMonthRange.start} – ${selectedMonthRange.end}`;
+  const gregorianWeekdayLabels = [
+    t("habits.actionList.weekdays.sunday"),
+    t("habits.actionList.weekdays.monday"),
+    t("habits.actionList.weekdays.tuesday"),
+    t("habits.actionList.weekdays.wednesday"),
+    t("habits.actionList.weekdays.thursday"),
+    t("habits.actionList.weekdays.friday"),
+    t("habits.actionList.weekdays.saturday"),
+  ];
+  const calendarWeekdayLabels = usesMayanMonthSemantics
+    ? ["1", "2", "3", "4", "5", "6", "7"]
+    : gregorianWeekdayLabels.map(
+        (_, index) =>
+          gregorianWeekdayLabels[
+            (parseDateKey(calendarRange.start).getDay() + index) % 7
+          ],
+      );
 
   const getActionForCalendarDate = (date: Date) => {
     const dateStr = formatDateKey(date);
@@ -287,10 +315,13 @@ export function HabitActionList({
   };
 
   const changeMonth = (direction: "prev" | "next") => {
-    const newMonth =
-      direction === "prev"
-        ? subMonths(selectedMonth, 1)
-        : addMonths(selectedMonth, 1);
+    const shiftedRange = calendarAdapter.shiftPeriodRange(
+      "month",
+      selectedMonthRange.start,
+      selectedMonthRange.end,
+      direction === "prev" ? -1 : 1,
+    );
+    const newMonth = parseDateKey(shiftedRange.start);
     setSelectedMonth(newMonth);
     setSelectedDate(newMonth);
     updateCenterDate(newMonth);
@@ -354,7 +385,7 @@ export function HabitActionList({
                 iconOnly
               />
               <span className="px-3 py-2 font-medium">
-                {formatMonthKey(selectedMonth)}
+                {monthLabel}
               </span>
               <ActionButton
                 label={t("habits.actionList.nextMonth")}
@@ -369,15 +400,7 @@ export function HabitActionList({
           </div>
 
           <div className="grid grid-cols-7 gap-1 text-sm">
-            {[
-              t("habits.actionList.weekdays.sunday"),
-              t("habits.actionList.weekdays.monday"),
-              t("habits.actionList.weekdays.tuesday"),
-              t("habits.actionList.weekdays.wednesday"),
-              t("habits.actionList.weekdays.thursday"),
-              t("habits.actionList.weekdays.friday"),
-              t("habits.actionList.weekdays.saturday"),
-            ].map((day) => (
+            {calendarWeekdayLabels.map((day) => (
               <div
                 key={day}
                 className="p-2 text-center font-medium text-base-content/70"
@@ -388,8 +411,10 @@ export function HabitActionList({
 
             {calendarDays.map((day, index) => {
               const action = getActionForCalendarDate(day);
+              const dateKey = formatDateKey(day);
               const isCurrentMonth =
-                day.getMonth() === selectedMonth.getMonth();
+                dateKey >= selectedMonthRange.start &&
+                dateKey <= selectedMonthRange.end;
 
               // Determine calendar cell status
               let cellStatus = "";

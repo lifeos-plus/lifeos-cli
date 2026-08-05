@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  dateToEndIso,
+  dateToStartIso,
   formatAmountForAsset,
   formatNumberForAsset,
+  isoToDateInput,
+  isoToDateTimeLocal,
+  localDateTimeToIso,
   rateSnapshotLabel,
   snapshotLabel,
 } from "@/features/finance/utils";
@@ -87,5 +92,28 @@ describe("finance asset amount formatting", () => {
         [{ id: "asset-eth", code: "ETH", decimal_places: 8, is_default: true }],
       ),
     ).toBe("1");
+  });
+});
+
+describe("finance timestamp conversion", () => {
+  it("interprets datetime-local values in the configured timezone", () => {
+    expect(localDateTimeToIso("2026-07-01T08:30", "Asia/Shanghai")).toBe(
+      "2026-07-01T00:30:00.000Z",
+    );
+    expect(
+      isoToDateTimeLocal("2026-07-01T00:30:00.000Z", "Asia/Shanghai"),
+    ).toBe("2026-07-01T08:30");
+  });
+
+  it("interprets finance period boundaries in the configured timezone", () => {
+    expect(dateToStartIso("2024-03-10", "America/Los_Angeles")).toBe(
+      "2024-03-10T08:00:00.000Z",
+    );
+    expect(dateToEndIso("2024-03-10", "America/Los_Angeles")).toBe(
+      "2024-03-11T06:59:59.999Z",
+    );
+    expect(
+      isoToDateInput("2024-03-11T06:59:59.999Z", "America/Los_Angeles"),
+    ).toBe("2024-03-10");
   });
 });

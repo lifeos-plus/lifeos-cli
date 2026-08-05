@@ -21,7 +21,7 @@ import { useHabitActions } from "@/hooks/queries/useHabitActions";
 import { useHabitStats } from "@/hooks/queries/useHabitStats";
 import { HABIT_STATUS_FILTER_OPTIONS } from "@/utils/constants";
 import type { UUID } from "@/types/primitive";
-import type { CalendarAdapter } from "@/utils/calendar";
+import type { CalendarAdapter, CalendarSystem } from "@/utils/calendar";
 import { Icon } from "@/components/icons";
 import { addDays, formatDate } from "@/utils/datetime";
 function HabitItem({
@@ -32,6 +32,7 @@ function HabitItem({
   onCopy,
   onStatusUpdate,
   calendarAdapter,
+  calendarSystem,
   t,
 }: {
   habit: Habit;
@@ -45,6 +46,7 @@ function HabitItem({
     newStatus: string,
   ) => void;
   calendarAdapter: CalendarAdapter;
+  calendarSystem: CalendarSystem;
   t: TFunction;
 }) {
   const parseHabitDate = (value: string) => {
@@ -256,6 +258,7 @@ function HabitItem({
               startDate={habit.start_date}
               cadenceFrequency={habit.cadence_frequency}
               calendarAdapter={calendarAdapter}
+              calendarSystem={calendarSystem}
               centerDate={actionCenterDate}
               onCenterDateChange={setActionCenterDate}
               onStatusUpdate={(habitId, action, newStatus) =>
@@ -275,7 +278,7 @@ function HabitItem({
 function HabitsPage() {
   const { t } = useTranslation();
   const { setHeader } = usePageHeader();
-  const { adapter: calendarAdapter } = useCalendarAdapter();
+  const { adapter: calendarAdapter, calendarSystem } = useCalendarAdapter();
 
   // State
   const [statusFilter, setStatusFilter] = useState<string>("active");
@@ -410,6 +413,7 @@ function HabitsPage() {
                   onCopy={handleCopyHabit}
                   onStatusUpdate={handleStatusUpdate}
                   calendarAdapter={calendarAdapter}
+                  calendarSystem={calendarSystem}
                   t={t}
                 />
               ))}

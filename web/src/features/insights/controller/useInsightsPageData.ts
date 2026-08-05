@@ -1,9 +1,8 @@
-import { usePreferenceWithBootstrap } from "@/hooks/queries/usePreferenceWithBootstrap";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 import { useCalendarAdapter } from "@/hooks/useCalendarAdapter";
 import type { CalendarAdapter } from "@/utils/calendar";
 import { useAreas } from "@/hooks/queries/useAreas";
 import { useAreaOrderReadOnly } from "@/hooks/queries/useAreaOrderReadOnly";
-import { resolvePreferredTimezone } from "@/utils/datetime";
 
 interface InsightsPageData {
   firstDayOfWeek: number;
@@ -21,19 +20,13 @@ export function useInsightsPageData(): InsightsPageData {
     adapter: calendarAdapter,
     calendarSystem,
     firstDayOfWeek,
-    loading: calendarLoading,
+    loading: calendarPreferencesLoading,
   } = useCalendarAdapter();
 
-  const timezonePreferenceState = usePreferenceWithBootstrap<string>({
-    key: "system.timezone",
-    defaultValue: resolvePreferredTimezone(),
-    module: "system",
-    validator: (value) => typeof value === "string" && value.length > 0,
-  });
-
-  const activeTimezone = resolvePreferredTimezone(
-    timezonePreferenceState.value,
-  );
+  const timezonePreferenceState = useSystemTimezone();
+  const activeTimezone = timezonePreferenceState.timezone;
+  const calendarLoading =
+    calendarPreferencesLoading || timezonePreferenceState.loading;
 
   const { areas, areaMap } = useAreas();
   const { order: areaOrder } = useAreaOrderReadOnly();

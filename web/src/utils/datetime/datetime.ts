@@ -83,6 +83,22 @@ export function utcToLocalDateTimeLocal(
   return dt.toFormat("yyyy-LL-dd'T'HH:mm");
 }
 
+/*
+ * Interpret an HTML datetime-local value in the configured timezone and
+ * convert it to the UTC timestamp used by the API.
+ */
+export function localDateTimeLocalToUtcIso(
+  localDateTime: string,
+  timezone?: string,
+): string {
+  if (!localDateTime) return "";
+  const dt = DateTime.fromISO(localDateTime, {
+    zone: resolveTimezoneInput(timezone),
+  });
+  if (!dt.isValid) return "";
+  return dt.toUTC().toJSDate().toISOString();
+}
+
 export function hhmmOnDateToISO(
   baseDate: Date,
   hhmm: string,
@@ -116,24 +132,18 @@ export function hhmmOnDateToISO(
 }
 
 // ---- Time helpers (from timeUtils.ts)
-export function getNearestFiveMinuteTime(date: Date = new Date()): string {
-  const minutes = date.getMinutes();
-  const hours = date.getHours();
+export function getNearestFiveMinuteTime(
+  date: Date = new Date(),
+  timezone?: string,
+): string {
+  const dt = DateTime.fromJSDate(date).setZone(resolveTimezoneInput(timezone));
+  if (!dt.isValid) return "";
+  const minutes = dt.minute;
   const roundedMinutes = Math.round(minutes / 5) * 5;
-  let finalHours = hours;
-  let finalMinutes = roundedMinutes;
-  if (roundedMinutes === 60) {
-    finalHours = (hours + 1) % 24;
-    finalMinutes = 0;
-  }
-
-  const d = new Date(date);
-  d.setHours(finalHours, finalMinutes, 0, 0);
-  return d.toLocaleTimeString("en-CA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  return dt
+    .startOf("hour")
+    .plus({ minutes: roundedMinutes })
+    .toFormat("HH:mm");
 }
 
 export function formatDuration(minutes: number): string {
@@ -166,8 +176,7 @@ export function addMinutesToIso(startIso: string, minutes: number): string {
   if (!startIso || !Number.isFinite(minutes)) return startIso;
   const base = new Date(startIso);
   if (Number.isNaN(base.getTime())) return startIso;
-  const result = new Date(base);
-  result.setMinutes(result.getMinutes() + minutes);
+  const result = new Date(base.getTime() + minutes * 60 * 1000);
   return result.toISOString();
 }
 
@@ -360,7 +369,7 @@ export function dateStringToISO(
   isEndDate: boolean = false,
 ): string {
   const tz = resolveTimezoneInput(timezone);
-  if (!DATE_ONLY_RE.test(dateString)) {
+  if (!isDateKey(dateString)) {
     return "";
   }
   const [yearStr, monthStr, dayStr] = dateString.split("-");

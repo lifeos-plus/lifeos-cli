@@ -1,7 +1,13 @@
 import React, { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { formatDateTime } from "@/utils/datetime";
-import { normalizeTimezone, zonedDateTimeToUtc } from "@/utils/datetime";
+import {
+  dateStringToISO,
+  formatDate,
+  formatDateTime,
+  localDateTimeLocalToUtcIso,
+  normalizeTimezone,
+  utcToLocalDateTimeLocal,
+} from "@/utils/datetime";
 import TextInput from "./TextInput";
 import { FORM_LABEL_COMPACT_CLASS } from "./styles";
 
@@ -24,7 +30,7 @@ interface DateTimeSelectorProps {
   quickTimeOptions?: string[];
   /** Additional CSS classes */
   className?: string;
-  /** Preferred timezone (falls back to browser if omitted) */
+  /** Preferred timezone (falls back to the cached system preference or UTC) */
   timezone?: string;
 }
 
@@ -64,34 +70,19 @@ export default function DateTimeSelector({
       return { datePart: "", timePart: "" };
     }
 
-    const utcDate = new Date(value);
-
     if (isAllDay) {
-      // For all-day planned events, use the UTC date directly.
       return {
-        datePart: utcDate.toISOString().split("T")[0],
+        datePart: formatDate(value, userTimezone),
         timePart: "",
       };
     }
 
-    // For time-specific planned events, convert UTC to local timezone.
-    const localDate = new Date(value);
+    const localDateTime = utcToLocalDateTimeLocal(value, userTimezone);
+    const [localDate, localTime] = localDateTime.split("T");
 
     return {
-      datePart: localDate
-        .toLocaleDateString("en-CA", {
-          timeZone: userTimezone,
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        })
-        .replace(/\//g, "-"), // Format as YYYY-MM-DD
-      timePart: localDate.toLocaleTimeString("en-CA", {
-        timeZone: userTimezone,
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }),
+      datePart: localDate ?? "",
+      timePart: localTime ?? "",
     };
   }, [value, isAllDay, userTimezone]);
 
@@ -103,49 +94,17 @@ export default function DateTimeSelector({
         return;
       }
 
-      // Parse the date parts
-      const [year, month, day] = newDate.split("-").map(Number);
-
       if (isAllDay) {
-        // For all-day planned events, create UTC start of day.
-        const utcDate = zonedDateTimeToUtc(
-          year,
-          month,
-          day,
-          0,
-          0,
-          0,
-          0,
-          userTimezone,
-        );
-        onChange(utcDate.toISOString());
+        onChange(dateStringToISO(newDate, userTimezone));
       } else if (timePart) {
-        // Combine new date with existing time
-        const [hours, minutes] = timePart.split(":").map(Number);
-        const utcDate = zonedDateTimeToUtc(
-          year,
-          month,
-          day,
-          hours,
-          minutes,
-          0,
-          0,
-          userTimezone,
+        onChange(
+          localDateTimeLocalToUtcIso(
+            `${newDate}T${timePart}`,
+            userTimezone,
+          ),
         );
-        onChange(utcDate.toISOString());
       } else {
-        // If no time part yet, set to start of day
-        const utcDate = zonedDateTimeToUtc(
-          year,
-          month,
-          day,
-          0,
-          0,
-          0,
-          0,
-          userTimezone,
-        );
-        onChange(utcDate.toISOString());
+        onChange(dateStringToISO(newDate, userTimezone));
       }
     },
     [isAllDay, timePart, onChange, userTimezone],
@@ -158,22 +117,12 @@ export default function DateTimeSelector({
         return;
       }
 
-      // Parse date parts and time parts
-      const [year, month, day] = datePart.split("-").map(Number);
-      const [hours, minutes] = newTime.split(":").map(Number);
-
-      // Convert local date/time to UTC
-      const utcDate = zonedDateTimeToUtc(
-        year,
-        month,
-        day,
-        hours,
-        minutes,
-        0,
-        0,
-        userTimezone,
+      onChange(
+        localDateTimeLocalToUtcIso(
+          `${datePart}T${newTime}`,
+          userTimezone,
+        ),
       );
-      onChange(utcDate.toISOString());
     },
     [datePart, onChange, userTimezone],
   );
@@ -184,22 +133,12 @@ export default function DateTimeSelector({
         return;
       }
 
-      // Parse date parts and time parts
-      const [year, month, day] = datePart.split("-").map(Number);
-      const [hours, minutes] = time.split(":").map(Number);
-
-      // Convert local date/time to UTC
-      const utcDate = zonedDateTimeToUtc(
-        year,
-        month,
-        day,
-        hours,
-        minutes,
-        0,
-        0,
-        userTimezone,
+      onChange(
+        localDateTimeLocalToUtcIso(
+          `${datePart}T${time}`,
+          userTimezone,
+        ),
       );
-      onChange(utcDate.toISOString());
     },
     [datePart, onChange, userTimezone],
   );

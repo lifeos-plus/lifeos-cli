@@ -20,6 +20,7 @@ interface UseTimeLogDataProps {
   queryMode: QueryMode;
   saveScrollPosition: (position: number) => void;
   timezone: string;
+  ready?: boolean;
 }
 
 interface UseTimeLogDataReturn {
@@ -54,6 +55,7 @@ export const useTimeLogData = ({
   queryMode,
   saveScrollPosition,
   timezone,
+  ready = true,
 }: UseTimeLogDataProps): UseTimeLogDataReturn => {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -114,7 +116,7 @@ export const useTimeLogData = ({
 
       return processed;
     },
-    enabled: queryMode === "single",
+    enabled: ready && queryMode === "single",
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 

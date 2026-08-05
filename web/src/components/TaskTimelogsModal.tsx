@@ -2,14 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Timelog, TaskWithSubtasks } from "@/services/api";
 import type { UUID } from "@/types/primitive";
-import { formatDate, resolvePreferredTimezone } from "@/utils/datetime";
+import { formatDate } from "@/utils/datetime";
 import TimeRangeText from "./TimeRangeText";
 import ModalBase from "@/layouts/ModalBase";
 import { useTaskTimelogs } from "@/hooks/queries/useTaskTimelogs";
 import ListContainer from "@/layouts/ListContainer";
 import AreaBadge from "./AreaBadge";
 import { Icon } from "./icons";
-import { usePreferenceWithBootstrap } from "@/hooks/queries/usePreferenceWithBootstrap";
+import { useSystemTimezone } from "@/hooks/useSystemTimezone";
 import { useAreas } from "@/hooks/queries/useAreas";
 import ActionButton from "./ActionButton";
 
@@ -33,13 +33,8 @@ const TaskTimelogsModal: React.FC<TaskTimelogsModalProps> = ({
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const pageSize = 15;
-  const timezonePreference = usePreferenceWithBootstrap<string>({
-    key: "system.timezone",
-    defaultValue: resolvePreferredTimezone(),
-    module: "system",
-    validator: (value) => typeof value === "string" && value.length > 0,
-  });
-  const activeTimezone = resolvePreferredTimezone(timezonePreference.value);
+  const timezonePreference = useSystemTimezone();
+  const activeTimezone = timezonePreference.timezone;
   const { areaMap } = useAreas();
 
   useEffect(() => {
