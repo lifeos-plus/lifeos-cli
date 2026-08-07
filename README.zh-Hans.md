@@ -138,10 +138,7 @@ lifeos data export all --output lifeos-bundle.zip
 
 ## Local Web UI
 
-一方 React Web UI 位于独立的
-[`lifeos-web`](https://github.com/lifeos-plus/lifeos-web) 仓库，通过生成的
-OpenAPI 契约与本项目的 Web API 通信。本仓库保留 Web API 和 `web serve`
-命令。
+一方 React Web UI 位于独立的 [`lifeos-web`](https://github.com/lifeos-plus/lifeos-web) 仓库，通过生成的 OpenAPI 契约与本项目的 Web API 通信。本仓库保留 Web API 和 `web serve` 命令。
 
 启动本地 Web API 服务以支持浏览器或 HTTP 访问：
 
@@ -149,8 +146,7 @@ OpenAPI 契约与本项目的 Web API 通信。本仓库保留 Web API 和 `web 
 lifeos web serve
 ```
 
-`lifeos web serve` 不会从 PyPI 安装、构建或内置前端。先从 `lifeos-web`
-构建前端，再显式传入输出目录：
+`lifeos web serve` 不会从 PyPI 安装、构建或内置前端。先从 `lifeos-web` 构建前端，再显式传入输出目录：
 
 ```bash
 lifeos web serve --static-dir <path-to>/lifeos-web/dist
@@ -172,8 +168,7 @@ npm ci
 npm run dev
 ```
 
-前端 workspace 与跨仓契约策略详情见
-[`lifeos-web` README](https://github.com/lifeos-plus/lifeos-web)。
+前端 workspace 与跨仓契约策略详情见 [`lifeos-web` README](https://github.com/lifeos-plus/lifeos-web)。
 
 ## Agent 使用
 

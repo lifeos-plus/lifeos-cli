@@ -33,11 +33,7 @@ bash ./scripts/doctor.sh
 
 The default validation baseline includes dead-code scanning through `vulture`. It validates locked dependency resolution, runs lint plus the default non-integration test suite, exports the project and all optional extras for `pip-audit`, builds package artifacts, and then calls `bash ./scripts/integration_tests.sh` as the explicit PostgreSQL-backed integration entrypoint. When `LIFEOS_TEST_DATABASE_URL` is unset, the integration script reports an explicit skip and `doctor.sh` finishes with a warning that PostgreSQL CLI coverage did not run.
 
-The React Web UI lives in the separate
-[`lifeos-web`](https://github.com/lifeos-plus/lifeos-web) repository. Frontend
-changes, including npm dependency updates, are validated there with
-`bash ./scripts/validate.sh`. This repository keeps the Web API and the
-`lifeos web serve` command.
+The React Web UI lives in the separate [`lifeos-web`](https://github.com/lifeos-plus/lifeos-web) repository. Frontend changes, including npm dependency updates, are validated there with `bash ./scripts/validate.sh`. This repository keeps the Web API and the `lifeos web serve` command.
 
 If you change CI, packaging metadata, or compatibility declarations, also validate the relevant interpreter targets explicitly. Examples:
 

@@ -138,10 +138,7 @@ For complete CLI usage, workflows, and output conventions, see [docs/cli.md](doc
 
 ## Local Web UI
 
-The first-party React Web UI lives in the separate
-[`lifeos-web`](https://github.com/lifeos-plus/lifeos-web) repository and talks
-to this project's Web API over the generated OpenAPI contract. This repository
-keeps the Web API and the `web serve` command.
+The first-party React Web UI lives in the separate [`lifeos-web`](https://github.com/lifeos-plus/lifeos-web) repository and talks to this project's Web API over the generated OpenAPI contract. This repository keeps the Web API and the `web serve` command.
 
 Start the local Web API server for browser or HTTP access:
 
@@ -149,8 +146,7 @@ Start the local Web API server for browser or HTTP access:
 lifeos web serve
 ```
 
-`lifeos web serve` does not install, build, or bundle the frontend from PyPI.
-Build the frontend from `lifeos-web` and pass its output directory explicitly:
+`lifeos web serve` does not install, build, or bundle the frontend from PyPI. Build the frontend from `lifeos-web` and pass its output directory explicitly:
 
 ```bash
 lifeos web serve --static-dir <path-to>/lifeos-web/dist
@@ -172,8 +168,7 @@ npm ci
 npm run dev
 ```
 
-See the [`lifeos-web` README](https://github.com/lifeos-plus/lifeos-web) for
-the frontend workspace and cross-repo contract policy.
+See the [`lifeos-web` README](https://github.com/lifeos-plus/lifeos-web) for the frontend workspace and cross-repo contract policy.
 
 ## Agent Use
 
