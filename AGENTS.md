@@ -13,13 +13,14 @@ The following rules apply to coding agent collaboration in this repository. Thes
 - Use `gh` CLI for all issue and PR operations. Do not edit through the web UI.
 - Never use the Codex GitHub connector or any connector-backed GitHub mutation workflow. At any time, issue and PR operations must go through `gh` CLI only.
 - If GitHub permissions, authentication, policy, or environment constraints block a required `gh` operation, stop and ask the human collaborator to perform or authorize the needed step. Do not switch to the Codex GitHub connector as a fallback.
-- Create a new tracking issue for any development task that does not already have one.
+- Create a tracking issue for non-trivial development tasks that do not already have one; very small changes do not require a new issue.
 - Link the relevant issue in the PR description with `Closes #xx` or `Related #xx` as appropriate.
 - Keep issue and PR status synchronized when work scope changes.
 
 ## 3. Text and Language Conventions
 
-- Use Simplified Chinese for issues, PR descriptions, comments, and review notes.
+- Use Simplified Chinese for issue and PR descriptions, comments, and review notes; keep technical terms in English.
+- Always use English commit-message style for PR titles.
 - Use English for code, comments, commit messages, and canonical repository documents.
 - Localized Markdown companions are allowed when they are explicitly scoped, linked from the canonical English document, and kept aligned with it.
 - Keep the root `README.md` in English as the canonical repository entrypoint. Localized companions such as `README.zh-Hans.md` must link back to `README.md`, and `README.md` should link to the available localized companion documents.
