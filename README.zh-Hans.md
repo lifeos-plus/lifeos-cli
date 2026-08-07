@@ -134,7 +134,7 @@ lifeos finance tree-ensure-default
 lifeos data export all --output lifeos-bundle.zip
 ```
 
-完整的 CLI 用法、工作流和输出约定，请参考 [docs/cli.md](docs/cli.md)。命令级事实应以 CLI help 为准，而不是放在仓库级文档中维护第二份来源。
+完整的 CLI 用法、工作流和输出约定，请参考 [docs/cli.md](docs/cli.md)。命令级事实应以 CLI help 为准，而不是放在仓库级文档中维护第二份来源。面向维护者的架构说明请参考 [docs/architecture.md](docs/architecture.md)。
 
 ## Local Web UI
 
