@@ -159,6 +159,8 @@ uv tool install --upgrade "lifeos-cli[web,postgres]"
 uv run --extra web --extra postgres lifeos web serve
 ```
 
+Web API 没有认证，默认绑定 `127.0.0.1`。使用非 loopback 的 `--host`（例如 `0.0.0.0`）启动会把个人数据暴露到网络中；此时 `lifeos web serve` 会打印警告。请保持 loopback 默认值，或通过网络层限制访问。
+
 前端开发时，可以在 `lifeos-web` 中启动 Vite app，并把 API 请求代理到本地 Web API：
 
 ```bash

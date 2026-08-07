@@ -159,6 +159,8 @@ uv tool install --upgrade "lifeos-cli[web,postgres]"
 uv run --extra web --extra postgres lifeos web serve
 ```
 
+The Web API has no authentication and defaults to binding `127.0.0.1`. Starting it with a non-loopback `--host` (for example `0.0.0.0`) exposes your personal data to the network; `lifeos web serve` prints a warning in that case. Keep the loopback default or restrict access at the network layer.
+
 During frontend development, run the Vite app in `lifeos-web` and proxy API requests to the local Web API:
 
 ```bash

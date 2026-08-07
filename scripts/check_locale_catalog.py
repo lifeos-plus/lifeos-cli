@@ -11,6 +11,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI_SUPPORT_DIR = REPO_ROOT / "src" / "lifeos_cli" / "cli_support"
+WEB_RUNTIME_DIR = REPO_ROOT / "src" / "lifeos_web"
 LOCALES_DIR = REPO_ROOT / "src" / "lifeos_cli" / "locales"
 DEFAULT_JSON_LOCALE = "en"
 
@@ -86,18 +87,19 @@ def _check_json_catalogs() -> list[str]:
 
 def _iter_literal_call_keys(function_name: str) -> list[tuple[str, Path, int]]:
     keys: list[tuple[str, Path, int]] = []
-    for path in sorted(CLI_SUPPORT_DIR.rglob("*.py")):
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
-            if not isinstance(node.func, ast.Name) or node.func.id != function_name:
-                continue
-            if not node.args:
-                continue
-            first_arg = node.args[0]
-            if isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
-                keys.append((first_arg.value, path, node.lineno))
+    for search_root in (CLI_SUPPORT_DIR, WEB_RUNTIME_DIR):
+        for path in sorted(search_root.rglob("*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                if not isinstance(node.func, ast.Name) or node.func.id != function_name:
+                    continue
+                if not node.args:
+                    continue
+                first_arg = node.args[0]
+                if isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
+                    keys.append((first_arg.value, path, node.lineno))
     return keys
 
 
