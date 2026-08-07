@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Generic, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -20,12 +20,16 @@ class Pagination(BaseModel):
     pages: int
 
 
-class ListResponse(BaseModel):
+ItemT = TypeVar("ItemT")
+MetaT = TypeVar("MetaT")
+
+
+class ListResponse(BaseModel, Generic[ItemT, MetaT]):
     """Frontend-compatible list envelope."""
 
-    items: list[dict[str, Any]]
+    items: list[ItemT]
     pagination: Pagination
-    meta: dict[str, Any] = Field(default_factory=dict)
+    meta: MetaT
 
 
 class TaskCreate(BaseModel):

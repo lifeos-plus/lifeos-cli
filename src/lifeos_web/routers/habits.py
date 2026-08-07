@@ -15,6 +15,17 @@ from lifeos_cli.db.services import habit_actions as habit_action_services
 from lifeos_cli.db.services import habits as habit_services
 from lifeos_cli.db.services import planning_lifecycle as planning_lifecycle_services
 from lifeos_web.deps import get_db_session
+from lifeos_web.response_schemas.habits import (
+    HabitActionDateMeta,
+    HabitActionListMeta,
+    HabitActionRangeMeta,
+    HabitActionResponse,
+    HabitActionWithHabitResponse,
+    HabitAssociationsResponse,
+    HabitListMeta,
+    HabitOverviewResponse,
+    HabitResponse,
+)
 from lifeos_web.schemas import HabitActionUpdate, HabitCreate, HabitUpdate, ListResponse, Pagination
 from lifeos_web.serialization import to_jsonable
 
@@ -101,7 +112,7 @@ def _zero_stats(habit_id: UUID) -> dict[str, object]:
     }
 
 
-@router.get("/", response_model=ListResponse)
+@router.get("/", response_model=ListResponse[HabitResponse, HabitListMeta])
 async def list_habits(
     session: SessionDep,
     page: int = 1,
@@ -123,7 +134,10 @@ async def list_habits(
     )
 
 
-@router.get("/overviews", response_model=ListResponse)
+@router.get(
+    "/overviews",
+    response_model=ListResponse[HabitOverviewResponse, HabitListMeta],
+)
 async def list_habit_overviews(
     session: SessionDep,
     page: int = 1,
@@ -151,7 +165,7 @@ async def list_habit_overviews(
     )
 
 
-@router.get("/habit-task-associations/")
+@router.get("/habit-task-associations/", response_model=HabitAssociationsResponse)
 async def get_habit_task_associations(session: SessionDep) -> dict[str, object]:
     """Return habits grouped by associated task for frontend planning components."""
     habits = await habit_services.list_habits(session, limit=500, offset=0)
@@ -164,14 +178,14 @@ async def get_habit_task_associations(session: SessionDep) -> dict[str, object]:
     return {"associations": associations}
 
 
-@router.get("/{habit_id}/overview")
+@router.get("/{habit_id}/overview", response_model=HabitOverviewResponse)
 async def get_habit_overview(habit_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load one habit overview with frontend-compatible stats."""
     habit = await _habit_payload(session, habit_id)
     return {"habit": habit, "stats": _zero_stats(habit_id)}
 
 
-@router.post("/")
+@router.post("/", response_model=HabitResponse)
 async def create_habit(
     payload: HabitCreate,
     session: SessionDep,
@@ -197,7 +211,7 @@ async def create_habit(
     return _habit_model_payload(habit)
 
 
-@router.patch("/{habit_id}")
+@router.patch("/{habit_id}", response_model=HabitResponse)
 async def update_habit(
     habit_id: UUID,
     payload: HabitUpdate,
@@ -249,7 +263,10 @@ async def delete_habit(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.get("/actions/by-date/{action_date}")
+@router.get(
+    "/actions/by-date/{action_date}",
+    response_model=ListResponse[HabitActionWithHabitResponse, HabitActionDateMeta],
+)
 async def list_actions_by_date(
     action_date: date,
     session: SessionDep,
@@ -268,7 +285,10 @@ async def list_actions_by_date(
     )
 
 
-@router.get("/actions")
+@router.get(
+    "/actions",
+    response_model=ListResponse[HabitActionWithHabitResponse, HabitActionRangeMeta],
+)
 async def list_actions_in_range(
     session: SessionDep,
     start_date: Annotated[date, Query()],
@@ -316,7 +336,10 @@ async def list_actions_in_range(
     )
 
 
-@router.get("/{habit_id}/actions")
+@router.get(
+    "/{habit_id}/actions",
+    response_model=ListResponse[HabitActionResponse, HabitActionListMeta],
+)
 async def list_actions_for_habit(
     habit_id: UUID,
     session: SessionDep,
@@ -359,7 +382,7 @@ async def list_actions_for_habit(
     )
 
 
-@router.patch("/{habit_id}/actions/{action_id}")
+@router.patch("/{habit_id}/actions/{action_id}", response_model=HabitActionResponse)
 async def update_action(
     habit_id: UUID,
     action_id: UUID,
@@ -385,7 +408,10 @@ async def update_action(
     return _habit_action_payload(action)
 
 
-@router.patch("/{habit_id}/actions/by-date/{action_date}")
+@router.patch(
+    "/{habit_id}/actions/by-date/{action_date}",
+    response_model=HabitActionResponse,
+)
 async def update_action_by_date(
     habit_id: UUID,
     action_date: date,

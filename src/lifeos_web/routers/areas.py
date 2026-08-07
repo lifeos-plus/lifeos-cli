@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.services import areas as area_services
 from lifeos_web.deps import get_db_session
+from lifeos_web.response_schemas.areas import AreaListMeta, AreaResponse
 from lifeos_web.schemas import ListResponse, Pagination
 
 router = APIRouter(prefix="/areas", tags=["areas"])
@@ -52,7 +53,7 @@ def _area_payload(area: Area) -> dict[str, object]:
     }
 
 
-@router.get("/", response_model=ListResponse)
+@router.get("/", response_model=ListResponse[AreaResponse, AreaListMeta])
 async def list_areas(
     session: SessionDep,
     include_inactive: bool = False,
@@ -79,7 +80,7 @@ async def list_areas(
     )
 
 
-@router.get("/order")
+@router.get("/order", response_model=list[str])
 async def get_area_order(session: SessionDep) -> list[str]:
     """Return current area display order as area ids."""
     areas = await area_services.list_areas(session, include_inactive=True, limit=500)
@@ -104,7 +105,7 @@ async def reset_area_order(session: SessionDep) -> None:
         await area_services.update_area(session, area_id=area.id, display_order=index)
 
 
-@router.get("/{area_id}")
+@router.get("/{area_id}", response_model=AreaResponse)
 async def get_area(area_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load one LifeOS area."""
     area = await area_services.get_area(session, area_id=area_id)
@@ -113,7 +114,7 @@ async def get_area(area_id: UUID, session: SessionDep) -> dict[str, object]:
     return _area_payload(area)
 
 
-@router.post("/")
+@router.post("/", response_model=AreaResponse)
 async def create_area(payload: AreaCreate, session: SessionDep) -> dict[str, object]:
     """Create a LifeOS area from the Web UI."""
     try:
@@ -130,7 +131,7 @@ async def create_area(payload: AreaCreate, session: SessionDep) -> dict[str, obj
     return _area_payload(area)
 
 
-@router.patch("/{area_id}")
+@router.patch("/{area_id}", response_model=AreaResponse)
 async def update_area(
     area_id: UUID,
     payload: AreaUpdate,
@@ -167,7 +168,7 @@ async def delete_area(area_id: UUID, session: SessionDep) -> None:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.post("/{area_id}/activate")
+@router.post("/{area_id}/activate", response_model=AreaResponse)
 async def activate_area(area_id: UUID, session: SessionDep) -> dict[str, object]:
     """Reactivate an inactive LifeOS area."""
     try:

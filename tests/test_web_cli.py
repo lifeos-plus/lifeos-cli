@@ -82,6 +82,12 @@ def test_web_finance_payloads_exclude_unconsumed_audit_fields() -> None:
         FinanceSnapshot,
         FinanceTreeNode,
     )
+    from lifeos_web.response_schemas.finance import (
+        FinanceAssetResponse,
+        FinanceRateSnapshotResponse,
+        FinanceSnapshotResponse,
+        FinanceTreeResponse,
+    )
     from lifeos_web.routers.finance import (
         _asset_payload,
         _rate_snapshot_payload,
@@ -119,6 +125,7 @@ def test_web_finance_payloads_exclude_unconsumed_audit_fields() -> None:
         "decimal_places": 2,
         "is_default": True,
     }
+    FinanceAssetResponse.model_validate(asset_payload)
 
     node = cast(
         FinanceTreeNode,
@@ -169,6 +176,7 @@ def test_web_finance_payloads_exclude_unconsumed_audit_fields() -> None:
         "depth",
         "display_order",
     }
+    FinanceTreeResponse.model_validate(tree_payload)
 
     snapshot = cast(
         FinanceSnapshot,
@@ -227,6 +235,8 @@ def test_web_finance_payloads_exclude_unconsumed_audit_fields() -> None:
     entry_payload = cast(list[dict[str, object]], detail_snapshot_payload["entries"])[0]
     assert "snapshot_id" not in entry_payload
     assert "node_path" not in entry_payload
+    FinanceSnapshotResponse.model_validate(list_snapshot_payload)
+    FinanceSnapshotResponse.model_validate(detail_snapshot_payload)
 
     rate_snapshot_payload = _rate_snapshot_payload(
         cast(
@@ -263,6 +273,7 @@ def test_web_finance_payloads_exclude_unconsumed_audit_fields() -> None:
     rate_entry_payload = cast(list[dict[str, object]], rate_snapshot_payload["entries"])[0]
     assert "rate_snapshot_id" not in rate_entry_payload
     assert "is_derived" not in rate_entry_payload
+    FinanceRateSnapshotResponse.model_validate(rate_snapshot_payload)
 
 
 def test_web_routes_do_not_expose_deleted_records() -> None:
@@ -284,6 +295,7 @@ def test_web_routes_do_not_expose_deleted_records() -> None:
 
 def test_web_vision_payload_excludes_unconsumed_audit_fields() -> None:
     pytest.importorskip("fastapi")
+    from lifeos_web.response_schemas.visions import VisionResponse, VisionWithTasksResponse
     from lifeos_web.routers.visions import _vision_payload
 
     timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc)
@@ -300,7 +312,15 @@ def test_web_vision_payload_excludes_unconsumed_audit_fields() -> None:
         updated_at=timestamp,
         deleted_at=timestamp,
         people=(),
-        tasks=(SimpleNamespace(id=UUID("33333333-3333-3333-3333-333333333333")),),
+        tasks=(
+            SimpleNamespace(
+                id=UUID("33333333-3333-3333-3333-333333333333"),
+                vision_id=UUID("11111111-1111-1111-1111-111111111111"),
+                parent_task_id=None,
+                content="Document contracts",
+                status="todo",
+            ),
+        ),
     )
 
     payload = _vision_payload(vision)
@@ -322,10 +342,13 @@ def test_web_vision_payload_excludes_unconsumed_audit_fields() -> None:
     assert "deleted_at" not in payload
     assert "tasks" not in payload
     assert "tasks" in _vision_payload(vision, include_tasks=True)
+    VisionResponse.model_validate(payload)
+    VisionWithTasksResponse.model_validate(_vision_payload(vision, include_tasks=True))
 
 
 def test_web_task_hierarchy_payload_excludes_deleted_at() -> None:
     pytest.importorskip("fastapi")
+    from lifeos_web.response_schemas.tasks import TaskTreeResponse
     from lifeos_web.routers.tasks import _task_tree_payload
 
     timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc)
@@ -378,6 +401,7 @@ def test_web_task_hierarchy_payload_excludes_deleted_at() -> None:
     assert subtask_payload["notes_count"] == 0
     assert subtask_payload["timelogs_count"] == 1
     assert "deleted_at" not in subtask_payload
+    TaskTreeResponse.model_validate(payload)
 
 
 def test_web_task_list_basic_payload_excludes_full_task_fields(
@@ -467,6 +491,9 @@ def test_web_task_list_basic_payload_excludes_full_task_fields(
 
 def test_web_general_payloads_exclude_unconsumed_audit_fields() -> None:
     pytest.importorskip("fastapi")
+    from lifeos_web.response_schemas.areas import AreaResponse
+    from lifeos_web.response_schemas.habits import HabitResponse
+    from lifeos_web.response_schemas.persons import PersonResponse
     from lifeos_web.routers.areas import _area_payload
     from lifeos_web.routers.habits import _habit_model_payload
     from lifeos_web.routers.persons import _person_payload
@@ -491,6 +518,7 @@ def test_web_general_payloads_exclude_unconsumed_audit_fields() -> None:
     )
     assert "created_at" not in area_payload
     assert "updated_at" not in area_payload
+    AreaResponse.model_validate(area_payload)
 
     habit_payload = _habit_model_payload(
         cast(
@@ -515,6 +543,7 @@ def test_web_general_payloads_exclude_unconsumed_audit_fields() -> None:
     assert "created_at" not in habit_payload
     assert "updated_at" not in habit_payload
     assert "deleted_at" not in habit_payload
+    HabitResponse.model_validate(habit_payload)
 
     person_payload = _person_payload(
         cast(
@@ -537,6 +566,7 @@ def test_web_general_payloads_exclude_unconsumed_audit_fields() -> None:
     assert "updated_at" not in person_payload
     assert "deleted_at" not in person_payload
     assert "is_soft_deleted" not in person_payload
+    PersonResponse.model_validate(person_payload)
 
 
 def test_web_person_payload_preserves_tag_categories() -> None:
@@ -745,6 +775,7 @@ def test_planned_event_recurrence_until_accepts_utc_z_suffix() -> None:
 
 def test_planned_event_rrule_preserves_advanced_recurrence_details() -> None:
     pytest.importorskip("fastapi")
+    from lifeos_web.response_schemas.planned_events import PlannedEventResponse
     from lifeos_web.routers.planned_events import _create_input, _planned_event_payload
     from lifeos_web.schemas import PlannedEventCreate
 
@@ -803,6 +834,7 @@ def test_planned_event_rrule_preserves_advanced_recurrence_details() -> None:
     assert event_payload["rrule_string"] == "FREQ=MONTHLY;BYDAY=2MO;BYMONTH=4,5"
     assert "created_at" not in event_payload
     assert "updated_at" not in event_payload
+    PlannedEventResponse.model_validate(event_payload)
 
 
 def test_planned_event_create_ignores_rrule_when_not_recurring() -> None:
@@ -1141,6 +1173,7 @@ def test_web_timelog_template_list_maps_pagination_and_order(
 def test_web_timelog_template_payload_excludes_unconsumed_audit_fields() -> None:
     pytest.importorskip("fastapi")
 
+    from lifeos_web.response_schemas.timelogs import TimelogTemplateResponse
     from lifeos_web.routers.timelog_templates import _template_payload
 
     payload = _template_payload(
@@ -1180,6 +1213,7 @@ def test_web_timelog_template_payload_excludes_unconsumed_audit_fields() -> None
     assert payload["created_at"] == "2026-06-01T13:00:00+00:00"
     assert "updated_at" not in payload
     assert "deleted_at" not in payload
+    TimelogTemplateResponse.model_validate(payload)
 
 
 def test_web_timelog_template_update_preserves_explicit_nulls(
@@ -1451,6 +1485,7 @@ def test_web_timelog_latest_end_time_endpoint(monkeypatch: pytest.MonkeyPatch) -
 def test_web_timelog_payload_exposes_linked_task_summary() -> None:
     pytest.importorskip("fastapi")
 
+    from lifeos_web.response_schemas.timelogs import TimelogResponse
     from lifeos_web.routers.timelogs import _timelog_payload
 
     task_id = UUID("22222222-2222-2222-2222-222222222222")
@@ -1488,6 +1523,7 @@ def test_web_timelog_payload_exposes_linked_task_summary() -> None:
         "content": "Ship web timelog task linkage",
         "status": "in_progress",
     }
+    TimelogResponse.model_validate(payload)
 
 
 def test_web_timelog_payload_serializes_naive_storage_datetimes_as_utc() -> None:

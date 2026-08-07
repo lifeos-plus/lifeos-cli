@@ -12,6 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from lifeos_cli.db.services import timelog_templates as template_services
 from lifeos_cli.db.services.read_models import PersonSummaryView, TimelogTemplateView
 from lifeos_web.deps import get_db_session
+from lifeos_web.response_schemas.timelogs import (
+    TimelogTemplateListMeta,
+    TimelogTemplateResponse,
+)
 from lifeos_web.schemas import (
     ListResponse,
     Pagination,
@@ -72,7 +76,11 @@ def _update_input(payload: TimelogTemplateUpdate) -> template_services.TimelogTe
     )
 
 
-@router.get("/", response_model=ListResponse)
+@router.get(
+    "/",
+    response_model=ListResponse[TimelogTemplateResponse, TimelogTemplateListMeta],
+    response_model_exclude_unset=True,
+)
 async def list_timelog_templates(
     session: SessionDep,
     page: Annotated[int, Query(ge=1)] = 1,
@@ -101,7 +109,12 @@ async def list_timelog_templates(
     )
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=TimelogTemplateResponse,
+    response_model_exclude_unset=True,
+)
 async def create_timelog_template(
     payload: TimelogTemplateCreate,
     session: SessionDep,
@@ -127,7 +140,12 @@ async def create_timelog_template(
     return _template_payload(template)
 
 
-@router.post("/bulk", status_code=status.HTTP_201_CREATED, response_model=ListResponse)
+@router.post(
+    "/bulk",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ListResponse[TimelogTemplateResponse, TimelogTemplateListMeta],
+    response_model_exclude_unset=True,
+)
 async def bulk_create_timelog_templates(
     payload: TimelogTemplateBulkCreateRequest,
     session: SessionDep,
@@ -178,7 +196,11 @@ async def reorder_timelog_templates(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.patch("/{template_id}")
+@router.patch(
+    "/{template_id}",
+    response_model=TimelogTemplateResponse,
+    response_model_exclude_unset=True,
+)
 async def update_timelog_template(
     template_id: UUID,
     payload: TimelogTemplateUpdate,
@@ -209,7 +231,11 @@ async def delete_timelog_template(template_id: UUID, session: SessionDep) -> Non
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.post("/{template_id}/bump-usage")
+@router.post(
+    "/{template_id}/bump-usage",
+    response_model=TimelogTemplateResponse,
+    response_model_exclude_unset=True,
+)
 async def bump_timelog_template_usage(
     template_id: UUID,
     session: SessionDep,

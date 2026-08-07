@@ -12,6 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from lifeos_cli.db.services import tags as tag_services
 from lifeos_cli.db.services.tags import VALID_TAG_ENTITY_TYPES
 from lifeos_web.deps import get_db_session
+from lifeos_web.response_schemas.tags import (
+    TagBulkUpdateResponse,
+    TagCategoryResponse,
+    TagListMeta,
+    TagResponse,
+    TagSelectorResponse,
+    TagUsageResponse,
+)
 from lifeos_web.schemas import (
     ListResponse,
     Pagination,
@@ -62,7 +70,11 @@ def _normalize_category_value(payload: TagCategoryCreate | TagCategoryUpdate) ->
     return tag_services.normalize_tag_category(raw.replace(" ", "_"))
 
 
-@router.get("/", response_model=ListResponse)
+@router.get(
+    "/",
+    response_model=ListResponse[TagSelectorResponse | TagResponse, TagListMeta],
+    response_model_exclude_unset=True,
+)
 async def list_tags(
     session: SessionDep,
     page: Annotated[int, Query(ge=1)] = 1,
@@ -98,13 +110,13 @@ async def list_tags(
     )
 
 
-@router.get("/entity-types/")
+@router.get("/entity-types/", response_model=list[str])
 async def list_tag_entity_types() -> list[str]:
     """Return supported LifeOS tag entity types."""
     return sorted(VALID_TAG_ENTITY_TYPES)
 
 
-@router.get("/categories/")
+@router.get("/categories/", response_model=list[TagCategoryResponse])
 async def list_tag_categories(
     session: SessionDep,
     entity_type: str | None = None,
@@ -127,7 +139,7 @@ async def list_tag_categories(
     return [_category_option(category, normalized_entity_type) for category in sorted(categories)]
 
 
-@router.post("/categories/")
+@router.post("/categories/", response_model=TagCategoryResponse)
 async def create_tag_category(
     payload: TagCategoryCreate,
     entity_type: str | None = None,
@@ -142,7 +154,7 @@ async def create_tag_category(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.patch("/categories/{category}")
+@router.patch("/categories/{category}", response_model=TagCategoryResponse)
 async def rename_tag_category(
     category: str,
     payload: TagCategoryUpdate,
@@ -166,7 +178,7 @@ async def rename_tag_category(
     return _category_option(next_category, normalized_entity_type)
 
 
-@router.patch("/batch-update")
+@router.patch("/batch-update", response_model=TagBulkUpdateResponse)
 async def bulk_update_tag_categories(
     payload: TagBulkCategoryUpdate,
     session: SessionDep,
@@ -188,7 +200,7 @@ async def bulk_update_tag_categories(
     }
 
 
-@router.post("/")
+@router.post("/", response_model=TagResponse)
 async def create_tag(payload: TagCreate, session: SessionDep) -> dict[str, object]:
     """Create a LifeOS tag."""
     try:
@@ -205,7 +217,7 @@ async def create_tag(payload: TagCreate, session: SessionDep) -> dict[str, objec
     return to_jsonable_dict(tag)
 
 
-@router.get("/{tag_id}")
+@router.get("/{tag_id}", response_model=TagResponse)
 async def get_tag(tag_id: UUID, session: SessionDep) -> dict[str, object]:
     """Return one LifeOS tag."""
     tag = await tag_services.get_tag(session, tag_id=tag_id)
@@ -214,7 +226,7 @@ async def get_tag(tag_id: UUID, session: SessionDep) -> dict[str, object]:
     return to_jsonable_dict(tag)
 
 
-@router.get("/{tag_id}/usage")
+@router.get("/{tag_id}/usage", response_model=TagUsageResponse)
 async def get_tag_usage(tag_id: UUID, session: SessionDep) -> dict[str, object]:
     """Return active tagged-record count for one tag."""
     tag = await tag_services.get_tag(session, tag_id=tag_id)
@@ -231,7 +243,7 @@ async def get_tag_usage(tag_id: UUID, session: SessionDep) -> dict[str, object]:
     }
 
 
-@router.patch("/{tag_id}")
+@router.patch("/{tag_id}", response_model=TagResponse)
 async def update_tag(
     tag_id: UUID,
     payload: TagUpdate,

@@ -15,6 +15,14 @@ from lifeos_cli.db.services import people as people_services
 from lifeos_cli.db.services import person_activity_queries
 from lifeos_cli.db.services.read_models import PersonView, TagSummaryView
 from lifeos_web.deps import get_db_session
+from lifeos_web.response_schemas.persons import (
+    AnniversaryListMeta,
+    AnniversaryResponse,
+    PersonActivityMeta,
+    PersonActivityResponse,
+    PersonListMeta,
+    PersonResponse,
+)
 from lifeos_web.schemas import ListResponse, Pagination
 
 router = APIRouter(prefix="/persons", tags=["persons"])
@@ -93,7 +101,7 @@ def _activity_payload(item: person_activity_queries.PersonActivity) -> dict[str,
     return payload
 
 
-@router.get("/", response_model=ListResponse)
+@router.get("/", response_model=ListResponse[PersonResponse, PersonListMeta])
 async def list_persons(
     session: SessionDep,
     page: Annotated[int, Query(ge=1)] = 1,
@@ -119,7 +127,7 @@ async def list_persons(
     )
 
 
-@router.get("/search-by-tag", response_model=ListResponse)
+@router.get("/search-by-tag", response_model=ListResponse[PersonResponse, PersonListMeta])
 async def search_persons_by_tag(
     session: SessionDep,
     page: Annotated[int, Query(ge=1)] = 1,
@@ -134,7 +142,7 @@ async def search_persons_by_tag(
     )
 
 
-@router.get("/{person_id}")
+@router.get("/{person_id}", response_model=PersonResponse)
 async def get_person(person_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load one person."""
     person = await people_services.get_person(session, person_id=person_id)
@@ -143,7 +151,7 @@ async def get_person(person_id: UUID, session: SessionDep) -> dict[str, object]:
     return _person_payload(person)
 
 
-@router.post("/")
+@router.post("/", response_model=PersonResponse)
 async def create_person(payload: PersonCreate, session: SessionDep) -> dict[str, object]:
     """Create a person."""
     try:
@@ -161,7 +169,7 @@ async def create_person(payload: PersonCreate, session: SessionDep) -> dict[str,
     return _person_payload(person)
 
 
-@router.patch("/{person_id}")
+@router.patch("/{person_id}", response_model=PersonResponse)
 async def update_person(
     person_id: UUID,
     payload: PersonUpdate,
@@ -201,7 +209,11 @@ async def delete_person(person_id: UUID, session: SessionDep) -> None:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.get("/{person_id}/activities/", response_model=ListResponse)
+@router.get(
+    "/{person_id}/activities/",
+    response_model=ListResponse[PersonActivityResponse, PersonActivityMeta],
+    response_model_exclude_unset=True,
+)
 async def list_person_activities(
     person_id: UUID,
     session: SessionDep,
@@ -245,7 +257,10 @@ async def list_person_activities(
     )
 
 
-@router.get("/{person_id}/anniversaries/", response_model=ListResponse)
+@router.get(
+    "/{person_id}/anniversaries/",
+    response_model=ListResponse[AnniversaryResponse, AnniversaryListMeta],
+)
 async def list_person_anniversaries(
     person_id: UUID,
     session: SessionDep,

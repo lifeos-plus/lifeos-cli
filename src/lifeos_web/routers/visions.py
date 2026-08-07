@@ -11,6 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.services import visions as vision_services
 from lifeos_web.deps import get_db_session
+from lifeos_web.response_schemas.visions import (
+    VisionListMeta,
+    VisionRecomputeResponse,
+    VisionResponse,
+    VisionStatsResponse,
+    VisionWithTasksResponse,
+)
 from lifeos_web.schemas import ListResponse, Pagination, VisionCreate, VisionUpdate
 from lifeos_web.serialization import to_jsonable, to_jsonable_dict
 
@@ -37,7 +44,7 @@ def _vision_payload(vision: object, *, include_tasks: bool = False) -> dict[str,
     return payload
 
 
-@router.get("/", response_model=ListResponse)
+@router.get("/", response_model=ListResponse[VisionResponse, VisionListMeta])
 async def list_visions(
     session: SessionDep,
     page: int = Query(1, ge=1),
@@ -64,7 +71,7 @@ async def list_visions(
     )
 
 
-@router.get("/{vision_id}")
+@router.get("/{vision_id}", response_model=VisionResponse)
 async def get_vision(vision_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load one vision."""
     vision = await vision_services.get_vision(session, vision_id=vision_id)
@@ -73,7 +80,7 @@ async def get_vision(vision_id: UUID, session: SessionDep) -> dict[str, object]:
     return _vision_payload(vision)
 
 
-@router.post("/")
+@router.post("/", response_model=VisionWithTasksResponse)
 async def create_vision(
     payload: VisionCreate,
     session: SessionDep,
@@ -94,7 +101,7 @@ async def create_vision(
     return _vision_payload(vision, include_tasks=True)
 
 
-@router.patch("/{vision_id}")
+@router.patch("/{vision_id}", response_model=VisionResponse)
 async def update_vision(
     vision_id: UUID,
     payload: VisionUpdate,
@@ -142,7 +149,7 @@ async def delete_vision(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.get("/{vision_id}/with-tasks")
+@router.get("/{vision_id}/with-tasks", response_model=VisionResponse)
 async def get_vision_with_tasks(vision_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load a vision with active tasks."""
     try:
@@ -152,7 +159,7 @@ async def get_vision_with_tasks(vision_id: UUID, session: SessionDep) -> dict[st
     return _vision_payload(vision)
 
 
-@router.get("/{vision_id}/stats")
+@router.get("/{vision_id}/stats", response_model=VisionStatsResponse)
 async def get_vision_stats(vision_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load vision task stats."""
     try:
@@ -162,7 +169,7 @@ async def get_vision_stats(vision_id: UUID, session: SessionDep) -> dict[str, ob
     return to_jsonable_dict(stats)
 
 
-@router.post("/{vision_id}/add-experience")
+@router.post("/{vision_id}/add-experience", response_model=VisionResponse)
 async def add_experience(
     vision_id: UUID,
     payload: dict[str, int],
@@ -180,7 +187,7 @@ async def add_experience(
     return _vision_payload(vision)
 
 
-@router.post("/{vision_id}/recompute-efforts")
+@router.post("/{vision_id}/recompute-efforts", response_model=VisionRecomputeResponse)
 async def recompute_vision_efforts(vision_id: UUID, session: SessionDep) -> dict[str, object]:
     """Recompute task effort totals and derived experience for one vision."""
     try:
@@ -196,7 +203,7 @@ async def recompute_vision_efforts(vision_id: UUID, session: SessionDep) -> dict
     }
 
 
-@router.post("/{vision_id}/sync-experience")
+@router.post("/{vision_id}/sync-experience", response_model=VisionResponse)
 async def sync_vision_experience(vision_id: UUID, session: SessionDep) -> dict[str, object]:
     """Synchronize one vision's experience from current root task effort totals."""
     try:
@@ -206,7 +213,7 @@ async def sync_vision_experience(vision_id: UUID, session: SessionDep) -> dict[s
     return _vision_payload(vision)
 
 
-@router.post("/{vision_id}/harvest")
+@router.post("/{vision_id}/harvest", response_model=VisionResponse)
 async def harvest_vision(vision_id: UUID, session: SessionDep) -> dict[str, object]:
     """Harvest one vision when the underlying LifeOS rules allow it."""
     try:
