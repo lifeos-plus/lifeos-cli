@@ -926,10 +926,10 @@
       "install_optional_web_dependencies": "Install the optional Web dependencies with `lifeos-cli[web]`. If your configured database is PostgreSQL, install both extras with `lifeos-cli[web,postgres]`.",
       "run_local_lifeos_web_service": "Run the local LifeOS Web service against the database configured by `lifeos init` and `lifeos config`.",
       "run_optional_local_web_api": "Run the optional local Web API.",
-      "serve_built_frontend_directory": "Serve a built frontend directory such as web/dist.",
+      "serve_built_frontend_directory": "Serve a built frontend directory, for example a lifeos-web `dist/` build.",
       "serve_local_web_api": "Serve the local Web API, optionally with built frontend assets.",
       "start_fastapi_server_bound_to_localhost": "Start a FastAPI server bound to localhost by default.",
-      "use_vite_during_frontend_development": "Use `web/` with Vite during frontend development. Pass `--static-dir web/dist` to serve a built checkout UI. With uv and a PostgreSQL database, run with `--extra web --extra postgres`."
+      "use_vite_during_frontend_development": "Use `lifeos-web` with Vite during frontend development. Pass `--static-dir <lifeos-web>/dist` to serve a built UI. With uv and a PostgreSQL database, run with `--extra web --extra postgres`."
     },
     "init_commands": {
       "configuration_is_written_to_config_lifeos_config_toml_by_default": "Configuration is written to ~/.lifeos/config.toml by default.",

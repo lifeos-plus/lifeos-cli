@@ -13,7 +13,7 @@
 
 `lifeos-cli` is a terminal-native, local-first LifeOS for quantified-self workflows. It gives one structured system for intentions, plans, execution, relationships, money, reflection, and measured reality.
 
-The product surface is already broad and deep: a typed Python CLI as the primary interface, SQLite and PostgreSQL backends, Alembic migrations, a local FastAPI service, and a first-party React Web UI for human browser workflows over the same configured LifeOS database. The CLI is designed to be both human-usable and agent-friendly, with stable command grammar, help-first documentation, identifier-driven flows, and predictable text output.
+The product surface is already broad and deep: a typed Python CLI as the primary interface, SQLite and PostgreSQL backends, Alembic migrations, a local FastAPI service, and a first-party React Web UI (in the separate `lifeos-web` repository) for human browser workflows over the same configured LifeOS database. The CLI is designed to be both human-usable and agent-friendly, with stable command grammar, help-first documentation, identifier-driven flows, and predictable text output.
 
 ## Why It Exists
 
@@ -53,7 +53,7 @@ The implemented system covers the main quantified-self loop from planning to evi
 | Data portability | Canonical JSON/JSONL export/import, full bundle backup/restore, dry-run validation, row-level errors, and machine-oriented batch update/delete. |
 | Configuration | Persistent database and preference configuration, including timezone, language, day boundary, week boundary, theme, and default vision experience rate. |
 | Local Web API | FastAPI routers for health, tasks, visions, habits, notes, timelogs, timelog templates, people, areas, finance, planned events, stats, tags, and preferences. |
-| Web UI | A first-party Vite/React workspace for visions, habits, planning, timelog, finance, insights/stats, schedule/calendar, notes, people, and settings. |
+| Web UI | A first-party Vite/React workspace in `lifeos-plus/lifeos-web` for visions, habits, planning, timelog, finance, insights/stats, schedule/calendar, notes, people, and settings. |
 
 ## Interfaces
 
@@ -73,7 +73,7 @@ lifeos <resource> <action> [arguments] [options]
 
 This shape is intentionally friendly to both humans and agents. Humans get explicit, discoverable commands; agents get deterministic help, stable identifiers, compact tabular list output, and labeled detail output.
 
-The local Web UI is the human browser interface for the same LifeOS data. It is first-party and intentionally local: the Web API and UI use the same configured database as the CLI and are not a separate hosted service.
+The local Web UI is the human browser interface for the same LifeOS data. It is first-party and intentionally local; it lives in the separate `lifeos-web` repository and talks to the Web API over the generated OpenAPI contract.
 
 ## Getting Started
 
@@ -89,7 +89,7 @@ Install PostgreSQL support only when you need it:
 uv tool install --upgrade "lifeos-cli[postgres]"
 ```
 
-Install the optional local Web API and Web UI runtime dependencies when you want human browser access or HTTP access backed by the same configured LifeOS database:
+Install the optional local Web API runtime dependencies when you want browser or HTTP access backed by the same configured LifeOS database:
 
 ```bash
 uv tool install --upgrade "lifeos-cli[web]"
@@ -138,16 +138,22 @@ For complete CLI usage, workflows, and output conventions, see [docs/cli.md](doc
 
 ## Local Web UI
 
-Start the local Web API server for browser access:
+The first-party React Web UI lives in the separate
+[`lifeos-web`](https://github.com/lifeos-plus/lifeos-web) repository and talks
+to this project's Web API over the generated OpenAPI contract. This repository
+keeps the Web API and the `web serve` command.
+
+Start the local Web API server for browser or HTTP access:
 
 ```bash
 lifeos web serve
 ```
 
-`lifeos web serve` does not install, build, or bundle the frontend workspace from PyPI. To serve the human Web UI from the same process in a source checkout, build `web/` and pass its output directory explicitly:
+`lifeos web serve` does not install, build, or bundle the frontend from PyPI.
+Build the frontend from `lifeos-web` and pass its output directory explicitly:
 
 ```bash
-lifeos web serve --static-dir web/dist
+lifeos web serve --static-dir <path-to>/lifeos-web/dist
 ```
 
 If your configured database URL uses PostgreSQL, install or run with both optional extras:
@@ -157,15 +163,18 @@ uv tool install --upgrade "lifeos-cli[web,postgres]"
 uv run --extra web --extra postgres lifeos web serve
 ```
 
-During frontend development, run the human-facing Vite app in `web/` and proxy API requests to the local Web API:
+During frontend development, run the Vite app in `lifeos-web` and proxy API requests to the local Web API:
 
 ```bash
-cd web
-npm install
+git clone https://github.com/lifeos-plus/lifeos-web
+cd lifeos-web
+npm ci
 npm run dev
 ```
 
-See [web/README.md](web/README.md) for frontend workspace details.
+See the [`lifeos-web` README](https://github.com/lifeos-plus/lifeos-web) and
+[docs/frontend-split-plan.md](docs/frontend-split-plan.md) for the frontend
+workspace and cross-repo contract policy.
 
 ## Agent Use
 
@@ -195,7 +204,7 @@ uv run python scripts/audit_cli_help.py
 
 ## Dependency Maintenance
 
-Routine backend and frontend dependency version updates are checked weekly and grouped by workspace. Only semver minor version updates are included in routine automation; patch updates are intentionally excluded and major migrations remain explicit maintenance tasks. Security updates are handled independently. Pull request validation audits every locked Python extra and rejects high- or critical-severity frontend findings, while the weekly frontend audit attempts non-force lockfile remediation without using `npm audit fix --force`.
+Routine backend dependency version updates are checked weekly. Only semver minor version updates are included in routine automation; patch updates are intentionally excluded and major migrations remain explicit maintenance tasks. Security updates are handled independently. Pull request validation audits every locked Python extra and rejects known vulnerabilities. Frontend dependency maintenance moved to the `lifeos-web` repository.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the dependency maintenance commands and workflow boundaries.
 

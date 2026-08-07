@@ -4,26 +4,18 @@ from typing import Any, cast
 
 import yaml  # type: ignore[import-untyped]
 
-from lifeos_cli.config import SUPPORTED_THEMES
-
 GITIGNORE_TEXT = Path(".gitignore").read_text()
 DEPENDABOT_CONFIG = yaml.safe_load(Path(".github/dependabot.yml").read_text())
 DOCTOR_TEXT = Path("scripts/doctor.sh").read_text()
 DEAD_CODE_CHECK_TEXT = Path("scripts/dead_code_check.sh").read_text()
 DEPENDENCY_HEALTH_TEXT = Path("scripts/dependency_health.sh").read_text()
-WEB_DEPENDENCY_HEALTH_TEXT = Path("scripts/web_dependency_health.sh").read_text()
-WEB_VALIDATE_TEXT = Path("scripts/web_validate.sh").read_text()
 PRE_COMMIT_CONFIG = yaml.safe_load(Path(".pre-commit-config.yaml").read_text())
 DEPENDENCY_REVIEW_WORKFLOW = yaml.safe_load(
     Path(".github/workflows/dependency-review.yml").read_text()
 )
-FRONTEND_DEPENDENCY_AUDIT_WORKFLOW = yaml.safe_load(
-    Path(".github/workflows/frontend-dependency-audit.yml").read_text()
-)
 VALIDATE_WORKFLOW = yaml.safe_load(Path(".github/workflows/validate.yml").read_text())
 VULTURE_WHITELIST_TEXT = Path("scripts/vulture_whitelist.py").read_text()
 LOAD_LOCAL_ENV_TEXT = Path("scripts/load_local_env.sh").read_text()
-WEB_THEME_CATALOG = json.loads(Path("web/src/config/themeCatalog.json").read_text())
 
 
 def _non_comment_shell_lines(text: str) -> list[str]:
@@ -55,25 +47,17 @@ def _flatten_json_catalog_keys(catalog: dict[str, Any]) -> dict[str, str]:
     return flattened
 
 
-def _extract_frontend_available_themes() -> tuple[str, ...]:
-    themes = WEB_THEME_CATALOG["themes"]
-    assert isinstance(themes, dict)
-    return ("system", *themes.keys())
-
-
 DOCTOR_COMMANDS = _non_comment_shell_lines(DOCTOR_TEXT)
 DEPENDENCY_HEALTH_COMMANDS = _non_comment_shell_lines(DEPENDENCY_HEALTH_TEXT)
-WEB_DEPENDENCY_HEALTH_COMMANDS = _non_comment_shell_lines(WEB_DEPENDENCY_HEALTH_TEXT)
-WEB_VALIDATE_COMMANDS = _non_comment_shell_lines(WEB_VALIDATE_TEXT)
 QUALITY_GATE_STEPS = _workflow_job_steps(VALIDATE_WORKFLOW, "quality-gate")
 INTEGRATION_JOB_STEPS = _workflow_job_steps(VALIDATE_WORKFLOW, "integration-postgres")
 
 
-def test_dependabot_configuration_keeps_backend_and_frontend_updates_separate() -> None:
+def test_dependabot_configuration_keeps_backend_updates_limited() -> None:
     updates = DEPENDABOT_CONFIG["updates"]
     assert isinstance(updates, list)
     entries = {entry["package-ecosystem"]: entry for entry in updates}
-    assert set(entries) == {"uv", "npm"}
+    assert set(entries) == {"uv"}
 
     uv_entry = entries["uv"]
     assert uv_entry["directory"] == "/"
@@ -91,39 +75,6 @@ def test_dependabot_configuration_keeps_backend_and_frontend_updates_separate() 
     assert uv_entry["groups"]["uv-all-updates"]["applies-to"] == "version-updates"
     assert uv_entry["groups"]["uv-all-updates"]["update-types"] == ["minor"]
     assert uv_entry["groups"]["uv-all-updates"]["patterns"] == ["*"]
-
-    npm_entry = entries["npm"]
-    assert npm_entry["directory"] == "/web"
-    assert npm_entry["schedule"]["interval"] == "weekly"
-    assert npm_entry["open-pull-requests-limit"] == 2
-    assert npm_entry["allow"] == [
-        {
-            "dependency-type": "production",
-            "update-types": [
-                "version-update:semver-minor",
-            ],
-        },
-        {
-            "dependency-type": "development",
-            "update-types": [
-                "version-update:semver-minor",
-            ],
-        },
-    ]
-    assert npm_entry["commit-message"]["prefix"] == "deps(web)"
-    assert npm_entry["labels"] == ["frontend", "dependencies"]
-    assert npm_entry["groups"]["web-runtime"]["applies-to"] == "version-updates"
-    assert npm_entry["groups"]["web-runtime"]["dependency-type"] == "production"
-    assert npm_entry["groups"]["web-runtime"]["update-types"] == ["minor"]
-    assert npm_entry["groups"]["web-runtime"]["patterns"] == ["*"]
-    assert npm_entry["groups"]["web-tooling"]["applies-to"] == "version-updates"
-    assert npm_entry["groups"]["web-tooling"]["dependency-type"] == "development"
-    assert npm_entry["groups"]["web-tooling"]["update-types"] == ["minor"]
-    assert npm_entry["groups"]["web-tooling"]["patterns"] == ["*"]
-
-
-def test_backend_theme_preferences_match_frontend_theme_options() -> None:
-    assert SUPPORTED_THEMES == _extract_frontend_available_themes()
 
 
 def test_dependency_scripts_keep_separate_scopes() -> None:
@@ -147,69 +98,15 @@ def test_dependency_scripts_keep_separate_scopes() -> None:
     assert any("uv pip list --outdated" in line for line in DEPENDENCY_HEALTH_COMMANDS)
     assert any("uv run pip-audit" in line for line in DEPENDENCY_HEALTH_COMMANDS)
     assert not any("uv run pytest" in line for line in DEPENDENCY_HEALTH_COMMANDS)
-    assert any("npm ci" in line for line in WEB_DEPENDENCY_HEALTH_COMMANDS)
-    assert any("npm outdated --long || true" in line for line in WEB_DEPENDENCY_HEALTH_COMMANDS)
-    assert any("npm audit --audit-level=low" in line for line in WEB_DEPENDENCY_HEALTH_COMMANDS)
-    assert not any("uv " in line for line in WEB_DEPENDENCY_HEALTH_COMMANDS)
-    assert any("npm ci" in line for line in WEB_VALIDATE_COMMANDS)
-    assert any("npm audit --audit-level=high" in line for line in WEB_VALIDATE_COMMANDS)
 
 
-def test_dependency_review_workflow_audits_backend_and_frontend_dependencies() -> None:
+def test_dependency_review_workflow_audits_python_dependencies() -> None:
     jobs = DEPENDENCY_REVIEW_WORKFLOW["jobs"]
-    assert set(jobs) == {"python-dependency-health", "web-dependency-health"}
+    assert set(jobs) == {"python-dependency-health"}
 
     python_steps = _workflow_job_steps(DEPENDENCY_REVIEW_WORKFLOW, "python-dependency-health")
     python_run_steps = [step["run"] for step in python_steps if "run" in step]
     assert "bash ./scripts/dependency_health.sh" in python_run_steps
-
-    web_steps = _workflow_job_steps(DEPENDENCY_REVIEW_WORKFLOW, "web-dependency-health")
-    web_run_steps = [step["run"] for step in web_steps if "run" in step]
-    assert "bash ./scripts/web_dependency_health.sh" in web_run_steps
-    setup_node_step = next(
-        step for step in web_steps if step.get("uses") == "actions/setup-node@v6"
-    )
-    assert setup_node_step["with"]["cache"] == "npm"
-    assert setup_node_step["with"]["cache-dependency-path"] == "web/package-lock.json"
-
-
-def test_frontend_dependency_audit_workflow_creates_non_force_fix_prs() -> None:
-    assert FRONTEND_DEPENDENCY_AUDIT_WORKFLOW["permissions"] == {
-        "contents": "write",
-        "pull-requests": "write",
-    }
-
-    steps = _workflow_job_steps(FRONTEND_DEPENDENCY_AUDIT_WORKFLOW, "frontend-dependency-audit")
-    run_steps = [step["run"] for step in steps if "run" in step]
-    joined_run_steps = "\n".join(run_steps)
-    assert "npm audit --json > /tmp/web-npm-audit.json" in joined_run_steps
-    assert "npm audit fix --package-lock-only" in joined_run_steps
-    assert "npm audit --audit-level=high" in joined_run_steps
-    assert "--force" not in joined_run_steps
-
-    verification_step = next(
-        step
-        for step in steps
-        if step.get("name") == "Verify no high-severity vulnerabilities remain"
-    )
-    assert verification_step["if"] == "always()"
-    assert verification_step["run"] == "npm audit --audit-level=high"
-
-    create_pr_step = next(
-        step for step in steps if step.get("uses") == "peter-evans/create-pull-request@v8"
-    )
-    create_pr_inputs = create_pr_step["with"]
-    assert create_pr_inputs["base"] == "main"
-    assert create_pr_inputs["branch"] == "chore/web-npm-audit-fix"
-    assert create_pr_inputs["draft"] is True
-    assert create_pr_inputs["title"] == "chore(web): apply npm audit fix updates"
-    assert create_pr_inputs["commit-message"] == "chore(web): apply npm audit fix updates"
-    assert "#133" not in create_pr_inputs["body"]
-    assert create_pr_inputs["add-paths"].splitlines() == [
-        "web/package-lock.json",
-        "web/package.json",
-    ]
-    assert "labels" not in create_pr_inputs
 
 
 def test_dead_code_scan_is_part_of_the_default_validation_gate() -> None:

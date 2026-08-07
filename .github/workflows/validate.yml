@@ -31,37 +31,6 @@ jobs:
       - name: Run default validation
         run: bash ./scripts/doctor.sh
 
-  frontend:
-    name: Validate Frontend
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: web/package-lock.json
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: false
-
-      - name: Sync locked web dependencies
-        run: uv sync --extra web --frozen
-
-      - name: Run frontend validation
-        run: bash ./scripts/web_validate.sh
-
   runtime-matrix:
     name: Validate Runtime Matrix (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
