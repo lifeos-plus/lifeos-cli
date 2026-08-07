@@ -89,6 +89,9 @@ jobs:
           print(f"Validated release version: {version}")
           PY
 
+      - name: Export Web API OpenAPI document
+        run: uv run --extra web python scripts/export_web_openapi.py --output /tmp/openapi.json
+
       - name: Publish to PyPI
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_to_pypi }}
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -116,3 +119,9 @@ jobs:
 
             gh release upload "$RELEASE_TAG" "$asset"
           done
+
+          if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fxq "openapi.json"; then
+            echo "Release asset already present: openapi.json"
+          else
+            gh release upload "$RELEASE_TAG" /tmp/openapi.json
+          fi

@@ -926,10 +926,10 @@
       "install_optional_web_dependencies": "使用 `lifeos-cli[web]` 安装可选 Web 依赖。如果已配置数据库是 PostgreSQL，请同时安装 `lifeos-cli[web,postgres]`。",
       "run_local_lifeos_web_service": "基于 `lifeos init` 和 `lifeos config` 配置的数据库运行本地 LifeOS Web 服务。",
       "run_optional_local_web_api": "运行可选的本地 Web API。",
-      "serve_built_frontend_directory": "服务已构建的前端目录，例如 `web/dist`。",
+      "serve_built_frontend_directory": "服务已构建的前端目录，例如 `lifeos-web` 的 `dist/` 构建产物。",
       "serve_local_web_api": "服务本地 Web API，可选挂载已构建的前端资源。",
       "start_fastapi_server_bound_to_localhost": "启动默认绑定到 localhost 的 FastAPI 服务。",
-      "use_vite_during_frontend_development": "前端开发时使用 `web/` 下的 Vite。传入 `--static-dir web/dist` 可以服务已构建的 `checkout UI`。使用 uv 且数据库为 PostgreSQL 时，请搭配 `--extra web --extra postgres` 运行。"
+      "use_vite_during_frontend_development": "前端开发时使用 `lifeos-web` 下的 Vite。传入 `--static-dir <lifeos-web>/dist` 可以服务已构建的 UI。使用 uv 且数据库为 PostgreSQL 时，请搭配 `--extra web --extra postgres` 运行。"
     },
     "init_commands": {
       "configuration_is_written_to_config_lifeos_config_toml_by_default": "默认情况下，配置写入 ~/.lifeos/config.toml。",

@@ -33,13 +33,7 @@ bash ./scripts/doctor.sh
 
 The default validation baseline includes dead-code scanning through `vulture`. It validates locked dependency resolution, runs lint plus the default non-integration test suite, exports the project and all optional extras for `pip-audit`, builds package artifacts, and then calls `bash ./scripts/integration_tests.sh` as the explicit PostgreSQL-backed integration entrypoint. When `LIFEOS_TEST_DATABASE_URL` is unset, the integration script reports an explicit skip and `doctor.sh` finishes with a warning that PostgreSQL CLI coverage did not run.
 
-For frontend changes, including npm dependency updates, also run:
-
-```bash
-bash ./scripts/web_validate.sh
-```
-
-The frontend validation entrypoint installs the locked npm workspace, rejects high- and critical-severity audit findings, builds the Vite app, runs ESLint, and executes the Vitest suite. Use the npm version declared by `web/package.json` when updating `web/package-lock.json`, and prefer `npm ci` for local validation runs that should not rewrite the lockfile.
+The React Web UI lives in the separate [`lifeos-web`](https://github.com/lifeos-plus/lifeos-web) repository. Frontend changes, including npm dependency updates, are validated there with `bash ./scripts/validate.sh`. This repository keeps the Web API and the `lifeos web serve` command.
 
 If you change CI, packaging metadata, or compatibility declarations, also validate the relevant interpreter targets explicitly. Examples:
 
@@ -65,21 +59,17 @@ If you change dependency or release workflows, also run:
 
 ```bash
 bash ./scripts/dependency_health.sh
-bash ./scripts/web_dependency_health.sh
 ```
 
 Dependency maintenance policy:
 
-- `.github/dependabot.yml` checks the root `uv` backend workspace and the `web/` npm frontend workspace weekly.
+- `.github/dependabot.yml` checks the root `uv` backend workspace weekly.
 - Backend dependency updates use the `backend` and `dependencies` labels.
-- Frontend dependency updates use the `frontend` and `dependencies` labels, with runtime and tooling dependency groups kept separate inside the npm workspace.
-- Routine Dependabot version updates allow only semver minor updates for both workspaces. Patch updates are intentionally excluded from routine PRs, and major version migrations are explicit tasks with focused validation coverage.
-- Dependabot security updates remain eligible independently of the routine version-update policy; frontend security remediation is also checked weekly by `.github/workflows/frontend-dependency-audit.yml`.
+- Routine Dependabot version updates allow only semver minor updates. Patch updates are intentionally excluded from routine PRs, and major version migrations are explicit tasks with focused validation coverage.
+- Dependabot security updates remain eligible independently of the routine version-update policy.
 - `bash ./scripts/dependency_health.sh` remains the explicit maintainer audit flow for Python outdated packages and dependency-related health checks.
-- `bash ./scripts/web_dependency_health.sh` remains the explicit maintainer audit flow for frontend outdated packages and dependency-related health checks.
 - `bash ./scripts/doctor.sh` rejects known vulnerabilities in the locked project and every optional Python extra during PR and `main` validation.
-- `bash ./scripts/web_validate.sh` remains the explicit maintainer and CI validation flow for frontend install, high-severity audit enforcement, build, lint, and tests.
-- `.github/workflows/frontend-dependency-audit.yml` runs a weekly frontend audit, opens a draft PR when non-force `npm audit fix --package-lock-only` produces changes for `web/package-lock.json` or `web/package.json`, and fails when high- or critical-severity findings remain afterward.
+- Frontend dependency maintenance and validation are handled by the `lifeos-web` repository.
 - The `open-pull-requests-limit` setting limits concurrent Dependabot version-update PRs; it is not a dependency version ceiling.
 
 Static-analysis governance:

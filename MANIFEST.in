@@ -1,4 +1,3 @@
-# Keep the frontend workspace as a repository subproject, not Python package
-# payload. If built UI assets are ever shipped, stage them under
-# src/lifeos_web/static and include that package data explicitly.
-prune web
+# The frontend workspace lives in the separate lifeos-web repository and is
+# not Python package payload. If built UI assets are ever shipped, stage them
+# under src/lifeos_web/static and include that package data explicitly.
