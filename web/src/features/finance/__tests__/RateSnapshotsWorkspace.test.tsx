@@ -86,13 +86,13 @@ describe("RateSnapshotsWorkspace", () => {
         id: "rate-copy",
         captured_at: payload.captured_at ?? "2026-07-01T12:34:00.000Z",
         source: payload.source ?? "manual",
-        note: payload.note,
-        entries: payload.entries.map((entry, index) => ({
+        note: payload.note ?? null,
+        entries: (payload.entries ?? []).map((entry, index) => ({
           id: `rate-copy-entry-${index}`,
           base_currency: entry.base_currency,
           quote_currency: entry.quote_currency,
-          rate: entry.rate,
-          source: entry.source,
+          rate: String(entry.rate),
+          source: entry.source ?? null,
           captured_at: entry.captured_at ?? null,
         })),
       }),

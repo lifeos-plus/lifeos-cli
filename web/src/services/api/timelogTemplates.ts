@@ -1,57 +1,13 @@
 import type { UUID } from "@/types/primitive";
-import type { PersonSummary } from "./types/common";
-import type { ListResponse } from "@/types/pagination";
 import { http } from "./client";
 import { ENDPOINTS } from "./endpoints";
+import type { components } from "./generated/schema";
 
-export interface TimelogTemplate {
-  id: UUID;
-  title: string;
-  area_id: UUID | null;
-  area_name?: string | null;
-  area_color?: string | null;
-  person_ids: UUID[];
-  people: PersonSummary[];
-  default_duration_minutes?: number | null;
-  position: number;
-  usage_count: number;
-  last_used_at?: string | null;
-  created_at: string;
-}
-
-interface TimelogTemplatesListMeta {
-  order_by?: "position" | "usage" | "recent" | null;
-}
-
-export type TimelogTemplatesListResponse = ListResponse<
-  TimelogTemplate,
-  TimelogTemplatesListMeta
->;
-
-export interface TimelogTemplateCreateRequest {
-  title: string;
-  area_id?: UUID | null;
-  person_ids?: UUID[] | null;
-  default_duration_minutes?: number | null;
-  position?: number | null;
-  usage_count?: number;
-  last_used_at?: string | null;
-}
-
-export interface TimelogTemplateUpdateRequest {
-  title?: string;
-  area_id?: UUID | null;
-  person_ids?: UUID[] | null;
-  default_duration_minutes?: number | null;
-  position?: number | null;
-  usage_count?: number;
-  last_used_at?: string | null;
-}
-
-export interface TimelogTemplateReorderItem {
-  id: UUID;
-  position: number;
-}
+export type TimelogTemplate = components["schemas"]["TimelogTemplateResponse"];
+export type TimelogTemplatesListResponse = components["schemas"]["ListResponse_TimelogTemplateResponse_TimelogTemplateListMeta_"];
+export type TimelogTemplateCreateRequest = components["schemas"]["TimelogTemplateCreate"];
+export type TimelogTemplateUpdateRequest = components["schemas"]["TimelogTemplateUpdate"];
+export type TimelogTemplateReorderItem = components["schemas"]["TimelogTemplateReorderItem"];
 
 export const timelogTemplatesApi = {
   list: (params?: {

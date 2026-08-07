@@ -165,6 +165,7 @@ export function useHabits(filters: UseHabitsFilters = {}): UseHabitsReturn {
     action: HabitAction,
     newStatus: string,
   ) => {
+    if (!action.id) return;
     updateActionMutation.mutate({
       habitId,
       actionId: action.id,
@@ -178,6 +179,7 @@ export function useHabits(filters: UseHabitsFilters = {}): UseHabitsReturn {
     action: HabitAction,
     notes: string,
   ) => {
+    if (!action.id) return;
     updateActionMutation.mutate({
       habitId,
       actionId: action.id,

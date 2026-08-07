@@ -51,3 +51,6 @@ core.*
 .env.local
 .env.*
 !.env.example
+
+# Generated web contract artifacts
+web/openapi.json

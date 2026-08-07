@@ -32,9 +32,29 @@ export interface PlaceholderEntry {
   isPlaceholder: true;
 }
 
-export interface ProcessedEntry extends Omit<Timelog, "id"> {
+export interface ProcessedEntry
+  extends Omit<
+    Timelog,
+    | "deleted_at"
+    | "energy_level"
+    | "id"
+    | "linked_notes_count"
+    | "location"
+    | "notes"
+    | "tags"
+    | "task"
+    | "task_id"
+  > {
   id: UUID | string; // Support both real entries (number) and placeholders (string)
+  deleted_at?: string | null;
+  energy_level?: number | null;
   isPlaceholder?: boolean;
+  linked_notes_count?: number;
+  location?: string | null;
+  notes?: string | null;
+  tags?: Timelog["tags"] | string[] | null;
+  task?: Timelog["task"];
+  task_id?: UUID | null;
   validationResult?: TimeValidationResult;
 }
 

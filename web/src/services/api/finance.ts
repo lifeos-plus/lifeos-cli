@@ -1,203 +1,47 @@
-import type { ListResponse } from "@/types/pagination";
 import type { UUID } from "@/types/primitive";
 import { http } from "./client";
 import { ENDPOINTS } from "./endpoints";
+import type { components } from "./generated/schema";
 
-export interface FinanceAsset {
-  id: UUID;
-  code: string;
-  name?: string | null;
-  decimal_places: number;
-  is_default: boolean;
-}
-
-export interface FinanceTreeNode {
-  id: UUID;
-  parent_id: UUID | null;
-  name: string;
-  currency_code: string | null;
-  path: string;
-  depth: number;
-  display_order: number;
-}
-
-export interface FinanceTree {
-  id: UUID;
-  name: string;
-  primary_currency: string;
-  display_order: number;
-  is_default: boolean;
-  nodes?: FinanceTreeNode[];
-}
-
-interface FinanceSnapshotEntry {
-  id: UUID;
-  node_id: UUID;
-  node_name: string | null;
-  amount: string;
-  currency_code: string;
-  amount_converted: string;
-  note?: string | null;
-  is_auto_generated: boolean;
-}
-
-export interface FinanceSnapshot {
-  id: UUID;
-  tree_id: UUID;
-  tree_name?: string | null;
-  title?: string | null;
-  snapshot_ts: string | null;
-  period_start: string | null;
-  period_end: string | null;
-  primary_currency: string;
-  rate_snapshot_id?: UUID | null;
-  exchange_rates?: Record<string, unknown> | null;
-  summary?: Record<string, unknown> | null;
-  note?: string | null;
-  entries?: FinanceSnapshotEntry[];
-  created_at: string;
-}
-
-interface FinanceRateSnapshotEntry {
-  id: UUID;
-  base_currency: string;
-  quote_currency: string;
-  rate: string;
-  source?: string | null;
-  captured_at?: string | null;
-}
-
-export interface FinanceRateSnapshot {
-  id: UUID;
-  captured_at: string;
-  source: string;
-  note?: string | null;
-  entries?: FinanceRateSnapshotEntry[];
-}
-
-export interface FinanceTreeCreate {
-  name: string;
-  primary_currency?: string;
-  display_order?: number;
-  is_default?: boolean;
-}
-
-export interface FinanceTreeUpdate {
-  name?: string;
-  primary_currency?: string;
-  display_order?: number;
-  is_default?: boolean;
-}
-
-export interface FinanceNodeCreate {
-  name: string;
-  parent_id?: UUID | null;
-  currency_code?: string | null;
-  display_order?: number;
-}
-
-export interface FinanceNodeUpdate {
-  name?: string;
-  currency_code?: string | null;
-  display_order?: number;
-}
-
-export interface FinanceSnapshotEntryCreate {
-  node_id: UUID;
-  amount: string;
-  currency_code?: string | null;
-  note?: string | null;
-}
-
-export interface FinanceSnapshotCreate {
-  title?: string | null;
-  snapshot_ts?: string | null;
-  period_start?: string | null;
-  period_end?: string | null;
-  primary_currency?: string | null;
-  rate_snapshot_id?: UUID | null;
-  note?: string | null;
-  entries: FinanceSnapshotEntryCreate[];
-}
-
-export interface FinanceSnapshotUpdate {
-  title?: string | null;
-  snapshot_ts?: string | null;
-  period_start?: string | null;
-  period_end?: string | null;
-  primary_currency?: string | null;
-  rate_snapshot_id?: UUID | null;
-  note?: string | null;
-  entries?: FinanceSnapshotEntryCreate[];
-}
-
-interface FinanceRateSnapshotEntryCreate {
-  base_currency: string;
-  quote_currency: string;
-  rate: string;
-  source?: string | null;
-  captured_at?: string | null;
-  is_derived?: boolean;
-  metadata?: Record<string, unknown> | null;
-}
-
-export interface FinanceRateSnapshotCreate {
-  captured_at?: string | null;
-  source?: string | null;
-  note?: string | null;
-  metadata?: Record<string, unknown> | null;
-  entries: FinanceRateSnapshotEntryCreate[];
-}
-
-export interface FinanceRateSnapshotUpdate {
-  captured_at?: string | null;
-  source?: string | null;
-  note?: string | null;
-  metadata?: Record<string, unknown> | null;
-  entries?: FinanceRateSnapshotEntryCreate[];
-}
-
-type EmptyFinanceListMeta = Record<string, never>;
-
-export type FinanceTreeListResponse = ListResponse<
-  FinanceTree,
-  EmptyFinanceListMeta
->;
-export type FinanceAssetListResponse = ListResponse<
-  FinanceAsset,
-  EmptyFinanceListMeta
->;
-export type FinanceSnapshotListResponse = ListResponse<
-  FinanceSnapshot,
-  { tree_id?: UUID | null }
->;
-export type FinanceRateSnapshotListResponse = ListResponse<
-  FinanceRateSnapshot,
-  EmptyFinanceListMeta
->;
+type FinanceAssetTransport = components["schemas"]["FinanceAssetResponse"];
+export type FinanceAsset = Omit<FinanceAssetTransport, "name"> & {
+  name?: FinanceAssetTransport["name"];
+};
+export type FinanceTreeNode = components["schemas"]["FinanceNodeResponse"];
+export type FinanceTree = components["schemas"]["FinanceTreeResponse"];
+export type FinanceSnapshot = components["schemas"]["FinanceSnapshotResponse"];
+export type FinanceRateSnapshot = components["schemas"]["FinanceRateSnapshotResponse"];
+export type FinanceTreeCreate = components["schemas"]["FinanceTreeCreate"];
+export type FinanceTreeUpdate = components["schemas"]["FinanceTreeUpdate"];
+export type FinanceNodeCreate = components["schemas"]["FinanceNodeCreate"];
+export type FinanceNodeUpdate = components["schemas"]["FinanceNodeUpdate"];
+export type FinanceSnapshotEntryCreate = components["schemas"]["FinanceSnapshotEntryCreate"];
+export type FinanceSnapshotCreate = components["schemas"]["FinanceSnapshotCreate"];
+export type FinanceSnapshotUpdate = components["schemas"]["FinanceSnapshotUpdate"];
+export type FinanceRateSnapshotCreate = components["schemas"]["FinanceRateSnapshotCreate"];
+export type FinanceRateSnapshotUpdate = components["schemas"]["FinanceRateSnapshotUpdate"];
+export type FinanceTreeListResponse = components["schemas"]["ListResponse_FinanceTreeResponse_EmptyMeta_"];
+type FinanceAssetListTransport = components["schemas"]["ListResponse_FinanceAssetResponse_EmptyMeta_"];
+export type FinanceAssetListResponse = Omit<FinanceAssetListTransport, "items"> & {
+  items: FinanceAsset[];
+};
+export type FinanceSnapshotListResponse =
+  | components["schemas"]["ListResponse_FinanceSnapshotResponse_EmptyMeta_"]
+  | components["schemas"]["ListResponse_FinanceSnapshotResponse_FinanceTreeSnapshotMeta_"];
+export type FinanceRateSnapshotListResponse = components["schemas"]["ListResponse_FinanceRateSnapshotResponse_EmptyMeta_"];
 
 export const financeApi = {
   listAssets: (params: { page?: number; size?: number } = {}) =>
-    http.get<FinanceAssetListResponse>(ENDPOINTS.FINANCE.ASSETS, {
+    http.get<FinanceAssetListTransport>(ENDPOINTS.FINANCE.ASSETS, {
       page: params.page ?? 1,
       size: params.size ?? 200,
     }),
-  createAsset: (payload: {
-    code: string;
-    name?: string | null;
-    decimal_places?: number;
-    display_order?: number;
-    is_default?: boolean;
-  }) => http.post<FinanceAsset>(ENDPOINTS.FINANCE.ASSETS, payload),
+  createAsset: (payload: components["schemas"]["FinanceAssetCreate"]) =>
+    http.post<FinanceAssetTransport>(ENDPOINTS.FINANCE.ASSETS, payload),
   updateAsset: (
     assetId: UUID,
-    payload: {
-      code?: string;
-      name?: string | null;
-      decimal_places?: number;
-      display_order?: number;
-    },
-  ) => http.patch<FinanceAsset>(ENDPOINTS.FINANCE.ASSET_BY_ID(assetId), payload),
+    payload: components["schemas"]["FinanceAssetUpdate"],
+  ) => http.patch<FinanceAssetTransport>(ENDPOINTS.FINANCE.ASSET_BY_ID(assetId), payload),
   deleteAsset: (assetId: UUID) =>
     http.delete<void>(ENDPOINTS.FINANCE.ASSET_BY_ID(assetId)),
   listTrees: (

@@ -58,3 +58,26 @@ cd web
 npm ci
 npm run build
 ```
+
+## Generated API Types
+
+The FastAPI OpenAPI document is the source of truth for transport request and response types in
+`src/services/api/`. Regenerate the committed schema and TypeScript definitions after changing an
+API route, request model, or response model:
+
+```bash
+cd web
+npm run api:generate
+```
+
+Generation imports the local FastAPI app directly. It does not require a running server, a database,
+or developer-specific configuration. Commit `src/services/api/generated/schema.ts`; do not edit
+`openapi.json` or `schema.ts` manually. `web/openapi.json` is a generated intermediate artifact and
+is not tracked in version control — run `npm run api:generate` locally to refresh it for inspection.
+
+`npm run api:check` regenerates the contract and fails if the committed `schema.ts` was stale.
+`bash ./scripts/web_validate.sh` runs this drift check before the frontend build, lint, and tests.
+
+Frontend-only query filters, form drafts, cache projections, and aggregate view models may be
+derived with `Pick`, `Omit`, intersections, or explicit adapters. Types passed to and returned from
+the HTTP boundary must come from the generated OpenAPI contract.

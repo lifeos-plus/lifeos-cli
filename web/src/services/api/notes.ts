@@ -1,124 +1,44 @@
 import { http } from "./client";
 import { ENDPOINTS } from "./endpoints";
+import type { components } from "./generated/schema";
 import type { PersonSummary } from "./types/common";
 import { tagsApi, type Tag } from "./tags";
 import type { UUID } from "@/types/primitive";
-import type { ListResponse } from "@/types/pagination";
 
-export interface Note {
-  id: UUID;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  people?: PersonSummary[];
-  tags?: Tag[];
-  task?: TaskSummary | null;
-  tasks?: TaskSummary[];
-  timelogs?: NoteTimelogSummary[];
-  habit_actions?: NoteHabitActionSummary[];
-  ingest_job?: NoteIngestJobSummary | null;
-}
-
-interface NoteVisionSummary {
-  id: UUID;
-  name: string;
-  status?: string | null;
-  area_id?: UUID | null;
-}
-
-interface TaskParentSummary {
-  id: UUID;
-  content: string;
-  status?: string | null;
-}
-
-export interface TaskSummary {
-  id: UUID;
-  content: string;
-  status: string;
-  vision_id: UUID;
-  parent_task_id?: UUID | null;
-  priority?: number | null;
-  estimated_effort?: number | null;
-  notes_count?: number;
-  timelogs_count?: number;
+type NoteTransport = components["schemas"]["NoteResponse"];
+type TaskSummaryTransport = components["schemas"]["TaskSummaryResponse"];
+type TimelogSummaryTransport = components["schemas"]["TimelogSummaryResponse"];
+export type TaskSummary = TaskSummaryTransport & {
   actual_effort_total?: number | null;
   actual_effort_self?: number | null;
-  planning_cycle_type?: string | null;
-  planning_cycle_start_date?: string | null;
   created_at?: string;
+  estimated_effort?: number | null;
+  notes_count?: number;
+  parent_summary?: { id: UUID; content: string; status?: string | null } | null;
+  priority?: number | null;
+  timelogs_count?: number;
   updated_at?: string;
-  vision_summary?: NoteVisionSummary | null;
-  parent_summary?: TaskParentSummary | null;
-}
-
-export interface NoteTimelogSummary {
-  id: UUID;
-  title?: string | null;
-  start_time?: string | null;
-  end_time?: string | null;
+  vision_summary?: { id: UUID; name: string; status?: string | null } | null;
+};
+export type NoteTimelogSummary = TimelogSummaryTransport & {
   area_id?: UUID | null;
-  area_summary?: NoteTimelogAreaSummary | null;
-  task_summary?: NoteTimelogTaskSummary | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
-export interface NoteHabitActionSummary {
-  id: UUID;
-  habit_id: UUID;
-  habit_title?: string | null;
-  action_date: string;
-  status: string;
-}
-
-export interface NoteIngestJobSummary {
-  id: UUID;
-  status: string;
-  retry_count: number;
-  error?: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface NoteTimelogAreaSummary {
-  id: UUID;
-  name?: string | null;
-  color?: string | null;
-}
-
-interface NoteTimelogTaskSummary {
-  id: UUID;
-  content: string;
-  status?: string | null;
-  vision_id?: UUID | null;
-  vision_summary?: NoteVisionSummary | null;
-}
-
-export interface NoteSummary {
-  id: UUID;
-  content: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface NoteCreate {
-  content: string;
-  person_ids?: UUID[];
-  tag_ids?: UUID[];
-  task_id?: UUID | null;
-  timelog_ids?: UUID[];
-  habit_action_ids?: UUID[];
-}
-
-export interface NoteUpdate {
-  content?: string;
-  person_ids?: UUID[];
-  tag_ids?: UUID[];
-  task_id?: UUID | null;
-  timelog_ids?: UUID[];
-  habit_action_ids?: UUID[];
-}
+  area_summary?: { id: UUID; name?: string | null; color?: string | null } | null;
+  end_time?: string | null;
+  start_time?: string | null;
+  task_summary?: TaskSummary | null;
+};
+export type NoteHabitActionSummary = components["schemas"]["HabitActionSummaryResponse"];
+export type Note = Pick<NoteTransport, "content" | "created_at" | "id" | "updated_at"> &
+  Partial<Omit<NoteTransport, "content" | "created_at" | "id" | "people" | "tags" | "task" | "tasks" | "timelogs" | "updated_at">> & {
+    people?: PersonSummary[];
+    tags?: Tag[];
+    task?: TaskSummary | null;
+    tasks?: TaskSummary[];
+    timelogs?: NoteTimelogSummary[];
+  };
+export type NoteSummary = Pick<Note, "id" | "content" | "created_at" | "updated_at">;
+export type NoteCreate = components["schemas"]["NoteCreate"];
+export type NoteUpdate = components["schemas"]["NoteUpdate"];
 
 // New interfaces for statistics and filtering
 export interface NoteStats {
@@ -136,10 +56,7 @@ export interface NoteStats {
   }>;
 }
 
-interface NotePersonStatsResponse {
-  person_stats: NoteStats["person_stats"];
-  total_persons: number;
-}
+type NotePersonStatsResponse = components["schemas"]["NotePersonStatsResponse"];
 
 export type NoteTagFilterMode = "any" | "all" | "none";
 export type NotePersonFilterMode = "any" | "all" | "none";
@@ -229,31 +146,20 @@ interface NoteBulkCreateResponsePayload {
   failed_count: number;
 }
 
-interface NoteListMeta {
-  tag_id?: UUID | null;
-  person_id?: UUID | null;
-  task_id?: UUID | null;
-  timelog_id?: UUID | null;
-  habit_action_id?: UUID | null;
-  keyword?: string | null;
-  untagged?: boolean | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  tag_ids?: UUID[] | null;
-  tag_mode?: "any" | "all" | "none" | null;
-  person_ids?: UUID[] | null;
-  person_mode?: "any" | "all" | "none" | null;
-  task_filter?: "any" | "none" | "specific" | "has" | null;
-  sort_order?: "asc" | "desc" | null;
-}
+type NoteListTransport = components["schemas"]["ListResponse_NoteResponse_NoteListMeta_"];
+export type NoteListResponse = Omit<NoteListTransport, "items"> & { items: Note[] };
 
-export type NoteListResponse = ListResponse<Note, NoteListMeta>;
+const toNote = (note: NoteTransport): Note => note;
+const toNoteList = (response: NoteListTransport): NoteListResponse => ({
+  ...response,
+  items: response.items.map(toNote),
+});
 
 export const notesApi = {
   create: (noteData: NoteCreate) =>
-    http.post<Note>(ENDPOINTS.NOTES.BASE, noteData),
+    http.post<NoteTransport>(ENDPOINTS.NOTES.BASE, noteData).then(toNote),
 
-  fetchAll: () => http.get<NoteListResponse>(ENDPOINTS.NOTES.BASE),
+  fetchAll: () => http.get<NoteListTransport>(ENDPOINTS.NOTES.BASE).then(toNoteList),
 
   fetchPaged: (
     params: {
@@ -287,9 +193,9 @@ export const notesApi = {
     const queryString = searchParams.toString();
     const url = `${ENDPOINTS.NOTES.BASE}${queryString ? `?${queryString}` : ""}`;
 
-    return http.get<NoteListResponse>(url, undefined, {
-      signal: options?.signal,
-    });
+    return http
+      .get<NoteListTransport>(url, undefined, { signal: options?.signal })
+      .then(toNoteList);
   },
 
   // New method to get statistics (aggregated from split endpoints)
@@ -303,7 +209,7 @@ export const notesApi = {
       total_notes: notes.pagination.total,
       tag_stats: tagUsage.tag_stats.map((tagStat) => ({
         id: tagStat.id,
-        name: tagStat.name ?? "",
+        name: "",
         usage_count: tagStat.usage_count,
       })),
       person_stats: personUsage.person_stats,
@@ -311,7 +217,7 @@ export const notesApi = {
   },
 
   update: (noteId: UUID, noteData: NoteUpdate) =>
-    http.patch<Note>(ENDPOINTS.NOTES.BY_ID(noteId), noteData),
+    http.patch<NoteTransport>(ENDPOINTS.NOTES.BY_ID(noteId), noteData).then(toNote),
 
   delete: async (noteId: UUID): Promise<void> => {
     try {
@@ -332,13 +238,6 @@ export const notesApi = {
       throw err as Error;
     }
   },
-
-  // Tag management methods
-  addTag: (noteId: UUID, tagId: UUID) =>
-    http.post<Note>(ENDPOINTS.NOTES.TAG_BY_ID(noteId, tagId)),
-
-  removeTag: (noteId: UUID, tagId: UUID) =>
-    http.delete<Note>(ENDPOINTS.NOTES.TAG_BY_ID(noteId, tagId)),
 
   advancedSearch: (payload: NoteAdvancedSearchPayload) =>
     notesApi.fetchPaged({
@@ -395,7 +294,5 @@ export const notesApi = {
         created_count: createdNotes.length,
         failed_count: failedItems.length,
       } satisfies NoteBulkCreateResponsePayload;
-    }),
-  getIngestJob: (jobId: UUID) =>
-    http.get<NoteIngestJobSummary>(ENDPOINTS.NOTES.INGEST_JOB(jobId)),
+  }),
 };

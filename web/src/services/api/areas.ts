@@ -1,40 +1,16 @@
 import type { UUID } from "@/types/primitive";
-import type { ListResponse } from "@/types/pagination";
 import { http } from "./client";
 import { ENDPOINTS } from "./endpoints";
+import type { components, operations } from "./generated/schema";
 
-export interface Area {
-  id: UUID;
-  name: string;
-  description?: string;
-  color?: string;
-  icon?: string;
-  is_active: boolean;
-  display_order?: number;
-}
-
-export interface AreaCreate {
-  name: string;
-  description?: string;
-  color?: string;
-  icon?: string;
-  display_order?: number;
-}
-
-export interface AreaUpdate {
-  name?: string;
-  description?: string;
-  color?: string;
-  icon?: string;
-  display_order?: number;
-  is_active?: boolean;
-}
-
-interface AreaListMeta {
-  include_inactive?: boolean | null;
-}
-
-export type AreaListResponse = ListResponse<Area, AreaListMeta>;
+type AreaTransport = components["schemas"]["AreaResponse"];
+export type Area = Pick<AreaTransport, "color" | "id" | "is_active" | "name"> &
+  Partial<Omit<AreaTransport, "color" | "id" | "is_active" | "name">>;
+export type AreaCreate = components["schemas"]["AreaCreate"];
+export type AreaUpdate = components["schemas"]["AreaUpdate"];
+type AreaListTransport = components["schemas"]["ListResponse_AreaResponse_AreaListMeta_"];
+export type AreaListResponse = Omit<AreaListTransport, "items"> & { items: Area[] };
+type AreaOrderResponse = operations["get_area_order_api_v1_areas_order_get"]["responses"][200]["content"]["application/json"];
 
 export const areasApi = {
   async getAreas(
@@ -42,27 +18,27 @@ export const areasApi = {
     page: number = 1,
     size: number = 100,
   ): Promise<AreaListResponse> {
-    return http.get<AreaListResponse>(ENDPOINTS.AREAS.BASE, {
+    return http.get<AreaListTransport>(ENDPOINTS.AREAS.BASE, {
       include_inactive: includeInactive,
       page,
       size,
     });
   },
   getArea: (id: UUID): Promise<Area> =>
-    http.get<Area>(ENDPOINTS.AREAS.BY_ID(id)),
+    http.get<AreaTransport>(ENDPOINTS.AREAS.BY_ID(id)),
   createArea: (area: AreaCreate): Promise<Area> =>
-    http.post<Area>(ENDPOINTS.AREAS.BASE, area),
+    http.post<AreaTransport>(ENDPOINTS.AREAS.BASE, area),
   updateArea: (
     id: UUID,
     area: AreaUpdate,
   ): Promise<Area> =>
-    http.patch<Area>(ENDPOINTS.AREAS.BY_ID(id), area),
+    http.patch<AreaTransport>(ENDPOINTS.AREAS.BY_ID(id), area),
   deleteArea: (id: UUID): Promise<void> =>
     http.delete<void>(ENDPOINTS.AREAS.BY_ID(id)),
   activateArea: (id: UUID): Promise<Area> =>
-    http.post<Area>(ENDPOINTS.AREAS.ACTIVATE(id)),
-  getOrder: async (): Promise<UUID[]> =>
-    http.get<UUID[]>(ENDPOINTS.AREAS.ORDER),
+    http.post<AreaTransport>(ENDPOINTS.AREAS.ACTIVATE(id)),
+  getOrder: async (): Promise<AreaOrderResponse> =>
+    http.get<AreaOrderResponse>(ENDPOINTS.AREAS.ORDER),
   setOrder: async (order: UUID[]): Promise<void> =>
     http.put<void>(ENDPOINTS.AREAS.ORDER, order),
   resetOrder: async (): Promise<void> =>

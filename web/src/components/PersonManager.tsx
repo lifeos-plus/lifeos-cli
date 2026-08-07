@@ -256,12 +256,12 @@ const PersonManager: React.FC<PersonManagerProps> = ({
 
       switch (sortField) {
         case "name":
-          aValue = a.display_name.toLowerCase();
-          bValue = b.display_name.toLowerCase();
+          aValue = (a.display_name ?? a.name ?? "").toLowerCase();
+          bValue = (b.display_name ?? b.name ?? "").toLowerCase();
           break;
         case "nickname":
-          aValue = a.primary_nickname.toLowerCase();
-          bValue = b.primary_nickname.toLowerCase();
+          aValue = (a.primary_nickname ?? a.name ?? "").toLowerCase();
+          bValue = (b.primary_nickname ?? b.name ?? "").toLowerCase();
           break;
         case "location": {
           const aLocation = getLocationTags(a)[0]?.name || a.location || "";

@@ -46,6 +46,19 @@ jobs:
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+
+      - name: Sync locked web dependencies
+        run: uv sync --extra web --frozen
+
       - name: Run frontend validation
         run: bash ./scripts/web_validate.sh
 

@@ -315,8 +315,8 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
 
     const totalEffort = formatDuration(task.actual_effort_total ?? 0);
     const selfEffort = formatDuration(task.actual_effort_self ?? 0);
-    const createdAt = formatDateTime(task.created_at) || noneLabel;
-    const updatedAt = formatDateTime(task.updated_at) || noneLabel;
+    const createdAt = formatDateTime(task.created_at ?? "") || noneLabel;
+    const updatedAt = formatDateTime(task.updated_at ?? "") || noneLabel;
 
     const lines = [
       t("draggableTaskList.tooltip.vision", {
@@ -493,7 +493,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
                       title={t("draggableTaskList.meta.totalEffort")}
                     >
                       <Icon name="timer" size={16} aria-hidden />
-                      {formatDuration(task.actual_effort_total)}
+                      {formatDuration(task.actual_effort_total ?? 0)}
                     </span>
                     {/* Planning cycle information - hide in planning page to save space, and hide in small/medium screens */}
                     {!isPlanningPage && task.planning_cycle_type && (

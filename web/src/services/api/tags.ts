@@ -1,80 +1,29 @@
 import type { UUID } from "@/types/primitive";
-import type { ListResponse } from "@/types/pagination";
 import { http } from "./client";
 import { ENDPOINTS } from "./endpoints";
+import type { components, operations } from "./generated/schema";
 
-export interface Tag {
-  id: UUID;
-  name: string;
-  entity_type: string;
-  category: string;
-  description?: string | null;
-  color?: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface TagCreate {
-  name: string;
-  entity_type?: string;
-  category?: string;
-  description?: string;
-  color?: string;
-}
-
-export interface TagUpdate {
-  name?: string;
-  entity_type?: string;
-  category?: string;
-  description?: string;
-  color?: string;
-}
-
-export interface TagUsageStats {
-  tag_id: UUID;
-  tag_name: string;
-  entity_type: string;
-  category: string;
-  usage_by_entity_type: Record<string, number>;
-  total_usage: number;
-}
-
-export interface TagCategoryOption {
-  value: string;
-  label: string;
-  entity_type?: string | null;
-}
-
-export interface TagCategoryCreate {
-  label: string;
-  value?: string;
-}
-
-export interface TagCategoryUpdate {
-  label: string;
-}
-
-export interface TagBulkUpdateRequest {
-  ids: UUID[];
-  category: string;
-}
-
-export interface TagBulkUpdateResponse {
-  updated_count: number;
-  failed_ids: UUID[];
-  errors: string[];
-  updated_tags: Tag[];
-}
+type TagSelectorTransport = components["schemas"]["TagSelectorResponse"];
+type TagTransport = components["schemas"]["TagResponse"];
+export type Tag = TagSelectorTransport & Partial<Omit<TagTransport, keyof TagSelectorTransport>>;
+export type TagCreate = components["schemas"]["TagCreate"];
+export type TagUpdate = components["schemas"]["TagUpdate"];
+export type TagUsageStats = components["schemas"]["TagUsageResponse"];
+type TagCategoryTransport = components["schemas"]["TagCategoryResponse"];
+export type TagCategoryOption = Omit<TagCategoryTransport, "entity_type"> & {
+  entity_type?: TagCategoryTransport["entity_type"];
+};
+export type TagCategoryCreate = components["schemas"]["TagCategoryCreate"];
+export type TagCategoryUpdate = components["schemas"]["TagCategoryUpdate"];
+export type TagBulkUpdateRequest = components["schemas"]["TagBulkCategoryUpdate"];
+export type TagBulkUpdateResponse = components["schemas"]["TagBulkUpdateResponse"];
 
 export type TagListFieldsMode = "selector" | "full";
 
-interface TagListMeta {
-  entity_type?: string | null;
-  category?: string | null;
-  fields?: TagListFieldsMode | null;
-}
-
-export type TagListResponse = ListResponse<Tag, TagListMeta>;
+type TagListTransport = components["schemas"]["ListResponse_Union_TagSelectorResponse__TagResponse__TagListMeta_"];
+export type TagListResponse = Omit<TagListTransport, "items"> & { items: Tag[] };
+type TagEntityTypesResponse = operations["list_tag_entity_types_api_v1_tags_entity_types__get"]["responses"][200]["content"]["application/json"];
+type TagCategoriesResponse = operations["list_tag_categories_api_v1_tags_categories__get"]["responses"][200]["content"]["application/json"];
 
 export const tagsApi = {
   getAll: (params?: {
@@ -83,18 +32,18 @@ export const tagsApi = {
     page?: number;
     size?: number;
     fields?: TagListFieldsMode;
-  }): Promise<TagListResponse> => http.get<TagListResponse>(ENDPOINTS.TAGS.BASE, params),
-  getEntityTypes: (): Promise<string[]> =>
-    http.get<string[]>(ENDPOINTS.TAGS.ENTITY_TYPES),
-  getCategories: (entityType: string): Promise<TagCategoryOption[]> =>
-    http.get<TagCategoryOption[]>(ENDPOINTS.TAGS.CATEGORIES, {
+  }): Promise<TagListResponse> => http.get<TagListTransport>(ENDPOINTS.TAGS.BASE, params),
+  getEntityTypes: (): Promise<TagEntityTypesResponse> =>
+    http.get<TagEntityTypesResponse>(ENDPOINTS.TAGS.ENTITY_TYPES),
+  getCategories: (entityType: string): Promise<TagCategoriesResponse> =>
+    http.get<TagCategoriesResponse>(ENDPOINTS.TAGS.CATEGORIES, {
       entity_type: entityType,
     }),
   createCategory: (
     payload: TagCategoryCreate,
     entityType: string,
   ): Promise<TagCategoryOption> =>
-    http.post<TagCategoryOption>(ENDPOINTS.TAGS.CATEGORIES, payload, {
+    http.post<TagCategoryTransport>(ENDPOINTS.TAGS.CATEGORIES, payload, {
       entity_type: entityType,
     }),
   renameCategory: (
@@ -102,14 +51,15 @@ export const tagsApi = {
     payload: TagCategoryUpdate,
     entityType: string,
   ): Promise<TagCategoryOption> =>
-    http.patch<TagCategoryOption>(ENDPOINTS.TAGS.CATEGORY_BY_VALUE(value), payload, {
+    http.patch<TagCategoryTransport>(ENDPOINTS.TAGS.CATEGORY_BY_VALUE(value), payload, {
       entity_type: entityType,
     }),
   create: (tag: TagCreate): Promise<Tag> =>
-    http.post<Tag>(ENDPOINTS.TAGS.BASE, tag),
-  getById: (id: UUID): Promise<Tag> => http.get<Tag>(ENDPOINTS.TAGS.BY_ID(id)),
+    http.post<TagTransport>(ENDPOINTS.TAGS.BASE, tag),
+  getById: (id: UUID): Promise<Tag> =>
+    http.get<TagTransport>(ENDPOINTS.TAGS.BY_ID(id)),
   update: (id: UUID, tag: TagUpdate): Promise<Tag> =>
-    http.patch<Tag>(ENDPOINTS.TAGS.BY_ID(id), tag),
+    http.patch<TagTransport>(ENDPOINTS.TAGS.BY_ID(id), tag),
   bulkUpdateCategories: (
     payload: TagBulkUpdateRequest,
   ): Promise<TagBulkUpdateResponse> =>
@@ -118,9 +68,7 @@ export const tagsApi = {
   getUsage: (id: UUID): Promise<TagUsageStats> =>
     http.get<TagUsageStats>(ENDPOINTS.TAGS.USAGE(id)),
   getStatsBatch: (entityType: string) =>
-    http.get<{
-      entity_type: string;
-      tag_stats: Array<{ id: UUID; name?: string; usage_count: number }>;
-      total_tags: number;
-    }>(ENDPOINTS.STATS.TAGS_USAGE(entityType)),
+    http.get<components["schemas"]["TagUsageByEntityResponse"]>(
+      ENDPOINTS.STATS.TAGS_USAGE(entityType),
+    ),
 };

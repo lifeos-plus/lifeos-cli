@@ -8,6 +8,8 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
+    "api:check": "node scripts/check-api-types.mjs",
+    "api:generate": "uv run --project .. --extra web python ../scripts/export_web_openapi.py --output openapi.json && node scripts/generate-api-types.mjs",
     "dev": "vite",
     "build": "tsc -b && npm run typecheck:test && vite build",
     "build-prod": "tsc -b && npm run typecheck:test && NODE_OPTIONS=--max-old-space-size=1536 vite build",
@@ -63,6 +65,7 @@
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^16.3.0",
     "jsdom": "^27.4.0",
+    "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.16",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.9.3",

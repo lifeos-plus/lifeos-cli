@@ -10,6 +10,9 @@ npm ci
 echo "[web-validate] audit high-severity vulnerabilities"
 npm audit --audit-level=high
 
+echo "[web-validate] verify generated API types"
+npm run api:check
+
 echo "[web-validate] validate translation catalogs"
 npm run i18n:check
 

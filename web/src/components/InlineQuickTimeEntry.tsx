@@ -195,7 +195,7 @@ export default function InlineQuickTimeEntry({
         // Use extracted helper functions
         autoFillTitle(task);
         autoFillArea(vision);
-        applyTaskPersons(task.people);
+        applyTaskPersons(task.people ?? undefined);
       } catch {
         // ignore autofill errors
       }

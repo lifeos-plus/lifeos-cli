@@ -183,7 +183,7 @@ export function HabitActionList({
   const buildHabitActionSummary = (
     action: HabitAction,
   ): NoteHabitActionSummary => ({
-    id: action.id,
+    id: action.id ?? "",
     habit_id: action.habit_id,
     habit_title: habitTitle,
     action_date: action.action_date,
@@ -622,7 +622,7 @@ export function HabitActionList({
         <CreateNoteModal
           isOpen={!!creatingNoteForAction}
           onClose={() => setCreatingNoteForAction(null)}
-          preSelectedHabitActionId={creatingNoteForAction.id}
+          preSelectedHabitActionId={creatingNoteForAction.id ?? undefined}
           preSelectedHabitAction={buildHabitActionSummary(creatingNoteForAction)}
           onNoteCreated={() => {
             setCreatingNoteForAction(null);

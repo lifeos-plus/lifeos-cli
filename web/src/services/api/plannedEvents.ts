@@ -1,60 +1,20 @@
-import type { PersonSummary } from "./types/common";
 import type { UUID } from "@/types/primitive";
-import type { ListResponse } from "@/types/pagination";
 import { http } from "./client";
 import { ENDPOINTS } from "./endpoints";
+import type { components } from "./generated/schema";
+import type { PersonSummary } from "./types/common";
 
-export interface PlannedEvent {
-  id: UUID;
-  title: string;
-  start_time: string;
-  end_time?: string | null;
-  priority: number;
-  area_id: UUID | null;
-  task_id?: UUID | null;
-  is_all_day: boolean;
-  is_recurring: boolean;
-  recurrence_pattern?: Record<string, unknown> | null;
-  rrule_string?: string | null;
-  status: string;
-  tags?: string[] | null;
+type PlannedEventTransport = components["schemas"]["PlannedEventResponse"];
+export type PlannedEvent = Omit<PlannedEventTransport, "extra_data" | "people"> & {
   extra_data?: Record<string, unknown> | null;
-  is_instance?: boolean;
-  master_event_id?: UUID;
-  instance_id?: UUID;
   people?: PersonSummary[];
-}
-
-interface PlannedEventListMeta {
-  start?: string | null;
-  end?: string | null;
-  status?: string | null;
-  task_id?: UUID | null;
-}
-
-export type PlannedEventListResponse = ListResponse<
-  PlannedEvent,
-  PlannedEventListMeta
->;
-
-export interface PlannedEventCreate {
-  title: string;
-  start_time: string;
-  end_time?: string;
-  priority?: number;
-  area_id: UUID | null;
-  task_id?: UUID | null;
-  is_all_day?: boolean;
-  is_recurring?: boolean;
-  recurrence_pattern?: Record<string, unknown>;
-  rrule_string?: string;
-  status?: string;
-  tags?: string[];
-  extra_data?: Record<string, unknown>;
-  person_ids?: UUID[];
-}
-
-export type PlannedEventUpdate = Partial<PlannedEventCreate>;
+};
+export type PlannedEventListResponse = components["schemas"]["ListResponse_PlannedEventResponse_PlannedEventListMeta_"];
+type PlannedEventCreateTransport = components["schemas"]["PlannedEventCreate"];
+type PlannedEventUpdateTransport = components["schemas"]["PlannedEventUpdate"];
+type PlannedEventClientMetadata = { extra_data?: Record<string, unknown> };
+export type PlannedEventCreate = PlannedEventCreateTransport & PlannedEventClientMetadata;
+export type PlannedEventUpdate = PlannedEventUpdateTransport & PlannedEventClientMetadata;
 
 export type PlannedEventDeleteOptions = {
   deleteType?: "single" | "all_future" | "all";
@@ -67,6 +27,16 @@ export type PlannedEventUpdateOptions = {
   instanceId?: UUID;
   instanceStart?: string;
 };
+
+const toCreateTransport = ({
+  extra_data: _extraData,
+  ...payload
+}: PlannedEventCreate): PlannedEventCreateTransport => payload;
+
+const toUpdateTransport = ({
+  extra_data: _extraData,
+  ...payload
+}: PlannedEventUpdate): PlannedEventUpdateTransport => payload;
 
 export const plannedEventsApi = {
   fetchRange: async (start: string, end: string, status?: string) =>
@@ -89,15 +59,18 @@ export const plannedEventsApi = {
       { page, size },
     ),
   create: (payload: PlannedEventCreate): Promise<PlannedEvent> =>
-    http.post<PlannedEvent>(ENDPOINTS.PLANNED_EVENTS.BASE, payload),
+    http.post<PlannedEventTransport>(
+      ENDPOINTS.PLANNED_EVENTS.BASE,
+      toCreateTransport(payload),
+    ),
   getById: (id: UUID): Promise<PlannedEvent> =>
-    http.get<PlannedEvent>(ENDPOINTS.PLANNED_EVENTS.BY_ID(id)),
+    http.get<PlannedEventTransport>(ENDPOINTS.PLANNED_EVENTS.BY_ID(id)),
   update: (
     id: UUID,
     payload: PlannedEventUpdate,
     options?: PlannedEventUpdateOptions,
   ): Promise<PlannedEvent> =>
-    http.patch<PlannedEvent>(ENDPOINTS.PLANNED_EVENTS.BY_ID(id), payload, {
+    http.patch<PlannedEventTransport>(ENDPOINTS.PLANNED_EVENTS.BY_ID(id), toUpdateTransport(payload), {
       updateType: options?.updateType,
       instanceStart: options?.instanceStart,
     }),

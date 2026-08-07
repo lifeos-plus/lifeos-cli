@@ -53,7 +53,7 @@ const PersonsListComponent: React.FC<PersonsListProps> = ({
             variant="outline"
             size="sm"
             className="gap-1 bg-base-100"
-            title={person.display_name}
+            title={person.display_name ?? person.name ?? ""}
           >
             {showIcon ? (
               <Icon
@@ -63,7 +63,9 @@ const PersonsListComponent: React.FC<PersonsListProps> = ({
                 className="text-primary"
               />
             ) : null}
-            {renderItem ? renderItem(person) : person.display_name}
+            {renderItem
+              ? renderItem(person)
+              : (person.display_name ?? person.name ?? "")}
           </Badge>
         ))}
         {overflow > 0 ? <span className="text-sm">+{overflow}</span> : null}
@@ -84,7 +86,9 @@ const PersonsListComponent: React.FC<PersonsListProps> = ({
             />
           ) : null}
           <span className="text-sm">
-            {renderItem ? renderItem(person) : person.display_name}
+            {renderItem
+              ? renderItem(person)
+              : (person.display_name ?? person.name ?? "")}
           </span>
         </div>
       ))}
