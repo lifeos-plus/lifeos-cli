@@ -65,15 +65,12 @@ def test_cli_top_level_help_supports_zh_hans_argparse_scaffolding(
     assert "显示此帮助信息并退出" in captured.out or "-h, --help" in captured.out
     assert "资源:\n  资源" not in captured.out
     assert "在终端中运行 LifeOS 资源命令。" not in captured.out
-    assert "repo: https://github.com/liujuanjuan1984/lifeos-cli" in captured.out
+    assert "repo: https://github.com/lifeos-plus/lifeos-cli" in captured.out
     assert "uv tool install --upgrade lifeos-cli" in captured.out
     assert "area" in captured.out and "管理 `area`" in captured.out
     assert "people" in captured.out and "管理 `people` 和关系" in captured.out
     assert "timelog" in captured.out and "管理 `timelog`" in captured.out
-    assert (
-        "欢迎通过 https://github.com/liujuanjuan1984/lifeos-cli 提交问题报告和建议。"
-        in captured.out
-    )
+    assert "欢迎通过 https://github.com/lifeos-plus/lifeos-cli 提交问题报告和建议。" in captured.out
 
 
 def test_cli_top_level_help_keeps_long_resource_summaries_on_one_line(
