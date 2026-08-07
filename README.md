@@ -134,7 +134,7 @@ lifeos finance tree-ensure-default
 lifeos data export all --output lifeos-bundle.zip
 ```
 
-For complete CLI usage, workflows, and output conventions, see [docs/cli.md](docs/cli.md). Command-specific facts belong in CLI help, not in repository-level docs.
+For complete CLI usage, workflows, and output conventions, see [docs/cli.md](docs/cli.md). Command-specific facts belong in CLI help, not in repository-level docs. For maintainer-oriented architecture guidance, see [docs/architecture.md](docs/architecture.md).
 
 ## Local Web UI
 
