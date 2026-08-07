@@ -920,10 +920,11 @@
       "use_upgrade_when_configured_database_schema_needs_to_catch_up_with_code": "Use `upgrade` when the configured database schema needs to catch up with the code."
     },
     "web_commands": {
-      "bind_host": "Bind host.",
+      "bind_host": "Bind host. Defaults to 127.0.0.1; binding beyond loopback triggers a warning because the Web API has no authentication.",
       "bind_port": "Bind port.",
       "enable_uvicorn_reload": "Enable uvicorn reload.",
       "install_optional_web_dependencies": "Install the optional Web dependencies with `lifeos-cli[web]`. If your configured database is PostgreSQL, install both extras with `lifeos-cli[web,postgres]`.",
+      "non_loopback_binding_warning": "Warning: LifeOS Web has no authentication. Binding to {host} exposes your personal data to the network; prefer 127.0.0.1 (loopback) or restrict access at the network layer.",
       "run_local_lifeos_web_service": "Run the local LifeOS Web service against the database configured by `lifeos init` and `lifeos config`.",
       "run_optional_local_web_api": "Run the optional local Web API.",
       "serve_built_frontend_directory": "Serve a built frontend directory, for example a lifeos-web `dist/` build.",
