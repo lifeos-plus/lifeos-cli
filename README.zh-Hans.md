@@ -172,9 +172,8 @@ npm ci
 npm run dev
 ```
 
-前端 workspace 详情见
-[`lifeos-web` README](https://github.com/lifeos-plus/lifeos-web) 和
-[issue 251](https://github.com/lifeos-plus/lifeos-cli/issues/251)。
+前端 workspace 与跨仓契约策略详情见
+[`lifeos-web` README](https://github.com/lifeos-plus/lifeos-web)。
 
 ## Agent 使用
 

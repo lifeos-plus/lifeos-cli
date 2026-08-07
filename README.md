@@ -172,9 +172,8 @@ npm ci
 npm run dev
 ```
 
-See the [`lifeos-web` README](https://github.com/lifeos-plus/lifeos-web) and
-[issue 251](https://github.com/lifeos-plus/lifeos-cli/issues/251) for the
-frontend workspace and cross-repo contract policy.
+See the [`lifeos-web` README](https://github.com/lifeos-plus/lifeos-web) for
+the frontend workspace and cross-repo contract policy.
 
 ## Agent Use
 
