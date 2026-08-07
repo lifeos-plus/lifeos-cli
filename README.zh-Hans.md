@@ -174,7 +174,7 @@ npm run dev
 
 前端 workspace 详情见
 [`lifeos-web` README](https://github.com/lifeos-plus/lifeos-web) 和
-[docs/frontend-split-plan.md](docs/frontend-split-plan.md)。
+[issue 251](https://github.com/lifeos-plus/lifeos-cli/issues/251)。
 
 ## Agent 使用
 

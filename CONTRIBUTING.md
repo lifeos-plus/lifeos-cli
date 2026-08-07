@@ -38,7 +38,7 @@ The React Web UI lives in the separate
 changes, including npm dependency updates, are validated there with
 `bash ./scripts/validate.sh`. This repository keeps the Web API and the
 `lifeos web serve` command; the split boundary is documented in
-[docs/frontend-split-plan.md](docs/frontend-split-plan.md).
+[issue 251](https://github.com/lifeos-plus/lifeos-cli/issues/251).
 
 If you change CI, packaging metadata, or compatibility declarations, also validate the relevant interpreter targets explicitly. Examples:
 
