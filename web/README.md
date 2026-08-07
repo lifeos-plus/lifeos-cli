@@ -71,10 +71,11 @@ npm run api:generate
 ```
 
 Generation imports the local FastAPI app directly. It does not require a running server, a database,
-or developer-specific configuration. Commit both `openapi.json` and
-`src/services/api/generated/schema.ts`; do not edit either file manually.
+or developer-specific configuration. Commit `src/services/api/generated/schema.ts`; do not edit
+`openapi.json` or `schema.ts` manually. `web/openapi.json` is a generated intermediate artifact and
+is not tracked in version control — run `npm run api:generate` locally to refresh it for inspection.
 
-`npm run api:check` regenerates both files and fails if their prior contents were stale.
+`npm run api:check` regenerates the contract and fails if the committed `schema.ts` was stale.
 `bash ./scripts/web_validate.sh` runs this drift check before the frontend build, lint, and tests.
 
 Frontend-only query filters, form drafts, cache projections, and aggregate view models may be
