@@ -40,3 +40,29 @@ def to_jsonable_dict(value: Any) -> dict[str, object]:
     if not isinstance(payload, dict):
         raise TypeError(f"Expected JSON object payload, got {type(payload).__name__}")
     return cast(dict[str, object], payload)
+
+
+def task_summary_payload(task: dict[str, object]) -> dict[str, object]:
+    """Reshape a serialized task summary into the Web API response shape.
+
+    Internal ``vision_name`` / ``parent_content`` enrichment fields are mapped
+    to the tooltip-consumed ``vision_summary`` / ``parent_summary`` objects and
+    omitted entirely when the related record is unavailable.
+    """
+    payload = {
+        key: value
+        for key, value in task.items()
+        if key not in {"vision_name", "parent_content"}
+    }
+    vision_id = task.get("vision_id")
+    vision_name = task.get("vision_name")
+    parent_task_id = task.get("parent_task_id")
+    parent_content = task.get("parent_content")
+    if vision_id and vision_name:
+        payload["vision_summary"] = {"id": vision_id, "name": vision_name}
+    if parent_task_id and parent_content:
+        payload["parent_summary"] = {
+            "id": parent_task_id,
+            "content": parent_content,
+        }
+    return payload

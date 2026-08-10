@@ -28,6 +28,7 @@ from lifeos_cli.db.services.entity_associations import (
     load_habit_actions_for_sources,
     load_people_for_sources,
     load_task_lists_for_sources,
+    load_task_summary_details,
     load_timelogs_for_sources,
     load_visions_for_sources,
     set_association_links,
@@ -233,6 +234,10 @@ async def _build_note_views(
         source_ids=note_ids,
         link_type="relates_to",
     )
+    task_summary_details = await load_task_summary_details(
+        session,
+        tasks=[task for tasks in task_map.values() for task in tasks],
+    )
     vision_map = await load_visions_for_sources(
         session,
         source_model="note",
@@ -267,6 +272,7 @@ async def _build_note_views(
             events=event_map.get(note.id, ()),
             timelogs=timelog_map.get(note.id, ()),
             habit_actions=habit_action_map.get(note.id, ()),
+            task_summary_details=task_summary_details,
         )
         for note in note_records
     ]

@@ -20,6 +20,7 @@ from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services.batching import BatchDeleteResult, batch_delete_records
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
+from lifeos_cli.db.services.entity_associations import load_task_summary_details
 from lifeos_cli.db.services.entity_people import load_people_for_entities, sync_entity_people
 from lifeos_cli.db.services.model_utils import (
     load_model_by_id,
@@ -208,10 +209,14 @@ async def _build_vision_view(
         entity_ids=[vision.id],
         entity_type="vision",
     )
+    task_summary_details = (
+        await load_task_summary_details(session, tasks=tasks) if tasks else {}
+    )
     return build_vision_view(
         vision,
         people=people_map.get(vision.id, ()),
         tasks=tasks or (),
+        task_summary_details=task_summary_details,
     )
 
 

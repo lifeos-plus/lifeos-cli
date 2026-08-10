@@ -60,18 +60,25 @@ class PersonSummaryResponse(ResponseModel):
     tags: list[TagSummaryResponse]
 
 
+class VisionSummaryResponse(ResponseModel):
+    id: str
+    name: str
+    status: str
+
+
+class ParentTaskSummaryResponse(ResponseModel):
+    id: str
+    content: str
+
+
 class TaskSummaryResponse(ResponseModel):
     id: str
     vision_id: str
     parent_task_id: str | None
     content: str
     status: str
-
-
-class VisionSummaryResponse(ResponseModel):
-    id: str
-    name: str
-    status: str
+    vision_summary: VisionSummaryResponse | None = None
+    parent_summary: ParentTaskSummaryResponse | None = None
 
 
 class TimelogSummaryResponse(ResponseModel):
