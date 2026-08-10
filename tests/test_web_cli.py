@@ -1559,6 +1559,7 @@ def test_web_timelog_payload_serializes_naive_storage_datetimes_as_utc() -> None
 def test_web_task_summary_payload_maps_tooltip_enrichment_fields() -> None:
     pytest.importorskip("fastapi")
 
+    from lifeos_web.response_schemas.common import TaskSummaryResponse
     from lifeos_web.serialization import task_summary_payload
 
     payload = task_summary_payload(
@@ -1588,6 +1589,7 @@ def test_web_task_summary_payload_maps_tooltip_enrichment_fields() -> None:
             "content": "Weekly plan",
         },
     }
+    TaskSummaryResponse.model_validate(payload)
 
 
 def test_web_task_summary_payload_omits_missing_enrichment_fields() -> None:
@@ -1619,6 +1621,7 @@ def test_web_task_summary_payload_omits_missing_enrichment_fields() -> None:
 def test_web_timelog_payload_includes_tooltip_task_summary_fields() -> None:
     pytest.importorskip("fastapi")
 
+    from lifeos_web.response_schemas.timelogs import TimelogResponse
     from lifeos_web.routers.timelogs import _timelog_payload
 
     task_id = UUID("22222222-2222-2222-2222-222222222222")
@@ -1662,6 +1665,7 @@ def test_web_timelog_payload_includes_tooltip_task_summary_fields() -> None:
     }
     assert "vision_name" not in payload["task"]
     assert "parent_summary" not in payload["task"]
+    TimelogResponse.model_validate(payload)
 
 
 def test_web_person_note_activity_payload_avoids_duplicate_note_content(
@@ -3026,6 +3030,7 @@ def test_web_note_payload_exposes_primary_task_for_notes_page() -> None:
 def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
     pytest.importorskip("fastapi")
 
+    from lifeos_web.response_schemas.notes import NoteResponse
     from lifeos_web.routers.notes import _note_payload
 
     task = TaskSummaryView(
@@ -3066,6 +3071,7 @@ def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
     assert payload["tasks"] == [payload["task"]]
     assert "vision_name" not in payload["task"]
     assert "parent_content" not in payload["task"]
+    NoteResponse.model_validate(payload)
 
 
 def test_web_note_payload_uses_null_primary_task_without_association() -> None:

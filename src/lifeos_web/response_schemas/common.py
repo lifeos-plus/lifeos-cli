@@ -66,6 +66,13 @@ class VisionSummaryResponse(ResponseModel):
     status: str
 
 
+class VisionNameSummaryResponse(ResponseModel):
+    """Vision identity for tooltip task summaries; only the consumed fields."""
+
+    id: str
+    name: str
+
+
 class ParentTaskSummaryResponse(ResponseModel):
     id: str
     content: str
@@ -77,7 +84,7 @@ class TaskSummaryResponse(ResponseModel):
     parent_task_id: str | None
     content: str
     status: str
-    vision_summary: VisionSummaryResponse | None = None
+    vision_summary: VisionNameSummaryResponse | None = None
     parent_summary: ParentTaskSummaryResponse | None = None
 
 
