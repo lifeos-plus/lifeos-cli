@@ -49,6 +49,13 @@ class TaskSummaryView:
     parent_task_id: UUID | None
     content: str
     status: str
+    priority: int | None = None
+    planning_cycle_type: str | None = None
+    planning_cycle_start_date: date | None = None
+    actual_effort_self: int | None = None
+    actual_effort_total: int | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     vision_name: str | None = None
     parent_content: str | None = None
 
@@ -304,6 +311,13 @@ def build_task_summary(
         parent_task_id=task.parent_task_id,
         content=task.content,
         status=task.status,
+        priority=task.priority,
+        planning_cycle_type=task.planning_cycle_type,
+        planning_cycle_start_date=task.planning_cycle_start_date,
+        actual_effort_self=task.actual_effort_self,
+        actual_effort_total=task.actual_effort_total,
+        created_at=task.created_at,
+        updated_at=task.updated_at,
         vision_name=vision_name,
         parent_content=parent_content,
     )

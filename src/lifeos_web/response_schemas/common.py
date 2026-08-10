@@ -84,6 +84,13 @@ class TaskSummaryResponse(ResponseModel):
     parent_task_id: str | None
     content: str
     status: str
+    priority: int | None = None
+    planning_cycle_type: str | None = None
+    planning_cycle_start_date: str | None = None
+    actual_effort_self: int | None = None
+    actual_effort_total: int | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
     vision_summary: VisionNameSummaryResponse | None = None
     parent_summary: ParentTaskSummaryResponse | None = None
 

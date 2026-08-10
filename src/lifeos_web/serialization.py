@@ -52,6 +52,17 @@ def task_summary_payload(task: dict[str, object]) -> dict[str, object]:
     payload = {
         key: value for key, value in task.items() if key not in {"vision_name", "parent_content"}
     }
+    for field in (
+        "priority",
+        "planning_cycle_type",
+        "planning_cycle_start_date",
+        "actual_effort_self",
+        "actual_effort_total",
+        "created_at",
+        "updated_at",
+    ):
+        if field in payload and payload[field] is None:
+            del payload[field]
     vision_id = task.get("vision_id")
     vision_name = task.get("vision_name")
     parent_task_id = task.get("parent_task_id")

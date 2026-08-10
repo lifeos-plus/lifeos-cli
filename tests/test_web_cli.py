@@ -1571,6 +1571,13 @@ def test_web_task_summary_payload_maps_tooltip_enrichment_fields() -> None:
             "status": "in_progress",
             "vision_name": "Portfolio",
             "parent_content": "Weekly plan",
+            "priority": 2,
+            "planning_cycle_type": "day",
+            "planning_cycle_start_date": "2026-08-10",
+            "actual_effort_self": 25,
+            "actual_effort_total": 45,
+            "created_at": "2026-06-01T13:00:00Z",
+            "updated_at": "2026-06-02T09:00:00Z",
         }
     )
 
@@ -1580,6 +1587,13 @@ def test_web_task_summary_payload_maps_tooltip_enrichment_fields() -> None:
         "parent_task_id": "22222222-2222-2222-2222-222222222222",
         "content": "Deep work",
         "status": "in_progress",
+        "priority": 2,
+        "planning_cycle_type": "day",
+        "planning_cycle_start_date": "2026-08-10",
+        "actual_effort_self": 25,
+        "actual_effort_total": 45,
+        "created_at": "2026-06-01T13:00:00Z",
+        "updated_at": "2026-06-02T09:00:00Z",
         "vision_summary": {
             "id": "44444444-4444-4444-4444-444444444444",
             "name": "Portfolio",
@@ -1606,6 +1620,10 @@ def test_web_task_summary_payload_omits_missing_enrichment_fields() -> None:
             "status": "todo",
             "vision_name": None,
             "parent_content": None,
+            "priority": None,
+            "planning_cycle_type": None,
+            "created_at": None,
+            "updated_at": None,
         }
     )
 
@@ -3041,6 +3059,9 @@ def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
         status="todo",
         vision_name="Portfolio",
         parent_content="Weekly plan",
+        priority=1,
+        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+        updated_at=datetime(2026, 6, 2, 9, 0, tzinfo=timezone.utc),
     )
     note = NoteView(
         id=UUID("55555555-5555-5555-5555-555555555555"),
@@ -3059,6 +3080,9 @@ def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
         "parent_task_id": str(task.parent_task_id),
         "content": "Investigate note association",
         "status": "todo",
+        "priority": 1,
+        "created_at": "2026-06-01T13:00:00Z",
+        "updated_at": "2026-06-02T09:00:00Z",
         "vision_summary": {
             "id": str(task.vision_id),
             "name": "Portfolio",
