@@ -15,6 +15,7 @@ from lifeos_cli.cli_support.output_utils import (
 from lifeos_cli.cli_support.time_args import parse_optional_date_value
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import tasks as task_services
+from lifeos_cli.presentation import tasks as task_presentation
 
 
 def _parse_task_order(value: str) -> tuple[UUID, int]:
@@ -62,9 +63,10 @@ def _format_task_detail(task: task_services.TaskView) -> str:
 
 
 def _format_task_tree(node: task_services.TaskWithSubtasks) -> str:
+    view = task_presentation.build_task_tree_presentation_view(node)
     lines: list[str] = []
 
-    def collect(current: task_services.TaskWithSubtasks) -> None:
+    def collect(current: task_presentation.TaskTreePresentationView) -> None:
         indent = "  " * current.depth
         lines.append(
             f"{indent}{current.id}\t{current.status}\t{current.completion_percentage:.2f}\t"
@@ -73,7 +75,7 @@ def _format_task_tree(node: task_services.TaskWithSubtasks) -> str:
         for subtask in current.subtasks:
             collect(subtask)
 
-    collect(node)
+    collect(view)
     return "\n".join(lines)
 
 

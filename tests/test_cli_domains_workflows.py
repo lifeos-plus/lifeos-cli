@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 from datetime import date, datetime, timezone
-from typing import cast
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
@@ -29,6 +29,42 @@ class _PromptInput(io.StringIO):
 def _isoformat_datetime(value: object) -> str:
     assert isinstance(value, datetime)
     return value.isoformat()
+
+
+def make_task_node(
+    *,
+    task_id: UUID,
+    status: str,
+    content: str,
+    completion_percentage: float,
+    depth: int,
+    subtasks: tuple[tasks.TaskWithSubtasks, ...],
+) -> tasks.TaskWithSubtasks:
+    """Build a full task-tree read model used by CLI handler fakes."""
+    return tasks.TaskWithSubtasks(
+        task=cast(Any, object()),
+        id=task_id,
+        vision_id=UUID("33333333-3333-3333-3333-333333333333"),
+        parent_task_id=None,
+        content=content,
+        description=None,
+        status=status,
+        priority=1,
+        display_order=1,
+        estimated_effort=None,
+        planning_cycle_type=None,
+        planning_cycle_days=None,
+        planning_cycle_start_date=None,
+        actual_effort_self=0,
+        actual_effort_total=0,
+        created_at=utc_datetime(2026, 6, 1, 13, 0),
+        updated_at=utc_datetime(2026, 6, 1, 13, 0),
+        deleted_at=None,
+        people=(),
+        subtasks=subtasks,
+        completion_percentage=completion_percentage,
+        depth=depth,
+    )
 
 
 def test_main_timelog_add_creates_timelog(
@@ -498,15 +534,15 @@ def test_main_task_read_model_commands_print_results(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    root_task = make_record(
-        id=UUID("55555555-5555-5555-5555-555555555555"),
+    root_task = make_task_node(
+        task_id=UUID("55555555-5555-5555-5555-555555555555"),
         status="todo",
         content="Root task",
         completion_percentage=0.5,
         depth=0,
         subtasks=(
-            make_record(
-                id=UUID("66666666-6666-6666-6666-666666666666"),
+            make_task_node(
+                task_id=UUID("66666666-6666-6666-6666-666666666666"),
                 status="done",
                 content="Child task",
                 completion_percentage=1.0,

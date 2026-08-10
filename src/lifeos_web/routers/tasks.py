@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from lifeos_cli.config import get_preferences_settings
 from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services import tasks as task_services
+from lifeos_cli.presentation import tasks as task_presentation
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.tasks import (
     TaskHierarchyResponse,
@@ -88,39 +89,12 @@ def _task_tree_payload(
     timelogs_count_by_task: dict[UUID, int],
 ) -> dict[str, object]:
     """Serialize a nested task read model without leaking SQLAlchemy internals."""
-    return {
-        "id": str(task.id),
-        "vision_id": str(task.vision_id),
-        "parent_task_id": str(task.parent_task_id) if task.parent_task_id else None,
-        "content": task.content,
-        "description": task.description,
-        "status": task.status,
-        "priority": task.priority,
-        "display_order": task.display_order,
-        "estimated_effort": task.estimated_effort,
-        "planning_cycle_type": task.planning_cycle_type,
-        "planning_cycle_days": task.planning_cycle_days,
-        "planning_cycle_start_date": (
-            task.planning_cycle_start_date.isoformat() if task.planning_cycle_start_date else None
-        ),
-        "actual_effort_self": task.actual_effort_self,
-        "actual_effort_total": task.actual_effort_total,
-        "notes_count": notes_count_by_task.get(task.id, 0),
-        "timelogs_count": timelogs_count_by_task.get(task.id, 0),
-        "created_at": task.created_at.isoformat(),
-        "updated_at": task.updated_at.isoformat(),
-        "people": to_jsonable(task.people),
-        "subtasks": [
-            _task_tree_payload(
-                subtask,
-                notes_count_by_task=notes_count_by_task,
-                timelogs_count_by_task=timelogs_count_by_task,
-            )
-            for subtask in task.subtasks
-        ],
-        "completion_percentage": task.completion_percentage,
-        "depth": task.depth,
-    }
+    view = task_presentation.build_task_tree_presentation_view(
+        task,
+        notes_count_by_task=notes_count_by_task,
+        timelogs_count_by_task=timelogs_count_by_task,
+    )
+    return task_presentation.task_tree_view_to_payload(view)
 
 
 def _task_list_payload(
