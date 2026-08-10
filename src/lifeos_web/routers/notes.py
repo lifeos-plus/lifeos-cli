@@ -68,11 +68,7 @@ def _note_payload(note: object) -> dict[str, object]:
     )
     tasks = payload.get("tasks")
     if isinstance(tasks, list):
-        reshaped_tasks = [
-            task_summary_payload(task)
-            for task in tasks
-            if isinstance(task, dict)
-        ]
+        reshaped_tasks = [task_summary_payload(task) for task in tasks if isinstance(task, dict)]
         payload["tasks"] = reshaped_tasks
         payload["task"] = reshaped_tasks[0] if reshaped_tasks else None
     else:

@@ -286,18 +286,12 @@ async def load_task_summary_details(
     """
     if not tasks:
         return {}
-    vision_ids = {
-        task.vision_id for task in tasks if task.vision_id is not None
-    }
-    parent_ids = {
-        task.parent_task_id for task in tasks if task.parent_task_id is not None
-    }
+    vision_ids = {task.vision_id for task in tasks if task.vision_id is not None}
+    parent_ids = {task.parent_task_id for task in tasks if task.parent_task_id is not None}
     vision_names: dict[UUID, str] = {}
     if vision_ids:
         vision_rows = (
-            await session.execute(
-                select(Vision.id, Vision.name).where(Vision.id.in_(vision_ids))
-            )
+            await session.execute(select(Vision.id, Vision.name).where(Vision.id.in_(vision_ids)))
         ).all()
         vision_names = {row.id: row.name for row in vision_rows}
     parent_contents: dict[UUID, str] = {}
@@ -313,12 +307,8 @@ async def load_task_summary_details(
         parent_contents = {row.id: row.content for row in parent_rows}
     return {
         task.id: (
-            vision_names.get(task.vision_id)
-            if task.vision_id is not None
-            else None,
-            parent_contents.get(task.parent_task_id)
-            if task.parent_task_id is not None
-            else None,
+            vision_names.get(task.vision_id) if task.vision_id is not None else None,
+            parent_contents.get(task.parent_task_id) if task.parent_task_id is not None else None,
         )
         for task in tasks
     }

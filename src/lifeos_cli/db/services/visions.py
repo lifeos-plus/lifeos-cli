@@ -209,9 +209,7 @@ async def _build_vision_view(
         entity_ids=[vision.id],
         entity_type="vision",
     )
-    task_summary_details = (
-        await load_task_summary_details(session, tasks=tasks) if tasks else {}
-    )
+    task_summary_details = await load_task_summary_details(session, tasks=tasks) if tasks else {}
     return build_vision_view(
         vision,
         people=people_map.get(vision.id, ()),

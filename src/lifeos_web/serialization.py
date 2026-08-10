@@ -50,9 +50,7 @@ def task_summary_payload(task: dict[str, object]) -> dict[str, object]:
     omitted entirely when the related record is unavailable.
     """
     payload = {
-        key: value
-        for key, value in task.items()
-        if key not in {"vision_name", "parent_content"}
+        key: value for key, value in task.items() if key not in {"vision_name", "parent_content"}
     }
     vision_id = task.get("vision_id")
     vision_name = task.get("vision_name")

@@ -427,10 +427,7 @@ def build_vision_view(
         updated_at=vision.updated_at,
         deleted_at=vision.deleted_at,
         people=tuple(build_person_summary(person) for person in people),
-        tasks=tuple(
-            build_task_summary_with_details(task, task_summary_details)
-            for task in tasks
-        ),
+        tasks=tuple(build_task_summary_with_details(task, task_summary_details) for task in tasks),
     )
 
 
@@ -548,10 +545,7 @@ def build_note_view(
         deleted_at=note.deleted_at,
         tags=tuple(build_tag_summary(tag) for tag in tags),
         people=tuple(build_person_summary(person) for person in people),
-        tasks=tuple(
-            build_task_summary_with_details(task, task_summary_details)
-            for task in tasks
-        ),
+        tasks=tuple(build_task_summary_with_details(task, task_summary_details) for task in tasks),
         visions=tuple(build_vision_summary(vision) for vision in visions),
         events=tuple(build_event_summary(event) for event in events),
         timelogs=tuple(build_timelog_summary(timelog) for timelog in timelogs),

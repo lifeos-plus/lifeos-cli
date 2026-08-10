@@ -42,11 +42,7 @@ def _vision_payload(vision: object, *, include_tasks: bool = False) -> dict[str,
     if include_tasks:
         raw_tasks = to_jsonable(vision.tasks)
         payload["tasks"] = (
-            [
-                task_summary_payload(task)
-                for task in raw_tasks
-                if isinstance(task, dict)
-            ]
+            [task_summary_payload(task) for task in raw_tasks if isinstance(task, dict)]
             if isinstance(raw_tasks, list)
             else []
         )
