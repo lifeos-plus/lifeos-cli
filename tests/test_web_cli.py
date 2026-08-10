@@ -1556,6 +1556,114 @@ def test_web_timelog_payload_serializes_naive_storage_datetimes_as_utc() -> None
     assert payload["created_at"] == "2026-06-13T21:09:24Z"
 
 
+def test_web_task_summary_payload_maps_tooltip_enrichment_fields() -> None:
+    pytest.importorskip("fastapi")
+
+    from lifeos_web.serialization import task_summary_payload
+
+    payload = task_summary_payload(
+        {
+            "id": "33333333-3333-3333-3333-333333333333",
+            "vision_id": "44444444-4444-4444-4444-444444444444",
+            "parent_task_id": "22222222-2222-2222-2222-222222222222",
+            "content": "Deep work",
+            "status": "in_progress",
+            "vision_name": "Portfolio",
+            "parent_content": "Weekly plan",
+        }
+    )
+
+    assert payload == {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "vision_id": "44444444-4444-4444-4444-444444444444",
+        "parent_task_id": "22222222-2222-2222-2222-222222222222",
+        "content": "Deep work",
+        "status": "in_progress",
+        "vision_summary": {
+            "id": "44444444-4444-4444-4444-444444444444",
+            "name": "Portfolio",
+        },
+        "parent_summary": {
+            "id": "22222222-2222-2222-2222-222222222222",
+            "content": "Weekly plan",
+        },
+    }
+
+
+def test_web_task_summary_payload_omits_missing_enrichment_fields() -> None:
+    pytest.importorskip("fastapi")
+
+    from lifeos_web.serialization import task_summary_payload
+
+    payload = task_summary_payload(
+        {
+            "id": "33333333-3333-3333-3333-333333333333",
+            "vision_id": "44444444-4444-4444-4444-444444444444",
+            "parent_task_id": None,
+            "content": "Deep work",
+            "status": "todo",
+            "vision_name": None,
+            "parent_content": None,
+        }
+    )
+
+    assert payload == {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "vision_id": "44444444-4444-4444-4444-444444444444",
+        "parent_task_id": None,
+        "content": "Deep work",
+        "status": "todo",
+    }
+
+
+def test_web_timelog_payload_includes_tooltip_task_summary_fields() -> None:
+    pytest.importorskip("fastapi")
+
+    from lifeos_web.routers.timelogs import _timelog_payload
+
+    task_id = UUID("22222222-2222-2222-2222-222222222222")
+    payload = _timelog_payload(
+        TimelogView(
+            id=UUID("11111111-1111-1111-1111-111111111111"),
+            title="Focused work",
+            tracking_method="manual",
+            start_time=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 6, 1, 14, 0, tzinfo=timezone.utc),
+            location=None,
+            energy_level=None,
+            notes=None,
+            area_id=None,
+            task_id=task_id,
+            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            deleted_at=None,
+            linked_notes_count=0,
+            task=TaskSummaryView(
+                id=task_id,
+                vision_id=UUID("33333333-3333-3333-3333-333333333333"),
+                parent_task_id=None,
+                content="Ship web timelog task linkage",
+                status="in_progress",
+                vision_name="Portfolio",
+            ),
+        )
+    )
+
+    assert payload["task"] == {
+        "id": str(task_id),
+        "vision_id": "33333333-3333-3333-3333-333333333333",
+        "parent_task_id": None,
+        "content": "Ship web timelog task linkage",
+        "status": "in_progress",
+        "vision_summary": {
+            "id": "33333333-3333-3333-3333-333333333333",
+            "name": "Portfolio",
+        },
+    }
+    assert "vision_name" not in payload["task"]
+    assert "parent_summary" not in payload["task"]
+
+
 def test_web_person_note_activity_payload_avoids_duplicate_note_content(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2913,6 +3021,51 @@ def test_web_note_payload_exposes_primary_task_for_notes_page() -> None:
         }
     ]
     assert "persons" not in payload
+
+
+def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
+    pytest.importorskip("fastapi")
+
+    from lifeos_web.routers.notes import _note_payload
+
+    task = TaskSummaryView(
+        id=UUID("33333333-3333-3333-3333-333333333333"),
+        vision_id=UUID("44444444-4444-4444-4444-444444444444"),
+        parent_task_id=UUID("22222222-2222-2222-2222-222222222222"),
+        content="Investigate note association",
+        status="todo",
+        vision_name="Portfolio",
+        parent_content="Weekly plan",
+    )
+    note = NoteView(
+        id=UUID("55555555-5555-5555-5555-555555555555"),
+        content="Capture context",
+        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+        updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+        deleted_at=None,
+        tasks=(task,),
+    )
+
+    payload = _note_payload(note)
+
+    assert payload["task"] == {
+        "id": str(task.id),
+        "vision_id": str(task.vision_id),
+        "parent_task_id": str(task.parent_task_id),
+        "content": "Investigate note association",
+        "status": "todo",
+        "vision_summary": {
+            "id": str(task.vision_id),
+            "name": "Portfolio",
+        },
+        "parent_summary": {
+            "id": str(task.parent_task_id),
+            "content": "Weekly plan",
+        },
+    }
+    assert payload["tasks"] == [payload["task"]]
+    assert "vision_name" not in payload["task"]
+    assert "parent_content" not in payload["task"]
 
 
 def test_web_note_payload_uses_null_primary_task_without_association() -> None:
