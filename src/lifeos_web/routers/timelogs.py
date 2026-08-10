@@ -33,7 +33,7 @@ from lifeos_web.schemas import (
     TimelogCreate,
     TimelogUpdate,
 )
-from lifeos_web.serialization import to_jsonable
+from lifeos_web.serialization import task_summary_payload, to_jsonable
 
 router = APIRouter(prefix="/timelogs", tags=["timelogs"])
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
@@ -50,6 +50,9 @@ def _timelog_payload(timelog: object) -> dict[str, object]:
             "name": None,
             "color": None,
         }
+    task = payload.get("task")
+    if isinstance(task, dict):
+        payload["task"] = task_summary_payload(task)
     return payload
 
 

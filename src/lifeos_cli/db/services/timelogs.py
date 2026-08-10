@@ -27,7 +27,10 @@ from lifeos_cli.db.services.batching import (
     batch_delete_records,
 )
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
-from lifeos_cli.db.services.entity_associations import count_sources_for_targets
+from lifeos_cli.db.services.entity_associations import (
+    count_sources_for_targets,
+    load_task_summary_details,
+)
 from lifeos_cli.db.services.entity_people import load_people_for_entities, sync_entity_people
 from lifeos_cli.db.services.entity_tags import load_tags_for_entities, sync_entity_tags
 from lifeos_cli.db.services.read_models import TimelogView, build_timelog_view
@@ -89,12 +92,17 @@ async def _build_timelog_views(
         target_ids=timelog_ids,
         link_type="captured_from",
     )
+    task_summary_details = await load_task_summary_details(
+        session,
+        tasks=[timelog.task for timelog in timelogs if timelog.task is not None],
+    )
     return [
         build_timelog_view(
             timelog,
             tags=tags_map.get(timelog.id, ()),
             people=people_map.get(timelog.id, ()),
             linked_notes_count=note_count_map.get(timelog.id, 0),
+            task_summary_details=task_summary_details,
         )
         for timelog in timelogs
     ]

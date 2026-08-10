@@ -19,7 +19,7 @@ from lifeos_web.response_schemas.visions import (
     VisionWithTasksResponse,
 )
 from lifeos_web.schemas import ListResponse, Pagination, VisionCreate, VisionUpdate
-from lifeos_web.serialization import to_jsonable, to_jsonable_dict
+from lifeos_web.serialization import task_summary_payload, to_jsonable, to_jsonable_dict
 
 router = APIRouter(prefix="/visions", tags=["visions"])
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
@@ -40,7 +40,12 @@ def _vision_payload(vision: object, *, include_tasks: bool = False) -> dict[str,
         "people": to_jsonable(vision.people),
     }
     if include_tasks:
-        payload["tasks"] = to_jsonable(vision.tasks)
+        raw_tasks = to_jsonable(vision.tasks)
+        payload["tasks"] = (
+            [task_summary_payload(task) for task in raw_tasks if isinstance(task, dict)]
+            if isinstance(raw_tasks, list)
+            else []
+        )
     return payload
 
 

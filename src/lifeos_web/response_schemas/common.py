@@ -60,18 +60,39 @@ class PersonSummaryResponse(ResponseModel):
     tags: list[TagSummaryResponse]
 
 
+class VisionSummaryResponse(ResponseModel):
+    id: str
+    name: str
+    status: str
+
+
+class VisionNameSummaryResponse(ResponseModel):
+    """Vision identity for tooltip task summaries; only the consumed fields."""
+
+    id: str
+    name: str
+
+
+class ParentTaskSummaryResponse(ResponseModel):
+    id: str
+    content: str
+
+
 class TaskSummaryResponse(ResponseModel):
     id: str
     vision_id: str
     parent_task_id: str | None
     content: str
     status: str
-
-
-class VisionSummaryResponse(ResponseModel):
-    id: str
-    name: str
-    status: str
+    priority: int | None = None
+    planning_cycle_type: str | None = None
+    planning_cycle_start_date: str | None = None
+    actual_effort_self: int | None = None
+    actual_effort_total: int | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    vision_summary: VisionNameSummaryResponse | None = None
+    parent_summary: ParentTaskSummaryResponse | None = None
 
 
 class TimelogSummaryResponse(ResponseModel):

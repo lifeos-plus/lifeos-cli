@@ -122,6 +122,8 @@ _keep(
     notes_count,
     timelogs_count,
     area_summary,
+    parent_summary,
+    vision_summary,
     returned_count,
     truncated,
 )

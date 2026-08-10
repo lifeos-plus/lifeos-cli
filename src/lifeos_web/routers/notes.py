@@ -17,7 +17,7 @@ from lifeos_web.response_schemas.notes import (
     NoteResponse,
 )
 from lifeos_web.schemas import ListResponse, NoteCreate, NoteUpdate, Pagination
-from lifeos_web.serialization import to_jsonable_dict
+from lifeos_web.serialization import task_summary_payload, to_jsonable_dict
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
@@ -67,7 +67,12 @@ def _note_payload(note: object) -> dict[str, object]:
         [_note_person_payload(person) for person in people] if isinstance(people, list) else []
     )
     tasks = payload.get("tasks")
-    payload["task"] = tasks[0] if isinstance(tasks, list) and tasks else None
+    if isinstance(tasks, list):
+        reshaped_tasks = [task_summary_payload(task) for task in tasks if isinstance(task, dict)]
+        payload["tasks"] = reshaped_tasks
+        payload["task"] = reshaped_tasks[0] if reshaped_tasks else None
+    else:
+        payload["task"] = None
     return payload
 
 

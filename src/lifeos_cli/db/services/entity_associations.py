@@ -274,6 +274,46 @@ async def load_task_lists_for_sources(
     }
 
 
+async def load_task_summary_details(
+    session: AsyncSession,
+    *,
+    tasks: list[Task],
+) -> dict[UUID, tuple[str | None, str | None]]:
+    """Load vision names and direct parent contents for task tooltip summaries.
+
+    Returns a mapping of task id to ``(vision_name, parent_content)``; either
+    value may be ``None`` when the related record is missing or deleted.
+    """
+    if not tasks:
+        return {}
+    vision_ids = {task.vision_id for task in tasks if task.vision_id is not None}
+    parent_ids = {task.parent_task_id for task in tasks if task.parent_task_id is not None}
+    vision_names: dict[UUID, str] = {}
+    if vision_ids:
+        vision_rows = (
+            await session.execute(select(Vision.id, Vision.name).where(Vision.id.in_(vision_ids)))
+        ).all()
+        vision_names = {row.id: row.name for row in vision_rows}
+    parent_contents: dict[UUID, str] = {}
+    if parent_ids:
+        parent_rows = (
+            await session.execute(
+                select(Task.id, Task.content).where(
+                    Task.id.in_(parent_ids),
+                    Task.deleted_at.is_(None),
+                )
+            )
+        ).all()
+        parent_contents = {row.id: row.content for row in parent_rows}
+    return {
+        task.id: (
+            vision_names.get(task.vision_id) if task.vision_id is not None else None,
+            parent_contents.get(task.parent_task_id) if task.parent_task_id is not None else None,
+        )
+        for task in tasks
+    }
+
+
 async def load_timelogs_for_sources(
     session: AsyncSession,
     *,

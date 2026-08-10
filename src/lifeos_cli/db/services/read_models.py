@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import TYPE_CHECKING
@@ -49,6 +49,18 @@ class TaskSummaryView:
     parent_task_id: UUID | None
     content: str
     status: str
+    priority: int | None = None
+    planning_cycle_type: str | None = None
+    planning_cycle_start_date: date | None = None
+    actual_effort_self: int | None = None
+    actual_effort_total: int | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    vision_name: str | None = None
+    parent_content: str | None = None
+
+
+TaskSummaryDetails = Mapping[UUID, tuple[str | None, str | None]]
 
 
 @dataclass(frozen=True)
@@ -286,7 +298,12 @@ def build_tag_summary(tag: Tag) -> TagSummaryView:
     )
 
 
-def build_task_summary(task: Task) -> TaskSummaryView:
+def build_task_summary(
+    task: Task,
+    *,
+    vision_name: str | None = None,
+    parent_content: str | None = None,
+) -> TaskSummaryView:
     """Build one task summary view from a task model."""
     return TaskSummaryView(
         id=task.id,
@@ -294,6 +311,30 @@ def build_task_summary(task: Task) -> TaskSummaryView:
         parent_task_id=task.parent_task_id,
         content=task.content,
         status=task.status,
+        priority=task.priority,
+        planning_cycle_type=task.planning_cycle_type,
+        planning_cycle_start_date=task.planning_cycle_start_date,
+        actual_effort_self=task.actual_effort_self,
+        actual_effort_total=task.actual_effort_total,
+        created_at=task.created_at,
+        updated_at=task.updated_at,
+        vision_name=vision_name,
+        parent_content=parent_content,
+    )
+
+
+def build_task_summary_with_details(
+    task: Task,
+    details: TaskSummaryDetails | None,
+) -> TaskSummaryView:
+    """Build a task summary enriched with tooltip-consumed vision/parent fields."""
+    if not details:
+        return build_task_summary(task)
+    vision_name, parent_content = details.get(task.id, (None, None))
+    return build_task_summary(
+        task,
+        vision_name=vision_name,
+        parent_content=parent_content,
     )
 
 
@@ -384,6 +425,7 @@ def build_vision_view(
     *,
     people: Sequence[Person] = (),
     tasks: Sequence[Task] = (),
+    task_summary_details: TaskSummaryDetails | None = None,
 ) -> VisionView:
     """Build one vision view from a vision model and related records."""
     return VisionView(
@@ -399,7 +441,7 @@ def build_vision_view(
         updated_at=vision.updated_at,
         deleted_at=vision.deleted_at,
         people=tuple(build_person_summary(person) for person in people),
-        tasks=tuple(build_task_summary(task) for task in tasks),
+        tasks=tuple(build_task_summary_with_details(task, task_summary_details) for task in tasks),
     )
 
 
@@ -443,6 +485,7 @@ def build_timelog_view(
     tags: Sequence[Tag] = (),
     people: Sequence[Person] = (),
     linked_notes_count: int = 0,
+    task_summary_details: TaskSummaryDetails | None = None,
 ) -> TimelogView:
     """Build one timelog view from a timelog model and related records."""
     return TimelogView(
@@ -460,7 +503,11 @@ def build_timelog_view(
         updated_at=timelog.updated_at,
         deleted_at=timelog.deleted_at,
         linked_notes_count=linked_notes_count,
-        task=build_task_summary(timelog.task) if timelog.task else None,
+        task=(
+            build_task_summary_with_details(timelog.task, task_summary_details)
+            if timelog.task
+            else None
+        ),
         tags=tuple(build_tag_summary(tag) for tag in tags),
         people=tuple(build_person_summary(person) for person in people),
     )
@@ -501,6 +548,7 @@ def build_note_view(
     events: Sequence[Event] = (),
     timelogs: Sequence[Timelog] = (),
     habit_actions: Sequence[HabitAction] = (),
+    task_summary_details: TaskSummaryDetails | None = None,
 ) -> NoteView:
     """Build one note view from a note model and linked records."""
     return NoteView(
@@ -511,7 +559,7 @@ def build_note_view(
         deleted_at=note.deleted_at,
         tags=tuple(build_tag_summary(tag) for tag in tags),
         people=tuple(build_person_summary(person) for person in people),
-        tasks=tuple(build_task_summary(task) for task in tasks),
+        tasks=tuple(build_task_summary_with_details(task, task_summary_details) for task in tasks),
         visions=tuple(build_vision_summary(vision) for vision in visions),
         events=tuple(build_event_summary(event) for event in events),
         timelogs=tuple(build_timelog_summary(timelog) for timelog in timelogs),
