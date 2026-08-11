@@ -588,6 +588,38 @@ def test_cli_parser_supports_task_add_command() -> None:
     assert args.priority == 3
 
 
+def test_cli_parser_supports_planning_show_command() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "planning",
+            "show",
+            "--cycle-type",
+            "7years",
+            "--at",
+            "2026-08-11",
+            "--depth",
+            "2",
+            "--status",
+            "todo,in_progress",
+            "--vision",
+            "11111111-1111-1111-1111-111111111111",
+            "--limit",
+            "50",
+        ]
+    )
+
+    assert args.resource == "planning"
+    assert args.planning_command == "show"
+    assert args.cycle_type == "7years"
+    assert args.at == date(2026, 8, 11)
+    assert args.start is None
+    assert args.depth == 2
+    assert args.status == "todo,in_progress"
+    assert args.vision == "11111111-1111-1111-1111-111111111111"
+    assert args.limit == 50
+
+
 def test_cli_parser_supports_timelog_list_by_local_date() -> None:
     parser = build_parser()
     args = parser.parse_args(["timelog", "list", "--date", "2026-04-10"])

@@ -957,9 +957,6 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
         "exclude_status": None,
         "planning_cycle_type": "7years",
         "planning_cycle_start_date": date(2026, 7, 26),
-        "calendar_system": "mayan_13_moon",
-        "first_day_of_week": 7,
-        "seven_year_anchor_date": date(2025, 7, 26),
         "query": "Needle",
         "limit": 50,
         "offset": 50,
@@ -972,9 +969,6 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
         "exclude_status": None,
         "planning_cycle_type": "7years",
         "planning_cycle_start_date": date(2026, 7, 26),
-        "calendar_system": "mayan_13_moon",
-        "first_day_of_week": 7,
-        "seven_year_anchor_date": date(2025, 7, 26),
         "query": "Needle",
     }
     assert response.pagination.total == 123
@@ -2847,16 +2841,42 @@ def test_web_stats_calendar_context_comes_from_backend_preferences(
 
     from lifeos_web.routers import stats
 
+    async def fake_get_range(
+        _session: object,
+        *,
+        start_date: date,
+        end_date: date,
+    ) -> object:
+        del start_date, end_date
+        return SimpleNamespace(rows=())
+
+    monkeypatch.setattr(
+        stats.timelog_stats,
+        "get_timelog_stats_groupby_area_for_range",
+        fake_get_range,
+    )
     monkeypatch.setattr(
         stats,
         "get_preferences_settings",
         lambda: SimpleNamespace(
             calendar_system="mayan_13_moon",
             calendar_first_day_of_week=6,
+            timezone="UTC",
         ),
     )
 
-    assert stats._resolve_calendar_preferences() == ("mayan_13_moon", 6)
+    response = asyncio.run(
+        stats.list_aggregated_areas(
+            cast(AsyncSession, object()),
+            granularity="day",
+            start=date(2026, 7, 26),
+            end=date(2026, 7, 26),
+        )
+    )
+
+    assert response.meta["calendar_system"] == "mayan_13_moon"
+    assert response.meta["first_day_of_week"] == 6
+    assert response.meta["timezone"] == "UTC"
 
 
 def test_web_note_person_usage_stats_endpoint_returns_counts(

@@ -22,6 +22,7 @@ from lifeos_cli.cli_support.resources.habit.parser import build_habit_parser
 from lifeos_cli.cli_support.resources.habit_action.parser import build_habit_action_parser
 from lifeos_cli.cli_support.resources.note.parser import build_note_parser
 from lifeos_cli.cli_support.resources.people.parser import build_people_parser
+from lifeos_cli.cli_support.resources.planning.parser import build_planning_parser
 from lifeos_cli.cli_support.resources.schedule.parser import build_schedule_parser
 from lifeos_cli.cli_support.resources.tag.parser import build_tag_parser
 from lifeos_cli.cli_support.resources.task.parser import build_task_parser
@@ -217,6 +218,7 @@ def build_parser() -> argparse.ArgumentParser:
     build_people_parser(subparsers)
     build_vision_parser(subparsers)
     build_task_parser(subparsers)
+    build_planning_parser(subparsers)
     build_timelog_parser(subparsers)
     build_habit_parser(subparsers)
     build_habit_action_parser(subparsers)

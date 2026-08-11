@@ -308,6 +308,23 @@ def test_cli_zh_hans_help_keeps_internal_entity_terms_in_english(
             assert term in captured.out
 
 
+def test_cli_planning_show_help_supports_zh_hans_locale(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys,
+) -> None:
+    monkeypatch.setenv("LIFEOS_LANGUAGE", "zh-Hans")
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["planning", "show", "--help"])
+
+    captured = capsys.readouterr()
+
+    assert "以跨 vision 树形展示某个日历感知 planning 窗口内的 `task`" in captured.out
+    assert "planning_cycle_window" in captured.out
+    assert "与 Web 等价" in captured.out
+
+
 @pytest.mark.parametrize(
     ("argv", "expected_terms", "forbidden_terms"),
     [

@@ -521,6 +521,27 @@
         "use_this_as_primary_query_entrypoint_for_people_rather_than_expecting_separate": "将此作为 `people` 的主要查询入口，而不是期待单独的搜索命令。"
       }
     },
+    "planning": {
+      "parser": {
+        "description": "以跨 vision 的树形视图查看 planning 周期窗口，不改动数据。",
+        "manage_planning_views": "展示 planning 周期 `task` 树",
+        "primary_reference_note": "以 `lifeos planning show --help` 作为窗口语义与过滤条件的主要参考。"
+      },
+      "show": {
+        "at_help": "参考日期，展示包含该日期的 planning 周期；省略时默认为今天。",
+        "context_note": "查询窗口之外的祖先会以折叠的 `(context) ` 行显示，其窗口内后代列于其下。",
+        "cycle_type_help": "planning 周期类型：day、week、month、year 或 7years。",
+        "depth_help": "顶层行以下的最大树深度；0 只显示根节点。",
+        "description": "以跨 vision 树形展示某个日历感知 planning 窗口内的 `task`，树形由 `parent_task_id` 在视图层组装。",
+        "filters_note": "`--status` 与 `--vision` 过滤窗口内 `task`；context 行同样受 `--vision` 约束。",
+        "show_planning_view": "展示一个 planning 视图",
+        "start_help": "要查询的精确周期开始日期（等价 Web 的 `planning_cycle_start_date`）；与 `--at` 互斥。",
+        "status_help": "要包含的逗号分隔 `task` 状态列表。",
+        "tree_columns_note": "每行按制表符分隔输出列：status、vision_id、content、planning_cycle_window、estimated_effort；子级按深度缩进。",
+        "vision_help": "要包含的逗号分隔 vision 标识符列表。",
+        "window_semantics_note": "`--at` 解析包含该日期的日历感知周期；`--start` 直接查询包含给定日期的周期。两者都返回自身 planning 窗口与该周期有重叠的 `task`（与 Web 等价）。"
+      }
+    },
     "schedule": {
       "parser": {
         "dates_use_configured_timezone_and_day_starts_at_preference": "日期会使用当前配置中的时区和 `day_starts_at` 偏好。",

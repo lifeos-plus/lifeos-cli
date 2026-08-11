@@ -64,6 +64,7 @@ def test_main_note_without_action_prints_resource_help(capsys) -> None:
                 "lifeos people batch --help",
             ),
         ),
+        ("planning", ("lifeos planning show --help",)),
         ("schedule", ("lifeos schedule show --help", "lifeos schedule list --help")),
         ("tag", ("lifeos tag add --help", "lifeos tag list --help", "lifeos tag batch --help")),
         (

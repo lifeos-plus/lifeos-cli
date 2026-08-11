@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, timedelta
 from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.calendar_adapter import CalendarGranularity, get_calendar_period_range
 from lifeos_cli.application.time_preferences import (
+    get_day_start_datetime,
     get_operational_date,
     get_week_bounds,
 )
@@ -261,16 +261,6 @@ def validate_habit_cadence(
     return normalized_frequency, normalized_weekdays, normalized_monthdays, normalized_target
 
 
-def _habit_anchor_datetime(reference_date: date) -> datetime:
-    preferences = get_preferences_settings()
-    hour, minute = (int(part) for part in preferences.day_starts_at.split(":"))
-    return datetime.combine(
-        reference_date,
-        time(hour=hour, minute=minute),
-        tzinfo=ZoneInfo(preferences.timezone),
-    )
-
-
 def _build_habit_series_definition(
     *,
     start_date: date,
@@ -279,7 +269,7 @@ def _build_habit_series_definition(
     target_per_cycle: int,
 ) -> SeriesDefinition:
     return build_series_definition(
-        anchor_start=_habit_anchor_datetime(start_date),
+        anchor_start=get_day_start_datetime(start_date),
         anchor_end=None,
         frequency="daily",
         byweekday=cadence_weekdays,

@@ -521,6 +521,27 @@
         "use_this_as_primary_query_entrypoint_for_people_rather_than_expecting_separate": "Use this as the primary query entrypoint for people rather than expecting a separate search command."
       }
     },
+    "planning": {
+      "parser": {
+        "description": "Inspect planning-cycle windows as cross-vision task trees without mutating data.",
+        "manage_planning_views": "Show planning-cycle task trees",
+        "primary_reference_note": "Use `lifeos planning show --help` as the primary reference for window semantics and filters."
+      },
+      "show": {
+        "at_help": "Reference date whose containing planning period is shown; defaults to today when omitted.",
+        "context_note": "Ancestors outside the queried window appear as collapsed `(context) ` rows with their in-window descendants beneath them.",
+        "cycle_type_help": "Planning cycle type: day, week, month, year, or 7years.",
+        "depth_help": "Maximum tree depth below top-level rows; 0 shows only roots.",
+        "description": "Show tasks in one calendar-aware planning window as a cross-vision tree assembled from `parent_task_id` links.",
+        "filters_note": "`--status` and `--vision` filter in-window tasks; context rows also respect `--vision`.",
+        "show_planning_view": "Show a planning view",
+        "start_help": "Exact period start date to query (Web-equivalent `planning_cycle_start_date`); mutually exclusive with `--at`.",
+        "status_help": "Comma-separated task statuses to include.",
+        "tree_columns_note": "Rows print tab-separated columns: status, vision_id, content, planning_cycle_window, estimated_effort; children are indented by depth.",
+        "vision_help": "Comma-separated vision identifiers to include.",
+        "window_semantics_note": "`--at` resolves the calendar-aware period containing the date; `--start` queries the period containing the given date directly. Both return tasks whose own planning window overlaps the period (Web-equivalent)."
+      }
+    },
     "schedule": {
       "parser": {
         "dates_use_configured_timezone_and_day_starts_at_preference": "Dates use the configured timezone and `day_starts_at` preference.",

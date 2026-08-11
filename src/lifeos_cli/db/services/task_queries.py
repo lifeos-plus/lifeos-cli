@@ -14,7 +14,8 @@ from lifeos_cli.application.calendar_adapter import (
     CalendarGranularity,
     get_calendar_period_range,
 )
-from lifeos_cli.config import ConfigurationError
+from lifeos_cli.application.time_preferences import get_operational_date
+from lifeos_cli.config import ConfigurationError, get_preferences_settings
 from lifeos_cli.db.models.association import Association
 from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.person import Person
@@ -87,10 +88,26 @@ class TaskHierarchy:
     root_tasks: tuple[TaskWithSubtasks, ...]
 
 
+@dataclass(frozen=True)
+class PlanningView:
+    """Cross-vision planning tree for one calendar-aware window."""
+
+    cycle_type: str
+    period_start: date
+    period_end: date
+    roots: tuple[TaskWithSubtasks, ...]
+    context_root_ids: tuple[UUID, ...]
+    total_tasks: int
+
+
+MAX_PLANNING_CONTEXT_PARENT_FETCHES = 100
+
+
 def _build_task_tree(
     tasks: list[Task],
     *,
     people_map: dict[UUID, list[Person]],
+    max_depth: int | None = None,
 ) -> tuple[TaskWithSubtasks, ...]:
     """Build a task tree from a flat task list."""
     task_ids = {task.id for task in tasks}
@@ -109,9 +126,10 @@ def _build_task_tree(
         return completed_count / len(subtasks)
 
     def convert(task: Task, *, depth: int) -> TaskWithSubtasks:
-        subtasks = tuple(
-            convert(subtask, depth=depth + 1) for subtask in children_by_parent[task.id]
-        )
+        child_tasks = children_by_parent[task.id]
+        if max_depth is not None and depth >= max_depth:
+            child_tasks = []
+        subtasks = tuple(convert(subtask, depth=depth + 1) for subtask in child_tasks)
         return TaskWithSubtasks(
             task=task,
             id=task.id,
@@ -161,22 +179,18 @@ def _planning_cycle_date_filter_range(
     *,
     planning_cycle_type: str,
     planning_cycle_start_date: date,
-    calendar_system: str | None,
-    first_day_of_week: int | None,
-    seven_year_anchor_date: date | None,
 ) -> tuple[date, date] | None:
-    """Return a calendar-aware planning-cycle filter range when requested."""
-    if calendar_system is None and first_day_of_week is None and seven_year_anchor_date is None:
-        return None
+    """Return the calendar-aware planning-cycle range from persisted preferences."""
     if planning_cycle_type not in {"day", "week", "month", "year", "7years"}:
         return None
+    preferences = get_preferences_settings()
     try:
         return get_calendar_period_range(
             cast(CalendarGranularity, planning_cycle_type),
             planning_cycle_start_date,
-            calendar_system=calendar_system,
-            first_day_of_week=first_day_of_week,
-            seven_year_anchor_date=seven_year_anchor_date,
+            calendar_system=preferences.calendar_system,
+            first_day_of_week=preferences.calendar_first_day_of_week,
+            seven_year_anchor_date=date.fromisoformat(preferences.calendar_seven_year_anchor_date),
         )
     except (ConfigurationError, ValueError) as exc:
         raise ValueError(str(exc)) from exc
@@ -194,9 +208,6 @@ def _apply_task_filters(
     exclude_status: str | None = None,
     planning_cycle_type: str | None = None,
     planning_cycle_start_date: date | None = None,
-    calendar_system: str | None = None,
-    first_day_of_week: int | None = None,
-    seven_year_anchor_date: date | None = None,
     content: str | None = None,
     query: str | None = None,
 ) -> Any:
@@ -241,9 +252,6 @@ def _apply_task_filters(
             cycle_range = _planning_cycle_date_filter_range(
                 planning_cycle_type=planning_cycle_type.strip().lower(),
                 planning_cycle_start_date=planning_cycle_start_date,
-                calendar_system=calendar_system,
-                first_day_of_week=first_day_of_week,
-                seven_year_anchor_date=seven_year_anchor_date,
             )
         else:
             cycle_range = None
@@ -265,6 +273,11 @@ def _apply_task_filters(
         if normalized_query:
             stmt = stmt.where(Task.content.ilike(f"%{normalized_query}%"))
     return stmt
+
+
+def _apply_task_display_order(stmt: Any) -> Any:
+    """Apply the shared task tree ordering used by list and view queries."""
+    return stmt.order_by(Task.display_order.asc(), Task.created_at.asc(), Task.id.asc())
 
 
 async def _build_task_view(session: AsyncSession, task: Task) -> TaskView:
@@ -349,9 +362,6 @@ async def list_tasks(
     exclude_status: str | None = None,
     planning_cycle_type: str | None = None,
     planning_cycle_start_date: date | None = None,
-    calendar_system: str | None = None,
-    first_day_of_week: int | None = None,
-    seven_year_anchor_date: date | None = None,
     content: str | None = None,
     query: str | None = None,
     limit: int = 100,
@@ -369,17 +379,10 @@ async def list_tasks(
         exclude_status=exclude_status,
         planning_cycle_type=planning_cycle_type,
         planning_cycle_start_date=planning_cycle_start_date,
-        calendar_system=calendar_system,
-        first_day_of_week=first_day_of_week,
-        seven_year_anchor_date=seven_year_anchor_date,
         content=content,
         query=query,
     )
-    stmt = (
-        stmt.order_by(Task.display_order.asc(), Task.created_at.asc(), Task.id.asc())
-        .offset(offset)
-        .limit(limit)
-    )
+    stmt = _apply_task_display_order(stmt).offset(offset).limit(limit)
     tasks = list((await session.execute(stmt)).scalars())
     return await _build_task_views(session, tasks)
 
@@ -396,9 +399,6 @@ async def count_tasks(
     exclude_status: str | None = None,
     planning_cycle_type: str | None = None,
     planning_cycle_start_date: date | None = None,
-    calendar_system: str | None = None,
-    first_day_of_week: int | None = None,
-    seven_year_anchor_date: date | None = None,
     content: str | None = None,
     query: str | None = None,
 ) -> int:
@@ -414,13 +414,107 @@ async def count_tasks(
         exclude_status=exclude_status,
         planning_cycle_type=planning_cycle_type,
         planning_cycle_start_date=planning_cycle_start_date,
-        calendar_system=calendar_system,
-        first_day_of_week=first_day_of_week,
-        seven_year_anchor_date=seven_year_anchor_date,
         content=content,
         query=query,
     )
     return int((await session.execute(stmt)).scalar_one())
+
+
+async def _load_planning_context_parents(
+    session: AsyncSession,
+    tasks: list[Task],
+    *,
+    vision_in: str | None,
+) -> list[Task]:
+    """Load direct parents that fall outside the queried planning window."""
+    task_ids = {task.id for task in tasks}
+    missing_ids = tuple(
+        dict.fromkeys(
+            task.parent_task_id
+            for task in tasks
+            if task.parent_task_id is not None and task.parent_task_id not in task_ids
+        )
+    )[:MAX_PLANNING_CONTEXT_PARENT_FETCHES]
+    if not missing_ids:
+        return []
+    result = await session.execute(
+        select(Task).where(
+            Task.id.in_(missing_ids),
+            Task.deleted_at.is_(None),
+        )
+    )
+    allowed_visions: set[UUID] | None = None
+    if vision_in is not None:
+        allowed_visions = {UUID(value.strip()) for value in vision_in.split(",") if value.strip()}
+    parents = [
+        parent
+        for parent in result.scalars()
+        if allowed_visions is None or parent.vision_id in allowed_visions
+    ]
+    return sorted(parents, key=lambda task: (task.display_order, task.created_at, task.id))
+
+
+async def get_planning_view(
+    session: AsyncSession,
+    *,
+    cycle_type: str,
+    at_date: date | None = None,
+    start_date: date | None = None,
+    vision_in: str | None = None,
+    status_in: str | None = None,
+    max_depth: int | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> PlanningView:
+    """Return the calendar-aware cross-vision planning tree for one window.
+
+    The window query reuses the shared task filter contract and the tree is
+    assembled with the shared ``_build_task_tree`` helper; ancestors outside
+    the window are loaded as collapsed context roots.
+    """
+    if at_date is not None and start_date is not None:
+        raise ValueError("Use either --at or --start, not both.")
+    preferences = get_preferences_settings()
+    anchor = start_date
+    if anchor is None:
+        reference_date = at_date or get_operational_date()
+        anchor = get_calendar_period_range(
+            cast(CalendarGranularity, cycle_type),
+            reference_date,
+            calendar_system=preferences.calendar_system,
+            first_day_of_week=preferences.calendar_first_day_of_week,
+            seven_year_anchor_date=date.fromisoformat(preferences.calendar_seven_year_anchor_date),
+        )[0]
+    period_start, period_end = get_calendar_period_range(
+        cast(CalendarGranularity, cycle_type),
+        anchor,
+        calendar_system=preferences.calendar_system,
+        first_day_of_week=preferences.calendar_first_day_of_week,
+        seven_year_anchor_date=date.fromisoformat(preferences.calendar_seven_year_anchor_date),
+    )
+    stmt = _apply_task_filters(
+        select(Task),
+        planning_cycle_type=cycle_type,
+        planning_cycle_start_date=anchor,
+        vision_in=vision_in,
+        status_in=status_in,
+    )
+    stmt = _apply_task_display_order(stmt).offset(offset).limit(limit)
+    tasks = list((await session.execute(stmt)).scalars())
+    context_parents = await _load_planning_context_parents(session, tasks, vision_in=vision_in)
+    roots = _build_task_tree(
+        [*tasks, *context_parents],
+        people_map={},
+        max_depth=max_depth,
+    )
+    return PlanningView(
+        cycle_type=cycle_type,
+        period_start=period_start,
+        period_end=period_end,
+        roots=roots,
+        context_root_ids=tuple(parent.id for parent in context_parents),
+        total_tasks=len(tasks),
+    )
 
 
 async def get_vision_task_hierarchy(
@@ -430,10 +524,8 @@ async def get_vision_task_hierarchy(
 ) -> TaskHierarchy:
     """Load active tasks for a vision as a hierarchy."""
     await ensure_vision_exists(session, vision_id)
-    stmt = (
-        select(Task)
-        .where(Task.vision_id == vision_id, Task.deleted_at.is_(None))
-        .order_by(Task.display_order.asc(), Task.created_at.asc(), Task.id.asc())
+    stmt = _apply_task_display_order(
+        select(Task).where(Task.vision_id == vision_id, Task.deleted_at.is_(None))
     )
     tasks = list((await session.execute(stmt)).scalars())
     people_map = await load_people_for_entities(

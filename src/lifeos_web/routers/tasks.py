@@ -181,9 +181,6 @@ async def list_tasks(
             exclude_status=exclude_status,
             planning_cycle_type=planning_cycle_type,
             planning_cycle_start_date=planning_cycle_start_date,
-            calendar_system=calendar_system,
-            first_day_of_week=first_day_of_week,
-            seven_year_anchor_date=seven_year_anchor_date,
             query=query,
             limit=size,
             offset=(page - 1) * size,
@@ -197,9 +194,6 @@ async def list_tasks(
             exclude_status=exclude_status,
             planning_cycle_type=planning_cycle_type,
             planning_cycle_start_date=planning_cycle_start_date,
-            calendar_system=calendar_system,
-            first_day_of_week=first_day_of_week,
-            seven_year_anchor_date=seven_year_anchor_date,
             query=query,
         )
     except ValueError as exc:

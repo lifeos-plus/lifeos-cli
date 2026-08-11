@@ -573,6 +573,21 @@ def test_cli_schedule_list_help_documents_section_headers(capsys) -> None:
     assert "--hide-overdue-unfinished" in captured.out
 
 
+def test_cli_planning_show_help_documents_window_semantics(capsys) -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["planning", "show", "--help"])
+
+    captured = capsys.readouterr()
+
+    assert "Show tasks in one calendar-aware planning window" in captured.out
+    assert "lifeos planning show --cycle-type 7years" in captured.out
+    assert "lifeos planning show --cycle-type year --start 2026-07-26" in captured.out
+    assert "planning_cycle_window" in captured.out
+    assert "--at" in captured.out and "--start" in captured.out
+
+
 def test_cli_people_help_describes_human_and_agent_subject_modeling(capsys) -> None:
     parser = build_parser()
 

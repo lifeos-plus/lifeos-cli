@@ -10,6 +10,7 @@ from uuid import UUID
 import pytest
 from sqlalchemy import select
 
+from lifeos_cli.application import time_preferences
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.services import (
     habit_mutations,
@@ -1036,7 +1037,17 @@ def test_iter_habit_scheduled_dates_uses_user_calendar_monthdays(
             calendar_first_day_of_week=1,
         ),
     )
-
+    monkeypatch.setattr(
+        time_preferences,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            day_starts_at="00:00",
+            timezone="UTC",
+            week_starts_on="monday",
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=1,
+        ),
+    )
     scheduled_dates = habit_support.iter_habit_scheduled_dates(
         start_date=date(2026, 7, 26),
         end_date=date(2026, 8, 25),
@@ -1257,7 +1268,17 @@ def test_build_habit_stats_payload_uses_selected_calendar_month_cycles(
             calendar_first_day_of_week=1,
         ),
     )
-
+    monkeypatch.setattr(
+        time_preferences,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            day_starts_at="00:00",
+            timezone="UTC",
+            week_starts_on="monday",
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=1,
+        ),
+    )
     habit = SimpleNamespace(
         id=UUID("cccccccc-cccc-cccc-cccc-cccccccccccc"),
         start_date=date(2026, 7, 26),
