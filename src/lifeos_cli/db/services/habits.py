@@ -26,10 +26,6 @@ from lifeos_cli.db.services.habit_queries import (
     list_habits,
 )
 from lifeos_cli.db.services.habit_support import (
-    DEFAULT_HABIT_ACTION_WINDOW_DAYS,
-    HABIT_ACTION_STATUS_CONFIG,
-    HABIT_EDITABLE_DAYS,
-    MAX_HABIT_ACTION_WINDOW_DAYS,
     HabitActionNotFoundError,
     HabitNotFoundError,
     HabitTaskReferenceNotFoundError,
@@ -40,10 +36,6 @@ from lifeos_cli.db.services.habit_support import (
 )
 
 __all__ = [
-    "DEFAULT_HABIT_ACTION_WINDOW_DAYS",
-    "HABIT_ACTION_STATUS_CONFIG",
-    "HABIT_EDITABLE_DAYS",
-    "MAX_HABIT_ACTION_WINDOW_DAYS",
     "HabitActionNotFoundError",
     "HabitNotFoundError",
     "HabitTaskReferenceNotFoundError",

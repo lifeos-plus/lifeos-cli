@@ -15,10 +15,6 @@ from lifeos_cli.db.services.habit_queries import (
     list_habit_actions_with_total,
 )
 from lifeos_cli.db.services.habit_support import (
-    DEFAULT_HABIT_ACTION_WINDOW_DAYS,
-    HABIT_EDITABLE_DAYS,
-    MAX_HABIT_ACTION_WINDOW_DAYS,
-    VALID_HABIT_ACTION_STATUSES,
     HabitActionNotFoundError,
     HabitNotFoundError,
     HabitValidationError,
@@ -27,14 +23,10 @@ from lifeos_cli.db.services.habit_support import (
 )
 
 __all__ = [
-    "DEFAULT_HABIT_ACTION_WINDOW_DAYS",
-    "HABIT_EDITABLE_DAYS",
-    "MAX_HABIT_ACTION_WINDOW_DAYS",
     "HabitActionNotFoundError",
     "HabitNotFoundError",
     "HabitValidationError",
     "InvalidHabitOperationError",
-    "VALID_HABIT_ACTION_STATUSES",
     "count_habit_actions",
     "get_habit_action",
     "get_habit_action_model",
