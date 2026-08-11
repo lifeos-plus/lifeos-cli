@@ -324,21 +324,80 @@ def iter_habit_scheduled_dates(
         cadence_monthdays=cadence_monthdays,
         target_per_cycle=1,
     )
-    return [
-        current_date
-        for current_date in (
-            start_date + timedelta(days=offset)
-            for offset in range((end_date - start_date).days + 1)
-        )
-        if habit_occurs_on_date(
+    return _iter_scheduled_dates_with_normalized_cadence(
+        start_date=start_date,
+        end_date=end_date,
+        normalized_frequency=normalized_frequency,
+        normalized_weekdays=normalized_weekdays,
+        normalized_monthdays=normalized_monthdays,
+    )
+
+
+def _iter_scheduled_dates_with_normalized_cadence(
+    *,
+    start_date: date,
+    end_date: date,
+    normalized_frequency: str,
+    normalized_weekdays: tuple[str, ...] | None,
+    normalized_monthdays: tuple[int, ...] | None,
+) -> list[date]:
+    """Iterate occurrence dates for already-normalized habit cadence fields."""
+    if end_date < start_date:
+        return []
+    if normalized_frequency == "monthly" and normalized_monthdays is not None:
+        return _iter_monthly_monthday_dates(
             start_date=start_date,
             end_date=end_date,
-            cadence_frequency=normalized_frequency,
-            cadence_weekdays=normalized_weekdays,
-            cadence_monthdays=normalized_monthdays,
-            target_date=current_date,
+            normalized_monthdays=normalized_monthdays,
         )
+    if normalized_weekdays is not None:
+        weekday_names = set(normalized_weekdays)
+        return [
+            current_date
+            for current_date in (
+                start_date + timedelta(days=offset)
+                for offset in range((end_date - start_date).days + 1)
+            )
+            if VALID_WEEKDAY_NAMES[current_date.weekday()] in weekday_names
+        ]
+    return [
+        start_date + timedelta(days=offset) for offset in range((end_date - start_date).days + 1)
     ]
+
+
+def _iter_monthly_monthday_dates(
+    *,
+    start_date: date,
+    end_date: date,
+    normalized_monthdays: tuple[int, ...],
+) -> list[date]:
+    """Iterate monthly occurrence dates by walking calendar months."""
+    preferences = get_preferences_settings()
+    scheduled_dates: list[date] = []
+    period_start, period_end = get_calendar_period_range(
+        "month",
+        start_date,
+        calendar_system=preferences.calendar_system,
+        first_day_of_week=preferences.calendar_first_day_of_week,
+    )
+    while period_start <= end_date:
+        for monthday in normalized_monthdays:
+            candidate = period_start + timedelta(days=monthday - 1)
+            if candidate > period_end:
+                continue
+            if candidate < start_date or candidate > end_date:
+                continue
+            scheduled_dates.append(candidate)
+        if period_end >= end_date:
+            break
+        next_start = period_end + timedelta(days=1)
+        period_start, period_end = get_calendar_period_range(
+            "month",
+            next_start,
+            calendar_system=preferences.calendar_system,
+            first_day_of_week=preferences.calendar_first_day_of_week,
+        )
+    return scheduled_dates
 
 
 def calculate_habit_duration_for_repeat_count(
@@ -401,13 +460,32 @@ def habit_occurs_on_date(
         cadence_monthdays=cadence_monthdays,
         target_per_cycle=1,
     )
-    if normalized_weekdays is None:
-        weekday_matches = True
-    else:
-        weekday_name = VALID_WEEKDAY_NAMES[target_date.weekday()]
-        weekday_matches = weekday_name in normalized_weekdays
-    if not weekday_matches:
+    return _occurs_on_date_with_normalized_cadence(
+        start_date=start_date,
+        end_date=end_date,
+        normalized_frequency=normalized_frequency,
+        normalized_weekdays=normalized_weekdays,
+        normalized_monthdays=normalized_monthdays,
+        target_date=target_date,
+    )
+
+
+def _occurs_on_date_with_normalized_cadence(
+    *,
+    start_date: date,
+    end_date: date,
+    normalized_frequency: str,
+    normalized_weekdays: tuple[str, ...] | None,
+    normalized_monthdays: tuple[int, ...] | None,
+    target_date: date,
+) -> bool:
+    """Occurrence predicate for already-normalized habit cadence fields."""
+    if target_date < start_date or target_date > end_date:
         return False
+    if normalized_weekdays is not None:
+        weekday_name = VALID_WEEKDAY_NAMES[target_date.weekday()]
+        if weekday_name not in normalized_weekdays:
+            return False
     if normalized_frequency == "monthly" and normalized_monthdays is not None:
         return _calendar_monthday(target_date) in normalized_monthdays
     return True

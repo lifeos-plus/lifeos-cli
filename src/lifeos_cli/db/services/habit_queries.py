@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any, cast
 from uuid import UUID
 
@@ -25,6 +25,7 @@ from lifeos_cli.db.services.habit_support import (
     build_habit_stats_payload,
     get_habit_occurrence_end_date,
     habit_occurs_on_date,
+    iter_habit_scheduled_dates,
     refresh_habit_expiration,
     validate_habit_action_status,
     validate_habit_status,
@@ -145,24 +146,17 @@ def _iter_habit_window_dates(
     end_date: date,
 ) -> list[date]:
     effective_start = max(start_date, habit.start_date)
-    effective_end = min(end_date, get_habit_occurrence_end_date(habit))
+    occurrence_end_date = get_habit_occurrence_end_date(habit)
+    effective_end = min(end_date, occurrence_end_date)
     if effective_end < effective_start:
         return []
-    return [
-        current_date
-        for current_date in (
-            effective_start + timedelta(days=offset)
-            for offset in range((effective_end - effective_start).days + 1)
-        )
-        if habit_occurs_on_date(
-            start_date=habit.start_date,
-            end_date=get_habit_occurrence_end_date(habit),
-            cadence_frequency=getattr(habit, "cadence_frequency", "daily"),
-            cadence_weekdays=getattr(habit, "cadence_weekdays", None),
-            cadence_monthdays=getattr(habit, "cadence_monthdays", None),
-            target_date=current_date,
-        )
-    ]
+    return iter_habit_scheduled_dates(
+        start_date=effective_start,
+        end_date=effective_end,
+        cadence_frequency=getattr(habit, "cadence_frequency", "daily"),
+        cadence_weekdays=getattr(habit, "cadence_weekdays", None),
+        cadence_monthdays=getattr(habit, "cadence_monthdays", None),
+    )
 
 
 async def _load_materialized_actions_for_habits(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date
+from datetime import date, timedelta
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock, Mock
@@ -1063,6 +1063,85 @@ def test_iter_habit_scheduled_dates_uses_user_calendar_monthdays(
     ]
 
 
+def test_iter_habit_scheduled_dates_matches_day_scan_for_weekly_cadence() -> None:
+    start_date = date(2026, 4, 1)
+    end_date = date(2026, 5, 31)
+    cadence_weekdays = ["monday", "wednesday", "friday"]
+
+    scheduled_dates = habit_support.iter_habit_scheduled_dates(
+        start_date=start_date,
+        end_date=end_date,
+        cadence_frequency="weekly",
+        cadence_weekdays=cadence_weekdays,
+    )
+
+    reference_dates = [
+        current_date
+        for current_date in (
+            start_date + timedelta(days=offset)
+            for offset in range((end_date - start_date).days + 1)
+        )
+        if habit_support.habit_occurs_on_date(
+            start_date=start_date,
+            end_date=end_date,
+            cadence_frequency="weekly",
+            cadence_weekdays=cadence_weekdays,
+            target_date=current_date,
+        )
+    ]
+
+    assert scheduled_dates == reference_dates
+
+
+def test_iter_habit_scheduled_dates_matches_day_scan_for_monthly_monthdays(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        habit_support,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            day_starts_at="00:00",
+            timezone="UTC",
+            week_starts_on="monday",
+            calendar_system="gregorian",
+            calendar_first_day_of_week=1,
+        ),
+    )
+    start_date = date(2026, 1, 1)
+    end_date = date(2026, 4, 30)
+    cadence_monthdays = [1, 15, 31]
+
+    scheduled_dates = habit_support.iter_habit_scheduled_dates(
+        start_date=start_date,
+        end_date=end_date,
+        cadence_frequency="monthly",
+        cadence_weekdays=None,
+        cadence_monthdays=cadence_monthdays,
+    )
+
+    reference_dates = [
+        current_date
+        for current_date in (
+            start_date + timedelta(days=offset)
+            for offset in range((end_date - start_date).days + 1)
+        )
+        if habit_support.habit_occurs_on_date(
+            start_date=start_date,
+            end_date=end_date,
+            cadence_frequency="monthly",
+            cadence_weekdays=None,
+            cadence_monthdays=cadence_monthdays,
+            target_date=current_date,
+        )
+    ]
+
+    assert scheduled_dates == reference_dates
+    assert date(2026, 3, 31) in scheduled_dates
+    assert all(
+        current_date.day <= 28 for current_date in scheduled_dates if current_date.month == 2
+    )
+
+
 def test_update_habit_can_clear_task_without_committing(monkeypatch: pytest.MonkeyPatch) -> None:
     habit = SimpleNamespace(
         id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
@@ -1670,6 +1749,57 @@ def test_build_habit_action_views_stops_after_status_change_date(
     )
 
     assert [view.action_date for view in views] == [date(2026, 6, 30)]
+
+
+def test_build_habit_action_views_with_window_stops_after_status_change_date(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    habit_id = UUID("77777777-7777-7777-7777-777777777777")
+    habit = SimpleNamespace(
+        id=habit_id,
+        title="Weekend Review",
+        start_date=date(2026, 6, 1),
+        end_date=date(2026, 7, 31),
+        cadence_frequency="weekly",
+        cadence_weekdays=["saturday", "sunday"],
+        cadence_monthdays=None,
+        status="paused",
+        status_changed_date=date(2026, 7, 1),
+    )
+
+    async def fake_load_candidate_habits(*args: object, **kwargs: object) -> list[object]:
+        assert kwargs["action_window"] == (date(2026, 6, 1), date(2026, 7, 31))
+        return [habit]
+
+    async def fake_load_materialized_actions(*args: object, **kwargs: object) -> list[object]:
+        return []
+
+    monkeypatch.setattr(habit_queries, "_load_candidate_habits", fake_load_candidate_habits)
+    monkeypatch.setattr(
+        habit_queries,
+        "_load_materialized_actions_for_habits",
+        fake_load_materialized_actions,
+    )
+
+    views = asyncio.run(
+        habit_queries.build_habit_action_views(
+            cast(Any, object()),
+            habit_id=None,
+            status=None,
+            action_window=(date(2026, 6, 1), date(2026, 7, 31)),
+        )
+    )
+
+    assert [view.action_date for view in views] == [
+        date(2026, 6, 6),
+        date(2026, 6, 7),
+        date(2026, 6, 13),
+        date(2026, 6, 14),
+        date(2026, 6, 20),
+        date(2026, 6, 21),
+        date(2026, 6, 27),
+        date(2026, 6, 28),
+    ]
 
 
 def test_list_and_count_habit_actions_pass_discrete_dates_to_builder(

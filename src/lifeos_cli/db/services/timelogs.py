@@ -781,7 +781,8 @@ async def get_timelog(
     )
     if timelog is None:
         return None
-    return await _build_timelog_view(session, timelog)
+    views = await _build_timelog_views(session, [timelog])
+    return views[0]
 
 
 async def get_latest_timelog_end_time(session: AsyncSession) -> datetime | None:

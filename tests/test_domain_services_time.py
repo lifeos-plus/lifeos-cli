@@ -766,6 +766,31 @@ def test_timelog_view_does_not_hydrate_soft_deleted_task() -> None:
     asyncio.run(scenario())
 
 
+def test_get_timelog_builds_view_without_requerying(monkeypatch: pytest.MonkeyPatch) -> None:
+    timelog_id = UUID("cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcdcd")
+    timelog = SimpleNamespace(id=timelog_id)
+
+    async def fake_get_timelog_model(_: object, *, timelog_id: UUID) -> object:
+        assert timelog_id == UUID("cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcdcd")
+        return timelog
+
+    async def fake_build_timelog_views(_: object, timelogs: list[object]) -> list[object]:
+        assert timelogs == [timelog]
+        return ["built-view"]
+
+    monkeypatch.setattr(timelogs, "_get_timelog_model", fake_get_timelog_model)
+    monkeypatch.setattr(timelogs, "_build_timelog_views", fake_build_timelog_views)
+
+    view = asyncio.run(
+        timelogs.get_timelog(
+            cast(Any, object()),
+            timelog_id=timelog_id,
+        )
+    )
+
+    assert view == "built-view"
+
+
 def test_delete_event_single_records_skip_exception(monkeypatch: pytest.MonkeyPatch) -> None:
     event = SimpleNamespace(
         id=UUID("abababab-abab-abab-abab-abababababab"),

@@ -26,6 +26,7 @@ from lifeos_cli.db.base import SoftDeleteMixin
 
 _CACHED_ENGINE: AsyncEngine | None = None
 INCLUDE_SOFT_DELETED_EXECUTION_OPTION = "include_soft_deleted"
+SQLITE_BUSY_TIMEOUT_MS = 5000
 
 
 @event.listens_for(Session, "do_orm_execute")
@@ -44,11 +45,13 @@ def _exclude_soft_deleted_rows_by_default(execute_state: ORMExecuteState) -> Non
     )
 
 
-def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record) -> None:
-    """Enable SQLite foreign-key enforcement on each new DBAPI connection."""
+def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
+    """Apply SQLite connection pragmas for reliability and concurrent access."""
     cursor = dbapi_connection.cursor()
     try:
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
     finally:
         cursor.close()
 
@@ -59,7 +62,7 @@ def configure_async_engine(engine: AsyncEngine) -> AsyncEngine:
     if not policy.enable_foreign_keys_on_connect:
         return engine
 
-    event.listen(engine.sync_engine, "connect", _enable_sqlite_foreign_keys)
+    event.listen(engine.sync_engine, "connect", _configure_sqlite_connection)
     return engine
 
 
