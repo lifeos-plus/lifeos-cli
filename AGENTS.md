@@ -16,6 +16,7 @@ The following rules apply to coding agent collaboration in this repository. Thes
 - Create a tracking issue for non-trivial development tasks that do not already have one; very small changes do not require a new issue.
 - Link the relevant issue in the PR description with `Closes #xx` or `Related #xx` as appropriate.
 - Keep issue and PR status synchronized when work scope changes.
+- Begin every issue and PR description with a `TL;DR` section that states the intent and expected outcome in plain language, so human readers can grasp the point at a glance before reading the full description.
 
 ## 3. Text and Language Conventions
 
