@@ -27,6 +27,7 @@ from lifeos_cli.db.services.model_utils import (
     soft_delete_model_by_id,
 )
 from lifeos_cli.db.services.read_models import TagView, build_tag_view
+from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
 
 VALID_TAG_ENTITY_TYPES = {"note", "person", "task", "vision", "area", "event", "timelog"}
 TAGGED_ENTITY_MODELS = {
@@ -48,7 +49,7 @@ class TagAlreadyExistsError(ValueError):
     """Raised when a tag with the same identity already exists."""
 
 
-class InvalidTagEntityTypeError(ValueError):
+class InvalidTagEntityTypeError(DomainValidationError):
     """Raised when an unsupported tag entity type is requested."""
 
 
@@ -62,13 +63,13 @@ def normalize_tag_name(name: str) -> str:
 
 def validate_tag_entity_type(entity_type: str) -> str:
     """Validate a tag entity type."""
-    normalized = entity_type.strip().lower()
-    if normalized not in VALID_TAG_ENTITY_TYPES:
-        allowed = ", ".join(sorted(VALID_TAG_ENTITY_TYPES))
-        raise InvalidTagEntityTypeError(
-            f"Unsupported tag entity type {normalized!r}. Expected one of: {allowed}"
-        )
-    return normalized
+    return validate_choice(
+        entity_type,
+        VALID_TAG_ENTITY_TYPES,
+        error_cls=InvalidTagEntityTypeError,
+        label="tag entity type",
+        error_verb="Unsupported",
+    )
 
 
 def normalize_tag_category(category: str | None) -> str:

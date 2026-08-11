@@ -29,6 +29,7 @@ from lifeos_cli.db.services.model_utils import (
 )
 from lifeos_cli.db.services.read_models import VisionView, build_vision_view
 from lifeos_cli.db.services.task_effort import recompute_subtree_totals
+from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
 
 VALID_VISION_STATUSES = {"active", "archived", "fruit"}
 VISION_EXPERIENCE_RATE_MAX = MAX_VISION_EXPERIENCE_RATE_PER_HOUR
@@ -67,17 +68,22 @@ class AreaReferenceNotFoundError(LookupError):
     """Raised when a referenced area cannot be found."""
 
 
+class VisionValidationError(DomainValidationError):
+    """Raised when vision input validation fails."""
+
+
 class VisionNotReadyForHarvestError(ValueError):
     """Raised when a vision cannot be harvested yet."""
 
 
 def validate_vision_status(status: str) -> str:
     """Validate a vision status."""
-    normalized = status.strip().lower()
-    if normalized not in VALID_VISION_STATUSES:
-        allowed = ", ".join(sorted(VALID_VISION_STATUSES))
-        raise ValueError(f"Invalid vision status {normalized!r}. Expected one of: {allowed}")
-    return normalized
+    return validate_choice(
+        status,
+        VALID_VISION_STATUSES,
+        error_cls=VisionValidationError,
+        label="vision status",
+    )
 
 
 def validate_vision_experience_rate(experience_rate_per_hour: int | None) -> int | None:

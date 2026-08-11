@@ -35,13 +35,14 @@ from lifeos_cli.db.services.entity_associations import (
 )
 from lifeos_cli.db.services.entity_tags import load_tags_for_entities, sync_entity_tags
 from lifeos_cli.db.services.read_models import NoteView, build_note_view
+from lifeos_cli.db.services.validation_utils import DomainValidationError
 
 
 class NoteNotFoundError(LookupError):
     """Raised when a note cannot be found."""
 
 
-class NoteValidationError(ValueError):
+class NoteValidationError(DomainValidationError):
     """Raised when note input cannot be applied."""
 
 

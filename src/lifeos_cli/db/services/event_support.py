@@ -26,6 +26,7 @@ from lifeos_cli.db.services.recurrence_core import (
     serialize_recurrence_rule_details,
     validate_occurrence_start,
 )
+from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
 
 VALID_EVENT_STATUSES = {"planned", "cancelled", "completed"}
 VALID_EVENT_TYPES = {"appointment", "timeblock", "deadline"}
@@ -44,7 +45,7 @@ class EventTaskReferenceNotFoundError(LookupError):
     """Raised when a referenced task cannot be found."""
 
 
-class EventValidationError(ValueError):
+class EventValidationError(DomainValidationError):
     """Raised when event data is invalid."""
 
 
@@ -142,33 +143,32 @@ class EventListInput:
 
 def validate_event_scope(scope: str) -> str:
     """Validate an event operation scope."""
-    normalized = scope.strip().lower()
-    if normalized not in VALID_EVENT_OPERATION_SCOPES:
-        allowed = ", ".join(sorted(VALID_EVENT_OPERATION_SCOPES))
-        raise EventValidationError(
-            f"Invalid event scope {normalized!r}. Expected one of: {allowed}"
-        )
-    return normalized
+    return validate_choice(
+        scope,
+        VALID_EVENT_OPERATION_SCOPES,
+        error_cls=EventValidationError,
+        label="event scope",
+    )
 
 
 def validate_event_status(status: str) -> str:
     """Validate an event status value."""
-    normalized = status.strip().lower()
-    if normalized not in VALID_EVENT_STATUSES:
-        allowed = ", ".join(sorted(VALID_EVENT_STATUSES))
-        raise EventValidationError(
-            f"Invalid event status {normalized!r}. Expected one of: {allowed}"
-        )
-    return normalized
+    return validate_choice(
+        status,
+        VALID_EVENT_STATUSES,
+        error_cls=EventValidationError,
+        label="event status",
+    )
 
 
 def validate_event_type(event_type: str) -> str:
     """Validate an event type value."""
-    normalized = event_type.strip().lower()
-    if normalized not in VALID_EVENT_TYPES:
-        allowed = ", ".join(sorted(VALID_EVENT_TYPES))
-        raise EventValidationError(f"Invalid event type {normalized!r}. Expected one of: {allowed}")
-    return normalized
+    return validate_choice(
+        event_type,
+        VALID_EVENT_TYPES,
+        error_cls=EventValidationError,
+        label="event type",
+    )
 
 
 def validate_event_title(title: str) -> str:

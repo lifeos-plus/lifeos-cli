@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.vision import Vision
+from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
 
 VALID_TASK_STATUSES = {"todo", "in_progress", "done", "cancelled", "paused"}
 TASK_STATUSES_ALLOWED_FOR_PARENT_COMPLETION = {"done", "cancelled", "paused"}
@@ -39,8 +40,12 @@ class InvalidTaskDepthError(ValueError):
     """Raised when a task hierarchy exceeds the configured max depth."""
 
 
-class InvalidPlanningCycleError(ValueError):
+class InvalidPlanningCycleError(DomainValidationError):
     """Raised when planning cycle fields are incomplete or invalid."""
+
+
+class TaskValidationError(DomainValidationError):
+    """Raised when task input validation fails."""
 
 
 class CircularTaskReferenceError(ValueError):
@@ -57,11 +62,12 @@ class InvalidTaskOperationError(ValueError):
 
 def validate_task_status(status: str) -> str:
     """Validate a task status."""
-    normalized = status.strip().lower()
-    if normalized not in VALID_TASK_STATUSES:
-        allowed = ", ".join(sorted(VALID_TASK_STATUSES))
-        raise ValueError(f"Invalid task status {normalized!r}. Expected one of: {allowed}")
-    return normalized
+    return validate_choice(
+        status,
+        VALID_TASK_STATUSES,
+        error_cls=TaskValidationError,
+        label="task status",
+    )
 
 
 def validate_planning_cycle(
@@ -82,14 +88,14 @@ def validate_planning_cycle(
         raise InvalidPlanningCycleError(
             "Planning cycle type, days, and start date must be provided together"
         )
-    normalized_type = planning_cycle_type.strip().lower()
+    normalized_type = validate_choice(
+        planning_cycle_type,
+        VALID_PLANNING_CYCLE_TYPES,
+        error_cls=InvalidPlanningCycleError,
+        label="planning cycle type",
+    )
     normalized_days = planning_cycle_days
     normalized_start_date = planning_cycle_start_date
-    if normalized_type not in VALID_PLANNING_CYCLE_TYPES:
-        allowed = ", ".join(sorted(VALID_PLANNING_CYCLE_TYPES))
-        raise InvalidPlanningCycleError(
-            f"Invalid planning cycle type {normalized_type!r}. Expected one of: {allowed}"
-        )
     if normalized_days <= 0:
         raise InvalidPlanningCycleError("Planning cycle days must be greater than zero")
     return normalized_type, normalized_days, normalized_start_date

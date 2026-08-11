@@ -23,6 +23,8 @@ from dateutil.rrule import (
     rrule,
 )
 
+from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
+
 VALID_RECURRENCE_FREQUENCY_ORDER = ("daily", "weekly", "monthly", "yearly")
 VALID_RECURRENCE_FREQUENCIES = set(VALID_RECURRENCE_FREQUENCY_ORDER)
 VALID_WEEKDAY_NAMES = (
@@ -55,7 +57,7 @@ _WEEKDAY_TO_RRULE = {
 _WEEKDAY_TO_INDEX = {weekday: index for index, weekday in enumerate(VALID_WEEKDAY_NAMES)}
 
 
-class RecurrenceValidationError(ValueError):
+class RecurrenceValidationError(DomainValidationError):
     """Raised when a shared recurrence rule is invalid."""
 
 
@@ -116,14 +118,15 @@ def normalize_weekday_names(weekdays: Sequence[str] | None) -> tuple[str, ...] |
         return None
     normalized: list[str] = []
     for weekday in weekdays:
-        normalized_weekday = weekday.strip().lower()
-        if not normalized_weekday:
+        if not weekday.strip():
             continue
-        if normalized_weekday not in _WEEKDAY_TO_INDEX:
-            allowed = ", ".join(VALID_WEEKDAY_NAMES)
-            raise RecurrenceValidationError(
-                f"Invalid weekday {normalized_weekday!r}. Expected one of: {allowed}"
-            )
+        normalized_weekday = validate_choice(
+            weekday,
+            VALID_WEEKDAY_NAMES,
+            error_cls=RecurrenceValidationError,
+            label="weekday",
+            display_order=VALID_WEEKDAY_NAMES,
+        )
         if normalized_weekday not in normalized:
             normalized.append(normalized_weekday)
     if not normalized:
@@ -296,13 +299,13 @@ def serialize_recurrence_rule_details(rule: RecurrenceRule) -> dict[str, object]
 
 
 def normalize_recurrence_frequency(frequency: str) -> str:
-    normalized = frequency.strip().lower()
-    if normalized not in VALID_RECURRENCE_FREQUENCIES:
-        allowed = ", ".join(VALID_RECURRENCE_FREQUENCY_ORDER)
-        raise RecurrenceValidationError(
-            f"Invalid recurrence frequency {normalized!r}. Expected one of: {allowed}"
-        )
-    return normalized
+    return validate_choice(
+        frequency,
+        VALID_RECURRENCE_FREQUENCIES,
+        error_cls=RecurrenceValidationError,
+        label="recurrence frequency",
+        display_order=VALID_RECURRENCE_FREQUENCY_ORDER,
+    )
 
 
 def normalize_week_starts_on(week_starts_on: str) -> str:
@@ -361,12 +364,12 @@ def normalize_evaluation_policy(
     target_per_cycle: int = 1,
 ) -> EvaluationPolicy:
     """Validate and normalize a shared evaluation policy."""
-    normalized_mode = mode.strip().lower()
-    if normalized_mode not in VALID_EVALUATION_MODES:
-        allowed = ", ".join(sorted(VALID_EVALUATION_MODES))
-        raise RecurrenceValidationError(
-            f"Invalid evaluation mode {normalized_mode!r}. Expected one of: {allowed}"
-        )
+    normalized_mode = validate_choice(
+        mode,
+        VALID_EVALUATION_MODES,
+        error_cls=RecurrenceValidationError,
+        label="evaluation mode",
+    )
     normalized_cycle_frequency = normalize_recurrence_frequency(cycle_frequency)
     if target_per_cycle <= 0:
         raise RecurrenceValidationError("target_per_cycle must be greater than zero.")

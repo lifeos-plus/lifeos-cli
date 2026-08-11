@@ -19,6 +19,7 @@ from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
+from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
 
 VALID_ASSOCIATION_MODELS = frozenset(
     {"event", "habit_action", "note", "person", "task", "timelog", "vision"}
@@ -36,26 +37,30 @@ MODEL_MAP: dict[str, Any] = {
 }
 
 
+class AssociationValidationError(DomainValidationError):
+    """Raised when a weak-association input is invalid."""
+
+
 def validate_association_model(model_name: str) -> str:
     """Validate one weak-association model name."""
-    normalized = model_name.strip().lower()
-    if normalized not in VALID_ASSOCIATION_MODELS:
-        allowed = ", ".join(sorted(VALID_ASSOCIATION_MODELS))
-        raise ValueError(
-            f"Unsupported association model {normalized!r}. Expected one of: {allowed}"
-        )
-    return normalized
+    return validate_choice(
+        model_name,
+        VALID_ASSOCIATION_MODELS,
+        error_cls=AssociationValidationError,
+        label="association model",
+        error_verb="Unsupported",
+    )
 
 
 def validate_association_link_type(link_type: str) -> str:
     """Validate one weak-association link type."""
-    normalized = link_type.strip().lower()
-    if normalized not in VALID_ASSOCIATION_LINK_TYPES:
-        allowed = ", ".join(sorted(VALID_ASSOCIATION_LINK_TYPES))
-        raise ValueError(
-            f"Unsupported association link type {normalized!r}. Expected one of: {allowed}"
-        )
-    return normalized
+    return validate_choice(
+        link_type,
+        VALID_ASSOCIATION_LINK_TYPES,
+        error_cls=AssociationValidationError,
+        label="association link type",
+        error_verb="Unsupported",
+    )
 
 
 async def _load_existing_ids(
