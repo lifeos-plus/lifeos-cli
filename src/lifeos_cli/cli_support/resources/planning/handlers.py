@@ -3,15 +3,10 @@
 from __future__ import annotations
 
 import argparse
-from datetime import date, timedelta
-from typing import cast
+from datetime import timedelta
 
-from lifeos_cli.application.calendar_adapter import (
-    CalendarGranularity,
-    get_calendar_period_range,
-)
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
-from lifeos_cli.config import ConfigurationError, get_preferences_settings
+from lifeos_cli.config import ConfigurationError
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import planning_views
 
@@ -63,38 +58,24 @@ def _format_planning_view(view: planning_views.PlanningView) -> str:
 async def handle_planning_show_async(args: argparse.Namespace) -> int:
     if args.at is not None and args.start is not None:
         return cli_handler_utils.print_mutually_exclusive_options("--at", "--start")
-    try:
-        if args.depth is not None and args.depth < 0:
-            raise ValueError("--depth must be a non-negative integer.")
-        preferences = get_preferences_settings()
-        calendar_system = preferences.calendar_system
-        first_day_of_week = preferences.calendar_first_day_of_week
-        seven_year_anchor_date = date.fromisoformat(preferences.calendar_seven_year_anchor_date)
-        anchor = args.start
-        if anchor is None:
-            reference_date = args.at or date.today()
-            anchor = get_calendar_period_range(
-                cast(CalendarGranularity, args.cycle_type),
-                reference_date,
-                calendar_system=calendar_system,
-                first_day_of_week=first_day_of_week,
-                seven_year_anchor_date=seven_year_anchor_date,
-            )[0]
-        async with db_session.session_scope() as session:
+    if args.depth is not None and args.depth < 0:
+        return cli_handler_utils.print_cli_error(
+            ValueError("--depth must be a non-negative integer.")
+        )
+    async with db_session.session_scope() as session:
+        try:
             view = await planning_views.get_planning_view(
                 session,
                 cycle_type=args.cycle_type,
-                planning_cycle_start_date=anchor,
-                calendar_system=calendar_system,
-                first_day_of_week=first_day_of_week,
-                seven_year_anchor_date=seven_year_anchor_date,
+                at_date=args.at,
+                start_date=args.start,
                 vision_in=args.vision,
                 status_in=args.status,
                 max_depth=args.depth,
                 limit=args.limit,
                 offset=args.offset,
             )
-    except (ConfigurationError, ValueError) as exc:
-        return cli_handler_utils.print_cli_error(exc)
+        except (ConfigurationError, ValueError) as exc:
+            return cli_handler_utils.print_cli_error(exc)
     print(_format_planning_view(view))
     return 0

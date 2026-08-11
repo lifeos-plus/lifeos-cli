@@ -19,6 +19,7 @@ from lifeos_cli.application.calendar_adapter import (
     CalendarGranularity,
     get_calendar_period_range,
 )
+from lifeos_cli.config import get_preferences_settings
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services.read_models import TaskView
@@ -197,24 +198,50 @@ async def _load_context_parents(
     return tuple(sorted((_flatten_task(parent) for parent in parents), key=_task_sort_key))
 
 
+def _resolve_calendar_settings() -> tuple[str, int, date]:
+    """Return the calendar preferences persisted for the current user."""
+    preferences = get_preferences_settings()
+    return (
+        preferences.calendar_system,
+        preferences.calendar_first_day_of_week,
+        date.fromisoformat(preferences.calendar_seven_year_anchor_date),
+    )
+
+
 async def get_planning_view(
     session: AsyncSession,
     *,
     cycle_type: str,
-    planning_cycle_start_date: date,
-    calendar_system: str,
-    first_day_of_week: int,
-    seven_year_anchor_date: date,
+    at_date: date | None = None,
+    start_date: date | None = None,
     vision_in: str | None = None,
     status_in: str | None = None,
     max_depth: int | None = None,
     limit: int = 100,
     offset: int = 0,
 ) -> PlanningView:
-    """Return the calendar-aware cross-vision planning tree for one window."""
+    """Return the calendar-aware cross-vision planning tree for one window.
+
+    Calendar preferences are read from the persisted user configuration by the
+    backend instead of being passed in by the caller. ``at_date`` selects the
+    period containing the date; ``start_date`` anchors the period directly.
+    """
+    if at_date is not None and start_date is not None:
+        raise ValueError("Use either --at or --start, not both.")
+    calendar_system, first_day_of_week, seven_year_anchor_date = _resolve_calendar_settings()
+    anchor = start_date
+    if anchor is None:
+        reference_date = at_date or date.today()
+        anchor = get_calendar_period_range(
+            cast(CalendarGranularity, cycle_type),
+            reference_date,
+            calendar_system=calendar_system,
+            first_day_of_week=first_day_of_week,
+            seven_year_anchor_date=seven_year_anchor_date,
+        )[0]
     period_start, period_end = get_calendar_period_range(
         cast(CalendarGranularity, cycle_type),
-        planning_cycle_start_date,
+        anchor,
         calendar_system=calendar_system,
         first_day_of_week=first_day_of_week,
         seven_year_anchor_date=seven_year_anchor_date,
@@ -222,7 +249,7 @@ async def get_planning_view(
     tasks = await task_queries.list_tasks(
         session,
         planning_cycle_type=cycle_type,
-        planning_cycle_start_date=planning_cycle_start_date,
+        planning_cycle_start_date=anchor,
         calendar_system=calendar_system,
         first_day_of_week=first_day_of_week,
         seven_year_anchor_date=seven_year_anchor_date,

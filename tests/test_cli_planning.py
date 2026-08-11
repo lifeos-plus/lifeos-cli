@@ -138,6 +138,8 @@ def test_get_planning_view_computes_period_and_wires_filters(
         assert kwargs["planning_cycle_type"] == "7years"
         assert kwargs["planning_cycle_start_date"] == date(2025, 1, 1)
         assert kwargs["calendar_system"] == "gregorian"
+        assert kwargs["first_day_of_week"] == 1
+        assert kwargs["seven_year_anchor_date"] == date(2025, 7, 26)
         assert kwargs["vision_in"] == str(VISION_ONE)
         assert kwargs["status_in"] == "todo,in_progress"
         return list(flat_tasks)
@@ -153,15 +155,13 @@ def test_get_planning_view_computes_period_and_wires_filters(
 
     monkeypatch.setattr(planning_views.task_queries, "list_tasks", fake_list_tasks)
     monkeypatch.setattr(planning_views, "_load_context_parents", fake_load_context)
+    monkeypatch.setattr(planning_views, "get_preferences_settings", _stub_preferences)
 
     view = asyncio.run(
         planning_views.get_planning_view(
             cast(AsyncSession, object()),
             cycle_type="7years",
-            planning_cycle_start_date=date(2025, 1, 1),
-            calendar_system="gregorian",
-            first_day_of_week=1,
-            seven_year_anchor_date=date(2025, 7, 26),
+            at_date=date(2026, 8, 11),
             vision_in=str(VISION_ONE),
             status_in="todo,in_progress",
         )
@@ -171,6 +171,66 @@ def test_get_planning_view_computes_period_and_wires_filters(
     assert view.period_end == date(2031, 12, 31)
     assert view.total_tasks == 2
     assert [root.content for root in view.roots] == ["Root A"]
+
+
+def test_get_planning_view_defaults_at_to_today(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    async def fake_list_tasks(_session: object, **kwargs: object) -> list[object]:
+        captured_kwargs.update(kwargs)
+        return []
+
+    async def fake_load_context(
+        _session: object,
+        tasks: object,
+        *,
+        vision_in: object,
+    ) -> tuple[()]:
+        del tasks, vision_in
+        return ()
+
+    class _FakeDate:
+        @staticmethod
+        def today() -> date:
+            return date(2026, 8, 11)
+
+        @staticmethod
+        def fromisoformat(value: str) -> date:
+            return date.fromisoformat(value)
+
+    monkeypatch.setattr(planning_views, "get_preferences_settings", _stub_preferences)
+    monkeypatch.setattr(planning_views, "date", _FakeDate)
+    monkeypatch.setattr(planning_views.task_queries, "list_tasks", fake_list_tasks)
+    monkeypatch.setattr(planning_views, "_load_context_parents", fake_load_context)
+
+    view = asyncio.run(
+        planning_views.get_planning_view(
+            cast(AsyncSession, object()),
+            cycle_type="7years",
+        )
+    )
+
+    assert captured_kwargs["planning_cycle_start_date"] == date(2025, 1, 1)
+    assert view.period_start == date(2025, 1, 1)
+    assert view.period_end == date(2031, 12, 31)
+
+
+def test_get_planning_view_rejects_both_anchor_forms(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(planning_views, "get_preferences_settings", _stub_preferences)
+
+    with pytest.raises(ValueError, match="Use either --at or --start"):
+        asyncio.run(
+            planning_views.get_planning_view(
+                cast(AsyncSession, object()),
+                cycle_type="week",
+                at_date=date(2026, 8, 11),
+                start_date=date(2026, 8, 11),
+            )
+        )
 
 
 class _FakeSession:
@@ -304,7 +364,8 @@ def test_main_planning_show_prints_cross_vision_tree(
 ) -> None:
     async def fake_get_planning_view(_session: object, **kwargs: object) -> object:
         assert kwargs["cycle_type"] == "7years"
-        assert kwargs["planning_cycle_start_date"] == date(2025, 1, 1)
+        assert kwargs["at_date"] == date(2026, 8, 11)
+        assert kwargs["start_date"] is None
         assert kwargs["vision_in"] == str(VISION_ONE)
         assert kwargs["status_in"] == "todo,in_progress"
         assert kwargs["max_depth"] == 2
@@ -317,7 +378,6 @@ def test_main_planning_show_prints_cross_vision_tree(
         "get_planning_view",
         fake_get_planning_view,
     )
-    monkeypatch.setattr(planning_handlers, "get_preferences_settings", _stub_preferences)
 
     exit_code = cli.main(
         [
@@ -363,7 +423,7 @@ def test_main_planning_show_prints_cross_vision_tree(
     )
 
 
-def test_main_planning_show_defaults_at_to_today(
+def test_main_planning_show_passes_through_default_anchor(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -373,29 +433,19 @@ def test_main_planning_show_defaults_at_to_today(
         captured_kwargs.update(kwargs)
         return _sample_view()
 
-    class _FakeDate:
-        @staticmethod
-        def today() -> date:
-            return date(2026, 8, 11)
-
-        @staticmethod
-        def fromisoformat(value: str) -> date:
-            return date.fromisoformat(value)
-
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
     monkeypatch.setattr(
         planning_handlers.planning_views,
         "get_planning_view",
         fake_get_planning_view,
     )
-    monkeypatch.setattr(planning_handlers, "get_preferences_settings", _stub_preferences)
-    monkeypatch.setattr(planning_handlers, "date", _FakeDate)
 
     exit_code = cli.main(["planning", "show", "--cycle-type", "7years"])
     capsys.readouterr()
 
     assert exit_code == 0
-    assert captured_kwargs["planning_cycle_start_date"] == date(2025, 1, 1)
+    assert captured_kwargs["at_date"] is None
+    assert captured_kwargs["start_date"] is None
 
 
 def test_main_planning_show_passes_start_anchor_through(
@@ -414,14 +464,14 @@ def test_main_planning_show_passes_start_anchor_through(
         "get_planning_view",
         fake_get_planning_view,
     )
-    monkeypatch.setattr(planning_handlers, "get_preferences_settings", _stub_preferences)
 
     exit_code = cli.main(["planning", "show", "--cycle-type", "year", "--start", "2026-07-26"])
     capsys.readouterr()
 
     assert exit_code == 0
     assert captured_kwargs["cycle_type"] == "year"
-    assert captured_kwargs["planning_cycle_start_date"] == date(2026, 7, 26)
+    assert captured_kwargs["start_date"] == date(2026, 7, 26)
+    assert captured_kwargs["at_date"] is None
 
 
 def test_main_planning_show_rejects_conflicting_anchor_flags(
@@ -453,7 +503,6 @@ def test_main_planning_show_rejects_negative_depth(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
-    monkeypatch.setattr(planning_handlers, "get_preferences_settings", _stub_preferences)
 
     exit_code = cli.main(["planning", "show", "--cycle-type", "week", "--depth", "-1"])
     captured = capsys.readouterr()
