@@ -91,7 +91,7 @@ Time-oriented behavior follows these rules:
 
 The current command tree is organized around a few stable families:
 
-- planning resources such as `area`, `vision`, `task`, `note`, `people`, and `tag`
+- planning resources such as `area`, `vision`, `task`, `planning`, `note`, `people`, and `tag`
 - scheduling and tracking resources such as `event`, `schedule`, `timelog`, `habit`, and `habit-action`
 - financial reality resources such as `finance`
 - system, Web, and portability commands such as `init`, `config`, `db`, `web`, and `data`

@@ -20,6 +20,7 @@ from lifeos_cli.application.calendar_adapter import (
     get_calendar_period_range,
 )
 from lifeos_cli.application.preferences import get_calendar_preferences
+from lifeos_cli.application.time_preferences import get_operational_date
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services.read_models import TaskView
@@ -37,7 +38,6 @@ class PlanningTaskFlat:
     content: str
     status: str
     estimated_effort: int | None
-    planning_cycle_type: str | None
     planning_cycle_start_date: date | None
     planning_cycle_days: int | None
     display_order: int
@@ -54,7 +54,6 @@ class PlanningTaskNode:
     content: str
     status: str
     estimated_effort: int | None
-    planning_cycle_type: str | None
     planning_cycle_start_date: date | None
     planning_cycle_days: int | None
     depth: int
@@ -82,7 +81,6 @@ def _flatten_task(task: Task | TaskView) -> PlanningTaskFlat:
         content=task.content,
         status=task.status,
         estimated_effort=task.estimated_effort,
-        planning_cycle_type=task.planning_cycle_type,
         planning_cycle_start_date=task.planning_cycle_start_date,
         planning_cycle_days=task.planning_cycle_days,
         display_order=task.display_order,
@@ -123,7 +121,6 @@ def build_planning_forest(
             content=task.content,
             status=task.status,
             estimated_effort=task.estimated_effort,
-            planning_cycle_type=task.planning_cycle_type,
             planning_cycle_start_date=task.planning_cycle_start_date,
             planning_cycle_days=task.planning_cycle_days,
             depth=depth,
@@ -152,7 +149,6 @@ def build_planning_forest(
                 content=parent.content,
                 status=parent.status,
                 estimated_effort=parent.estimated_effort,
-                planning_cycle_type=parent.planning_cycle_type,
                 planning_cycle_start_date=parent.planning_cycle_start_date,
                 planning_cycle_days=parent.planning_cycle_days,
                 depth=0,
@@ -221,7 +217,7 @@ async def get_planning_view(
     calendar_preferences = get_calendar_preferences()
     anchor = start_date
     if anchor is None:
-        reference_date = at_date or date.today()
+        reference_date = at_date or get_operational_date()
         anchor = get_calendar_period_range(
             cast(CalendarGranularity, cycle_type),
             reference_date,

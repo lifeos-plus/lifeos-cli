@@ -41,7 +41,6 @@ def _flat_task(
         content=content,
         status=status,
         estimated_effort=None,
-        planning_cycle_type="7years",
         planning_cycle_start_date=date(2025, 1, 1),
         planning_cycle_days=2555,
         display_order=display_order,
@@ -189,17 +188,8 @@ def test_get_planning_view_defaults_at_to_today(
         del tasks, vision_in
         return ()
 
-    class _FakeDate:
-        @staticmethod
-        def today() -> date:
-            return date(2026, 8, 11)
-
-        @staticmethod
-        def fromisoformat(value: str) -> date:
-            return date.fromisoformat(value)
-
     monkeypatch.setattr(planning_views, "get_calendar_preferences", _stub_preferences)
-    monkeypatch.setattr(planning_views, "date", _FakeDate)
+    monkeypatch.setattr(planning_views, "get_operational_date", lambda: date(2026, 8, 11))
     monkeypatch.setattr(planning_views.task_queries, "list_tasks", fake_list_tasks)
     monkeypatch.setattr(planning_views, "_load_context_parents", fake_load_context)
 
@@ -305,7 +295,6 @@ def _node(
         content=content,
         status=status,
         estimated_effort=estimated_effort,
-        planning_cycle_type="7years",
         planning_cycle_start_date=date(2025, 1, 1),
         planning_cycle_days=2555,
         depth=depth,
