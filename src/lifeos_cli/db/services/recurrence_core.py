@@ -23,7 +23,11 @@ from dateutil.rrule import (
     rrule,
 )
 
-from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
+from lifeos_cli.db.services.validation_utils import (
+    DomainValidationError,
+    choice_validator,
+    validate_choice,
+)
 
 VALID_RECURRENCE_FREQUENCY_ORDER = ("daily", "weekly", "monthly", "yearly")
 VALID_RECURRENCE_FREQUENCIES = set(VALID_RECURRENCE_FREQUENCY_ORDER)
@@ -298,14 +302,12 @@ def serialize_recurrence_rule_details(rule: RecurrenceRule) -> dict[str, object]
     return payload or None
 
 
-def normalize_recurrence_frequency(frequency: str) -> str:
-    return validate_choice(
-        frequency,
-        VALID_RECURRENCE_FREQUENCIES,
-        error_cls=RecurrenceValidationError,
-        label="recurrence frequency",
-        display_order=VALID_RECURRENCE_FREQUENCY_ORDER,
-    )
+normalize_recurrence_frequency = choice_validator(
+    VALID_RECURRENCE_FREQUENCIES,
+    error_cls=RecurrenceValidationError,
+    label="recurrence frequency",
+    display_order=VALID_RECURRENCE_FREQUENCY_ORDER,
+)
 
 
 def normalize_week_starts_on(week_starts_on: str) -> str:

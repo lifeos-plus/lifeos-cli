@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.services.model_utils import ensure_optional_reference_exists
-from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
+from lifeos_cli.db.services.validation_utils import DomainValidationError, choice_validator
 
 VALID_TIMELOG_TRACKING_METHODS = {"manual", "automatic", "imported"}
 
@@ -157,14 +157,12 @@ def validate_timelog_time_range(*, start_time: datetime, end_time: datetime) -> 
         raise TimelogValidationError("Timelog end time must be on or after the start time")
 
 
-def validate_tracking_method(tracking_method: str) -> str:
-    """Validate and normalize a tracking method."""
-    return validate_choice(
-        tracking_method,
-        VALID_TIMELOG_TRACKING_METHODS,
-        error_cls=TimelogValidationError,
-        label="tracking method",
-    )
+validate_tracking_method = choice_validator(
+    VALID_TIMELOG_TRACKING_METHODS,
+    error_cls=TimelogValidationError,
+    label="tracking method",
+    doc="Validate and normalize a tracking method.",
+)
 
 
 def validate_energy_level(energy_level: int | None) -> int | None:

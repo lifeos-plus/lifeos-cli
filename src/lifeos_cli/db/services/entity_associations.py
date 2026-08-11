@@ -19,7 +19,7 @@ from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
-from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
+from lifeos_cli.db.services.validation_utils import DomainValidationError, choice_validator
 
 VALID_ASSOCIATION_MODELS = frozenset(
     {"event", "habit_action", "note", "person", "task", "timelog", "vision"}
@@ -41,26 +41,21 @@ class AssociationValidationError(DomainValidationError):
     """Raised when a weak-association input is invalid."""
 
 
-def validate_association_model(model_name: str) -> str:
-    """Validate one weak-association model name."""
-    return validate_choice(
-        model_name,
-        VALID_ASSOCIATION_MODELS,
-        error_cls=AssociationValidationError,
-        label="association model",
-        error_verb="Unsupported",
-    )
+validate_association_model = choice_validator(
+    VALID_ASSOCIATION_MODELS,
+    error_cls=AssociationValidationError,
+    label="association model",
+    error_verb="Unsupported",
+    doc="Validate one weak-association model name.",
+)
 
-
-def validate_association_link_type(link_type: str) -> str:
-    """Validate one weak-association link type."""
-    return validate_choice(
-        link_type,
-        VALID_ASSOCIATION_LINK_TYPES,
-        error_cls=AssociationValidationError,
-        label="association link type",
-        error_verb="Unsupported",
-    )
+validate_association_link_type = choice_validator(
+    VALID_ASSOCIATION_LINK_TYPES,
+    error_cls=AssociationValidationError,
+    label="association link type",
+    error_verb="Unsupported",
+    doc="Validate one weak-association link type.",
+)
 
 
 async def _load_existing_ids(

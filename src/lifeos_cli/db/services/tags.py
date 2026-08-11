@@ -27,7 +27,7 @@ from lifeos_cli.db.services.model_utils import (
     soft_delete_model_by_id,
 )
 from lifeos_cli.db.services.read_models import TagView, build_tag_view
-from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
+from lifeos_cli.db.services.validation_utils import DomainValidationError, choice_validator
 
 VALID_TAG_ENTITY_TYPES = {"note", "person", "task", "vision", "area", "event", "timelog"}
 TAGGED_ENTITY_MODELS = {
@@ -61,15 +61,13 @@ def normalize_tag_name(name: str) -> str:
     return normalized
 
 
-def validate_tag_entity_type(entity_type: str) -> str:
-    """Validate a tag entity type."""
-    return validate_choice(
-        entity_type,
-        VALID_TAG_ENTITY_TYPES,
-        error_cls=InvalidTagEntityTypeError,
-        label="tag entity type",
-        error_verb="Unsupported",
-    )
+validate_tag_entity_type = choice_validator(
+    VALID_TAG_ENTITY_TYPES,
+    error_cls=InvalidTagEntityTypeError,
+    label="tag entity type",
+    error_verb="Unsupported",
+    doc="Validate a tag entity type.",
+)
 
 
 def normalize_tag_category(category: str | None) -> str:

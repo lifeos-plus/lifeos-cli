@@ -41,7 +41,11 @@ from lifeos_cli.db.services.timelog_support import (
     TimelogValidationError,
     validate_tracking_method,
 )
-from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
+from lifeos_cli.db.services.validation_utils import (
+    DomainValidationError,
+    choice_validator,
+    validate_choice,
+)
 from lifeos_cli.db.services.visions import (
     VisionValidationError,
     validate_vision_status,
@@ -99,6 +103,24 @@ def test_validate_choice_honors_display_order() -> None:
             label="weekday",
             display_order=("monday", "tuesday", "sunday"),
         )
+
+
+def test_choice_validator_builds_configured_validator() -> None:
+    validator = choice_validator(
+        {"a", "b"},
+        error_cls=ValueError,
+        label="option",
+        doc="Validate an option.",
+    )
+    assert validator("  A ") == "a"
+    assert validator.__doc__ == "Validate an option."
+    with pytest.raises(ValueError, match="Invalid option 'x'. Expected one of: a, b"):
+        validator("x")
+
+
+def test_choice_validator_preserves_domain_docstrings() -> None:
+    assert validate_habit_status.__doc__ == "Validate and normalize a habit status."
+    assert validate_tag_entity_type.__doc__ == "Validate a tag entity type."
 
 
 @pytest.mark.parametrize(

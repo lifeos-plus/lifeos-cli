@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection, Sequence
+from collections.abc import Callable, Collection, Sequence
 
 
 class DomainValidationError(ValueError):
@@ -33,3 +33,34 @@ def validate_choice(
         allowed_text = ", ".join(display)
         raise error_cls(f"{error_verb} {label} {normalized!r}. Expected one of: {allowed_text}")
     return normalized
+
+
+def choice_validator(
+    allowed: Collection[str],
+    *,
+    error_cls: type[Exception],
+    label: str,
+    error_verb: str = "Invalid",
+    display_order: Sequence[str] | None = None,
+    doc: str | None = None,
+) -> Callable[[str], str]:
+    """Create a domain validator that normalizes a string choice.
+
+    The returned callable behaves like ``validate_choice`` with the supplied
+    allowlist and error configuration, so domain modules can define their
+    validators as data instead of repeating wrapper bodies.
+    """
+
+    def validate(value: str) -> str:
+        return validate_choice(
+            value,
+            allowed,
+            error_cls=error_cls,
+            label=label,
+            error_verb=error_verb,
+            display_order=display_order,
+        )
+
+    if doc is not None:
+        validate.__doc__ = doc
+    return validate

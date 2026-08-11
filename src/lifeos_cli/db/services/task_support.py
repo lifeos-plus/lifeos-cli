@@ -11,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.vision import Vision
-from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
+from lifeos_cli.db.services.validation_utils import (
+    DomainValidationError,
+    choice_validator,
+    validate_choice,
+)
 
 VALID_TASK_STATUSES = {"todo", "in_progress", "done", "cancelled", "paused"}
 TASK_STATUSES_ALLOWED_FOR_PARENT_COMPLETION = {"done", "cancelled", "paused"}
@@ -60,14 +64,12 @@ class InvalidTaskOperationError(ValueError):
     """Raised when a task operation is inconsistent with current state."""
 
 
-def validate_task_status(status: str) -> str:
-    """Validate a task status."""
-    return validate_choice(
-        status,
-        VALID_TASK_STATUSES,
-        error_cls=TaskValidationError,
-        label="task status",
-    )
+validate_task_status = choice_validator(
+    VALID_TASK_STATUSES,
+    error_cls=TaskValidationError,
+    label="task status",
+    doc="Validate a task status.",
+)
 
 
 def validate_planning_cycle(

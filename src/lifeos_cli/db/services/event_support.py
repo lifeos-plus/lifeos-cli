@@ -26,7 +26,7 @@ from lifeos_cli.db.services.recurrence_core import (
     serialize_recurrence_rule_details,
     validate_occurrence_start,
 )
-from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
+from lifeos_cli.db.services.validation_utils import DomainValidationError, choice_validator
 
 VALID_EVENT_STATUSES = {"planned", "cancelled", "completed"}
 VALID_EVENT_TYPES = {"appointment", "timeblock", "deadline"}
@@ -141,34 +141,26 @@ class EventListInput:
     offset: int = 0
 
 
-def validate_event_scope(scope: str) -> str:
-    """Validate an event operation scope."""
-    return validate_choice(
-        scope,
-        VALID_EVENT_OPERATION_SCOPES,
-        error_cls=EventValidationError,
-        label="event scope",
-    )
+validate_event_scope = choice_validator(
+    VALID_EVENT_OPERATION_SCOPES,
+    error_cls=EventValidationError,
+    label="event scope",
+    doc="Validate an event operation scope.",
+)
 
+validate_event_status = choice_validator(
+    VALID_EVENT_STATUSES,
+    error_cls=EventValidationError,
+    label="event status",
+    doc="Validate an event status value.",
+)
 
-def validate_event_status(status: str) -> str:
-    """Validate an event status value."""
-    return validate_choice(
-        status,
-        VALID_EVENT_STATUSES,
-        error_cls=EventValidationError,
-        label="event status",
-    )
-
-
-def validate_event_type(event_type: str) -> str:
-    """Validate an event type value."""
-    return validate_choice(
-        event_type,
-        VALID_EVENT_TYPES,
-        error_cls=EventValidationError,
-        label="event type",
-    )
+validate_event_type = choice_validator(
+    VALID_EVENT_TYPES,
+    error_cls=EventValidationError,
+    label="event type",
+    doc="Validate an event type value.",
+)
 
 
 def validate_event_title(title: str) -> str:
