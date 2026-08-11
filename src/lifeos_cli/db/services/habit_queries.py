@@ -610,7 +610,7 @@ async def list_habit_actions_with_total(
             habit_cadence_frequency=_habit_cadence_frequency(habit),
             action_date=action.action_date,
             status=action.status,
-            notes=getattr(action, "notes", None),
+            notes=None,
             created_at=action.created_at,
             updated_at=action.updated_at,
             deleted_at=action.deleted_at,
