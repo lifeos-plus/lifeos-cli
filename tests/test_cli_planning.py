@@ -7,273 +7,221 @@ from typing import cast
 from uuid import UUID
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from lifeos_cli import cli
 from lifeos_cli.application.time_preferences import CalendarPreferences
 from lifeos_cli.cli_support.resources.planning import handlers as planning_handlers
 from lifeos_cli.db import session as db_session
-from lifeos_cli.db.services import planning_views
+from lifeos_cli.db.base import Base
+from lifeos_cli.db.models import Task, Vision
+from lifeos_cli.db.services import task_queries
+from lifeos_cli.db.services import tasks as task_services
 from tests.support import make_session_scope, utc_datetime
 
 VISION_ONE = UUID("11111111-1111-1111-1111-111111111111")
 VISION_TWO = UUID("22222222-2222-2222-2222-222222222222")
 ROOT_A_ID = UUID("33333333-3333-3333-3333-333333333333")
 CHILD_A_ID = UUID("44444444-4444-4444-4444-444444444444")
-ROOT_B_ID = UUID("55555555-5555-5555-5555-555555555555")
 CONTEXT_X_ID = UUID("66666666-6666-6666-6666-666666666666")
 CONTEXT_CHILD_ID = UUID("77777777-7777-7777-7777-777777777777")
 
 
-def _flat_task(
-    *,
-    task_id: UUID,
-    vision_id: UUID,
-    parent_task_id: UUID | None,
-    content: str,
-    status: str = "todo",
-    display_order: int = 0,
-) -> planning_views.PlanningTaskFlat:
-    return planning_views.PlanningTaskFlat(
-        id=task_id,
-        vision_id=vision_id,
-        parent_task_id=parent_task_id,
-        content=content,
-        status=status,
-        estimated_effort=None,
-        planning_cycle_start_date=date(2025, 1, 1),
+def _stub_calendar_preferences(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        task_queries,
+        "get_calendar_preferences",
+        lambda: CalendarPreferences(
+            system="gregorian",
+            first_day_of_week=1,
+            seven_year_anchor_date=date(2025, 7, 26),
+        ),
+    )
+
+
+async def _seed_planning_window(session: AsyncSession) -> UUID:
+    vision = Vision(name="Planning")
+    other_vision = Vision(name="Other")
+    session.add_all([vision, other_vision])
+    await session.flush()
+    root_a = Task(
+        vision_id=vision.id,
+        content="Root A",
+        planning_cycle_type="7years",
         planning_cycle_days=2555,
-        display_order=display_order,
-        created_at=utc_datetime(2026, 1, 1),
+        planning_cycle_start_date=date(2025, 1, 1),
     )
-
-
-def test_build_planning_forest_nests_in_window_tasks_and_collapses_context_parents() -> None:
-    tasks = (
-        _flat_task(task_id=ROOT_A_ID, vision_id=VISION_ONE, parent_task_id=None, content="Root A"),
-        _flat_task(
-            task_id=CHILD_A_ID,
-            vision_id=VISION_ONE,
-            parent_task_id=ROOT_A_ID,
-            content="Child A",
-        ),
-        _flat_task(task_id=ROOT_B_ID, vision_id=VISION_TWO, parent_task_id=None, content="Root B"),
-        _flat_task(
-            task_id=CONTEXT_CHILD_ID,
-            vision_id=VISION_TWO,
-            parent_task_id=CONTEXT_X_ID,
-            content="Context child",
-        ),
+    root_b = Task(
+        vision_id=vision.id,
+        content="Root B",
+        status="done",
+        planning_cycle_type="7years",
+        planning_cycle_days=2555,
+        planning_cycle_start_date=date(2025, 1, 1),
+        display_order=1,
     )
-    context_parents = (
-        _flat_task(task_id=CONTEXT_X_ID, vision_id=VISION_TWO, parent_task_id=None, content="X"),
+    context_x = Task(
+        vision_id=other_vision.id,
+        content="Seven Year Vision",
+        planning_cycle_type="year",
+        planning_cycle_days=365,
+        planning_cycle_start_date=date(2026, 7, 26),
     )
-
-    roots = planning_views.build_planning_forest(tasks, context_parents=context_parents)
-
-    assert [root.content for root in roots] == ["Root A", "Root B", "X"]
-    root_a = roots[0]
-    assert root_a.is_context is False
-    assert [child.content for child in root_a.children] == ["Child A"]
-    assert root_a.children[0].depth == 1
-    context_root = roots[2]
-    assert context_root.is_context is True
-    assert context_root.depth == 0
-    assert [child.content for child in context_root.children] == ["Context child"]
-    assert context_root.children[0].depth == 1
-
-
-def test_build_planning_forest_limits_depth_and_surfaces_isolated_roots() -> None:
-    tasks = (
-        _flat_task(task_id=ROOT_A_ID, vision_id=VISION_ONE, parent_task_id=None, content="Root A"),
-        _flat_task(
-            task_id=CHILD_A_ID,
-            vision_id=VISION_ONE,
-            parent_task_id=ROOT_A_ID,
-            content="Child A",
-        ),
-        _flat_task(
-            task_id=CONTEXT_CHILD_ID,
-            vision_id=VISION_TWO,
-            parent_task_id=CONTEXT_X_ID,
-            content="Context child",
-        ),
-    )
-
-    roots_without_context = planning_views.build_planning_forest(tasks, max_depth=0)
-    roots_with_context = planning_views.build_planning_forest(
-        tasks,
-        context_parents=(
-            _flat_task(
-                task_id=CONTEXT_X_ID,
-                vision_id=VISION_TWO,
-                parent_task_id=None,
-                content="X",
+    session.add_all([root_a, root_b, context_x])
+    await session.flush()
+    session.add_all(
+        [
+            Task(
+                vision_id=vision.id,
+                content="Child A",
+                status="in_progress",
+                parent_task_id=root_a.id,
+                planning_cycle_type="7years",
+                planning_cycle_days=2555,
+                planning_cycle_start_date=date(2025, 1, 1),
             ),
-        ),
-        max_depth=0,
+            Task(
+                vision_id=vision.id,
+                content="Context child",
+                parent_task_id=context_x.id,
+                planning_cycle_type="7years",
+                planning_cycle_days=2555,
+                planning_cycle_start_date=date(2025, 1, 1),
+            ),
+        ]
     )
-
-    assert [root.content for root in roots_without_context] == ["Root A", "Context child"]
-    assert roots_without_context[0].children == ()
-    assert [root.content for root in roots_with_context] == ["Root A", "X"]
-    assert roots_with_context[1].is_context is True
-    assert roots_with_context[1].children == ()
+    await session.commit()
+    return vision.id
 
 
-def test_get_planning_view_computes_period_and_wires_filters(
+async def _run_with_session(
+    scenario,
+) -> object:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    try:
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        session_factory = async_sessionmaker(engine, expire_on_commit=False)
+        async with session_factory() as session:
+            return await scenario(session)
+    finally:
+        await engine.dispose()
+
+
+def test_get_planning_view_assembles_window_forest_with_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    flat_tasks = (
-        _flat_task(task_id=ROOT_A_ID, vision_id=VISION_ONE, parent_task_id=None, content="Root A"),
-        _flat_task(
-            task_id=CHILD_A_ID,
-            vision_id=VISION_ONE,
-            parent_task_id=ROOT_A_ID,
-            content="Child A",
-        ),
-    )
+    _stub_calendar_preferences(monkeypatch)
 
-    async def fake_list_tasks(_session: object, **kwargs: object) -> list[object]:
-        assert kwargs["planning_cycle_type"] == "7years"
-        assert kwargs["planning_cycle_start_date"] == date(2025, 1, 1)
-        assert kwargs["vision_in"] == str(VISION_ONE)
-        assert kwargs["status_in"] == "todo,in_progress"
-        return list(flat_tasks)
-
-    async def fake_load_context(
-        _session: object,
-        tasks: object,
-        *,
-        vision_in: object,
-    ) -> tuple[()]:
-        del tasks, vision_in
-        return ()
-
-    monkeypatch.setattr(planning_views.task_queries, "list_tasks", fake_list_tasks)
-    monkeypatch.setattr(planning_views, "_load_context_parents", fake_load_context)
-    monkeypatch.setattr(planning_views, "get_calendar_preferences", _stub_preferences)
-
-    view = asyncio.run(
-        planning_views.get_planning_view(
-            cast(AsyncSession, object()),
+    async def scenario(session: AsyncSession) -> task_services.PlanningView:
+        await _seed_planning_window(session)
+        return await task_queries.get_planning_view(
+            session,
             cycle_type="7years",
             at_date=date(2026, 8, 11),
-            vision_in=str(VISION_ONE),
-            status_in="todo,in_progress",
         )
-    )
+
+    view = cast(task_services.PlanningView, asyncio.run(_run_with_session(scenario)))
 
     assert view.period_start == date(2025, 1, 1)
     assert view.period_end == date(2031, 12, 31)
+    assert view.total_tasks == 4
+    assert [root.content for root in view.roots] == ["Root A", "Root B", "Seven Year Vision"]
+    assert [child.content for child in view.roots[0].subtasks] == ["Child A"]
+    context_root = view.roots[2]
+    assert context_root.id in view.context_root_ids
+    assert context_root.depth == 0
+    assert [child.content for child in context_root.subtasks] == ["Context child"]
+    assert context_root.subtasks[0].depth == 1
+
+
+def test_get_planning_view_limits_tree_depth(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_calendar_preferences(monkeypatch)
+
+    async def scenario(session: AsyncSession) -> task_services.PlanningView:
+        await _seed_planning_window(session)
+        return await task_queries.get_planning_view(
+            session,
+            cycle_type="7years",
+            at_date=date(2026, 8, 11),
+            max_depth=0,
+        )
+
+    view = cast(task_services.PlanningView, asyncio.run(_run_with_session(scenario)))
+
+    assert [root.content for root in view.roots] == ["Root A", "Root B", "Seven Year Vision"]
+    assert view.roots[0].subtasks == ()
+    assert view.roots[2].subtasks == ()
+
+
+def test_get_planning_view_applies_status_filter(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_calendar_preferences(monkeypatch)
+
+    async def scenario(session: AsyncSession) -> task_services.PlanningView:
+        await _seed_planning_window(session)
+        return await task_queries.get_planning_view(
+            session,
+            cycle_type="7years",
+            at_date=date(2026, 8, 11),
+            status_in="todo",
+        )
+
+    view = cast(task_services.PlanningView, asyncio.run(_run_with_session(scenario)))
+
     assert view.total_tasks == 2
-    assert [root.content for root in view.roots] == ["Root A"]
+    assert [root.content for root in view.roots] == ["Root A", "Seven Year Vision"]
+    assert view.roots[0].subtasks == ()
+    assert [child.content for child in view.roots[1].subtasks] == ["Context child"]
 
 
-def test_get_planning_view_defaults_at_to_today(
+def test_get_planning_view_context_parents_respect_vision_filter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured_kwargs: dict[str, object] = {}
+    _stub_calendar_preferences(monkeypatch)
 
-    async def fake_list_tasks(_session: object, **kwargs: object) -> list[object]:
-        captured_kwargs.update(kwargs)
-        return []
-
-    async def fake_load_context(
-        _session: object,
-        tasks: object,
-        *,
-        vision_in: object,
-    ) -> tuple[()]:
-        del tasks, vision_in
-        return ()
-
-    monkeypatch.setattr(planning_views, "get_calendar_preferences", _stub_preferences)
-    monkeypatch.setattr(planning_views, "get_operational_date", lambda: date(2026, 8, 11))
-    monkeypatch.setattr(planning_views.task_queries, "list_tasks", fake_list_tasks)
-    monkeypatch.setattr(planning_views, "_load_context_parents", fake_load_context)
-
-    view = asyncio.run(
-        planning_views.get_planning_view(
-            cast(AsyncSession, object()),
+    async def scenario(session: AsyncSession) -> task_services.PlanningView:
+        vision_id = await _seed_planning_window(session)
+        return await task_queries.get_planning_view(
+            session,
             cycle_type="7years",
+            at_date=date(2026, 8, 11),
+            vision_in=str(vision_id),
         )
-    )
 
-    assert captured_kwargs["planning_cycle_start_date"] == date(2025, 1, 1)
+    view = cast(task_services.PlanningView, asyncio.run(_run_with_session(scenario)))
+
+    assert view.context_root_ids == ()
+    assert any(root.content == "Context child" for root in view.roots)
+
+
+def test_get_planning_view_defaults_at_to_today(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_calendar_preferences(monkeypatch)
+    monkeypatch.setattr(task_queries, "get_operational_date", lambda: date(2026, 8, 11))
+
+    async def scenario(session: AsyncSession) -> task_services.PlanningView:
+        return await task_queries.get_planning_view(session, cycle_type="7years")
+
+    view = cast(task_services.PlanningView, asyncio.run(_run_with_session(scenario)))
+
     assert view.period_start == date(2025, 1, 1)
     assert view.period_end == date(2031, 12, 31)
+    assert view.roots == ()
 
 
 def test_get_planning_view_rejects_both_anchor_forms(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(planning_views, "get_calendar_preferences", _stub_preferences)
+    _stub_calendar_preferences(monkeypatch)
 
     with pytest.raises(ValueError, match="Use either --at or --start"):
         asyncio.run(
-            planning_views.get_planning_view(
+            task_queries.get_planning_view(
                 cast(AsyncSession, object()),
                 cycle_type="week",
                 at_date=date(2026, 8, 11),
                 start_date=date(2026, 8, 11),
             )
         )
-
-
-class _FakeSession:
-    """Minimal session stub returning one scalars result."""
-
-    def __init__(self, rows: list[object]) -> None:
-        self._rows = rows
-
-    async def execute(self, _stmt: object) -> object:
-        return SimpleNamespace(scalars=lambda: self._rows)
-
-
-def test_load_context_parents_filters_by_vision() -> None:
-    tasks = (
-        _flat_task(
-            task_id=CONTEXT_CHILD_ID,
-            vision_id=VISION_ONE,
-            parent_task_id=CONTEXT_X_ID,
-            content="Context child",
-        ),
-    )
-    session = _FakeSession(
-        [
-            _flat_task(
-                task_id=CONTEXT_X_ID,
-                vision_id=VISION_ONE,
-                parent_task_id=None,
-                content="X",
-            ),
-            _flat_task(
-                task_id=ROOT_B_ID,
-                vision_id=VISION_TWO,
-                parent_task_id=None,
-                content="Other vision",
-            ),
-        ]
-    )
-
-    parents = asyncio.run(
-        planning_views._load_context_parents(
-            cast(AsyncSession, session),
-            tasks,
-            vision_in=str(VISION_ONE),
-        )
-    )
-
-    assert [parent.id for parent in parents] == [CONTEXT_X_ID]
-
-
-def _stub_preferences() -> CalendarPreferences:
-    return CalendarPreferences(
-        system="gregorian",
-        first_day_of_week=1,
-        seven_year_anchor_date=date(2025, 7, 26),
-    )
 
 
 def _node(
@@ -285,25 +233,35 @@ def _node(
     status: str = "todo",
     estimated_effort: int | None = None,
     depth: int = 0,
-    is_context: bool = False,
-    children: tuple[planning_views.PlanningTaskNode, ...] = (),
-) -> planning_views.PlanningTaskNode:
-    return planning_views.PlanningTaskNode(
+    children: tuple[task_services.TaskWithSubtasks, ...] = (),
+) -> task_services.TaskWithSubtasks:
+    return task_services.TaskWithSubtasks(
+        task=cast(Task, SimpleNamespace(id=task_id)),
         id=task_id,
         vision_id=vision_id,
         parent_task_id=parent_task_id,
         content=content,
+        description=None,
         status=status,
+        priority=0,
+        display_order=0,
         estimated_effort=estimated_effort,
-        planning_cycle_start_date=date(2025, 1, 1),
+        planning_cycle_type="7years",
         planning_cycle_days=2555,
+        planning_cycle_start_date=date(2025, 1, 1),
+        actual_effort_self=0,
+        actual_effort_total=0,
+        created_at=utc_datetime(2026, 1, 1),
+        updated_at=utc_datetime(2026, 1, 1),
+        deleted_at=None,
+        people=(),
+        subtasks=children,
+        completion_percentage=0.0,
         depth=depth,
-        is_context=is_context,
-        children=children,
     )
 
 
-def _sample_view() -> planning_views.PlanningView:
+def _sample_view() -> task_services.PlanningView:
     child = _node(
         task_id=CHILD_A_ID,
         vision_id=VISION_ONE,
@@ -333,14 +291,14 @@ def _sample_view() -> planning_views.PlanningView:
         parent_task_id=None,
         content="Seven Year Vision",
         status="done",
-        is_context=True,
         children=(context_child,),
     )
-    return planning_views.PlanningView(
+    return task_services.PlanningView(
         cycle_type="7years",
         period_start=date(2025, 1, 1),
         period_end=date(2031, 12, 31),
         roots=(root_a, context_x),
+        context_root_ids=(CONTEXT_X_ID,),
         total_tasks=3,
     )
 
@@ -361,7 +319,7 @@ def test_main_planning_show_prints_cross_vision_tree(
 
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
     monkeypatch.setattr(
-        planning_handlers.planning_views,
+        planning_handlers.task_services,
         "get_planning_view",
         fake_get_planning_view,
     )
@@ -422,7 +380,7 @@ def test_main_planning_show_passes_through_default_anchor(
 
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
     monkeypatch.setattr(
-        planning_handlers.planning_views,
+        planning_handlers.task_services,
         "get_planning_view",
         fake_get_planning_view,
     )
@@ -447,7 +405,7 @@ def test_main_planning_show_passes_start_anchor_through(
 
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
     monkeypatch.setattr(
-        planning_handlers.planning_views,
+        planning_handlers.task_services,
         "get_planning_view",
         fake_get_planning_view,
     )

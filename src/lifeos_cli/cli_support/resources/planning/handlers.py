@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import argparse
 from datetime import timedelta
+from uuid import UUID
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
 from lifeos_cli.config import ConfigurationError
 from lifeos_cli.db import session as db_session
-from lifeos_cli.db.services import planning_views
+from lifeos_cli.db.services import tasks as task_services
 
 PLANNING_VIEW_COLUMNS = (
     "status",
@@ -19,7 +20,7 @@ PLANNING_VIEW_COLUMNS = (
 )
 
 
-def _format_cycle_window(node: planning_views.PlanningTaskNode) -> str:
+def _format_cycle_window(node: task_services.TaskWithSubtasks) -> str:
     start = node.planning_cycle_start_date
     days = node.planning_cycle_days
     if start is None or days is None:
@@ -27,19 +28,23 @@ def _format_cycle_window(node: planning_views.PlanningTaskNode) -> str:
     return f"{start}..{start + timedelta(days=days - 1)}"
 
 
-def _format_tree_rows(node: planning_views.PlanningTaskNode) -> list[str]:
+def _format_tree_rows(
+    node: task_services.TaskWithSubtasks,
+    *,
+    context_root_ids: frozenset[UUID],
+) -> list[str]:
     indent = "  " * node.depth
-    content_prefix = "(context) " if node.is_context else ""
+    content_prefix = "(context) " if node.id in context_root_ids else ""
     rows = [
         f"{indent}{node.status}\t{node.vision_id}\t{content_prefix}{node.content}\t"
         f"{_format_cycle_window(node)}\t{node.estimated_effort or '-'}"
     ]
-    for child in node.children:
-        rows.extend(_format_tree_rows(child))
+    for child in node.subtasks:
+        rows.extend(_format_tree_rows(child, context_root_ids=context_root_ids))
     return rows
 
 
-def _format_planning_view(view: planning_views.PlanningView) -> str:
+def _format_planning_view(view: task_services.PlanningView) -> str:
     lines = [
         f"planning_view: {view.cycle_type}",
         f"period_start: {view.period_start}",
@@ -50,8 +55,9 @@ def _format_planning_view(view: planning_views.PlanningView) -> str:
         lines.append("No planning tasks found.")
         return "\n".join(lines)
     lines.append("\t".join(PLANNING_VIEW_COLUMNS))
+    context_root_ids = frozenset(view.context_root_ids)
     for root in view.roots:
-        lines.extend(_format_tree_rows(root))
+        lines.extend(_format_tree_rows(root, context_root_ids=context_root_ids))
     return "\n".join(lines)
 
 
@@ -64,7 +70,7 @@ async def handle_planning_show_async(args: argparse.Namespace) -> int:
         )
     async with db_session.session_scope() as session:
         try:
-            view = await planning_views.get_planning_view(
+            view = await task_services.get_planning_view(
                 session,
                 cycle_type=args.cycle_type,
                 at_date=args.at,
