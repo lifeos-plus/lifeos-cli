@@ -23,6 +23,7 @@ Preferred disclosure order:
 
 ## Release and Publishing Notes
 
+- Supported Python versions are 3.11 through 3.14; keep `requires-python`, classifiers, CI matrices, and version-support documentation aligned when support changes.
 - Treat changes to `.github/workflows/publish.yml`, package versioning, and PyPI publishing configuration as security-sensitive.
 - Trusted publishing should be configured only for the intended repository and workflow path.
 - Keep `uv.lock`, version metadata, and tag validation logic aligned to reduce release drift.

@@ -77,6 +77,8 @@ lifeos <resource> <action> [arguments] [options]
 
 ## 快速开始
 
+`lifeos-cli` 需要 Python 3.11 或更高版本；CI 覆盖 Python 3.11 至 3.14。
+
 从 PyPI 安装或升级：
 
 ```bash
