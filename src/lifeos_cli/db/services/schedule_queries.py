@@ -18,6 +18,7 @@ from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.services.event_support import EventOccurrenceQuery
 from lifeos_cli.db.services.events import EventOccurrence, list_event_occurrences
 from lifeos_cli.db.services.habit_actions import list_habit_actions_in_range
+from lifeos_cli.db.services.task_support import planning_cycle_end_date
 from lifeos_cli.db.sql_expressions import AddDaysToDate
 
 
@@ -85,7 +86,7 @@ def _task_cycle_end_date(task: Task) -> date:
     planning_cycle_days = task.planning_cycle_days
     if planning_cycle_start_date is None or planning_cycle_days is None:
         raise ValueError("Scheduled tasks must include planning cycle start date and days.")
-    return planning_cycle_start_date + timedelta(days=planning_cycle_days - 1)
+    return planning_cycle_end_date(planning_cycle_start_date, planning_cycle_days)
 
 
 async def _load_schedule_tasks(

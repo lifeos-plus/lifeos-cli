@@ -278,6 +278,11 @@ def _apply_task_filters(
     return stmt
 
 
+def _apply_task_display_order(stmt: Any) -> Any:
+    """Apply the shared task tree ordering used by list and view queries."""
+    return stmt.order_by(Task.display_order.asc(), Task.created_at.asc(), Task.id.asc())
+
+
 async def _build_task_view(session: AsyncSession, task: Task) -> TaskView:
     people_map = await load_people_for_entities(
         session,
@@ -380,11 +385,7 @@ async def list_tasks(
         content=content,
         query=query,
     )
-    stmt = (
-        stmt.order_by(Task.display_order.asc(), Task.created_at.asc(), Task.id.asc())
-        .offset(offset)
-        .limit(limit)
-    )
+    stmt = _apply_task_display_order(stmt).offset(offset).limit(limit)
     tasks = list((await session.execute(stmt)).scalars())
     return await _build_task_views(session, tasks)
 
@@ -501,11 +502,7 @@ async def get_planning_view(
         vision_in=vision_in,
         status_in=status_in,
     )
-    stmt = (
-        stmt.order_by(Task.display_order.asc(), Task.created_at.asc(), Task.id.asc())
-        .offset(offset)
-        .limit(limit)
-    )
+    stmt = _apply_task_display_order(stmt).offset(offset).limit(limit)
     tasks = list((await session.execute(stmt)).scalars())
     context_parents = await _load_planning_context_parents(session, tasks, vision_in=vision_in)
     roots = _build_task_tree(
@@ -530,10 +527,8 @@ async def get_vision_task_hierarchy(
 ) -> TaskHierarchy:
     """Load active tasks for a vision as a hierarchy."""
     await ensure_vision_exists(session, vision_id)
-    stmt = (
-        select(Task)
-        .where(Task.vision_id == vision_id, Task.deleted_at.is_(None))
-        .order_by(Task.display_order.asc(), Task.created_at.asc(), Task.id.asc())
+    stmt = _apply_task_display_order(
+        select(Task).where(Task.vision_id == vision_id, Task.deleted_at.is_(None))
     )
     tasks = list((await session.execute(stmt)).scalars())
     people_map = await load_people_for_entities(

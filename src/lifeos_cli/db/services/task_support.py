@@ -3,19 +3,25 @@
 from __future__ import annotations
 
 from collections import deque
-from datetime import date
+from datetime import date, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from lifeos_cli.application.calendar_adapter import CALENDAR_GRANULARITIES
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.vision import Vision
 
 VALID_TASK_STATUSES = {"todo", "in_progress", "done", "cancelled", "paused"}
 TASK_STATUSES_ALLOWED_FOR_PARENT_COMPLETION = {"done", "cancelled", "paused"}
-VALID_PLANNING_CYCLE_TYPES = {"7years", "year", "month", "week", "day"}
+VALID_PLANNING_CYCLE_TYPES = set(CALENDAR_GRANULARITIES)
 MAX_TASK_DEPTH = 8
+
+
+def planning_cycle_end_date(start_date: date, days: int) -> date:
+    """Return the inclusive end date of one planning cycle window."""
+    return start_date + timedelta(days=days - 1)
 
 
 class TaskNotFoundError(LookupError):

@@ -16,6 +16,13 @@ from lifeos_cli.config import (
 )
 
 CalendarGranularity = Literal["day", "week", "month", "year", "7years"]
+CALENDAR_GRANULARITIES: tuple[CalendarGranularity, ...] = (
+    "day",
+    "week",
+    "month",
+    "year",
+    "7years",
+)
 DEFAULT_SEVEN_YEAR_ANCHOR = date.fromisoformat(DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_DATE)
 
 

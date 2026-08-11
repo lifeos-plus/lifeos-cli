@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import argparse
-from datetime import timedelta
 from uuid import UUID
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
 from lifeos_cli.config import ConfigurationError
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import tasks as task_services
+from lifeos_cli.db.services.task_support import planning_cycle_end_date
 
 PLANNING_VIEW_COLUMNS = (
     "status",
@@ -25,7 +25,7 @@ def _format_cycle_window(node: task_services.TaskWithSubtasks) -> str:
     days = node.planning_cycle_days
     if start is None or days is None:
         return "-"
-    return f"{start}..{start + timedelta(days=days - 1)}"
+    return f"{start}..{planning_cycle_end_date(start, days)}"
 
 
 def _format_tree_rows(
