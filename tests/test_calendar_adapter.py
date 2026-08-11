@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import date
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -13,13 +14,39 @@ from lifeos_cli.application.calendar_adapter import (
     get_calendar_period_range,
     iter_calendar_periods,
 )
+from lifeos_cli.application.preferences import CalendarPreferences
 from lifeos_cli.config import ConfigurationError
 from lifeos_cli.db.base import Base
 from lifeos_cli.db.models import Task, Vision
+from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services.task_queries import (
     _planning_cycle_date_filter_range,
     count_tasks,
 )
+
+
+def test_get_calendar_preferences_reads_persisted_user_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from lifeos_cli.application import preferences as preference_access
+
+    monkeypatch.setattr(
+        preference_access,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=7,
+            calendar_seven_year_anchor_date="2025-07-26",
+        ),
+    )
+
+    resolved = preference_access.get_calendar_preferences()
+
+    assert resolved == CalendarPreferences(
+        system="mayan_13_moon",
+        first_day_of_week=7,
+        seven_year_anchor_date=date(2025, 7, 26),
+    )
 
 
 def test_gregorian_calendar_adapter_uses_configured_week_start() -> None:
@@ -127,46 +154,74 @@ def test_iter_calendar_periods_keeps_mayan_week_boundaries_across_new_year() -> 
     )
 
 
-def test_task_planning_cycle_filter_range_is_opt_in() -> None:
+def test_task_planning_cycle_filter_range_reads_persisted_preferences(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        task_queries,
+        "get_calendar_preferences",
+        lambda: CalendarPreferences(
+            system="mayan_13_moon",
+            first_day_of_week=7,
+            seven_year_anchor_date=date(2025, 7, 26),
+        ),
+    )
+
+    assert _planning_cycle_date_filter_range(
+        planning_cycle_type="month",
+        planning_cycle_start_date=date(2026, 7, 26),
+    ) == (date(2026, 7, 26), date(2026, 8, 22))
     assert (
         _planning_cycle_date_filter_range(
-            planning_cycle_type="month",
+            planning_cycle_type="unsupported",
             planning_cycle_start_date=date(2026, 7, 26),
-            calendar_system=None,
-            first_day_of_week=None,
-            seven_year_anchor_date=None,
         )
         is None
     )
 
 
-def test_task_planning_cycle_filter_range_uses_mayan_periods() -> None:
+def test_task_planning_cycle_filter_range_uses_mayan_periods(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        task_queries,
+        "get_calendar_preferences",
+        lambda: CalendarPreferences(
+            system="mayan_13_moon",
+            first_day_of_week=7,
+            seven_year_anchor_date=date(2025, 7, 26),
+        ),
+    )
+
     assert _planning_cycle_date_filter_range(
         planning_cycle_type="month",
         planning_cycle_start_date=date(2026, 7, 26),
-        calendar_system="mayan_13_moon",
-        first_day_of_week=1,
-        seven_year_anchor_date=None,
     ) == (date(2026, 7, 26), date(2026, 8, 22))
 
     assert _planning_cycle_date_filter_range(
         planning_cycle_type="7years",
         planning_cycle_start_date=date(2026, 7, 26),
-        calendar_system="mayan_13_moon",
-        first_day_of_week=1,
-        seven_year_anchor_date=date(2025, 7, 26),
     ) == (date(2025, 7, 26), date(2032, 7, 25))
 
     assert _planning_cycle_date_filter_range(
         planning_cycle_type="week",
         planning_cycle_start_date=date(2027, 7, 25),
-        calendar_system="mayan_13_moon",
-        first_day_of_week=7,
-        seven_year_anchor_date=None,
     ) == (date(2027, 7, 25), date(2027, 7, 25))
 
 
-def test_task_planning_cycle_filter_includes_overlapping_physical_windows() -> None:
+def test_task_planning_cycle_filter_includes_overlapping_physical_windows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        task_queries,
+        "get_calendar_preferences",
+        lambda: CalendarPreferences(
+            system="gregorian",
+            first_day_of_week=1,
+            seven_year_anchor_date=date(2025, 7, 26),
+        ),
+    )
+
     async def scenario() -> None:
         engine = create_async_engine("sqlite+aiosqlite:///:memory:")
         try:
@@ -201,8 +256,6 @@ def test_task_planning_cycle_filter_includes_overlapping_physical_windows() -> N
                     session,
                     planning_cycle_type="month",
                     planning_cycle_start_date=date(2026, 8, 1),
-                    calendar_system="gregorian",
-                    first_day_of_week=1,
                 )
 
                 assert count == 1

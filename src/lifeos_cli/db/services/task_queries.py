@@ -14,6 +14,7 @@ from lifeos_cli.application.calendar_adapter import (
     CalendarGranularity,
     get_calendar_period_range,
 )
+from lifeos_cli.application.preferences import get_calendar_preferences
 from lifeos_cli.config import ConfigurationError
 from lifeos_cli.db.models.association import Association
 from lifeos_cli.db.models.note import Note
@@ -161,22 +162,18 @@ def _planning_cycle_date_filter_range(
     *,
     planning_cycle_type: str,
     planning_cycle_start_date: date,
-    calendar_system: str | None,
-    first_day_of_week: int | None,
-    seven_year_anchor_date: date | None,
 ) -> tuple[date, date] | None:
-    """Return a calendar-aware planning-cycle filter range when requested."""
-    if calendar_system is None and first_day_of_week is None and seven_year_anchor_date is None:
-        return None
+    """Return the calendar-aware planning-cycle range from persisted preferences."""
     if planning_cycle_type not in {"day", "week", "month", "year", "7years"}:
         return None
+    calendar_preferences = get_calendar_preferences()
     try:
         return get_calendar_period_range(
             cast(CalendarGranularity, planning_cycle_type),
             planning_cycle_start_date,
-            calendar_system=calendar_system,
-            first_day_of_week=first_day_of_week,
-            seven_year_anchor_date=seven_year_anchor_date,
+            calendar_system=calendar_preferences.system,
+            first_day_of_week=calendar_preferences.first_day_of_week,
+            seven_year_anchor_date=calendar_preferences.seven_year_anchor_date,
         )
     except (ConfigurationError, ValueError) as exc:
         raise ValueError(str(exc)) from exc
@@ -194,9 +191,6 @@ def _apply_task_filters(
     exclude_status: str | None = None,
     planning_cycle_type: str | None = None,
     planning_cycle_start_date: date | None = None,
-    calendar_system: str | None = None,
-    first_day_of_week: int | None = None,
-    seven_year_anchor_date: date | None = None,
     content: str | None = None,
     query: str | None = None,
 ) -> Any:
@@ -241,9 +235,6 @@ def _apply_task_filters(
             cycle_range = _planning_cycle_date_filter_range(
                 planning_cycle_type=planning_cycle_type.strip().lower(),
                 planning_cycle_start_date=planning_cycle_start_date,
-                calendar_system=calendar_system,
-                first_day_of_week=first_day_of_week,
-                seven_year_anchor_date=seven_year_anchor_date,
             )
         else:
             cycle_range = None
@@ -349,9 +340,6 @@ async def list_tasks(
     exclude_status: str | None = None,
     planning_cycle_type: str | None = None,
     planning_cycle_start_date: date | None = None,
-    calendar_system: str | None = None,
-    first_day_of_week: int | None = None,
-    seven_year_anchor_date: date | None = None,
     content: str | None = None,
     query: str | None = None,
     limit: int = 100,
@@ -369,9 +357,6 @@ async def list_tasks(
         exclude_status=exclude_status,
         planning_cycle_type=planning_cycle_type,
         planning_cycle_start_date=planning_cycle_start_date,
-        calendar_system=calendar_system,
-        first_day_of_week=first_day_of_week,
-        seven_year_anchor_date=seven_year_anchor_date,
         content=content,
         query=query,
     )
@@ -396,9 +381,6 @@ async def count_tasks(
     exclude_status: str | None = None,
     planning_cycle_type: str | None = None,
     planning_cycle_start_date: date | None = None,
-    calendar_system: str | None = None,
-    first_day_of_week: int | None = None,
-    seven_year_anchor_date: date | None = None,
     content: str | None = None,
     query: str | None = None,
 ) -> int:
@@ -414,9 +396,6 @@ async def count_tasks(
         exclude_status=exclude_status,
         planning_cycle_type=planning_cycle_type,
         planning_cycle_start_date=planning_cycle_start_date,
-        calendar_system=calendar_system,
-        first_day_of_week=first_day_of_week,
-        seven_year_anchor_date=seven_year_anchor_date,
         content=content,
         query=query,
     )

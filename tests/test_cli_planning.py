@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli import cli
+from lifeos_cli.application.preferences import CalendarPreferences
 from lifeos_cli.cli_support.resources.planning import handlers as planning_handlers
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import planning_views
@@ -137,9 +138,6 @@ def test_get_planning_view_computes_period_and_wires_filters(
     async def fake_list_tasks(_session: object, **kwargs: object) -> list[object]:
         assert kwargs["planning_cycle_type"] == "7years"
         assert kwargs["planning_cycle_start_date"] == date(2025, 1, 1)
-        assert kwargs["calendar_system"] == "gregorian"
-        assert kwargs["first_day_of_week"] == 1
-        assert kwargs["seven_year_anchor_date"] == date(2025, 7, 26)
         assert kwargs["vision_in"] == str(VISION_ONE)
         assert kwargs["status_in"] == "todo,in_progress"
         return list(flat_tasks)
@@ -155,7 +153,7 @@ def test_get_planning_view_computes_period_and_wires_filters(
 
     monkeypatch.setattr(planning_views.task_queries, "list_tasks", fake_list_tasks)
     monkeypatch.setattr(planning_views, "_load_context_parents", fake_load_context)
-    monkeypatch.setattr(planning_views, "get_preferences_settings", _stub_preferences)
+    monkeypatch.setattr(planning_views, "get_calendar_preferences", _stub_preferences)
 
     view = asyncio.run(
         planning_views.get_planning_view(
@@ -200,7 +198,7 @@ def test_get_planning_view_defaults_at_to_today(
         def fromisoformat(value: str) -> date:
             return date.fromisoformat(value)
 
-    monkeypatch.setattr(planning_views, "get_preferences_settings", _stub_preferences)
+    monkeypatch.setattr(planning_views, "get_calendar_preferences", _stub_preferences)
     monkeypatch.setattr(planning_views, "date", _FakeDate)
     monkeypatch.setattr(planning_views.task_queries, "list_tasks", fake_list_tasks)
     monkeypatch.setattr(planning_views, "_load_context_parents", fake_load_context)
@@ -220,7 +218,7 @@ def test_get_planning_view_defaults_at_to_today(
 def test_get_planning_view_rejects_both_anchor_forms(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(planning_views, "get_preferences_settings", _stub_preferences)
+    monkeypatch.setattr(planning_views, "get_calendar_preferences", _stub_preferences)
 
     with pytest.raises(ValueError, match="Use either --at or --start"):
         asyncio.run(
@@ -280,11 +278,11 @@ def test_load_context_parents_filters_by_vision() -> None:
     assert [parent.id for parent in parents] == [CONTEXT_X_ID]
 
 
-def _stub_preferences() -> SimpleNamespace:
-    return SimpleNamespace(
-        calendar_system="gregorian",
-        calendar_first_day_of_week=1,
-        calendar_seven_year_anchor_date="2025-07-26",
+def _stub_preferences() -> CalendarPreferences:
+    return CalendarPreferences(
+        system="gregorian",
+        first_day_of_week=1,
+        seven_year_anchor_date=date(2025, 7, 26),
     )
 
 

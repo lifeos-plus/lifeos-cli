@@ -13,6 +13,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.calendar_adapter import CalendarGranularity, get_calendar_period_range
+from lifeos_cli.application.preferences import get_calendar_preferences
 from lifeos_cli.application.time_preferences import (
     get_operational_date,
     get_week_bounds,
@@ -307,13 +308,13 @@ def get_habit_cycle_bounds(
                 cycle_frequency=cadence_frequency,
                 week_starts_on=get_preferences_settings().week_starts_on,
             )
-        preferences = get_preferences_settings()
+        calendar_preferences = get_calendar_preferences()
         granularity = CADENCE_TO_CALENDAR_GRANULARITY[cadence_frequency]
         return get_calendar_period_range(
             granularity,
             action_date,
-            calendar_system=preferences.calendar_system,
-            first_day_of_week=preferences.calendar_first_day_of_week,
+            calendar_system=calendar_preferences.system,
+            first_day_of_week=calendar_preferences.first_day_of_week,
         )
     except (KeyError, RecurrenceValidationError, ValueError) as exc:
         raise HabitValidationError(str(exc)) from exc
@@ -383,12 +384,12 @@ def calculate_habit_duration_for_repeat_count(
 
 
 def _calendar_monthday(target_date: date) -> int:
-    preferences = get_preferences_settings()
+    calendar_preferences = get_calendar_preferences()
     month_start, _ = get_calendar_period_range(
         "month",
         target_date,
-        calendar_system=preferences.calendar_system,
-        first_day_of_week=preferences.calendar_first_day_of_week,
+        calendar_system=calendar_preferences.system,
+        first_day_of_week=calendar_preferences.first_day_of_week,
     )
     return (target_date - month_start).days + 1
 

@@ -12,6 +12,7 @@ from uuid import UUID
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from lifeos_cli.application.preferences import CalendarPreferences
 from lifeos_cli.cli import build_parser
 from lifeos_cli.config import clear_config_cache
 from lifeos_cli.db.services.read_models import (
@@ -930,11 +931,11 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
     )
     monkeypatch.setattr(
         task_router,
-        "get_preferences_settings",
-        lambda: SimpleNamespace(
-            calendar_system="mayan_13_moon",
-            calendar_first_day_of_week=7,
-            calendar_seven_year_anchor_date="2025-07-26",
+        "get_calendar_preferences",
+        lambda: CalendarPreferences(
+            system="mayan_13_moon",
+            first_day_of_week=7,
+            seven_year_anchor_date=date(2025, 7, 26),
         ),
     )
 
@@ -957,9 +958,6 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
         "exclude_status": None,
         "planning_cycle_type": "7years",
         "planning_cycle_start_date": date(2026, 7, 26),
-        "calendar_system": "mayan_13_moon",
-        "first_day_of_week": 7,
-        "seven_year_anchor_date": date(2025, 7, 26),
         "query": "Needle",
         "limit": 50,
         "offset": 50,
@@ -972,9 +970,6 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
         "exclude_status": None,
         "planning_cycle_type": "7years",
         "planning_cycle_start_date": date(2026, 7, 26),
-        "calendar_system": "mayan_13_moon",
-        "first_day_of_week": 7,
-        "seven_year_anchor_date": date(2025, 7, 26),
         "query": "Needle",
     }
     assert response.pagination.total == 123
@@ -2792,12 +2787,17 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
     )
     monkeypatch.setattr(
         stats,
-        "get_preferences_settings",
-        lambda: SimpleNamespace(
-            calendar_system="mayan_13_moon",
-            calendar_first_day_of_week=1,
-            timezone="America/Toronto",
+        "get_calendar_preferences",
+        lambda: CalendarPreferences(
+            system="mayan_13_moon",
+            first_day_of_week=1,
+            seven_year_anchor_date=date(2025, 7, 26),
         ),
+    )
+    monkeypatch.setattr(
+        stats,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(timezone="America/Toronto"),
     )
 
     response = asyncio.run(
@@ -2847,16 +2847,47 @@ def test_web_stats_calendar_context_comes_from_backend_preferences(
 
     from lifeos_web.routers import stats
 
+    async def fake_get_range(
+        _session: object,
+        *,
+        start_date: date,
+        end_date: date,
+    ) -> object:
+        del start_date, end_date
+        return SimpleNamespace(rows=())
+
+    monkeypatch.setattr(
+        stats.timelog_stats,
+        "get_timelog_stats_groupby_area_for_range",
+        fake_get_range,
+    )
+    monkeypatch.setattr(
+        stats,
+        "get_calendar_preferences",
+        lambda: CalendarPreferences(
+            system="mayan_13_moon",
+            first_day_of_week=6,
+            seven_year_anchor_date=date(2025, 7, 26),
+        ),
+    )
     monkeypatch.setattr(
         stats,
         "get_preferences_settings",
-        lambda: SimpleNamespace(
-            calendar_system="mayan_13_moon",
-            calendar_first_day_of_week=6,
-        ),
+        lambda: SimpleNamespace(timezone="UTC"),
     )
 
-    assert stats._resolve_calendar_preferences() == ("mayan_13_moon", 6)
+    response = asyncio.run(
+        stats.list_aggregated_areas(
+            cast(AsyncSession, object()),
+            granularity="day",
+            start=date(2026, 7, 26),
+            end=date(2026, 7, 26),
+        )
+    )
+
+    assert response.meta["calendar_system"] == "mayan_13_moon"
+    assert response.meta["first_day_of_week"] == 6
+    assert response.meta["timezone"] == "UTC"
 
 
 def test_web_note_person_usage_stats_endpoint_returns_counts(

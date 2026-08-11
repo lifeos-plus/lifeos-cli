@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.calendar_adapter import iter_calendar_periods
+from lifeos_cli.application.preferences import get_calendar_preferences
 from lifeos_cli.config import get_preferences_settings
 from lifeos_cli.db.services import tags as tag_services
 from lifeos_cli.db.services import timelog_stats
@@ -50,11 +51,6 @@ def _parse_area_ids(values: list[UUID] | None) -> set[UUID] | None:
     if not values:
         return None
     return set(values)
-
-
-def _resolve_calendar_preferences() -> tuple[str, int]:
-    preferences = get_preferences_settings()
-    return preferences.calendar_system, preferences.calendar_first_day_of_week
 
 
 @router.get("/daily-areas", response_model=ListResponse[DailyAreaResponse, DailyAreaMeta])
@@ -143,16 +139,15 @@ async def list_aggregated_areas(
     """Return aggregated timelog minutes by LifeOS area."""
     if end < start:
         raise HTTPException(status_code=400, detail="end must be on or after start")
-    preferences = get_preferences_settings()
-    resolved_calendar_system, resolved_first_day = _resolve_calendar_preferences()
+    calendar_preferences = get_calendar_preferences()
     selected_areas = _parse_area_ids(area_ids)
     rows: list[dict[str, object]] = []
     periods = iter_calendar_periods(
         start=start,
         end=end,
         granularity=granularity,
-        calendar_system=resolved_calendar_system,
-        first_day_of_week=resolved_first_day,
+        calendar_system=calendar_preferences.system,
+        first_day_of_week=calendar_preferences.first_day_of_week,
     )
     for period_start, period_end in periods:
         report = await timelog_stats.get_timelog_stats_groupby_area_for_range(
@@ -178,10 +173,10 @@ async def list_aggregated_areas(
             "granularity": granularity,
             "start": start.isoformat(),
             "end": end.isoformat(),
-            "timezone": preferences.timezone,
+            "timezone": get_preferences_settings().timezone,
             "area_ids": [str(item) for item in area_ids] if area_ids else None,
-            "first_day_of_week": resolved_first_day,
-            "calendar_system": resolved_calendar_system,
+            "first_day_of_week": calendar_preferences.first_day_of_week,
+            "calendar_system": calendar_preferences.system,
         },
     )
 
