@@ -1142,6 +1142,58 @@ def test_iter_habit_scheduled_dates_matches_day_scan_for_monthly_monthdays(
     )
 
 
+def test_iter_habit_scheduled_dates_matches_day_scan_across_mayan_out_of_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        habit_support,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            day_starts_at="00:00",
+            timezone="UTC",
+            week_starts_on="monday",
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=1,
+        ),
+    )
+    start_date = date(2026, 6, 15)
+    end_date = date(2026, 8, 10)
+    cadence_monthdays = [1, 28]
+
+    scheduled_dates = habit_support.iter_habit_scheduled_dates(
+        start_date=start_date,
+        end_date=end_date,
+        cadence_frequency="monthly",
+        cadence_weekdays=None,
+        cadence_monthdays=cadence_monthdays,
+    )
+
+    reference_dates = [
+        current_date
+        for current_date in (
+            start_date + timedelta(days=offset)
+            for offset in range((end_date - start_date).days + 1)
+        )
+        if habit_support.habit_occurs_on_date(
+            start_date=start_date,
+            end_date=end_date,
+            cadence_frequency="monthly",
+            cadence_weekdays=None,
+            cadence_monthdays=cadence_monthdays,
+            target_date=current_date,
+        )
+    ]
+
+    assert scheduled_dates == reference_dates
+    assert scheduled_dates == [
+        date(2026, 6, 26),
+        date(2026, 6, 27),
+        date(2026, 7, 24),
+        date(2026, 7, 25),
+        date(2026, 7, 26),
+    ]
+
+
 def test_update_habit_can_clear_task_without_committing(monkeypatch: pytest.MonkeyPatch) -> None:
     habit = SimpleNamespace(
         id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
