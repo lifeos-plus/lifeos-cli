@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any, cast
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
@@ -18,11 +18,10 @@ from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
 from lifeos_cli.db.services.habit_support import (
-    HabitActionLike,
     HabitActionNotFoundError,
     HabitNotFoundError,
     HabitValidationError,
-    build_habit_stats_payload,
+    build_habit_stats_payload_from_occurrences,
     get_habit_occurrence_end_date,
     habit_occurs_on_date,
     iter_habit_scheduled_dates,
@@ -458,18 +457,56 @@ async def count_habits(
     return int((await session.execute(stmt)).scalar_one())
 
 
+def _habit_scheduled_occurrence_dates(habit: Habit) -> list[date]:
+    """Return scheduled occurrence dates across one habit's full lifecycle."""
+    return iter_habit_scheduled_dates(
+        start_date=habit.start_date,
+        end_date=get_habit_occurrence_end_date(habit),
+        cadence_frequency=getattr(habit, "cadence_frequency", "daily"),
+        cadence_weekdays=getattr(habit, "cadence_weekdays", None),
+        cadence_monthdays=getattr(habit, "cadence_monthdays", None),
+    )
+
+
+async def _load_materialized_actions_grouped(
+    session: AsyncSession,
+    *,
+    habit_ids: list[UUID],
+    start_date: date | None,
+    end_date: date | None,
+    target_dates: tuple[date, ...] = (),
+) -> dict[UUID, list[HabitAction]]:
+    """Load materialized habit actions grouped by habit."""
+    actions = await _load_materialized_actions_for_habits(
+        session,
+        habit_ids=habit_ids,
+        start_date=start_date,
+        end_date=end_date,
+        target_dates=target_dates,
+    )
+    grouped: dict[UUID, list[HabitAction]] = {}
+    for action in actions:
+        grouped.setdefault(action.habit_id, []).append(action)
+    return grouped
+
+
 async def get_habit_stats(session: AsyncSession, *, habit_id: UUID) -> dict[str, object]:
     """Return statistics for one habit."""
     habit = await get_habit(session, habit_id=habit_id)
     if habit is None:
         raise HabitNotFoundError(f"Habit {habit_id} was not found")
-    actions = await build_habit_action_views(
+    occurrence_dates = _habit_scheduled_occurrence_dates(habit)
+    materialized_by_habit = await _load_materialized_actions_grouped(
         session,
-        habit_id=habit.id,
-        status=None,
-        action_window=None,
+        habit_ids=[habit.id],
+        start_date=habit.start_date,
+        end_date=get_habit_occurrence_end_date(habit),
     )
-    return build_habit_stats_payload(habit, cast(list[HabitActionLike], actions))
+    return build_habit_stats_payload_from_occurrences(
+        habit,
+        occurrence_dates,
+        materialized_by_habit.get(habit.id, []),
+    )
 
 
 async def get_habit_overview(
@@ -481,15 +518,20 @@ async def get_habit_overview(
     habit = await get_habit(session, habit_id=habit_id)
     if habit is None:
         raise HabitNotFoundError(f"Habit {habit_id} was not found")
-    actions = await build_habit_action_views(
+    occurrence_dates = _habit_scheduled_occurrence_dates(habit)
+    materialized_by_habit = await _load_materialized_actions_grouped(
         session,
-        habit_id=habit.id,
-        status=None,
-        action_window=None,
+        habit_ids=[habit.id],
+        start_date=habit.start_date,
+        end_date=get_habit_occurrence_end_date(habit),
     )
     return {
         "habit": habit,
-        "stats": build_habit_stats_payload(habit, cast(list[HabitActionLike], actions)),
+        "stats": build_habit_stats_payload_from_occurrences(
+            habit,
+            occurrence_dates,
+            materialized_by_habit.get(habit.id, []),
+        ),
     }
 
 
@@ -513,21 +555,26 @@ async def list_habit_overviews(
     )
     if not habits:
         return []
-    overviews: list[dict[str, object]] = []
-    for habit in habits:
-        actions = await build_habit_action_views(
-            session,
-            habit_id=habit.id,
-            status=None,
-            action_window=None,
-        )
-        overviews.append(
-            {
-                "habit": habit,
-                "stats": build_habit_stats_payload(habit, cast(list[HabitActionLike], actions)),
-            }
-        )
-    return overviews
+    occurrence_dates_by_habit = {
+        habit.id: _habit_scheduled_occurrence_dates(habit) for habit in habits
+    }
+    materialized_by_habit = await _load_materialized_actions_grouped(
+        session,
+        habit_ids=[habit.id for habit in habits],
+        start_date=min(habit.start_date for habit in habits),
+        end_date=max(get_habit_occurrence_end_date(habit) for habit in habits),
+    )
+    return [
+        {
+            "habit": habit,
+            "stats": build_habit_stats_payload_from_occurrences(
+                habit,
+                occurrence_dates_by_habit[habit.id],
+                materialized_by_habit.get(habit.id, []),
+            ),
+        }
+        for habit in habits
+    ]
 
 
 async def get_habit_task_associations(session: AsyncSession) -> dict[UUID, list[Habit]]:
@@ -678,21 +725,86 @@ async def count_habit_actions(
     start_date: date | None = None,
     end_date: date | None = None,
 ) -> int:
-    """Count habit-action occurrence views with the same filters used by list_habit_actions."""
+    """Count habit-action occurrences without building occurrence views."""
     await refresh_habit_expiration(session)
     target_dates = tuple(deduplicate_preserving_order(date_values))
     action_window = (
         None if target_dates else _normalize_action_window(start_date=start_date, end_date=end_date)
     )
-    views = await build_habit_action_views(
+    habits = await _load_candidate_habits(
         session,
         habit_id=habit_id,
-        status=status,
         action_window=action_window,
         target_dates=target_dates,
         cadence_frequency=cadence_frequency,
     )
-    return len(views)
+    if not habits:
+        return 0
+    normalized_status = validate_habit_action_status(status) if status is not None else None
+    if target_dates:
+        occurrence_dates_by_habit = {
+            habit.id: [
+                target_date
+                for target_date in target_dates
+                if habit_occurs_on_date(
+                    start_date=habit.start_date,
+                    end_date=get_habit_occurrence_end_date(habit),
+                    cadence_frequency=getattr(habit, "cadence_frequency", "daily"),
+                    cadence_weekdays=getattr(habit, "cadence_weekdays", None),
+                    cadence_monthdays=getattr(habit, "cadence_monthdays", None),
+                    target_date=target_date,
+                )
+            ]
+            for habit in habits
+        }
+        range_start = None
+        range_end = None
+    else:
+        if action_window is None:
+            range_start = min(habit.start_date for habit in habits)
+            range_end = max(habit.end_date for habit in habits)
+        else:
+            range_start, range_end = action_window
+        occurrence_dates_by_habit = {
+            habit.id: _iter_habit_window_dates(
+                habit=habit,
+                start_date=range_start,
+                end_date=range_end,
+            )
+            for habit in habits
+        }
+    materialized_by_habit = await _load_materialized_actions_grouped(
+        session,
+        habit_ids=[habit.id for habit in habits],
+        start_date=range_start,
+        end_date=range_end,
+        target_dates=target_dates,
+    )
+    total = 0
+    for habit in habits:
+        occurrence_dates = occurrence_dates_by_habit[habit.id]
+        occurrence_set = set(occurrence_dates)
+        action_by_date = {
+            action.action_date: action for action in materialized_by_habit.get(habit.id, [])
+        }
+        materialized_in_window = [
+            action
+            for action_date, action in action_by_date.items()
+            if action_date in occurrence_set
+        ]
+        if normalized_status is None:
+            total += len(occurrence_dates)
+        elif normalized_status == "pending":
+            total += (
+                len(occurrence_dates)
+                - len(materialized_in_window)
+                + sum(1 for action in materialized_in_window if action.status == "pending")
+            )
+        else:
+            total += sum(
+                1 for action in materialized_in_window if action.status == normalized_status
+            )
+    return total
 
 
 async def get_habit_action_model(

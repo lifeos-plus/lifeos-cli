@@ -6,7 +6,7 @@ from collections import deque
 from datetime import date, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Integer, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.models.task import Task
@@ -132,23 +132,61 @@ async def validate_parent_task(
         raise ParentTaskReferenceNotFoundError(
             "Parent task must belong to the same vision as the child task"
         )
+    ancestor_parent_by_id = await _load_ancestor_parent_ids(
+        session,
+        start_task_id=parent_task.id,
+    )
     depth = 1
-    current = parent_task
-    while current.parent_task_id is not None:
-        if current.id == child_task_id:
+    current_id: UUID = parent_task.id
+    current_parent_id: UUID | None = parent_task.parent_task_id
+    while current_parent_id is not None:
+        if current_id == child_task_id:
             raise CircularTaskReferenceError("This would create a circular task reference")
         depth += 1
         if depth >= MAX_TASK_DEPTH:
             raise InvalidTaskDepthError(
                 f"Task hierarchy depth cannot exceed {MAX_TASK_DEPTH} levels"
             )
-        next_parent = await load_parent_task(session, current.parent_task_id)
-        if next_parent is None:
+        if current_parent_id not in ancestor_parent_by_id:
             break
-        current = next_parent
-    if current.id == child_task_id:
+        current_id = current_parent_id
+        current_parent_id = ancestor_parent_by_id[current_id]
+    if current_id == child_task_id:
         raise CircularTaskReferenceError("This would create a circular task reference")
     return parent_task
+
+
+async def _load_ancestor_parent_ids(
+    session: AsyncSession,
+    *,
+    start_task_id: UUID,
+) -> dict[UUID, UUID | None]:
+    """Load one task's active ancestor chain in a single recursive CTE query."""
+    ancestors_cte = (
+        select(
+            Task.id,
+            Task.parent_task_id,
+            literal(0, Integer).label("depth"),
+        )
+        .where(Task.id == start_task_id, Task.deleted_at.is_(None))
+        .cte(name="task_ancestors", recursive=True)
+    )
+    ancestor_step = (
+        select(
+            Task.id,
+            Task.parent_task_id,
+            (ancestors_cte.c.depth + 1).label("depth"),
+        )
+        .join(ancestors_cte, Task.id == ancestors_cte.c.parent_task_id)
+        .where(Task.deleted_at.is_(None), ancestors_cte.c.depth < MAX_TASK_DEPTH)
+    )
+    ancestors_cte = ancestors_cte.union_all(ancestor_step)
+    stmt = select(ancestors_cte.c.id, ancestors_cte.c.parent_task_id).order_by(
+        ancestors_cte.c.depth.asc()
+    )
+    return {
+        task_id: parent_task_id for task_id, parent_task_id in (await session.execute(stmt)).all()
+    }
 
 
 async def validate_task_status_change(
@@ -186,20 +224,30 @@ async def load_task_subtree(session: AsyncSession, *, root_task_id: UUID) -> lis
     if root_task is None:
         return []
 
+    descendants_cte = (
+        select(Task.id, literal(0, Integer).label("depth"))
+        .where(Task.id == root_task_id, Task.deleted_at.is_(None))
+        .cte(name="task_descendants", recursive=True)
+    )
+    child_step = (
+        select(Task.id, (descendants_cte.c.depth + 1).label("depth"))
+        .join(descendants_cte, Task.parent_task_id == descendants_cte.c.id)
+        .where(Task.deleted_at.is_(None), descendants_cte.c.depth < MAX_TASK_DEPTH)
+    )
+    descendants_cte = descendants_cte.union_all(child_step)
+    stmt = select(Task).join(descendants_cte, Task.id == descendants_cte.c.id)
+    descendant_tasks = list((await session.execute(stmt)).scalars())
+
+    children_by_parent: dict[UUID | None, list[Task]] = {}
+    for task in descendant_tasks:
+        children_by_parent.setdefault(task.parent_task_id, []).append(task)
+    for children in children_by_parent.values():
+        children.sort(key=lambda task: (task.display_order, task.created_at, task.id))
+
     subtree: list[Task] = []
     queue = deque([root_task])
     while queue:
         task = queue.popleft()
         subtree.append(task)
-        children = (
-            await session.execute(
-                select(Task)
-                .where(
-                    Task.parent_task_id == task.id,
-                    Task.deleted_at.is_(None),
-                )
-                .order_by(Task.display_order.asc(), Task.created_at.asc(), Task.id.asc())
-            )
-        ).scalars()
-        queue.extend(children)
+        queue.extend(children_by_parent.get(task.id, []))
     return subtree

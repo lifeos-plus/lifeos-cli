@@ -18,11 +18,19 @@ from sqlalchemy.ext.asyncio import (
 
 from lifeos_cli.config import clear_config_cache
 from lifeos_cli.db.base import Base
+from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.models.event import Event
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
-from lifeos_cli.db.services import events, task_effort, task_mutations, timelogs, visions
+from lifeos_cli.db.services import (
+    events,
+    task_effort,
+    task_mutations,
+    timelog_stats,
+    timelogs,
+    visions,
+)
 from lifeos_cli.db.session import configure_async_engine
 from tests.support import utc_datetime
 
@@ -760,6 +768,68 @@ def test_timelog_view_does_not_hydrate_soft_deleted_task() -> None:
                 assert loaded is not None
                 assert loaded.task_id == task.id
                 assert loaded.task is None
+        finally:
+            await engine.dispose()
+
+    asyncio.run(scenario())
+
+
+def test_recompute_aggregated_timelog_stats_sums_daily_minutes_and_window_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_timezone(monkeypatch, "UTC")
+
+    async def scenario() -> None:
+        engine, session_factory = await _create_sqlite_session_factory()
+        try:
+            async with session_factory() as session:
+                area = Area(name="Deep work")
+                session.add(area)
+                await session.flush()
+                session.add(
+                    Timelog(
+                        title="Multi-day",
+                        start_time=utc_datetime(2026, 4, 6, 10),
+                        end_time=utc_datetime(2026, 4, 8, 10),
+                        area_id=area.id,
+                    )
+                )
+                session.add(
+                    Timelog(
+                        title="Single",
+                        start_time=utc_datetime(2026, 4, 7, 14),
+                        end_time=utc_datetime(2026, 4, 7, 15),
+                        area_id=area.id,
+                    )
+                )
+                await session.flush()
+                local_dates = (date(2026, 4, 6), date(2026, 4, 7), date(2026, 4, 8))
+                await timelog_stats.recompute_daily_timelog_stats_groupby_area_for_dates(
+                    session,
+                    local_dates=local_dates,
+                )
+                await timelog_stats.recompute_aggregated_timelog_stats_groupby_area_for_dates(
+                    session,
+                    local_dates=local_dates,
+                )
+                week_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="week",
+                    target_date=date(2026, 4, 6),
+                )
+                month_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="month",
+                    month=date(2026, 4, 1),
+                )
+
+                assert len(week_report.rows) == 1
+                assert week_report.rows[0].area_id == area.id
+                assert week_report.rows[0].minutes == 2940
+                assert week_report.rows[0].timelog_count == 2
+                assert len(month_report.rows) == 1
+                assert month_report.rows[0].minutes == 2940
+                assert month_report.rows[0].timelog_count == 2
         finally:
             await engine.dispose()
 

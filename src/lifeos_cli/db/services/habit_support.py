@@ -594,24 +594,12 @@ def _count_streak_cycles(cycles: Sequence[HabitCycleSummary], *, today: date) ->
     return streak
 
 
-def calculate_current_streak(
-    actions: Sequence[HabitActionLike],
+def _longest_streak_cycles(
+    cycles: Sequence[HabitCycleSummary],
     *,
-    habit: Habit,
+    today: date,
 ) -> int:
-    """Return the current streak of completed cadence cycles."""
-    cycles = build_habit_cycle_summaries(habit, actions)
-    return _count_streak_cycles(cycles, today=get_operational_date())
-
-
-def calculate_longest_streak(
-    actions: Sequence[HabitActionLike],
-    *,
-    habit: Habit,
-) -> int:
-    """Return the longest historical streak of completed cadence cycles."""
-    today = get_operational_date()
-    cycles = build_habit_cycle_summaries(habit, actions)
+    """Return the longest historical completed-cycle streak."""
     max_streak = 0
     current_streak = 0
     for cycle in cycles:
@@ -701,6 +689,106 @@ def build_habit_stats_payload(
     actions: Sequence[HabitActionLike],
 ) -> dict[str, object]:
     """Build stats shared by overview, show, and stats commands."""
+    cycle_summaries = build_habit_cycle_summaries(habit, actions)
+    return _assemble_habit_stats_payload(
+        habit,
+        cycle_summaries=cycle_summaries,
+        total_actions=len(actions),
+        completed_actions=len(
+            [
+                action
+                for action in actions
+                if HABIT_ACTION_STATUS_CONFIG.get(action.status, {}).get(
+                    "count_as_completed",
+                    False,
+                )
+            ]
+        ),
+        missed_actions=len([action for action in actions if action.status == "miss"]),
+        skipped_actions=len([action for action in actions if action.status == "skip"]),
+    )
+
+
+def build_habit_stats_payload_from_occurrences(
+    habit: Habit,
+    occurrence_dates: Sequence[date],
+    materialized_actions: Sequence[HabitActionLike],
+) -> dict[str, object]:
+    """Build the same stats payload without materializing per-day occurrence views."""
+    cadence_frequency, _, _, target_per_cycle = validate_habit_cadence(
+        cadence_frequency=getattr(habit, "cadence_frequency", None),
+        cadence_weekdays=getattr(habit, "cadence_weekdays", None),
+        cadence_monthdays=getattr(habit, "cadence_monthdays", None),
+        target_per_cycle=getattr(habit, "target_per_cycle", None),
+    )
+    materialized_by_date = {action.action_date: action for action in materialized_actions}
+    relevant_actions = [
+        materialized_by_date[action_date]
+        for action_date in occurrence_dates
+        if action_date in materialized_by_date
+    ]
+    occurrence_count_by_cycle: dict[date, int] = {}
+    for action_date in occurrence_dates:
+        cycle_start, _ = get_habit_cycle_bounds(
+            action_date=action_date,
+            cadence_frequency=cadence_frequency,
+        )
+        occurrence_count_by_cycle[cycle_start] = occurrence_count_by_cycle.get(cycle_start, 0) + 1
+    completed_by_cycle: dict[date, int] = {}
+    for action in relevant_actions:
+        cycle_start, _ = get_habit_cycle_bounds(
+            action_date=action.action_date,
+            cadence_frequency=cadence_frequency,
+        )
+        if HABIT_ACTION_STATUS_CONFIG.get(action.status, {}).get(
+            "count_as_completed",
+            False,
+        ):
+            completed_by_cycle[cycle_start] = completed_by_cycle.get(cycle_start, 0) + 1
+    cycle_summaries = [
+        HabitCycleSummary(
+            start_date=cycle_start,
+            end_date=get_habit_cycle_bounds(
+                action_date=cycle_start,
+                cadence_frequency=cadence_frequency,
+            )[1],
+            completed_count=completed_by_cycle.get(cycle_start, 0),
+            required_completion_count=min(
+                target_per_cycle,
+                occurrence_count_by_cycle[cycle_start],
+            ),
+        )
+        for cycle_start in sorted(occurrence_count_by_cycle)
+    ]
+    return _assemble_habit_stats_payload(
+        habit,
+        cycle_summaries=cycle_summaries,
+        total_actions=len(occurrence_dates),
+        completed_actions=len(
+            [
+                action
+                for action in relevant_actions
+                if HABIT_ACTION_STATUS_CONFIG.get(action.status, {}).get(
+                    "count_as_completed",
+                    False,
+                )
+            ]
+        ),
+        missed_actions=len([action for action in relevant_actions if action.status == "miss"]),
+        skipped_actions=len([action for action in relevant_actions if action.status == "skip"]),
+    )
+
+
+def _assemble_habit_stats_payload(
+    habit: Habit,
+    *,
+    cycle_summaries: Sequence[HabitCycleSummary],
+    total_actions: int,
+    completed_actions: int,
+    missed_actions: int,
+    skipped_actions: int,
+) -> dict[str, object]:
+    """Assemble the shared habit stats payload from precomputed inputs."""
     current_week_start, current_week_end = get_week_bounds(get_operational_date())
     cadence_frequency, cadence_weekdays, cadence_monthdays, target_per_cycle = (
         validate_habit_cadence(
@@ -710,13 +798,6 @@ def build_habit_stats_payload(
             target_per_cycle=getattr(habit, "target_per_cycle", None),
         )
     )
-    series = _build_habit_series_definition(
-        start_date=habit.start_date,
-        cadence_frequency=cadence_frequency,
-        cadence_weekdays=cadence_weekdays,
-        target_per_cycle=target_per_cycle,
-    )
-    cycle_summaries = build_habit_cycle_summaries(habit, actions)
     today = get_operational_date()
     eligible_cycles = [cycle for cycle in cycle_summaries if cycle.start_date <= today]
     completed_cycles = [cycle for cycle in eligible_cycles if cycle.is_complete]
@@ -725,18 +806,8 @@ def build_habit_stats_payload(
     )
     current_cycle_start, current_cycle_end = get_habit_cycle_bounds(
         action_date=today,
-        cadence_frequency=series.evaluation.cycle_frequency,
+        cadence_frequency=cadence_frequency,
     )
-    total_actions = len(actions)
-    completed_actions = len(
-        [
-            action
-            for action in actions
-            if HABIT_ACTION_STATUS_CONFIG.get(action.status, {}).get("count_as_completed", False)
-        ]
-    )
-    missed_actions = len([action for action in actions if action.status == "miss"])
-    skipped_actions = len([action for action in actions if action.status == "skip"])
     return {
         "habit_id": habit.id,
         "cadence_frequency": cadence_frequency,
@@ -751,8 +822,8 @@ def build_habit_stats_payload(
         "eligible_cycles": len(eligible_cycles),
         "completed_cycles": len(completed_cycles),
         "progress_percentage": progress_percentage,
-        "current_streak": calculate_current_streak(actions, habit=habit),
-        "longest_streak": calculate_longest_streak(actions, habit=habit),
+        "current_streak": _count_streak_cycles(cycle_summaries, today=today),
+        "longest_streak": _longest_streak_cycles(cycle_summaries, today=today),
         "current_cycle_start": current_cycle_start,
         "current_cycle_end": current_cycle_end,
         "current_week_start": current_week_start,
