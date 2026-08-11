@@ -19,7 +19,7 @@ from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
-from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
+from lifeos_cli.db.services.validation_utils import DomainValidationError, choice_validator
 
 VALID_ASSOCIATION_MODELS = frozenset(
     {"event", "habit_action", "note", "person", "task", "timelog", "vision"}
@@ -39,6 +39,21 @@ MODEL_MAP: dict[str, Any] = {
 
 class AssociationValidationError(DomainValidationError):
     """Raised when a weak-association input is invalid."""
+
+
+_validate_association_model = choice_validator(
+    VALID_ASSOCIATION_MODELS,
+    error_cls=AssociationValidationError,
+    label="association model",
+    error_verb="Unsupported",
+)
+
+_validate_association_link_type = choice_validator(
+    VALID_ASSOCIATION_LINK_TYPES,
+    error_cls=AssociationValidationError,
+    label="association link type",
+    error_verb="Unsupported",
+)
 
 
 async def _load_existing_ids(
@@ -66,27 +81,9 @@ async def set_association_links(
     replace: bool = True,
 ) -> None:
     """Create or replace weak links after validating both endpoints exist."""
-    normalized_source_model = validate_choice(
-        source_model,
-        VALID_ASSOCIATION_MODELS,
-        error_cls=AssociationValidationError,
-        label="association model",
-        error_verb="Unsupported",
-    )
-    normalized_target_model = validate_choice(
-        target_model,
-        VALID_ASSOCIATION_MODELS,
-        error_cls=AssociationValidationError,
-        label="association model",
-        error_verb="Unsupported",
-    )
-    normalized_link_type = validate_choice(
-        link_type,
-        VALID_ASSOCIATION_LINK_TYPES,
-        error_cls=AssociationValidationError,
-        label="association link type",
-        error_verb="Unsupported",
-    )
+    normalized_source_model = _validate_association_model(source_model)
+    normalized_target_model = _validate_association_model(target_model)
+    normalized_link_type = _validate_association_link_type(link_type)
     unique_target_ids = deduplicate_preserving_order(target_ids)
 
     if source_id not in await _load_existing_ids(
@@ -159,20 +156,8 @@ async def get_target_ids_for_sources(
     """Return mapping source_id -> target_ids for one weak link family."""
     if not source_ids:
         return {}
-    normalized_source_model = validate_choice(
-        source_model,
-        VALID_ASSOCIATION_MODELS,
-        error_cls=AssociationValidationError,
-        label="association model",
-        error_verb="Unsupported",
-    )
-    normalized_target_model = validate_choice(
-        target_model,
-        VALID_ASSOCIATION_MODELS,
-        error_cls=AssociationValidationError,
-        label="association model",
-        error_verb="Unsupported",
-    )
+    normalized_source_model = _validate_association_model(source_model)
+    normalized_target_model = _validate_association_model(target_model)
     source_cls = aliased(MODEL_MAP[normalized_source_model])
     target_cls = aliased(MODEL_MAP[normalized_target_model])
     stmt = (
@@ -189,13 +174,7 @@ async def get_target_ids_for_sources(
         .order_by(Association.created_at.asc(), Association.id.asc())
     )
     if link_type is not None:
-        normalized_link_type = validate_choice(
-            link_type,
-            VALID_ASSOCIATION_LINK_TYPES,
-            error_cls=AssociationValidationError,
-            label="association link type",
-            error_verb="Unsupported",
-        )
+        normalized_link_type = _validate_association_link_type(link_type)
         stmt = stmt.where(Association.link_type == normalized_link_type)
     rows = await session.execute(stmt)
     mapping: dict[UUID, list[UUID]] = defaultdict(list)
@@ -215,20 +194,8 @@ async def count_sources_for_targets(
     """Return mapping target_id -> linked source count."""
     if not target_ids:
         return {}
-    normalized_source_model = validate_choice(
-        source_model,
-        VALID_ASSOCIATION_MODELS,
-        error_cls=AssociationValidationError,
-        label="association model",
-        error_verb="Unsupported",
-    )
-    normalized_target_model = validate_choice(
-        target_model,
-        VALID_ASSOCIATION_MODELS,
-        error_cls=AssociationValidationError,
-        label="association model",
-        error_verb="Unsupported",
-    )
+    normalized_source_model = _validate_association_model(source_model)
+    normalized_target_model = _validate_association_model(target_model)
     source_cls = aliased(MODEL_MAP[normalized_source_model])
     target_cls = aliased(MODEL_MAP[normalized_target_model])
     stmt = (
@@ -245,13 +212,7 @@ async def count_sources_for_targets(
         .group_by(Association.target_id)
     )
     if link_type is not None:
-        normalized_link_type = validate_choice(
-            link_type,
-            VALID_ASSOCIATION_LINK_TYPES,
-            error_cls=AssociationValidationError,
-            label="association link type",
-            error_verb="Unsupported",
-        )
+        normalized_link_type = _validate_association_link_type(link_type)
         stmt = stmt.where(Association.link_type == normalized_link_type)
     rows = await session.execute(stmt)
     return {target_id: count for target_id, count in rows.all()}
