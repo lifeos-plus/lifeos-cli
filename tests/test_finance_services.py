@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -294,8 +294,8 @@ def test_finance_tree_update_delete_and_report_snapshot_listing() -> None:
                 period_snapshot = await finance.create_finance_snapshot(
                     session,
                     tree_id=updated_tree.id,
-                    period_start=datetime(2026, 6, 1, tzinfo=timezone.utc),
-                    period_end=datetime(2026, 6, 30, tzinfo=timezone.utc),
+                    period_start=datetime(2026, 6, 1, tzinfo=UTC),
+                    period_end=datetime(2026, 6, 30, tzinfo=UTC),
                     entries=[
                         finance.FinanceSnapshotEntryInput(
                             node_id=wallet.id,
@@ -564,7 +564,7 @@ def test_finance_snapshot_without_rate_snapshot_keeps_native_currency_totals() -
                 snapshot = await finance.create_finance_snapshot(
                     session,
                     tree_id=tree.id,
-                    snapshot_ts=datetime(2026, 6, 2, tzinfo=timezone.utc),
+                    snapshot_ts=datetime(2026, 6, 2, tzinfo=UTC),
                     entries=[
                         finance.FinanceSnapshotEntryInput(
                             node_id=account.id,
@@ -616,7 +616,7 @@ def test_finance_snapshot_supports_explicit_inverse_rate_snapshot() -> None:
                 )
                 rate_snapshot = await finance.create_finance_rate_snapshot(
                     session,
-                    captured_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+                    captured_at=datetime(2026, 6, 1, tzinfo=UTC),
                     entries=[
                         finance.FinanceRateSnapshotEntryInput(
                             base_currency="USD",
@@ -686,7 +686,7 @@ def test_finance_snapshot_uses_chained_rates_and_follows_rate_snapshot_updates()
                 )
                 rate_snapshot = await finance.create_finance_rate_snapshot(
                     session,
-                    captured_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+                    captured_at=datetime(2026, 6, 1, tzinfo=UTC),
                     entries=[
                         finance.FinanceRateSnapshotEntryInput(
                             base_currency="BTC",
@@ -825,7 +825,7 @@ def test_finance_snapshot_with_incomplete_rate_snapshot_keeps_native_totals() ->
                 )
                 rate_snapshot = await finance.create_finance_rate_snapshot(
                     session,
-                    captured_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+                    captured_at=datetime(2026, 6, 1, tzinfo=UTC),
                     entries=[
                         finance.FinanceRateSnapshotEntryInput(
                             base_currency="BTC",
@@ -870,7 +870,7 @@ def test_finance_rate_snapshot_can_be_updated_and_deleted() -> None:
             async with session_factory() as session:
                 rate_snapshot = await finance.create_finance_rate_snapshot(
                     session,
-                    captured_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+                    captured_at=datetime(2026, 6, 1, tzinfo=UTC),
                     source="manual",
                     note="Initial rates",
                     entries=[
@@ -885,7 +885,7 @@ def test_finance_rate_snapshot_can_be_updated_and_deleted() -> None:
                 updated = await finance.update_finance_rate_snapshot(
                     session,
                     rate_snapshot_id=rate_snapshot.id,
-                    captured_at=datetime(2026, 6, 2, tzinfo=timezone.utc),
+                    captured_at=datetime(2026, 6, 2, tzinfo=UTC),
                     source="import",
                     note="Updated rates",
                     entries=[
@@ -950,7 +950,7 @@ def test_finance_snapshot_rate_snapshot_can_be_cleared() -> None:
                 )
                 rate_snapshot = await finance.create_finance_rate_snapshot(
                     session,
-                    captured_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+                    captured_at=datetime(2026, 6, 1, tzinfo=UTC),
                     entries=[
                         finance.FinanceRateSnapshotEntryInput(
                             base_currency="EUR",
@@ -1015,8 +1015,8 @@ def test_finance_snapshot_can_be_updated_and_deleted() -> None:
                 snapshot = await finance.create_finance_snapshot(
                     session,
                     tree_id=tree.id,
-                    period_start=datetime(2026, 6, 1, tzinfo=timezone.utc),
-                    period_end=datetime(2026, 6, 30, tzinfo=timezone.utc),
+                    period_start=datetime(2026, 6, 1, tzinfo=UTC),
+                    period_end=datetime(2026, 6, 30, tzinfo=UTC),
                     entries=[
                         finance.FinanceSnapshotEntryInput(
                             node_id=salary.id,
@@ -1029,8 +1029,8 @@ def test_finance_snapshot_can_be_updated_and_deleted() -> None:
                 updated = await finance.update_finance_snapshot(
                     session,
                     snapshot_id=snapshot.id,
-                    period_start=datetime(2026, 7, 1, tzinfo=timezone.utc),
-                    period_end=datetime(2026, 7, 31, tzinfo=timezone.utc),
+                    period_start=datetime(2026, 7, 1, tzinfo=UTC),
+                    period_end=datetime(2026, 7, 31, tzinfo=UTC),
                     note="July cashflow",
                     entries=[
                         finance.FinanceSnapshotEntryInput(
@@ -1044,8 +1044,8 @@ def test_finance_snapshot_can_be_updated_and_deleted() -> None:
                     update_note=True,
                 )
 
-                assert updated.period_start == datetime(2026, 7, 1, tzinfo=timezone.utc)
-                assert updated.period_end == datetime(2026, 7, 31, tzinfo=timezone.utc)
+                assert updated.period_start == datetime(2026, 7, 1, tzinfo=UTC)
+                assert updated.period_end == datetime(2026, 7, 31, tzinfo=UTC)
                 assert updated.note == "July cashflow"
                 assert updated.net_amount == Decimal("125.00000000")
                 manual_entries = [entry for entry in updated.entries if not entry.is_auto_generated]

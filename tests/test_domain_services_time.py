@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock
@@ -719,7 +719,7 @@ def test_sqlite_roundtrip_returns_utc_aware_datetimes(monkeypatch: pytest.Monkey
                     session,
                     event_id=event_id,
                     changes=events.EventUpdateInput(
-                        end_time=datetime(2026, 6, 15, 12, 0, tzinfo=timezone.utc),
+                        end_time=datetime(2026, 6, 15, 12, 0, tzinfo=UTC),
                     ),
                 )
 

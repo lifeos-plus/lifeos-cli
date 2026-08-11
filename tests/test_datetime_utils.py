@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from lifeos_cli.application.datetime_utils import (
     normalize_iso_datetime_input,
@@ -21,4 +21,4 @@ def test_normalize_iso_datetime_input_preserves_offset_suffix() -> None:
 def test_parse_iso_datetime_input_parses_utc_z_suffix() -> None:
     parsed = parse_iso_datetime_input("2026-06-16T16:00:00.000Z")
 
-    assert parsed == datetime(2026, 6, 16, 16, 0, tzinfo=timezone.utc)
+    assert parsed == datetime(2026, 6, 16, 16, 0, tzinfo=UTC)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
@@ -28,4 +28,4 @@ def utc_datetime(
     minute: int = 0,
     second: int = 0,
 ) -> datetime:
-    return datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
+    return datetime(year, month, day, hour, minute, second, tzinfo=UTC)

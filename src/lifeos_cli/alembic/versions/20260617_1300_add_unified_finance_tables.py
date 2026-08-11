@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -80,7 +80,7 @@ def upgrade() -> None:
         sa.column("deleted_at", sa.DateTime(timezone=True)),
         schema=schema_name,
     )
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     op.bulk_insert(
         assets_table,
         [

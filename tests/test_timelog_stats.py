@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any, cast
 
 import pytest
@@ -27,8 +27,8 @@ def configured_time_preferences(monkeypatch: pytest.MonkeyPatch, tmp_path) -> It
 @pytest.mark.usefixtures("configured_time_preferences")
 def test_iter_local_dates_for_timelog_window_respects_day_boundary() -> None:
     local_dates = timelog_stats.iter_local_dates_for_timelog_window(
-        start_time=datetime(2026, 4, 10, 7, 30, tzinfo=timezone.utc),
-        end_time=datetime(2026, 4, 10, 9, 30, tzinfo=timezone.utc),
+        start_time=datetime(2026, 4, 10, 7, 30, tzinfo=UTC),
+        end_time=datetime(2026, 4, 10, 9, 30, tzinfo=UTC),
     )
 
     assert local_dates == (date(2026, 4, 9), date(2026, 4, 10))
@@ -36,10 +36,10 @@ def test_iter_local_dates_for_timelog_window_respects_day_boundary() -> None:
 
 def test_overlap_minutes_for_window_returns_whole_minutes() -> None:
     minutes = timelog_stats.overlap_minutes_for_window(
-        start_time=datetime(2026, 4, 10, 12, 0, tzinfo=timezone.utc),
-        end_time=datetime(2026, 4, 10, 13, 1, tzinfo=timezone.utc),
-        window_start=datetime(2026, 4, 10, 12, 30, tzinfo=timezone.utc),
-        window_end=datetime(2026, 4, 10, 13, 0, 59, tzinfo=timezone.utc),
+        start_time=datetime(2026, 4, 10, 12, 0, tzinfo=UTC),
+        end_time=datetime(2026, 4, 10, 13, 1, tzinfo=UTC),
+        window_start=datetime(2026, 4, 10, 12, 30, tzinfo=UTC),
+        window_end=datetime(2026, 4, 10, 13, 0, 59, tzinfo=UTC),
     )
 
     assert minutes == 30
@@ -49,8 +49,8 @@ def test_overlap_minutes_for_window_treats_naive_storage_values_as_utc() -> None
     minutes = timelog_stats.overlap_minutes_for_window(
         start_time=datetime(2026, 4, 10, 12, 0),
         end_time=datetime(2026, 4, 10, 13, 0),
-        window_start=datetime(2026, 4, 10, 12, 30, tzinfo=timezone.utc),
-        window_end=datetime(2026, 4, 10, 13, 30, tzinfo=timezone.utc),
+        window_start=datetime(2026, 4, 10, 12, 30, tzinfo=UTC),
+        window_end=datetime(2026, 4, 10, 13, 30, tzinfo=UTC),
     )
 
     assert minutes == 30
@@ -58,10 +58,10 @@ def test_overlap_minutes_for_window_treats_naive_storage_values_as_utc() -> None
 
 def test_overlap_minutes_for_window_keeps_final_boundary_minute() -> None:
     minutes = timelog_stats.overlap_minutes_for_window(
-        start_time=datetime(2026, 3, 22, 15, 10, tzinfo=timezone.utc),
-        end_time=datetime(2026, 3, 22, 22, 10, tzinfo=timezone.utc),
-        window_start=datetime(2026, 3, 15, 16, 0, tzinfo=timezone.utc),
-        window_end=datetime(2026, 3, 22, 16, 0, tzinfo=timezone.utc),
+        start_time=datetime(2026, 3, 22, 15, 10, tzinfo=UTC),
+        end_time=datetime(2026, 3, 22, 22, 10, tzinfo=UTC),
+        window_start=datetime(2026, 3, 15, 16, 0, tzinfo=UTC),
+        window_end=datetime(2026, 3, 22, 16, 0, tzinfo=UTC),
     )
 
     assert minutes == 50

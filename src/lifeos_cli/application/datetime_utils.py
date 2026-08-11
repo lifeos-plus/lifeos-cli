@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import overload
 
 
@@ -19,8 +19,8 @@ def normalize_storage_datetime(value: datetime | None) -> datetime | None:
     if value is None:
         return None
     if value.tzinfo is not None and value.utcoffset() is not None:
-        return value.astimezone(timezone.utc)
-    return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(UTC)
+    return value.replace(tzinfo=UTC)
 
 
 def normalize_iso_datetime_input(value: str) -> str:

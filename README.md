@@ -77,6 +77,8 @@ The local Web UI is the human browser interface for the same LifeOS data. It is 
 
 ## Getting Started
 
+`lifeos-cli` requires Python 3.11 or newer; Python 3.11 through 3.14 are tested in CI.
+
 Install or upgrade from PyPI:
 
 ```bash
