@@ -306,13 +306,7 @@ async def list_actions_in_range(
             start_date=start_date,
             end_date=end_date,
         )
-        total = await habit_action_services.count_habit_actions(
-            session,
-            start_date=start_date,
-            end_date=end_date,
-            cadence_frequency=cadence_frequency,
-        )
-        actions = await habit_action_services.list_habit_actions(
+        actions, total = await habit_action_services.list_habit_actions_with_total(
             session,
             start_date=start_date,
             end_date=end_date,

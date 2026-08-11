@@ -256,6 +256,8 @@ def _build_habit_action_views_for_occurrence_dates(
     habit: Habit,
     materialized_actions: list[HabitAction],
     occurrence_dates: list[date],
+    note_content_by_action: dict[UUID, str],
+    note_count_by_action: dict[UUID, int],
 ) -> list[HabitActionView]:
     active_actions_by_date = {
         action.action_date: action for action in materialized_actions if action.deleted_at is None
@@ -289,11 +291,11 @@ def _build_habit_action_views_for_occurrence_dates(
                 habit_cadence_frequency=_habit_cadence_frequency(habit),
                 action_date=materialized.action_date,
                 status=materialized.status,
-                notes=getattr(materialized, "notes", None),
+                notes=note_content_by_action.get(materialized.id),
                 created_at=materialized.created_at,
                 updated_at=materialized.updated_at,
                 deleted_at=materialized.deleted_at,
-                linked_notes_count=getattr(materialized, "linked_notes_count", 0),
+                linked_notes_count=note_count_by_action.get(materialized.id, 0),
             )
         )
 
@@ -344,8 +346,6 @@ async def build_habit_action_views(
     )
     actions_by_habit: dict[UUID, list[HabitAction]] = {habit_id: [] for habit_id in habit_ids}
     for action in materialized_actions:
-        action.__dict__["notes"] = note_content_by_action.get(action.id)
-        action.__dict__["linked_notes_count"] = note_count_by_action.get(action.id, 0)
         actions_by_habit.setdefault(action.habit_id, []).append(action)
 
     views: list[HabitActionView] = []
@@ -368,6 +368,8 @@ async def build_habit_action_views(
                     habit=habit,
                     materialized_actions=actions_by_habit.get(habit.id, []),
                     occurrence_dates=occurrence_dates,
+                    note_content_by_action=note_content_by_action,
+                    note_count_by_action=note_count_by_action,
                 )
             )
             continue
@@ -384,6 +386,8 @@ async def build_habit_action_views(
                     start_date=habit_start,
                     end_date=habit_end,
                 ),
+                note_content_by_action=note_content_by_action,
+                note_count_by_action=note_count_by_action,
             )
         )
     if status is not None:
@@ -549,7 +553,7 @@ async def get_habit_task_associations(session: AsyncSession) -> dict[UUID, list[
     return associations
 
 
-async def list_habit_actions(
+async def list_habit_actions_with_total(
     session: AsyncSession,
     *,
     habit_id: UUID | None = None,
@@ -560,8 +564,8 @@ async def list_habit_actions(
     end_date: date | None = None,
     limit: int = 100,
     offset: int = 0,
-) -> list[HabitActionView]:
-    """List habit-action occurrence views with optional filters."""
+) -> tuple[list[HabitActionView], int]:
+    """Return paged habit-action views and the total matching count in one pass."""
     await refresh_habit_expiration(session)
     target_dates = tuple(deduplicate_preserving_order(date_values))
     action_window = (
@@ -578,7 +582,7 @@ async def list_habit_actions(
     paged_views = views[offset : offset + limit]
     synthetic_views = [view for view in paged_views if view.id is None]
     if not synthetic_views:
-        return paged_views
+        return paged_views, len(views)
 
     habit_ids = {view.habit_id for view in synthetic_views}
     habits = list(
@@ -613,9 +617,37 @@ async def list_habit_actions(
             linked_notes_count=0,
         )
 
-    return [
-        materialized_by_key.get((view.habit_id, view.action_date), view) for view in paged_views
-    ]
+    return (
+        [materialized_by_key.get((view.habit_id, view.action_date), view) for view in paged_views],
+        len(views),
+    )
+
+
+async def list_habit_actions(
+    session: AsyncSession,
+    *,
+    habit_id: UUID | None = None,
+    status: str | None = None,
+    cadence_frequency: str | None = None,
+    date_values: tuple[date, ...] = (),
+    start_date: date | None = None,
+    end_date: date | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[HabitActionView]:
+    """List habit-action occurrence views with optional filters."""
+    views, _ = await list_habit_actions_with_total(
+        session,
+        habit_id=habit_id,
+        status=status,
+        cadence_frequency=cadence_frequency,
+        date_values=date_values,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+        offset=offset,
+    )
+    return views
 
 
 async def list_habit_actions_in_range(

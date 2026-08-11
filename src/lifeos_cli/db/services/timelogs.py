@@ -765,7 +765,6 @@ async def create_timelog(
             current=_capture_timelog_dependency_snapshot(timelog),
         ),
     )
-    await session.refresh(timelog)
     return await _build_timelog_view(session, timelog)
 
 
@@ -858,7 +857,6 @@ async def update_timelog(
             current=_capture_timelog_dependency_snapshot(timelog),
         ),
     )
-    await session.refresh(timelog)
     return await _build_timelog_view(session, timelog)
 
 

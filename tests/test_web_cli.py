@@ -2137,8 +2137,7 @@ def test_web_habit_actions_range_passes_reference_date(
     from lifeos_web.routers import habits
 
     captured_expire: dict[str, object] = {}
-    captured_count: dict[str, object] = {}
-    captured_list: dict[str, object] = {}
+    captured_list_with_total: dict[str, object] = {}
 
     async def fake_reconcile_planning_habit_action_lifecycle(
         _session: object,
@@ -2147,13 +2146,12 @@ def test_web_habit_actions_range_passes_reference_date(
         captured_expire.update(kwargs)
         return 0
 
-    async def fake_count_habit_actions(_session: object, **kwargs: object) -> int:
-        captured_count.update(kwargs)
-        return 0
-
-    async def fake_list_habit_actions(_session: object, **kwargs: object) -> list[object]:
-        captured_list.update(kwargs)
-        return []
+    async def fake_list_habit_actions_with_total(
+        _session: object,
+        **kwargs: object,
+    ) -> tuple[list[object], int]:
+        captured_list_with_total.update(kwargs)
+        return [], 0
 
     monkeypatch.setattr(
         habits.planning_lifecycle_services,
@@ -2162,13 +2160,8 @@ def test_web_habit_actions_range_passes_reference_date(
     )
     monkeypatch.setattr(
         habits.habit_action_services,
-        "count_habit_actions",
-        fake_count_habit_actions,
-    )
-    monkeypatch.setattr(
-        habits.habit_action_services,
-        "list_habit_actions",
-        fake_list_habit_actions,
+        "list_habit_actions_with_total",
+        fake_list_habit_actions_with_total,
     )
 
     response = asyncio.run(
@@ -2184,17 +2177,14 @@ def test_web_habit_actions_range_passes_reference_date(
     assert captured_expire["start_date"] == date(2026, 4, 1)
     assert captured_expire["end_date"] == date(2026, 4, 30)
     assert captured_expire["reference_date"] == date(2026, 4, 9)
-    assert captured_count["start_date"] == date(2026, 4, 1)
-    assert captured_count["end_date"] == date(2026, 4, 30)
-    assert captured_count["cadence_frequency"] == "weekly"
-    assert "reference_date" not in captured_count
-    assert captured_list["start_date"] == date(2026, 4, 1)
-    assert captured_list["end_date"] == date(2026, 4, 30)
-    assert captured_list["cadence_frequency"] == "weekly"
-    assert "reference_date" not in captured_list
-    assert captured_list["limit"] == 1000
-    assert captured_list["offset"] == 0
+    assert captured_list_with_total["start_date"] == date(2026, 4, 1)
+    assert captured_list_with_total["end_date"] == date(2026, 4, 30)
+    assert captured_list_with_total["cadence_frequency"] == "weekly"
+    assert "reference_date" not in captured_list_with_total
+    assert captured_list_with_total["limit"] == 1000
+    assert captured_list_with_total["offset"] == 0
     assert response.items == []
+    assert response.pagination.total == 0
     assert response.meta == {
         "start_date": "2026-04-01",
         "end_date": "2026-04-30",

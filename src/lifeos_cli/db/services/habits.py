@@ -20,6 +20,7 @@ from lifeos_cli.db.services.habit_queries import (
     get_habit_task_associations,
     list_habit_actions,
     list_habit_actions_in_range,
+    list_habit_actions_with_total,
     list_habit_overviews,
     list_habits,
 )
@@ -59,6 +60,7 @@ __all__ = [
     "get_habit_task_associations",
     "list_habit_actions",
     "list_habit_actions_in_range",
+    "list_habit_actions_with_total",
     "list_habit_overviews",
     "list_habits",
     "update_habit",

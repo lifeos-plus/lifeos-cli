@@ -56,28 +56,29 @@ async def handle_habit_action_list_async(args: argparse.Namespace) -> int:
         return cli_handler_utils.print_cli_error(exc)
     async with db_session.session_scope() as session:
         try:
-            actions = await habit_action_services.list_habit_actions(
-                session,
-                habit_id=args.habit_id,
-                status=args.status,
-                date_values=date_selection.date_values,
-                start_date=date_selection.start_date,
-                end_date=date_selection.end_date,
-                limit=args.limit,
-                offset=args.offset,
-            )
-            total_count = (
-                await habit_action_services.count_habit_actions(
+            if args.count:
+                actions, total_count = await habit_action_services.list_habit_actions_with_total(
                     session,
                     habit_id=args.habit_id,
                     status=args.status,
                     date_values=date_selection.date_values,
                     start_date=date_selection.start_date,
                     end_date=date_selection.end_date,
+                    limit=args.limit,
+                    offset=args.offset,
                 )
-                if args.count
-                else None
-            )
+            else:
+                actions = await habit_action_services.list_habit_actions(
+                    session,
+                    habit_id=args.habit_id,
+                    status=args.status,
+                    date_values=date_selection.date_values,
+                    start_date=date_selection.start_date,
+                    end_date=date_selection.end_date,
+                    limit=args.limit,
+                    offset=args.offset,
+                )
+                total_count = None
         except (
             habit_action_services.HabitNotFoundError,
             habit_action_services.HabitValidationError,
