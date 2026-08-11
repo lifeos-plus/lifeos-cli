@@ -14,11 +14,8 @@ from lifeos_cli.application.calendar_adapter import (
     CalendarGranularity,
     get_calendar_period_range,
 )
-from lifeos_cli.application.time_preferences import (
-    get_calendar_preferences,
-    get_operational_date,
-)
-from lifeos_cli.config import ConfigurationError
+from lifeos_cli.application.time_preferences import get_operational_date
+from lifeos_cli.config import ConfigurationError, get_preferences_settings
 from lifeos_cli.db.models.association import Association
 from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.person import Person
@@ -186,14 +183,14 @@ def _planning_cycle_date_filter_range(
     """Return the calendar-aware planning-cycle range from persisted preferences."""
     if planning_cycle_type not in {"day", "week", "month", "year", "7years"}:
         return None
-    calendar_preferences = get_calendar_preferences()
+    preferences = get_preferences_settings()
     try:
         return get_calendar_period_range(
             cast(CalendarGranularity, planning_cycle_type),
             planning_cycle_start_date,
-            calendar_system=calendar_preferences.system,
-            first_day_of_week=calendar_preferences.first_day_of_week,
-            seven_year_anchor_date=calendar_preferences.seven_year_anchor_date,
+            calendar_system=preferences.calendar_system,
+            first_day_of_week=preferences.calendar_first_day_of_week,
+            seven_year_anchor_date=date.fromisoformat(preferences.calendar_seven_year_anchor_date),
         )
     except (ConfigurationError, ValueError) as exc:
         raise ValueError(str(exc)) from exc
@@ -477,23 +474,23 @@ async def get_planning_view(
     """
     if at_date is not None and start_date is not None:
         raise ValueError("Use either --at or --start, not both.")
-    calendar_preferences = get_calendar_preferences()
+    preferences = get_preferences_settings()
     anchor = start_date
     if anchor is None:
         reference_date = at_date or get_operational_date()
         anchor = get_calendar_period_range(
             cast(CalendarGranularity, cycle_type),
             reference_date,
-            calendar_system=calendar_preferences.system,
-            first_day_of_week=calendar_preferences.first_day_of_week,
-            seven_year_anchor_date=calendar_preferences.seven_year_anchor_date,
+            calendar_system=preferences.calendar_system,
+            first_day_of_week=preferences.calendar_first_day_of_week,
+            seven_year_anchor_date=date.fromisoformat(preferences.calendar_seven_year_anchor_date),
         )[0]
     period_start, period_end = get_calendar_period_range(
         cast(CalendarGranularity, cycle_type),
         anchor,
-        calendar_system=calendar_preferences.system,
-        first_day_of_week=calendar_preferences.first_day_of_week,
-        seven_year_anchor_date=calendar_preferences.seven_year_anchor_date,
+        calendar_system=preferences.calendar_system,
+        first_day_of_week=preferences.calendar_first_day_of_week,
+        seven_year_anchor_date=date.fromisoformat(preferences.calendar_seven_year_anchor_date),
     )
     stmt = _apply_task_filters(
         select(Task),

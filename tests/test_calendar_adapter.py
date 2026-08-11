@@ -14,7 +14,6 @@ from lifeos_cli.application.calendar_adapter import (
     get_calendar_period_range,
     iter_calendar_periods,
 )
-from lifeos_cli.application.time_preferences import CalendarPreferences
 from lifeos_cli.config import ConfigurationError
 from lifeos_cli.db.base import Base
 from lifeos_cli.db.models import Task, Vision
@@ -23,30 +22,6 @@ from lifeos_cli.db.services.task_queries import (
     _planning_cycle_date_filter_range,
     count_tasks,
 )
-
-
-def test_get_calendar_preferences_reads_persisted_user_values(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from lifeos_cli.application import time_preferences as preference_access
-
-    monkeypatch.setattr(
-        preference_access,
-        "get_preferences_settings",
-        lambda: SimpleNamespace(
-            calendar_system="mayan_13_moon",
-            calendar_first_day_of_week=7,
-            calendar_seven_year_anchor_date="2025-07-26",
-        ),
-    )
-
-    resolved = preference_access.get_calendar_preferences()
-
-    assert resolved == CalendarPreferences(
-        system="mayan_13_moon",
-        first_day_of_week=7,
-        seven_year_anchor_date=date(2025, 7, 26),
-    )
 
 
 def test_gregorian_calendar_adapter_uses_configured_week_start() -> None:
@@ -159,11 +134,11 @@ def test_task_planning_cycle_filter_range_reads_persisted_preferences(
 ) -> None:
     monkeypatch.setattr(
         task_queries,
-        "get_calendar_preferences",
-        lambda: CalendarPreferences(
-            system="mayan_13_moon",
-            first_day_of_week=7,
-            seven_year_anchor_date=date(2025, 7, 26),
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=7,
+            calendar_seven_year_anchor_date="2025-07-26",
         ),
     )
 
@@ -185,11 +160,11 @@ def test_task_planning_cycle_filter_range_uses_mayan_periods(
 ) -> None:
     monkeypatch.setattr(
         task_queries,
-        "get_calendar_preferences",
-        lambda: CalendarPreferences(
-            system="mayan_13_moon",
-            first_day_of_week=7,
-            seven_year_anchor_date=date(2025, 7, 26),
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=7,
+            calendar_seven_year_anchor_date="2025-07-26",
         ),
     )
 
@@ -214,11 +189,11 @@ def test_task_planning_cycle_filter_includes_overlapping_physical_windows(
 ) -> None:
     monkeypatch.setattr(
         task_queries,
-        "get_calendar_preferences",
-        lambda: CalendarPreferences(
-            system="gregorian",
-            first_day_of_week=1,
-            seven_year_anchor_date=date(2025, 7, 26),
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            calendar_system="gregorian",
+            calendar_first_day_of_week=1,
+            calendar_seven_year_anchor_date="2025-07-26",
         ),
     )
 

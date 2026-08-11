@@ -12,7 +12,6 @@ from uuid import UUID
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lifeos_cli.application.time_preferences import CalendarPreferences
 from lifeos_cli.cli import build_parser
 from lifeos_cli.config import clear_config_cache
 from lifeos_cli.db.services.read_models import (
@@ -931,11 +930,11 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
     )
     monkeypatch.setattr(
         task_router,
-        "get_calendar_preferences",
-        lambda: CalendarPreferences(
-            system="mayan_13_moon",
-            first_day_of_week=7,
-            seven_year_anchor_date=date(2025, 7, 26),
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=7,
+            calendar_seven_year_anchor_date="2025-07-26",
         ),
     )
 
@@ -2787,17 +2786,12 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
     )
     monkeypatch.setattr(
         stats,
-        "get_calendar_preferences",
-        lambda: CalendarPreferences(
-            system="mayan_13_moon",
-            first_day_of_week=1,
-            seven_year_anchor_date=date(2025, 7, 26),
-        ),
-    )
-    monkeypatch.setattr(
-        stats,
         "get_preferences_settings",
-        lambda: SimpleNamespace(timezone="America/Toronto"),
+        lambda: SimpleNamespace(
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=1,
+            timezone="America/Toronto",
+        ),
     )
 
     response = asyncio.run(
@@ -2863,17 +2857,12 @@ def test_web_stats_calendar_context_comes_from_backend_preferences(
     )
     monkeypatch.setattr(
         stats,
-        "get_calendar_preferences",
-        lambda: CalendarPreferences(
-            system="mayan_13_moon",
-            first_day_of_week=6,
-            seven_year_anchor_date=date(2025, 7, 26),
-        ),
-    )
-    monkeypatch.setattr(
-        stats,
         "get_preferences_settings",
-        lambda: SimpleNamespace(timezone="UTC"),
+        lambda: SimpleNamespace(
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=6,
+            timezone="UTC",
+        ),
     )
 
     response = asyncio.run(

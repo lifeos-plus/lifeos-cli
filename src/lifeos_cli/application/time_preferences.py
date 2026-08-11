@@ -1,31 +1,11 @@
-"""Helpers for applying user time and calendar preferences at runtime."""
+"""Helpers for applying user time preferences at runtime."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from lifeos_cli.config import get_preferences_settings
-
-
-@dataclass(frozen=True)
-class CalendarPreferences:
-    """Calendar-related user preferences persisted in the local config."""
-
-    system: str
-    first_day_of_week: int
-    seven_year_anchor_date: date
-
-
-def get_calendar_preferences() -> CalendarPreferences:
-    """Return the persisted calendar preferences for the current user."""
-    preferences = get_preferences_settings()
-    return CalendarPreferences(
-        system=preferences.calendar_system,
-        first_day_of_week=preferences.calendar_first_day_of_week,
-        seven_year_anchor_date=date.fromisoformat(preferences.calendar_seven_year_anchor_date),
-    )
 
 
 def apply_preferred_timezone(value: datetime) -> datetime:

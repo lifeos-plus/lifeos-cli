@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 
-from lifeos_cli.application.calendar_adapter import CALENDAR_GRANULARITIES
 from lifeos_cli.cli_support.help_utils import (
     HelpContent,
     add_documented_help_parser,
@@ -14,6 +13,7 @@ from lifeos_cli.cli_support.parser_common import add_limit_offset_arguments
 from lifeos_cli.cli_support.resources.planning.handlers import handle_planning_show_async
 from lifeos_cli.cli_support.runtime_utils import make_sync_handler
 from lifeos_cli.cli_support.time_args import parse_date_value
+from lifeos_cli.db.services.task_support import VALID_PLANNING_CYCLE_TYPES
 from lifeos_cli.i18n import cli_message as _
 
 
@@ -43,7 +43,7 @@ def build_planning_show_parser(
     show_parser.add_argument(
         "--cycle-type",
         required=True,
-        choices=CALENDAR_GRANULARITIES,
+        choices=VALID_PLANNING_CYCLE_TYPES,
         help=_("resources.planning.show.cycle_type_help"),
     )
     show_parser.add_argument(

@@ -10,7 +10,6 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from lifeos_cli import cli
-from lifeos_cli.application.time_preferences import CalendarPreferences
 from lifeos_cli.cli_support.resources.planning import handlers as planning_handlers
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.base import Base
@@ -30,11 +29,11 @@ CONTEXT_CHILD_ID = UUID("77777777-7777-7777-7777-777777777777")
 def _stub_calendar_preferences(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         task_queries,
-        "get_calendar_preferences",
-        lambda: CalendarPreferences(
-            system="gregorian",
-            first_day_of_week=1,
-            seven_year_anchor_date=date(2025, 7, 26),
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            calendar_system="gregorian",
+            calendar_first_day_of_week=1,
+            calendar_seven_year_anchor_date="2025-07-26",
         ),
     )
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.calendar_adapter import CalendarGranularity, get_calendar_period_range
 from lifeos_cli.application.time_preferences import (
-    get_calendar_preferences,
     get_operational_date,
     get_utc_window_for_local_date,
     get_week_bounds,
@@ -262,10 +261,6 @@ def validate_habit_cadence(
     return normalized_frequency, normalized_weekdays, normalized_monthdays, normalized_target
 
 
-def _habit_anchor_datetime(reference_date: date) -> datetime:
-    return get_utc_window_for_local_date(reference_date)[0]
-
-
 def _build_habit_series_definition(
     *,
     start_date: date,
@@ -274,7 +269,7 @@ def _build_habit_series_definition(
     target_per_cycle: int,
 ) -> SeriesDefinition:
     return build_series_definition(
-        anchor_start=_habit_anchor_datetime(start_date),
+        anchor_start=get_utc_window_for_local_date(start_date)[0],
         anchor_end=None,
         frequency="daily",
         byweekday=cadence_weekdays,
@@ -302,13 +297,13 @@ def get_habit_cycle_bounds(
                 cycle_frequency=cadence_frequency,
                 week_starts_on=get_preferences_settings().week_starts_on,
             )
-        calendar_preferences = get_calendar_preferences()
+        preferences = get_preferences_settings()
         granularity = CADENCE_TO_CALENDAR_GRANULARITY[cadence_frequency]
         return get_calendar_period_range(
             granularity,
             action_date,
-            calendar_system=calendar_preferences.system,
-            first_day_of_week=calendar_preferences.first_day_of_week,
+            calendar_system=preferences.calendar_system,
+            first_day_of_week=preferences.calendar_first_day_of_week,
         )
     except (KeyError, RecurrenceValidationError, ValueError) as exc:
         raise HabitValidationError(str(exc)) from exc
@@ -378,12 +373,12 @@ def calculate_habit_duration_for_repeat_count(
 
 
 def _calendar_monthday(target_date: date) -> int:
-    calendar_preferences = get_calendar_preferences()
+    preferences = get_preferences_settings()
     month_start, _ = get_calendar_period_range(
         "month",
         target_date,
-        calendar_system=calendar_preferences.system,
-        first_day_of_week=calendar_preferences.first_day_of_week,
+        calendar_system=preferences.calendar_system,
+        first_day_of_week=preferences.calendar_first_day_of_week,
     )
     return (target_date - month_start).days + 1
 

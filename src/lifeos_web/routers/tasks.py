@@ -10,7 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lifeos_cli.application.time_preferences import get_calendar_preferences
+from lifeos_cli.config import get_preferences_settings
 from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services import tasks as task_services
 from lifeos_web.deps import get_db_session
@@ -167,10 +167,10 @@ async def list_tasks(
     first_day_of_week: int | None = None
     seven_year_anchor_date: date | None = None
     if planning_cycle_type is not None and planning_cycle_start_date is not None:
-        calendar_preferences = get_calendar_preferences()
-        calendar_system = calendar_preferences.system
-        first_day_of_week = calendar_preferences.first_day_of_week
-        seven_year_anchor_date = calendar_preferences.seven_year_anchor_date
+        preferences = get_preferences_settings()
+        calendar_system = preferences.calendar_system
+        first_day_of_week = preferences.calendar_first_day_of_week
+        seven_year_anchor_date = date.fromisoformat(preferences.calendar_seven_year_anchor_date)
     try:
         rows = await task_services.list_tasks(
             session,
