@@ -72,9 +72,32 @@ def test_configure_async_engine_enables_sqlite_foreign_keys_only_for_sqlite(
 
     assert db_session.configure_async_engine(sqlite_engine) is sqlite_engine
     assert listened == [
-        (sqlite_engine.sync_engine, "connect", db_session._enable_sqlite_foreign_keys)
+        (sqlite_engine.sync_engine, "connect", db_session._configure_sqlite_connection)
     ]
 
     listened.clear()
     assert db_session.configure_async_engine(postgres_engine) is postgres_engine
     assert listened == []
+
+
+def test_configure_sqlite_connection_sets_concurrency_pragmas() -> None:
+    executed: list[str] = []
+
+    class FakeCursor:
+        def execute(self, statement: str) -> None:
+            executed.append(statement)
+
+        def close(self) -> None:
+            return None
+
+    class FakeConnection:
+        def cursor(self) -> FakeCursor:
+            return FakeCursor()
+
+    db_session._configure_sqlite_connection(FakeConnection(), None)
+
+    assert executed == [
+        "PRAGMA foreign_keys=ON",
+        "PRAGMA journal_mode=WAL",
+        f"PRAGMA busy_timeout={db_session.SQLITE_BUSY_TIMEOUT_MS}",
+    ]

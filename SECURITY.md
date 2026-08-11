@@ -36,6 +36,10 @@ Pull request and `main` validation audits the locked Python project with every o
 
 The local Web API (`lifeos web serve`) has no authentication and holds access to the same personal LifeOS data as the CLI. It defaults to binding `127.0.0.1` (loopback) and prints a warning on stderr when started with a non-loopback `--host` such as `0.0.0.0`. Keep the loopback default for personal use; if you must bind beyond loopback, treat it as an intentional exposure and restrict access at the network layer (for example a firewall or an isolated network). Do not rely on the warning as a security boundary.
 
+## Database Credentials
+
+The configured database URL can be stored in `~/.lifeos/config.toml`, which keeps any embedded credentials in plaintext on disk. For PostgreSQL deployments, prefer supplying the URL through the `LIFEOS_DATABASE_URL` environment variable instead of writing it into the config file, and restrict read access to the config file (for example `chmod 600`). Runtime status and `lifeos config show` hide database passwords by default; keep `--show-secrets` for explicit, local-only use.
+
 ## Supported Branches
 
 Security fixes should land on the active `main` branch first.

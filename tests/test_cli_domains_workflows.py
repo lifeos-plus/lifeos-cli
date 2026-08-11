@@ -1147,7 +1147,10 @@ def test_main_habit_action_list_prints_count(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    async def fake_list_habit_actions(_session: object, **kwargs: object) -> list[object]:
+    async def fake_list_habit_actions_with_total(
+        _session: object,
+        **kwargs: object,
+    ) -> tuple[list[object], int]:
         assert kwargs["date_values"] == (date(2026, 4, 9),)
         assert kwargs["start_date"] is None
         assert kwargs["end_date"] is None
@@ -1160,17 +1163,14 @@ def test_main_habit_action_list_prints_count(
                 habit_id=UUID("77777777-7777-7777-7777-777777777777"),
                 habit_title="Daily Exercise",
             )
-        ]
-
-    async def fake_count_habit_actions(_session: object, **kwargs: object) -> int:
-        assert kwargs["date_values"] == (date(2026, 4, 9),)
-        assert kwargs["start_date"] is None
-        assert kwargs["end_date"] is None
-        return 1
+        ], 1
 
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
-    monkeypatch.setattr(habit_actions, "list_habit_actions", fake_list_habit_actions)
-    monkeypatch.setattr(habit_actions, "count_habit_actions", fake_count_habit_actions)
+    monkeypatch.setattr(
+        habit_actions,
+        "list_habit_actions_with_total",
+        fake_list_habit_actions_with_total,
+    )
 
     exit_code = cli.main(["habit-action", "list", "--date", "2026-04-09", "--count"])
     captured = capsys.readouterr()

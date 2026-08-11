@@ -356,14 +356,41 @@ async def _recompute_aggregated_period(
         start_date,
         end_date,
     )
-    report = await _collect_area_stats_for_window(
-        session,
-        window_start=window_start,
-        window_end=window_end,
-        granularity=granularity,
-        start_date=start_date,
-        end_date=end_date,
-    )
+    daily_rows = (
+        await session.execute(
+            select(DailyTimelogStatsGroupByArea).where(
+                DailyTimelogStatsGroupByArea.stat_date >= start_date,
+                DailyTimelogStatsGroupByArea.stat_date <= end_date,
+                DailyTimelogStatsGroupByArea.timezone == timezone_name,
+            )
+        )
+    ).scalars()
+    minutes_by_area: dict[UUID, int] = defaultdict(int)
+    for daily_row in daily_rows:
+        minutes_by_area[daily_row.area_id] += daily_row.minutes
+
+    timelog_columns = (
+        await session.execute(
+            select(Timelog.area_id, Timelog.start_time, Timelog.end_time).where(
+                Timelog.deleted_at.is_(None),
+                Timelog.area_id.is_not(None),
+                Timelog.end_time > window_start,
+                Timelog.start_time < window_end,
+            )
+        )
+    ).all()
+    count_by_area: dict[UUID, int] = defaultdict(int)
+    for area_id, start_time, end_time in timelog_columns:
+        minutes = overlap_minutes_for_window(
+            start_time=start_time,
+            end_time=end_time,
+            window_start=window_start,
+            window_end=window_end,
+        )
+        if minutes > 0:
+            count_by_area[area_id] += 1
+
+    area_ids = set(minutes_by_area) | set(count_by_area)
     await session.execute(
         delete(AggregatedTimelogStatsGroupByArea).where(
             AggregatedTimelogStatsGroupByArea.granularity == granularity,
@@ -379,11 +406,11 @@ async def _recompute_aggregated_period(
                 period_start=start_date,
                 period_end=end_date,
                 timezone=timezone_name,
-                area_id=row.area_id,
-                minutes=row.minutes,
-                timelog_count=row.timelog_count,
+                area_id=area_id,
+                minutes=minutes_by_area[area_id],
+                timelog_count=count_by_area[area_id],
             )
-            for row in report.rows
+            for area_id in sorted(area_ids)
         ]
     )
 

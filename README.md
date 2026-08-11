@@ -110,6 +110,8 @@ lifeos init
 
 For local-first use, `lifeos init` can bootstrap SQLite without requiring a separate database service. Use `lifeos init --help` for backend-specific defaults and examples.
 
+For PostgreSQL deployments, prefer supplying the database URL through the `LIFEOS_DATABASE_URL` environment variable instead of storing credentials in `~/.lifeos/config.toml`; see [SECURITY.md](SECURITY.md) for credential-handling guidance.
+
 Inspect and adjust runtime preferences:
 
 ```bash

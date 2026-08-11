@@ -1,17 +1,25 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date
+from datetime import date, timedelta
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock, Mock
 from uuid import UUID
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from lifeos_cli.application import time_preferences
+from lifeos_cli.db.base import Base
 from lifeos_cli.db.models.task import Task
+from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import (
     habit_mutations,
     habit_queries,
@@ -23,10 +31,23 @@ from lifeos_cli.db.services import (
     task_support,
     tasks,
 )
+from lifeos_cli.db.session import configure_async_engine
 
 
 async def _identity_task_view(_: object, task: object) -> object:
     return task
+
+
+async def _create_sqlite_session_factory() -> tuple[
+    AsyncEngine,
+    async_sessionmaker[AsyncSession],
+]:
+    engine = configure_async_engine(
+        create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    return engine, async_sessionmaker(engine, expire_on_commit=False, future=True)
 
 
 def test_validate_planning_cycle_requires_complete_fields() -> None:
@@ -474,34 +495,189 @@ def test_update_task_can_clear_people_without_committing(
     session.commit.assert_not_called()
 
 
-def test_validate_parent_task_rejects_circular_reference(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    root_id = UUID("11111111-1111-1111-1111-111111111111")
-    child_id = UUID("22222222-2222-2222-2222-222222222222")
-    vision_id = UUID("33333333-3333-3333-3333-333333333333")
-    root_task = SimpleNamespace(id=root_id, vision_id=vision_id, parent_task_id=None)
-    child_task = SimpleNamespace(id=child_id, vision_id=vision_id, parent_task_id=root_id)
+def test_validate_parent_task_rejects_circular_reference() -> None:
+    async def scenario() -> None:
+        engine, session_factory = await _create_sqlite_session_factory()
+        try:
+            async with session_factory() as session:
+                vision = Vision(name="Work")
+                session.add(vision)
+                await session.flush()
+                root = Task(vision_id=vision.id, content="Root")
+                session.add(root)
+                await session.flush()
+                child = Task(
+                    vision_id=vision.id,
+                    content="Child",
+                    parent_task_id=root.id,
+                )
+                session.add(child)
+                await session.flush()
 
-    async def fake_load_parent_task(_: object, parent_task_id: UUID | None) -> object | None:
-        if parent_task_id is None:
-            return None
-        return {
-            root_id: root_task,
-            child_id: child_task,
-        }.get(parent_task_id)
+                with pytest.raises(tasks.CircularTaskReferenceError):
+                    await task_support.validate_parent_task(
+                        session,
+                        vision_id=vision.id,
+                        parent_task_id=child.id,
+                        child_task_id=root.id,
+                    )
+        finally:
+            await engine.dispose()
 
-    monkeypatch.setattr(task_support, "load_parent_task", fake_load_parent_task)
+    asyncio.run(scenario())
 
-    with pytest.raises(tasks.CircularTaskReferenceError):
-        asyncio.run(
-            task_support.validate_parent_task(
-                cast(Any, object()),
-                vision_id=vision_id,
-                parent_task_id=child_id,
-                child_task_id=root_id,
-            )
-        )
+
+def test_validate_parent_task_rejects_excessive_depth() -> None:
+    async def scenario() -> None:
+        engine, session_factory = await _create_sqlite_session_factory()
+        try:
+            async with session_factory() as session:
+                vision = Vision(name="Work")
+                session.add(vision)
+                await session.flush()
+                previous_task: Task | None = None
+                for index in range(1, 9):
+                    task = Task(
+                        vision_id=vision.id,
+                        content=f"Task {index}",
+                        parent_task_id=previous_task.id if previous_task is not None else None,
+                    )
+                    session.add(task)
+                    await session.flush()
+                    previous_task = task
+
+                assert previous_task is not None
+                with pytest.raises(tasks.InvalidTaskDepthError):
+                    await task_support.validate_parent_task(
+                        session,
+                        vision_id=vision.id,
+                        parent_task_id=previous_task.id,
+                        child_task_id=UUID("99999999-9999-9999-9999-999999999999"),
+                    )
+        finally:
+            await engine.dispose()
+
+    asyncio.run(scenario())
+
+
+def test_validate_parent_task_stops_at_deleted_ancestor() -> None:
+    async def scenario() -> None:
+        engine, session_factory = await _create_sqlite_session_factory()
+        try:
+            async with session_factory() as session:
+                vision = Vision(name="Work")
+                session.add(vision)
+                await session.flush()
+                top = Task(vision_id=vision.id, content="Top")
+                session.add(top)
+                await session.flush()
+                middle = Task(
+                    vision_id=vision.id,
+                    content="Middle",
+                    parent_task_id=top.id,
+                )
+                session.add(middle)
+                await session.flush()
+                leaf = Task(
+                    vision_id=vision.id,
+                    content="Leaf",
+                    parent_task_id=middle.id,
+                )
+                session.add(leaf)
+                await session.flush()
+                middle.soft_delete()
+                await session.flush()
+
+                validated = await task_support.validate_parent_task(
+                    session,
+                    vision_id=vision.id,
+                    parent_task_id=leaf.id,
+                    child_task_id=UUID("99999999-9999-9999-9999-999999999999"),
+                )
+
+                assert validated is not None
+                assert validated.id == leaf.id
+        finally:
+            await engine.dispose()
+
+    asyncio.run(scenario())
+
+
+def test_load_task_subtree_uses_single_query_and_preserves_bfs_order() -> None:
+    async def scenario() -> None:
+        engine, session_factory = await _create_sqlite_session_factory()
+        try:
+            executed_statements: list[str] = []
+
+            def before_cursor_execute(
+                _conn: object,
+                _cursor: object,
+                statement: str,
+                _parameters: object,
+                _context: object,
+                _executemany: bool,
+            ) -> None:
+                executed_statements.append(str(statement))
+
+            async with session_factory() as session:
+                vision = Vision(name="Work")
+                session.add(vision)
+                await session.flush()
+                root = Task(vision_id=vision.id, content="Root", display_order=0)
+                session.add(root)
+                await session.flush()
+                task_a = Task(
+                    vision_id=vision.id,
+                    content="A",
+                    parent_task_id=root.id,
+                    display_order=2,
+                )
+                task_b = Task(
+                    vision_id=vision.id,
+                    content="B",
+                    parent_task_id=root.id,
+                    display_order=1,
+                )
+                session.add_all([task_a, task_b])
+                await session.flush()
+                task_a1 = Task(
+                    vision_id=vision.id,
+                    content="A1",
+                    parent_task_id=task_a.id,
+                    display_order=0,
+                )
+                task_b1 = Task(
+                    vision_id=vision.id,
+                    content="B1",
+                    parent_task_id=task_b.id,
+                    display_order=0,
+                )
+                session.add_all([task_a1, task_b1])
+                await session.flush()
+
+                event.listen(
+                    engine.sync_engine,
+                    "before_cursor_execute",
+                    before_cursor_execute,
+                )
+                try:
+                    subtree = await task_support.load_task_subtree(
+                        session,
+                        root_task_id=root.id,
+                    )
+                finally:
+                    event.remove(
+                        engine.sync_engine,
+                        "before_cursor_execute",
+                        before_cursor_execute,
+                    )
+
+            assert [task.content for task in subtree] == ["Root", "B", "A", "B1", "A1"]
+            assert len(executed_statements) == 2
+        finally:
+            await engine.dispose()
+
+    asyncio.run(scenario())
 
 
 def test_validate_task_status_change_rejects_done_with_incomplete_children() -> None:
@@ -1060,6 +1236,137 @@ def test_iter_habit_scheduled_dates_uses_user_calendar_monthdays(
         date(2026, 7, 26),
         date(2026, 8, 9),
         date(2026, 8, 23),
+    ]
+
+
+def test_iter_habit_scheduled_dates_matches_day_scan_for_weekly_cadence() -> None:
+    start_date = date(2026, 4, 1)
+    end_date = date(2026, 5, 31)
+    cadence_weekdays = ["monday", "wednesday", "friday"]
+
+    scheduled_dates = habit_support.iter_habit_scheduled_dates(
+        start_date=start_date,
+        end_date=end_date,
+        cadence_frequency="weekly",
+        cadence_weekdays=cadence_weekdays,
+    )
+
+    reference_dates = [
+        current_date
+        for current_date in (
+            start_date + timedelta(days=offset)
+            for offset in range((end_date - start_date).days + 1)
+        )
+        if habit_support.habit_occurs_on_date(
+            start_date=start_date,
+            end_date=end_date,
+            cadence_frequency="weekly",
+            cadence_weekdays=cadence_weekdays,
+            target_date=current_date,
+        )
+    ]
+
+    assert scheduled_dates == reference_dates
+
+
+def test_iter_habit_scheduled_dates_matches_day_scan_for_monthly_monthdays(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        habit_support,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            day_starts_at="00:00",
+            timezone="UTC",
+            week_starts_on="monday",
+            calendar_system="gregorian",
+            calendar_first_day_of_week=1,
+        ),
+    )
+    start_date = date(2026, 1, 1)
+    end_date = date(2026, 4, 30)
+    cadence_monthdays = [1, 15, 31]
+
+    scheduled_dates = habit_support.iter_habit_scheduled_dates(
+        start_date=start_date,
+        end_date=end_date,
+        cadence_frequency="monthly",
+        cadence_weekdays=None,
+        cadence_monthdays=cadence_monthdays,
+    )
+
+    reference_dates = [
+        current_date
+        for current_date in (
+            start_date + timedelta(days=offset)
+            for offset in range((end_date - start_date).days + 1)
+        )
+        if habit_support.habit_occurs_on_date(
+            start_date=start_date,
+            end_date=end_date,
+            cadence_frequency="monthly",
+            cadence_weekdays=None,
+            cadence_monthdays=cadence_monthdays,
+            target_date=current_date,
+        )
+    ]
+
+    assert scheduled_dates == reference_dates
+    assert date(2026, 3, 31) in scheduled_dates
+    assert all(
+        current_date.day <= 28 for current_date in scheduled_dates if current_date.month == 2
+    )
+
+
+def test_iter_habit_scheduled_dates_matches_day_scan_across_mayan_out_of_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        habit_support,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            day_starts_at="00:00",
+            timezone="UTC",
+            week_starts_on="monday",
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=1,
+        ),
+    )
+    start_date = date(2026, 6, 15)
+    end_date = date(2026, 8, 10)
+    cadence_monthdays = [1, 28]
+
+    scheduled_dates = habit_support.iter_habit_scheduled_dates(
+        start_date=start_date,
+        end_date=end_date,
+        cadence_frequency="monthly",
+        cadence_weekdays=None,
+        cadence_monthdays=cadence_monthdays,
+    )
+
+    reference_dates = [
+        current_date
+        for current_date in (
+            start_date + timedelta(days=offset)
+            for offset in range((end_date - start_date).days + 1)
+        )
+        if habit_support.habit_occurs_on_date(
+            start_date=start_date,
+            end_date=end_date,
+            cadence_frequency="monthly",
+            cadence_weekdays=None,
+            cadence_monthdays=cadence_monthdays,
+            target_date=current_date,
+        )
+    ]
+
+    assert scheduled_dates == reference_dates
+    assert scheduled_dates == [
+        date(2026, 6, 26),
+        date(2026, 6, 27),
+        date(2026, 7, 24),
+        date(2026, 7, 25),
+        date(2026, 7, 26),
     ]
 
 
@@ -1672,7 +1979,58 @@ def test_build_habit_action_views_stops_after_status_change_date(
     assert [view.action_date for view in views] == [date(2026, 6, 30)]
 
 
-def test_list_and_count_habit_actions_pass_discrete_dates_to_builder(
+def test_build_habit_action_views_with_window_stops_after_status_change_date(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    habit_id = UUID("77777777-7777-7777-7777-777777777777")
+    habit = SimpleNamespace(
+        id=habit_id,
+        title="Weekend Review",
+        start_date=date(2026, 6, 1),
+        end_date=date(2026, 7, 31),
+        cadence_frequency="weekly",
+        cadence_weekdays=["saturday", "sunday"],
+        cadence_monthdays=None,
+        status="paused",
+        status_changed_date=date(2026, 7, 1),
+    )
+
+    async def fake_load_candidate_habits(*args: object, **kwargs: object) -> list[object]:
+        assert kwargs["action_window"] == (date(2026, 6, 1), date(2026, 7, 31))
+        return [habit]
+
+    async def fake_load_materialized_actions(*args: object, **kwargs: object) -> list[object]:
+        return []
+
+    monkeypatch.setattr(habit_queries, "_load_candidate_habits", fake_load_candidate_habits)
+    monkeypatch.setattr(
+        habit_queries,
+        "_load_materialized_actions_for_habits",
+        fake_load_materialized_actions,
+    )
+
+    views = asyncio.run(
+        habit_queries.build_habit_action_views(
+            cast(Any, object()),
+            habit_id=None,
+            status=None,
+            action_window=(date(2026, 6, 1), date(2026, 7, 31)),
+        )
+    )
+
+    assert [view.action_date for view in views] == [
+        date(2026, 6, 6),
+        date(2026, 6, 7),
+        date(2026, 6, 13),
+        date(2026, 6, 14),
+        date(2026, 6, 20),
+        date(2026, 6, 21),
+        date(2026, 6, 27),
+        date(2026, 6, 28),
+    ]
+
+
+def test_list_habit_actions_pass_discrete_dates_to_builder(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured_calls: list[dict[str, object]] = []
@@ -1714,6 +2072,43 @@ def test_list_and_count_habit_actions_pass_discrete_dates_to_builder(
             date_values=(date(2026, 4, 3), date(2026, 4, 1), date(2026, 4, 3)),
         )
     )
+
+    assert [view.action_date for view in views] == [date(2026, 4, 3), date(2026, 4, 1)]
+    assert captured_calls[0]["target_dates"] == (date(2026, 4, 3), date(2026, 4, 1))
+    assert captured_calls[0]["action_window"] is None
+    assert len(captured_calls) == 1
+
+
+def test_count_habit_actions_computes_occurrences_without_building_views(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    habit_id = UUID("77777777-7777-7777-7777-777777777777")
+    habit = SimpleNamespace(
+        id=habit_id,
+        start_date=date(2026, 4, 1),
+        end_date=date(2026, 4, 30),
+        cadence_frequency="daily",
+        cadence_weekdays=None,
+        cadence_monthdays=None,
+    )
+
+    async def fake_load_candidates(*args: object, **kwargs: object) -> list[object]:
+        assert kwargs["target_dates"] == (date(2026, 4, 3), date(2026, 4, 1))
+        assert kwargs["action_window"] is None
+        return [habit]
+
+    async def fake_load_materialized(*args: object, **kwargs: object) -> list[object]:
+        assert kwargs["target_dates"] == (date(2026, 4, 3), date(2026, 4, 1))
+        return []
+
+    monkeypatch.setattr(habit_queries, "_load_candidate_habits", fake_load_candidates)
+    monkeypatch.setattr(
+        habit_queries,
+        "_load_materialized_actions_for_habits",
+        fake_load_materialized,
+    )
+    monkeypatch.setattr(habit_queries, "refresh_habit_expiration", AsyncMock(return_value=0))
+
     count = asyncio.run(
         habits.count_habit_actions(
             cast(Any, object()),
@@ -1721,9 +2116,199 @@ def test_list_and_count_habit_actions_pass_discrete_dates_to_builder(
         )
     )
 
-    assert [view.action_date for view in views] == [date(2026, 4, 3), date(2026, 4, 1)]
     assert count == 2
-    assert captured_calls[0]["target_dates"] == (date(2026, 4, 3), date(2026, 4, 1))
-    assert captured_calls[0]["action_window"] is None
-    assert captured_calls[1]["target_dates"] == (date(2026, 4, 3), date(2026, 4, 1))
-    assert captured_calls[1]["action_window"] is None
+
+
+def test_count_habit_actions_applies_status_filter_without_building_views(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    habit_id = UUID("77777777-7777-7777-7777-777777777777")
+    habit = SimpleNamespace(
+        id=habit_id,
+        start_date=date(2026, 4, 1),
+        end_date=date(2026, 4, 3),
+        cadence_frequency="daily",
+        cadence_weekdays=None,
+        cadence_monthdays=None,
+    )
+    action = SimpleNamespace(
+        id=UUID("88888888-8888-8888-8888-888888888888"),
+        habit_id=habit_id,
+        action_date=date(2026, 4, 1),
+        status="done",
+    )
+
+    async def fake_load_candidates(*args: object, **kwargs: object) -> list[object]:
+        return [habit]
+
+    async def fake_load_materialized(*args: object, **kwargs: object) -> list[object]:
+        return [action]
+
+    monkeypatch.setattr(habit_queries, "_load_candidate_habits", fake_load_candidates)
+    monkeypatch.setattr(
+        habit_queries,
+        "_load_materialized_actions_for_habits",
+        fake_load_materialized,
+    )
+    monkeypatch.setattr(habit_queries, "refresh_habit_expiration", AsyncMock(return_value=0))
+
+    all_count = asyncio.run(
+        habits.count_habit_actions(
+            cast(Any, object()),
+            start_date=date(2026, 4, 1),
+            end_date=date(2026, 4, 3),
+        )
+    )
+    done_count = asyncio.run(
+        habits.count_habit_actions(
+            cast(Any, object()),
+            status="done",
+            start_date=date(2026, 4, 1),
+            end_date=date(2026, 4, 3),
+        )
+    )
+    pending_count = asyncio.run(
+        habits.count_habit_actions(
+            cast(Any, object()),
+            status="pending",
+            start_date=date(2026, 4, 1),
+            end_date=date(2026, 4, 3),
+        )
+    )
+
+    assert all_count == 3
+    assert done_count == 1
+    assert pending_count == 2
+
+
+def test_build_habit_stats_payload_from_occurrences_matches_view_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        habit_support,
+        "get_operational_date",
+        lambda value=None: date(2026, 4, 13),
+    )
+    monkeypatch.setattr(
+        habit_support,
+        "get_week_bounds",
+        lambda reference_date: (date(2026, 4, 13), date(2026, 4, 19)),
+    )
+    monkeypatch.setattr(
+        habit_support,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            day_starts_at="00:00",
+            timezone="UTC",
+            week_starts_on="monday",
+            calendar_system="gregorian",
+            calendar_first_day_of_week=1,
+        ),
+    )
+    cases = [
+        (
+            "daily",
+            None,
+            None,
+            date(2026, 4, 1),
+            date(2026, 4, 21),
+            {date(2026, 4, 1): "done", date(2026, 4, 3): "miss", date(2026, 4, 5): "skip"},
+        ),
+        (
+            "weekly",
+            ["saturday", "sunday"],
+            None,
+            date(2026, 4, 1),
+            date(2026, 5, 10),
+            {date(2026, 4, 4): "done", date(2026, 4, 5): "done"},
+        ),
+        (
+            "monthly",
+            None,
+            [1, 15],
+            date(2026, 4, 1),
+            date(2026, 7, 31),
+            {date(2026, 4, 1): "done", date(2026, 6, 15): "miss"},
+        ),
+    ]
+    for index, (
+        cadence_frequency,
+        cadence_weekdays,
+        cadence_monthdays,
+        start_date,
+        end_date,
+        status_by_date,
+    ) in enumerate(cases):
+        habit = SimpleNamespace(
+            id=UUID(f"{index + 1:08d}-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            start_date=start_date,
+            end_date=end_date,
+            cadence_frequency=cadence_frequency,
+            cadence_weekdays=cadence_weekdays,
+            cadence_monthdays=cadence_monthdays,
+            target_per_cycle=1,
+        )
+        occurrence_dates = habit_support.iter_habit_scheduled_dates(
+            start_date=start_date,
+            end_date=end_date,
+            cadence_frequency=cadence_frequency,
+            cadence_weekdays=cadence_weekdays,
+            cadence_monthdays=cadence_monthdays,
+        )
+        materialized = [
+            SimpleNamespace(action_date=action_date, status=status)
+            for action_date, status in status_by_date.items()
+        ]
+        analytic = habit_support.build_habit_stats_payload_from_occurrences(
+            cast(Any, habit),
+            occurrence_dates,
+            materialized,
+        )
+        views = [
+            SimpleNamespace(
+                action_date=action_date,
+                status=status_by_date.get(action_date, "pending"),
+            )
+            for action_date in occurrence_dates
+        ]
+        view_payload = habit_support.build_habit_stats_payload(cast(Any, habit), views)
+        assert analytic == view_payload
+
+
+def test_list_habit_actions_with_total_builds_views_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_calls: list[dict[str, object]] = []
+    action_dates = (date(2026, 4, 1), date(2026, 4, 2), date(2026, 4, 3))
+
+    async def fake_build_views(*args: object, **kwargs: object) -> list[object]:
+        captured_calls.append(kwargs)
+        return [
+            SimpleNamespace(
+                id=UUID("88888888-8888-8888-8888-888888888888"),
+                habit_id=UUID("77777777-7777-7777-7777-777777777777"),
+                habit_title="Daily Exercise",
+                action_date=action_date,
+                status="pending",
+                notes=None,
+                created_at=None,
+                updated_at=None,
+                deleted_at=None,
+            )
+            for action_date in action_dates
+        ]
+
+    monkeypatch.setattr(habit_queries, "build_habit_action_views", fake_build_views)
+    monkeypatch.setattr(habit_queries, "refresh_habit_expiration", AsyncMock(return_value=0))
+
+    views, total = asyncio.run(
+        habit_queries.list_habit_actions_with_total(
+            cast(Any, object()),
+            limit=2,
+            offset=0,
+        )
+    )
+
+    assert [view.action_date for view in views] == [date(2026, 4, 1), date(2026, 4, 2)]
+    assert total == 3
+    assert len(captured_calls) == 1

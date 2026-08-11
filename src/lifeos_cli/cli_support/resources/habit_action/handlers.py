@@ -9,7 +9,6 @@ from lifeos_cli.cli_support import handler_utils as cli_handler_utils
 from lifeos_cli.cli_support.output_utils import format_timestamp, print_summary_rows
 from lifeos_cli.cli_support.time_args import DateArgumentError, resolve_date_selection_arguments
 from lifeos_cli.db import session as db_session
-from lifeos_cli.db.models.habit_action import HabitAction
 from lifeos_cli.db.services import habit_actions as habit_action_services
 from lifeos_cli.db.services.read_models import HabitActionView
 
@@ -28,19 +27,19 @@ def _format_habit_action_summary(action: HabitActionView) -> str:
     return f"{action_id}\t{status}\t{action.action_date}\t{action.habit_id}\t{action.habit_title}"
 
 
-def _format_habit_action_detail(action: HabitAction) -> str:
-    habit_title = action.habit.title if action.habit is not None else "-"
+def _format_habit_action_detail(action: HabitActionView) -> str:
     return "\n".join(
         (
             f"id: {action.id}",
             f"habit_id: {action.habit_id}",
-            f"habit_title: {habit_title}",
+            f"habit_title: {action.habit_title}",
             f"action_date: {action.action_date}",
             f"status: {action.status}",
-            f"notes: {getattr(action, 'notes', None) or '-'}",
+            f"notes: {action.notes or '-'}",
             f"created_at: {format_timestamp(action.created_at)}",
             f"updated_at: {format_timestamp(action.updated_at)}",
             f"deleted_at: {format_timestamp(action.deleted_at)}",
+            f"linked_notes_count: {action.linked_notes_count}",
         )
     )
 
@@ -56,28 +55,29 @@ async def handle_habit_action_list_async(args: argparse.Namespace) -> int:
         return cli_handler_utils.print_cli_error(exc)
     async with db_session.session_scope() as session:
         try:
-            actions = await habit_action_services.list_habit_actions(
-                session,
-                habit_id=args.habit_id,
-                status=args.status,
-                date_values=date_selection.date_values,
-                start_date=date_selection.start_date,
-                end_date=date_selection.end_date,
-                limit=args.limit,
-                offset=args.offset,
-            )
-            total_count = (
-                await habit_action_services.count_habit_actions(
+            if args.count:
+                actions, total_count = await habit_action_services.list_habit_actions_with_total(
                     session,
                     habit_id=args.habit_id,
                     status=args.status,
                     date_values=date_selection.date_values,
                     start_date=date_selection.start_date,
                     end_date=date_selection.end_date,
+                    limit=args.limit,
+                    offset=args.offset,
                 )
-                if args.count
-                else None
-            )
+            else:
+                actions = await habit_action_services.list_habit_actions(
+                    session,
+                    habit_id=args.habit_id,
+                    status=args.status,
+                    date_values=date_selection.date_values,
+                    start_date=date_selection.start_date,
+                    end_date=date_selection.end_date,
+                    limit=args.limit,
+                    offset=args.offset,
+                )
+                total_count = None
         except (
             habit_action_services.HabitNotFoundError,
             habit_action_services.HabitValidationError,
