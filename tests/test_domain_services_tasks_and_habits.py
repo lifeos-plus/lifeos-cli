@@ -10,7 +10,8 @@ from uuid import UUID
 import pytest
 from sqlalchemy import select
 
-from lifeos_cli.application.preferences import CalendarPreferences
+from lifeos_cli.application import time_preferences
+from lifeos_cli.application.time_preferences import CalendarPreferences
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.services import (
     habit_mutations,
@@ -1038,6 +1039,17 @@ def test_iter_habit_scheduled_dates_uses_user_calendar_monthdays(
         ),
     )
     monkeypatch.setattr(
+        time_preferences,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            day_starts_at="00:00",
+            timezone="UTC",
+            week_starts_on="monday",
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=1,
+        ),
+    )
+    monkeypatch.setattr(
         habit_support,
         "get_calendar_preferences",
         lambda: CalendarPreferences(
@@ -1258,6 +1270,17 @@ def test_build_habit_stats_payload_uses_selected_calendar_month_cycles(
     )
     monkeypatch.setattr(
         habit_support,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            day_starts_at="00:00",
+            timezone="UTC",
+            week_starts_on="monday",
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=1,
+        ),
+    )
+    monkeypatch.setattr(
+        time_preferences,
         "get_preferences_settings",
         lambda: SimpleNamespace(
             day_starts_at="00:00",

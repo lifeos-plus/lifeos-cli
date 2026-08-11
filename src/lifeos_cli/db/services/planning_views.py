@@ -19,8 +19,10 @@ from lifeos_cli.application.calendar_adapter import (
     CalendarGranularity,
     get_calendar_period_range,
 )
-from lifeos_cli.application.preferences import get_calendar_preferences
-from lifeos_cli.application.time_preferences import get_operational_date
+from lifeos_cli.application.time_preferences import (
+    get_calendar_preferences,
+    get_operational_date,
+)
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services.read_models import TaskView

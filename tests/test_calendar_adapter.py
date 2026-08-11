@@ -14,7 +14,7 @@ from lifeos_cli.application.calendar_adapter import (
     get_calendar_period_range,
     iter_calendar_periods,
 )
-from lifeos_cli.application.preferences import CalendarPreferences
+from lifeos_cli.application.time_preferences import CalendarPreferences
 from lifeos_cli.config import ConfigurationError
 from lifeos_cli.db.base import Base
 from lifeos_cli.db.models import Task, Vision
@@ -28,7 +28,7 @@ from lifeos_cli.db.services.task_queries import (
 def test_get_calendar_preferences_reads_persisted_user_values(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from lifeos_cli.application import preferences as preference_access
+    from lifeos_cli.application import time_preferences as preference_access
 
     monkeypatch.setattr(
         preference_access,

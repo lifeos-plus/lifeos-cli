@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.calendar_adapter import iter_calendar_periods
-from lifeos_cli.application.preferences import get_calendar_preferences
+from lifeos_cli.application.time_preferences import get_calendar_preferences
 from lifeos_cli.config import get_preferences_settings
 from lifeos_cli.db.services import tags as tag_services
 from lifeos_cli.db.services import timelog_stats

@@ -4,18 +4,18 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.calendar_adapter import CalendarGranularity, get_calendar_period_range
-from lifeos_cli.application.preferences import get_calendar_preferences
 from lifeos_cli.application.time_preferences import (
+    get_calendar_preferences,
     get_operational_date,
+    get_utc_window_for_local_date,
     get_week_bounds,
 )
 from lifeos_cli.config import get_preferences_settings
@@ -263,13 +263,7 @@ def validate_habit_cadence(
 
 
 def _habit_anchor_datetime(reference_date: date) -> datetime:
-    preferences = get_preferences_settings()
-    hour, minute = (int(part) for part in preferences.day_starts_at.split(":"))
-    return datetime.combine(
-        reference_date,
-        time(hour=hour, minute=minute),
-        tzinfo=ZoneInfo(preferences.timezone),
-    )
+    return get_utc_window_for_local_date(reference_date)[0]
 
 
 def _build_habit_series_definition(

@@ -14,7 +14,7 @@ from lifeos_cli.application.calendar_adapter import (
     CalendarGranularity,
     get_calendar_period_range,
 )
-from lifeos_cli.application.preferences import get_calendar_preferences
+from lifeos_cli.application.time_preferences import get_calendar_preferences
 from lifeos_cli.config import ConfigurationError
 from lifeos_cli.db.models.association import Association
 from lifeos_cli.db.models.note import Note

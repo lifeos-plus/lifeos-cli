@@ -10,7 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lifeos_cli.application.preferences import get_calendar_preferences
+from lifeos_cli.application.time_preferences import get_calendar_preferences
 from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services import tasks as task_services
 from lifeos_web.deps import get_db_session

@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli import cli
-from lifeos_cli.application.preferences import CalendarPreferences
+from lifeos_cli.application.time_preferences import CalendarPreferences
 from lifeos_cli.cli_support.resources.planning import handlers as planning_handlers
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import planning_views

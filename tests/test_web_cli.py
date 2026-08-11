@@ -12,7 +12,7 @@ from uuid import UUID
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lifeos_cli.application.preferences import CalendarPreferences
+from lifeos_cli.application.time_preferences import CalendarPreferences
 from lifeos_cli.cli import build_parser
 from lifeos_cli.config import clear_config_cache
 from lifeos_cli.db.services.read_models import (
