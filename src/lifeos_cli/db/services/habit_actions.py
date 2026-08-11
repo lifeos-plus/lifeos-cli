@@ -9,6 +9,7 @@ from lifeos_cli.db.services.habit_mutations import (
 from lifeos_cli.db.services.habit_queries import (
     count_habit_actions,
     get_habit_action,
+    get_habit_action_model,
     list_habit_actions,
     list_habit_actions_in_range,
     list_habit_actions_with_total,
@@ -36,6 +37,7 @@ __all__ = [
     "VALID_HABIT_ACTION_STATUSES",
     "count_habit_actions",
     "get_habit_action",
+    "get_habit_action_model",
     "list_habit_actions",
     "list_habit_actions_in_range",
     "list_habit_actions_with_total",

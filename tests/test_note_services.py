@@ -191,7 +191,7 @@ def test_habit_action_notes_are_stored_as_linked_notes() -> None:
                     date_values=(date(2026, 7, 4),),
                 )
 
-                assert updated.__dict__["notes"] == "Completed after lunch"
+                assert updated.notes == "Completed after lunch"
                 assert [note.content for note in linked_notes] == ["Completed after lunch"]
                 assert action_views[0].notes == "Completed after lunch"
                 assert action_views[0].linked_notes_count == 1

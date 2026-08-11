@@ -21,6 +21,7 @@ from lifeos_cli.db.services.habit_queries import (
     _materialize_habit_action_for_date,
     get_habit,
     get_habit_action,
+    get_habit_action_model,
 )
 from lifeos_cli.db.services.habit_support import (
     HABIT_EDITABLE_DAYS,
@@ -42,6 +43,7 @@ from lifeos_cli.db.services.habit_support import (
     validate_habit_start_date,
     validate_habit_status,
 )
+from lifeos_cli.db.services.read_models import HabitActionView
 
 
 async def create_habit(
@@ -266,9 +268,9 @@ async def update_habit_action(
     status: str | None = None,
     notes: str | None = None,
     clear_notes: bool = False,
-) -> HabitAction:
+) -> HabitActionView:
     """Update one habit action within the editable window."""
-    action = await get_habit_action(session, action_id=action_id)
+    action = await get_habit_action_model(session, action_id=action_id)
     if action is None:
         raise HabitActionNotFoundError(f"Habit action {action_id} was not found")
     today = get_operational_date()
@@ -276,12 +278,10 @@ async def update_habit_action(
         raise InvalidHabitOperationError(
             "Habit action cannot be modified outside the allowed time window"
         )
-    next_notes = getattr(action, "notes", None)
     if status is not None:
         action.status = validate_habit_action_status(status)
     if clear_notes:
         await _clear_habit_action_note_links(session, action_id=action.id)
-        next_notes = None
     elif notes is not None:
         normalized_notes = _validate_habit_action_note_content(notes)
         await _upsert_habit_action_note(
@@ -289,11 +289,11 @@ async def update_habit_action(
             action_id=action.id,
             content=normalized_notes,
         )
-        next_notes = normalized_notes
     await session.flush()
-    await session.refresh(action)
-    action.__dict__["notes"] = next_notes
-    return action
+    updated = await get_habit_action(session, action_id=action.id)
+    if updated is None:
+        raise HabitActionNotFoundError(f"Habit action {action_id} was not found")
+    return updated
 
 
 async def update_habit_action_by_date(
@@ -304,7 +304,7 @@ async def update_habit_action_by_date(
     status: str | None = None,
     notes: str | None = None,
     clear_notes: bool = False,
-) -> HabitAction:
+) -> HabitActionView:
     """Update one habit action by habit and action date, materializing it if needed."""
     habit = await get_habit(session, habit_id=habit_id)
     if habit is None:

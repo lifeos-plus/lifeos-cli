@@ -10,7 +10,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.models.habit import Habit
-from lifeos_cli.db.models.habit_action import HabitAction
 from lifeos_cli.db.services import habit_actions as habit_action_services
 from lifeos_cli.db.services import habits as habit_services
 from lifeos_cli.db.services import planning_lifecycle as planning_lifecycle_services
@@ -59,25 +58,15 @@ async def _habit_payload(session: AsyncSession, habit_id: UUID) -> dict[str, obj
 
 def _habit_action_payload(action: object) -> dict[str, object]:
     """Serialize a habit action occurrence for Web consumers."""
-    if isinstance(action, HabitAction):
-        payload: dict[str, object] = {
-            "id": str(action.id),
-            "habit_id": str(action.habit_id),
-            "action_date": action.action_date.isoformat(),
-            "status": action.status,
-            "notes": getattr(action, "notes", None),
-            "linked_notes_count": getattr(action, "linked_notes_count", 0),
-        }
-    else:
-        jsonable = to_jsonable(action)
-        assert isinstance(jsonable, dict)
-        payload = jsonable
-        payload.pop("habit_title", None)
-        payload.pop("habit_cadence_frequency", None)
-        payload.pop("created_at", None)
-        payload.pop("updated_at", None)
-        payload.pop("deleted_at", None)
-        payload.setdefault("linked_notes_count", 0)
+    jsonable = to_jsonable(action)
+    assert isinstance(jsonable, dict)
+    payload = jsonable
+    payload.pop("habit_title", None)
+    payload.pop("habit_cadence_frequency", None)
+    payload.pop("created_at", None)
+    payload.pop("updated_at", None)
+    payload.pop("deleted_at", None)
+    payload.setdefault("linked_notes_count", 0)
     return payload
 
 

@@ -695,12 +695,12 @@ async def count_habit_actions(
     return len(views)
 
 
-async def get_habit_action(
+async def get_habit_action_model(
     session: AsyncSession,
     *,
     action_id: UUID,
 ) -> HabitAction | None:
-    """Load one materialized habit action with its parent habit."""
+    """Load one materialized habit-action ORM row with its parent habit."""
     stmt = (
         select(HabitAction)
         .where(HabitAction.id == action_id)
@@ -711,13 +711,35 @@ async def get_habit_action(
         HabitAction.deleted_at.is_(None),
         HabitAction.habit.has(Habit.deleted_at.is_(None)),
     )
-    action = (await session.execute(stmt)).scalar_one_or_none()
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def get_habit_action(
+    session: AsyncSession,
+    *,
+    action_id: UUID,
+) -> HabitActionView | None:
+    """Load one materialized habit action as an occurrence view with note metadata."""
+    action = await get_habit_action_model(session, action_id=action_id)
     if action is None:
+        return None
+    habit = action.habit
+    if habit is None:
         return None
     note_content_by_action, note_count_by_action = await _load_note_metadata_for_actions(
         session,
         action_ids=[action.id],
     )
-    action.__dict__["notes"] = note_content_by_action.get(action.id)
-    action.__dict__["linked_notes_count"] = note_count_by_action.get(action.id, 0)
-    return action
+    return _build_habit_action_view(
+        action_id=action.id,
+        habit_id=action.habit_id,
+        habit_title=habit.title,
+        habit_cadence_frequency=_habit_cadence_frequency(habit),
+        action_date=action.action_date,
+        status=action.status,
+        notes=note_content_by_action.get(action.id),
+        created_at=action.created_at,
+        updated_at=action.updated_at,
+        deleted_at=action.deleted_at,
+        linked_notes_count=note_count_by_action.get(action.id, 0),
+    )

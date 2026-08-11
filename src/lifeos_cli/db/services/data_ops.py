@@ -1098,7 +1098,7 @@ async def _batch_delete_habit_actions(
     deleted_count = 0
     failures: list[DataOperationFailure] = []
     for index, action_id in enumerate(dict.fromkeys(action_ids), start=1):
-        action = await habit_actions.get_habit_action(
+        action = await habit_actions.get_habit_action_model(
             session,
             action_id=action_id,
         )
