@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.ext.asyncio import (
@@ -181,7 +181,7 @@ def test_reorder_and_bump_usage_update_templates() -> None:
                     session,
                     positions=[(first.id, 2), (second.id, 0)],
                 )
-                fixed_now = datetime(2026, 6, 17, 12, 0, tzinfo=timezone.utc)
+                fixed_now = datetime(2026, 6, 17, 12, 0, tzinfo=UTC)
                 used = await timelog_templates.bump_template_usage(
                     session,
                     template_id=first.id,

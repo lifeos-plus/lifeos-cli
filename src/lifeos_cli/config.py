@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -22,11 +23,6 @@ from lifeos_cli.db.backend_policy import (
     backend_policy_for_drivername,
     supported_database_driver_examples,
 )
-
-try:
-    import tomllib  # type: ignore[import-not-found]
-except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
-    import tomli as tomllib
 
 DEFAULT_DATABASE_SCHEMA = "lifeos"
 DEFAULT_CONFIG_PATH = Path.home() / ".lifeos" / "config.toml"

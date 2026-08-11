@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import warnings
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock
@@ -242,7 +242,7 @@ def test_task_relation_counts_exclude_soft_deleted_records() -> None:
                 )
                 await notes.delete_note(session, note_id=deleted_note.id)
 
-                timestamp = datetime(2026, 7, 18, 12, 0, tzinfo=timezone.utc)
+                timestamp = datetime(2026, 7, 18, 12, 0, tzinfo=UTC)
                 deleted_timelog = Timelog(
                     title="Deleted task timelog",
                     start_time=timestamp,

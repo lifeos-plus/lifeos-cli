@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
@@ -77,7 +77,7 @@ def test_parse_datetime_snapshot_values_normalizes_offsets_to_utc() -> None:
 
     parsed = data_ops._parse_column_value(column, "2026-06-13T21:00:00-04:00")
 
-    assert parsed == datetime(2026, 6, 14, 1, 0, tzinfo=timezone.utc)
+    assert parsed == datetime(2026, 6, 14, 1, 0, tzinfo=UTC)
 
 
 def test_serialize_datetime_snapshot_values_uses_explicit_utc() -> None:

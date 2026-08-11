@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -20,7 +20,7 @@ from tests.config_support import install_test_config
 def test_to_preferred_timezone_uses_configured_timezone(monkeypatch, tmp_path) -> None:
     install_test_config(monkeypatch=monkeypatch, tmp_path=tmp_path, include_preferences=True)
 
-    converted = to_preferred_timezone(datetime(2026, 4, 10, 7, 30, tzinfo=timezone.utc))
+    converted = to_preferred_timezone(datetime(2026, 4, 10, 7, 30, tzinfo=UTC))
 
     assert converted.isoformat() == "2026-04-10T03:30:00-04:00"
     clear_config_cache()
@@ -48,7 +48,7 @@ def test_apply_preferred_timezone_rejects_skipped_dst_time(monkeypatch, tmp_path
 def test_to_storage_timezone_preserves_explicit_timezone(monkeypatch, tmp_path) -> None:
     install_test_config(monkeypatch=monkeypatch, tmp_path=tmp_path, include_preferences=True)
 
-    normalized = to_storage_timezone(datetime(2026, 4, 10, 9, 0, tzinfo=timezone.utc))
+    normalized = to_storage_timezone(datetime(2026, 4, 10, 9, 0, tzinfo=UTC))
 
     assert normalized.isoformat() == "2026-04-10T09:00:00+00:00"
     clear_config_cache()
@@ -57,8 +57,8 @@ def test_to_storage_timezone_preserves_explicit_timezone(monkeypatch, tmp_path) 
 def test_get_operational_date_respects_day_start_boundary(monkeypatch, tmp_path) -> None:
     install_test_config(monkeypatch=monkeypatch, tmp_path=tmp_path, include_preferences=True)
 
-    before_boundary = datetime(2026, 4, 10, 6, 0, tzinfo=timezone.utc)
-    after_boundary = datetime(2026, 4, 10, 12, 0, tzinfo=timezone.utc)
+    before_boundary = datetime(2026, 4, 10, 6, 0, tzinfo=UTC)
+    after_boundary = datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
 
     assert get_operational_date(before_boundary) == date(2026, 4, 9)
     assert get_operational_date(after_boundary) == date(2026, 4, 10)

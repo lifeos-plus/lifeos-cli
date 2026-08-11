@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from lifeos_cli.config import get_preferences_settings
@@ -14,9 +14,7 @@ def apply_preferred_timezone(value: datetime) -> datetime:
         return value
     preferred_timezone = ZoneInfo(get_preferences_settings().timezone)
     localized = value.replace(tzinfo=preferred_timezone)
-    round_trip = (
-        localized.astimezone(timezone.utc).astimezone(preferred_timezone).replace(tzinfo=None)
-    )
+    round_trip = localized.astimezone(UTC).astimezone(preferred_timezone).replace(tzinfo=None)
     if round_trip != value:
         raise ValueError(
             f"Local datetime {value.isoformat()} does not exist in timezone "
@@ -27,21 +25,21 @@ def apply_preferred_timezone(value: datetime) -> datetime:
 
 def to_storage_timezone(value: datetime) -> datetime:
     """Interpret one user-facing datetime and convert it to UTC storage semantics."""
-    return apply_preferred_timezone(value).astimezone(timezone.utc)
+    return apply_preferred_timezone(value).astimezone(UTC)
 
 
 def to_preferred_timezone(value: datetime) -> datetime:
     """Convert a stored timestamp to the preferred display timezone."""
     preferred_timezone = ZoneInfo(get_preferences_settings().timezone)
     if value.tzinfo is None or value.utcoffset() is None:
-        value = value.replace(tzinfo=timezone.utc)
+        value = value.replace(tzinfo=UTC)
     return value.astimezone(preferred_timezone)
 
 
 def get_operational_date(value: datetime | None = None) -> date:
     """Return the configured local date after applying the day-start boundary."""
     if value is None:
-        value = datetime.now(timezone.utc)
+        value = datetime.now(UTC)
     local_value = to_preferred_timezone(value)
     hour, minute = (int(part) for part in get_preferences_settings().day_starts_at.split(":"))
     day_start = time(hour=hour, minute=minute)
@@ -67,8 +65,8 @@ def get_utc_window_for_local_date(target_date: date) -> tuple[datetime, datetime
     )
     local_end = local_start + timedelta(days=1)
     return (
-        local_start.astimezone(timezone.utc),
-        local_end.astimezone(timezone.utc),
+        local_start.astimezone(UTC),
+        local_end.astimezone(UTC),
     )
 
 

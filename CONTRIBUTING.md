@@ -14,7 +14,7 @@ This repository ships the `lifeos-cli` distribution and the `lifeos` command-lin
 
 Requirements:
 
-- Python 3.10, 3.11, 3.12, or 3.13
+- Python 3.11, 3.12, 3.13, or 3.14
 - `uv`
 
 Install dependencies:
@@ -38,10 +38,10 @@ The React Web UI lives in the separate [`lifeos-web`](https://github.com/lifeos-
 If you change CI, packaging metadata, or compatibility declarations, also validate the relevant interpreter targets explicitly. Examples:
 
 ```bash
-rm -rf .venv && uv sync --all-extras --python 3.10 --frozen && .venv/bin/python -m pytest
 rm -rf .venv && uv sync --all-extras --python 3.11 --frozen && .venv/bin/python -m pytest
 rm -rf .venv && uv sync --all-extras --python 3.12 --frozen && .venv/bin/python -m pytest
-rm -rf .venv && uv sync --all-extras --python 3.13 --frozen && bash ./scripts/doctor.sh
+rm -rf .venv && uv sync --all-extras --python 3.13 --frozen && .venv/bin/python -m pytest
+rm -rf .venv && uv sync --all-extras --python 3.14 --frozen && bash ./scripts/doctor.sh
 ```
 
 To run the real CLI integration suite locally:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import io
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import cast
 from uuid import UUID
 
@@ -292,7 +292,7 @@ def test_main_timelog_search_reuses_list_filters(
     monkeypatch.setenv("LIFEOS_TIMEZONE", "UTC")
 
     expected_start = utc_datetime(2026, 6, 16, 16, 0)
-    expected_end = datetime(2026, 6, 17, 15, 59, 59, 999000, tzinfo=timezone.utc)
+    expected_end = datetime(2026, 6, 17, 15, 59, 59, 999000, tzinfo=UTC)
 
     async def fake_list_timelogs(_session: object, **kwargs: object) -> list[object]:
         query = cast(timelogs.TimelogListInput, kwargs["query"])

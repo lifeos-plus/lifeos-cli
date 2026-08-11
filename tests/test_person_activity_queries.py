@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
 
@@ -15,7 +15,7 @@ from lifeos_cli.db.services import person_activity_queries
 def test_list_person_activities_paginates_and_calculates_timelog_metadata(
     monkeypatch,
 ) -> None:
-    timestamp = datetime(2026, 7, 2, 9, 0, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 7, 2, 9, 0, tzinfo=UTC)
     activities = [
         person_activity_queries.PersonActivity(
             id=UUID("11111111-1111-1111-1111-111111111111"),
@@ -24,7 +24,7 @@ def test_list_person_activities_paginates_and_calculates_timelog_metadata(
             description=None,
             activity_date=timestamp,
             start_time=timestamp,
-            end_time=datetime(2026, 7, 2, 9, 30, tzinfo=timezone.utc),
+            end_time=datetime(2026, 7, 2, 9, 30, tzinfo=UTC),
         ),
         person_activity_queries.PersonActivity(
             id=UUID("22222222-2222-2222-2222-222222222222"),
@@ -33,7 +33,7 @@ def test_list_person_activities_paginates_and_calculates_timelog_metadata(
             description=None,
             activity_date=timestamp,
             start_time=timestamp,
-            end_time=datetime(2026, 7, 2, 10, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 7, 2, 10, 0, tzinfo=UTC),
         ),
     ]
 

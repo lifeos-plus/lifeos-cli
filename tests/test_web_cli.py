@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -95,7 +95,7 @@ def test_web_finance_payloads_exclude_unconsumed_audit_fields() -> None:
         _tree_payload,
     )
 
-    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=UTC)
     node_id = UUID("11111111-1111-1111-1111-111111111111")
     tree_id = UUID("22222222-2222-2222-2222-222222222222")
     snapshot_id = UUID("33333333-3333-3333-3333-333333333333")
@@ -298,7 +298,7 @@ def test_web_vision_payload_excludes_unconsumed_audit_fields() -> None:
     from lifeos_web.response_schemas.visions import VisionResponse, VisionWithTasksResponse
     from lifeos_web.routers.visions import _vision_payload
 
-    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=UTC)
     vision = SimpleNamespace(
         id=UUID("11111111-1111-1111-1111-111111111111"),
         name="Portfolio",
@@ -351,7 +351,7 @@ def test_web_task_hierarchy_payload_excludes_deleted_at() -> None:
     from lifeos_web.response_schemas.tasks import TaskTreeResponse
     from lifeos_web.routers.tasks import _task_tree_payload
 
-    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=UTC)
 
     def task_node(task_id: str, *, subtasks: tuple[object, ...] = ()) -> SimpleNamespace:
         return SimpleNamespace(
@@ -411,7 +411,7 @@ def test_web_task_list_basic_payload_excludes_full_task_fields(
 
     from lifeos_web.routers import tasks
 
-    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=UTC)
     task = TaskView(
         id=UUID("11111111-1111-1111-1111-111111111111"),
         vision_id=UUID("22222222-2222-2222-2222-222222222222"),
@@ -498,7 +498,7 @@ def test_web_general_payloads_exclude_unconsumed_audit_fields() -> None:
     from lifeos_web.routers.habits import _habit_model_payload
     from lifeos_web.routers.persons import _person_payload
 
-    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=UTC)
 
     area_payload = _area_payload(
         cast(
@@ -581,8 +581,8 @@ def test_web_person_payload_preserves_tag_categories() -> None:
             nicknames=(),
             birth_date=None,
             location=None,
-            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
             tags=(
                 TagSummaryView(
@@ -617,7 +617,7 @@ def test_web_person_timelog_activity_payload_exposes_timeline_fields() -> None:
     )
     from lifeos_web.routers.persons import _activity_payload
 
-    timestamp = datetime(2026, 7, 2, 9, 0, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 7, 2, 9, 0, tzinfo=UTC)
     activity = PersonActivity(
         id=UUID("11111111-1111-1111-1111-111111111111"),
         activity_type="timelog",
@@ -625,7 +625,7 @@ def test_web_person_timelog_activity_payload_exposes_timeline_fields() -> None:
         description=None,
         activity_date=timestamp,
         start_time=timestamp,
-        end_time=datetime(2026, 7, 2, 9, 30, tzinfo=timezone.utc),
+        end_time=datetime(2026, 7, 2, 9, 30, tzinfo=UTC),
         area_id=UUID("22222222-2222-2222-2222-222222222222"),
     )
     payload = _activity_payload(activity)
@@ -658,8 +658,8 @@ def test_web_habit_action_payload_uses_slim_habit_summary(
             target_per_cycle=1,
             status="active",
             task_id=UUID("22222222-2222-2222-2222-222222222222"),
-            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
         )
 
@@ -672,8 +672,8 @@ def test_web_habit_action_payload_uses_slim_habit_summary(
         action_date=date(2026, 6, 30),
         status="pending",
         notes=None,
-        created_at=datetime(2026, 6, 30, 13, 0, tzinfo=timezone.utc),
-        updated_at=datetime(2026, 6, 30, 13, 0, tzinfo=timezone.utc),
+        created_at=datetime(2026, 6, 30, 13, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 6, 30, 13, 0, tzinfo=UTC),
         deleted_at=None,
     )
 
@@ -759,7 +759,7 @@ def test_planned_event_recurrence_until_accepts_utc_z_suffix() -> None:
 
     payload = PlannedEventCreate(
         title="Daily focus",
-        start_time=datetime(2026, 6, 16, 16, 0, tzinfo=timezone.utc),
+        start_time=datetime(2026, 6, 16, 16, 0, tzinfo=UTC),
         is_recurring=True,
         recurrence_pattern={
             "frequency": "daily",
@@ -781,7 +781,7 @@ def test_planned_event_rrule_preserves_advanced_recurrence_details() -> None:
 
     payload = PlannedEventCreate(
         title="Second Monday review",
-        start_time=datetime(2026, 4, 13, 16, 0, tzinfo=timezone.utc),
+        start_time=datetime(2026, 4, 13, 16, 0, tzinfo=UTC),
         is_recurring=True,
         rrule_string="FREQ=MONTHLY;BYDAY=2MO;BYMONTH=4,5",
     )
@@ -803,7 +803,7 @@ def test_planned_event_rrule_preserves_advanced_recurrence_details() -> None:
             event_type="appointment",
             priority=0,
             is_all_day=False,
-            start_time=datetime(2026, 4, 13, 16, 0, tzinfo=timezone.utc),
+            start_time=datetime(2026, 4, 13, 16, 0, tzinfo=UTC),
             end_time=None,
             recurrence_frequency="monthly",
             recurrence_interval=1,
@@ -817,8 +817,8 @@ def test_planned_event_rrule_preserves_advanced_recurrence_details() -> None:
             recurrence_instance_start=None,
             area_id=None,
             task_id=None,
-            created_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+            created_at=datetime(2026, 4, 1, tzinfo=UTC),
+            updated_at=datetime(2026, 4, 1, tzinfo=UTC),
             deleted_at=None,
         )
     )
@@ -844,7 +844,7 @@ def test_planned_event_create_ignores_rrule_when_not_recurring() -> None:
 
     payload = PlannedEventCreate(
         title="One-off review",
-        start_time=datetime(2026, 4, 13, 16, 0, tzinfo=timezone.utc),
+        start_time=datetime(2026, 4, 13, 16, 0, tzinfo=UTC),
         is_recurring=False,
         rrule_string="FREQ=MONTHLY;BYDAY=2MO",
     )
@@ -1193,10 +1193,10 @@ def test_web_timelog_template_payload_excludes_unconsumed_audit_fields() -> None
             default_duration_minutes=25,
             position=1,
             usage_count=2,
-            last_used_at=datetime(2026, 6, 1, 12, 0, tzinfo=timezone.utc),
-            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 6, 1, 14, 0, tzinfo=timezone.utc),
-            deleted_at=datetime(2026, 6, 1, 15, 0, tzinfo=timezone.utc),
+            last_used_at=datetime(2026, 6, 1, 12, 0, tzinfo=UTC),
+            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 6, 1, 14, 0, tzinfo=UTC),
+            deleted_at=datetime(2026, 6, 1, 15, 0, tzinfo=UTC),
         )
     )
 
@@ -1241,8 +1241,8 @@ def test_web_timelog_template_update_preserves_explicit_nulls(
             position=0,
             usage_count=0,
             last_used_at=None,
-            created_at=datetime(2026, 6, 17, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 6, 17, tzinfo=timezone.utc),
+            created_at=datetime(2026, 6, 17, tzinfo=UTC),
+            updated_at=datetime(2026, 6, 17, tzinfo=UTC),
             deleted_at=None,
         )
 
@@ -1358,8 +1358,8 @@ def test_web_timelog_window_filters_map_to_lifeos_window_filters(
         fake_list_timelogs,
     )
 
-    window_start = datetime(2026, 4, 10, 16, 0, tzinfo=timezone.utc)
-    window_end = datetime(2026, 4, 11, 15, 59, 59, 999000, tzinfo=timezone.utc)
+    window_start = datetime(2026, 4, 10, 16, 0, tzinfo=UTC)
+    window_end = datetime(2026, 4, 11, 15, 59, 59, 999000, tzinfo=UTC)
 
     response = asyncio.run(
         timelogs.list_timelogs(
@@ -1396,7 +1396,7 @@ def test_web_timelog_rejects_mixed_date_and_window_filters() -> None:
                 cast(AsyncSession, object()),
                 start_date=date(2026, 4, 10),
                 end_date=date(2026, 4, 10),
-                window_start=datetime(2026, 4, 10, 16, 0, tzinfo=timezone.utc),
+                window_start=datetime(2026, 4, 10, 16, 0, tzinfo=UTC),
             )
         )
 
@@ -1469,7 +1469,7 @@ def test_web_timelog_latest_end_time_endpoint(monkeypatch: pytest.MonkeyPatch) -
     from lifeos_web.routers import timelogs
 
     async def fake_get_latest_timelog_end_time(_session: object) -> datetime | None:
-        return datetime(2026, 7, 4, 16, 30, tzinfo=timezone.utc)
+        return datetime(2026, 7, 4, 16, 30, tzinfo=UTC)
 
     monkeypatch.setattr(
         timelogs.timelog_services,
@@ -1494,15 +1494,15 @@ def test_web_timelog_payload_exposes_linked_task_summary() -> None:
             id=UUID("11111111-1111-1111-1111-111111111111"),
             title="Focused work",
             tracking_method="manual",
-            start_time=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            end_time=datetime(2026, 6, 1, 14, 0, tzinfo=timezone.utc),
+            start_time=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 1, 14, 0, tzinfo=UTC),
             location=None,
             energy_level=None,
             notes=None,
             area_id=None,
             task_id=task_id,
-            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
             linked_notes_count=0,
             task=TaskSummaryView(
@@ -1648,15 +1648,15 @@ def test_web_timelog_payload_includes_tooltip_task_summary_fields() -> None:
             id=UUID("11111111-1111-1111-1111-111111111111"),
             title="Focused work",
             tracking_method="manual",
-            start_time=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            end_time=datetime(2026, 6, 1, 14, 0, tzinfo=timezone.utc),
+            start_time=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            end_time=datetime(2026, 6, 1, 14, 0, tzinfo=UTC),
             location=None,
             energy_level=None,
             notes=None,
             area_id=None,
             task_id=task_id,
-            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
             linked_notes_count=0,
             task=TaskSummaryView(
@@ -1695,7 +1695,7 @@ def test_web_person_note_activity_payload_avoids_duplicate_note_content(
 
     note_id = UUID("11111111-1111-1111-1111-111111111111")
     person_id = UUID("22222222-2222-2222-2222-222222222222")
-    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=UTC)
     note = SimpleNamespace(
         id=note_id,
         content="Remember the meeting notes",
@@ -1837,8 +1837,8 @@ def test_web_vision_update_null_description_and_experience_clear_flags(
             experience_points=0,
             experience_rate_per_hour=None,
             area_id=None,
-            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
             people=(),
             tasks=(),
@@ -1915,8 +1915,8 @@ def test_web_vision_sync_experience_calls_service(monkeypatch: pytest.MonkeyPatc
             experience_points=120,
             experience_rate_per_hour=None,
             area_id=None,
-            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
             people=(),
             tasks=(),
@@ -1963,8 +1963,8 @@ def test_web_vision_update_area_id_passes_through(
             experience_points=0,
             experience_rate_per_hour=None,
             area_id=area_id,
-            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
             people=(),
             tasks=(),
@@ -2324,7 +2324,7 @@ def test_web_habit_action_by_date_update_null_notes_maps_to_clear_notes(
     asyncio.run(
         habits.update_action_by_date(
             UUID("55555555-5555-5555-5555-555555555555"),
-            datetime(2026, 6, 1, tzinfo=timezone.utc).date(),
+            datetime(2026, 6, 1, tzinfo=UTC).date(),
             HabitActionUpdate(notes=None),
             cast(AsyncSession, object()),
         )
@@ -2355,8 +2355,8 @@ def test_web_timelog_update_null_fields_translate_to_clear_flags(
         return {
             "title": "work",
             "tracking_method": "manual",
-            "start_time": datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            "end_time": datetime(2026, 6, 1, 14, 0, tzinfo=timezone.utc),
+            "start_time": datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            "end_time": datetime(2026, 6, 1, 14, 0, tzinfo=UTC),
             "location": None,
             "energy_level": None,
             "notes": None,
@@ -2364,8 +2364,8 @@ def test_web_timelog_update_null_fields_translate_to_clear_flags(
             "task_id": None,
             "person_ids": [],
             "tag_ids": [],
-            "created_at": datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            "updated_at": datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            "created_at": datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            "updated_at": datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             "deleted_at": None,
         }
 
@@ -2464,8 +2464,8 @@ def test_web_tag_create_maps_to_lifeos_tag_service(
             category="general",
             description=None,
             color=None,
-            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
             people=(),
         )
@@ -2504,9 +2504,9 @@ def test_web_tag_list_selector_payload_excludes_unconsumed_fields(
         category="general",
         description="Internal description",
         color="#ffffff",
-        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-        updated_at=datetime(2026, 6, 1, 14, 0, tzinfo=timezone.utc),
-        deleted_at=datetime(2026, 6, 1, 15, 0, tzinfo=timezone.utc),
+        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 6, 1, 14, 0, tzinfo=UTC),
+        deleted_at=datetime(2026, 6, 1, 15, 0, tzinfo=UTC),
         people=(PersonSummaryView(id=UUID("22222222-2222-2222-2222-222222222222"), name="A"),),
     )
 
@@ -2646,8 +2646,8 @@ def test_web_tag_bulk_category_update_returns_updated_tags(
         category="relationship",
         description=None,
         color=None,
-        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-        updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
         deleted_at=None,
         people=(),
     )
@@ -2696,8 +2696,8 @@ def test_web_tag_usage_endpoint_returns_tagged_record_count(
         category="relationship",
         description=None,
         color=None,
-        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-        updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
         deleted_at=None,
         people=(),
     )
@@ -2920,8 +2920,8 @@ def test_web_note_create_maps_selector_associations_to_lifeos_note_service(
         return SimpleNamespace(
             id=UUID("55555555-5555-5555-5555-555555555555"),
             content=kwargs["content"],
-            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+            created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+            updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
             tags=(),
             people=(),
@@ -2981,8 +2981,8 @@ def test_web_note_payload_exposes_primary_task_for_notes_page() -> None:
     note = NoteView(
         id=UUID("55555555-5555-5555-5555-555555555555"),
         content="Capture context",
-        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-        updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
         deleted_at=None,
         tags=(tag,),
         people=(person,),
@@ -3060,14 +3060,14 @@ def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
         vision_name="Portfolio",
         parent_content="Weekly plan",
         priority=1,
-        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-        updated_at=datetime(2026, 6, 2, 9, 0, tzinfo=timezone.utc),
+        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 6, 2, 9, 0, tzinfo=UTC),
     )
     note = NoteView(
         id=UUID("55555555-5555-5555-5555-555555555555"),
         content="Capture context",
-        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-        updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
         deleted_at=None,
         tasks=(task,),
     )
@@ -3106,8 +3106,8 @@ def test_web_note_payload_uses_null_primary_task_without_association() -> None:
     note = NoteView(
         id=UUID("55555555-5555-5555-5555-555555555555"),
         content="Capture context",
-        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
-        updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=timezone.utc),
+        created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
         deleted_at=None,
     )
 

@@ -7,7 +7,7 @@ import shlex
 import subprocess
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -115,7 +115,7 @@ def run_help_audit(
 
 def render_help_audit_report(results: Sequence[HelpAuditResult]) -> str:
     """Render one Markdown report for the executed help audit."""
-    generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    generated_at = datetime.now(UTC).replace(microsecond=0).isoformat()
     lines = [
         "# CLI Help Audit",
         "",
