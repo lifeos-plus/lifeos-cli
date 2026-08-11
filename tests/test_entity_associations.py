@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+from uuid import uuid4
 
+import pytest
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -82,6 +84,51 @@ def test_association_reads_ignore_soft_deleted_endpoints() -> None:
 
                 assert target_ids == {active_note.id: [timelog.id]}
                 assert counts == {timelog.id: 1}
+        finally:
+            await engine.dispose()
+
+    asyncio.run(scenario())
+
+
+def test_invalid_association_model_raises_validation_error() -> None:
+    async def scenario() -> None:
+        engine, session_factory = await _create_sqlite_session_factory()
+        try:
+            async with session_factory() as session:
+                with pytest.raises(
+                    entity_associations.AssociationValidationError,
+                    match="Unsupported association model 'bogus'. Expected one of: ",
+                ):
+                    await entity_associations.set_association_links(
+                        session,
+                        source_model="bogus",
+                        source_id=uuid4(),
+                        target_model="note",
+                        target_ids=[uuid4()],
+                        link_type="is_about",
+                    )
+        finally:
+            await engine.dispose()
+
+    asyncio.run(scenario())
+
+
+def test_invalid_association_link_type_raises_validation_error() -> None:
+    async def scenario() -> None:
+        engine, session_factory = await _create_sqlite_session_factory()
+        try:
+            async with session_factory() as session:
+                with pytest.raises(
+                    entity_associations.AssociationValidationError,
+                    match="Unsupported association link type 'bogus'. Expected one of: ",
+                ):
+                    await entity_associations.get_target_ids_for_sources(
+                        session,
+                        source_model="note",
+                        source_ids=[uuid4()],
+                        target_model="timelog",
+                        link_type="bogus",
+                    )
         finally:
             await engine.dispose()
 

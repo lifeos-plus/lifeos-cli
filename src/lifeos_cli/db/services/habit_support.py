@@ -29,6 +29,7 @@ from lifeos_cli.db.services.recurrence_core import (
     normalize_recurrence_frequency,
     normalize_weekday_names,
 )
+from lifeos_cli.db.services.validation_utils import DomainValidationError, choice_validator
 from lifeos_cli.db.sql_expressions import AddDaysToDate
 
 if TYPE_CHECKING:
@@ -86,7 +87,7 @@ class HabitTaskReferenceNotFoundError(LookupError):
     """Raised when a referenced task cannot be found."""
 
 
-class HabitValidationError(ValueError):
+class HabitValidationError(DomainValidationError):
     """Raised when habit input validation fails."""
 
 
@@ -124,26 +125,19 @@ def get_default_habit_action_status() -> str:
     raise HabitValidationError("No default habit action status is configured")
 
 
-def validate_habit_status(status: str) -> str:
-    """Validate and normalize a habit status."""
-    normalized = status.strip().lower()
-    if normalized not in VALID_HABIT_STATUSES:
-        allowed = ", ".join(sorted(VALID_HABIT_STATUSES))
-        raise HabitValidationError(
-            f"Invalid habit status {normalized!r}. Expected one of: {allowed}"
-        )
-    return normalized
+validate_habit_status = choice_validator(
+    VALID_HABIT_STATUSES,
+    error_cls=HabitValidationError,
+    label="habit status",
+    doc="Validate and normalize a habit status.",
+)
 
-
-def validate_habit_action_status(status: str) -> str:
-    """Validate and normalize a habit-action status."""
-    normalized = status.strip().lower()
-    if normalized not in VALID_HABIT_ACTION_STATUSES:
-        allowed = ", ".join(sorted(VALID_HABIT_ACTION_STATUSES))
-        raise HabitValidationError(
-            f"Invalid habit-action status {normalized!r}. Expected one of: {allowed}"
-        )
-    return normalized
+validate_habit_action_status = choice_validator(
+    VALID_HABIT_ACTION_STATUSES,
+    error_cls=HabitValidationError,
+    label="habit-action status",
+    doc="Validate and normalize a habit-action status.",
+)
 
 
 def validate_habit_duration(duration_days: int) -> int:

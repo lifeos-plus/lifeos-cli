@@ -34,10 +34,12 @@ from lifeos_cli.db.services.read_models import (
 from lifeos_cli.db.services.task_support import (
     VALID_PLANNING_CYCLE_TYPES,
     TaskNotFoundError,
+    TaskValidationError,
     ensure_vision_exists,
     load_task_subtree,
     validate_task_status,
 )
+from lifeos_cli.db.services.validation_utils import validate_choice
 from lifeos_cli.db.sql_expressions import AddDaysToDate
 
 
@@ -240,12 +242,12 @@ def _apply_task_filters(
     if excluded_statuses:
         stmt = stmt.where(Task.status.not_in(excluded_statuses))
     if planning_cycle_type is not None:
-        normalized_cycle_type = planning_cycle_type.strip().lower()
-        if normalized_cycle_type not in VALID_PLANNING_CYCLE_TYPES:
-            allowed = ", ".join(sorted(VALID_PLANNING_CYCLE_TYPES))
-            raise ValueError(
-                f"Invalid planning cycle type {normalized_cycle_type!r}. Expected one of: {allowed}"
-            )
+        normalized_cycle_type = validate_choice(
+            planning_cycle_type,
+            VALID_PLANNING_CYCLE_TYPES,
+            error_cls=TaskValidationError,
+            label="planning cycle type",
+        )
         stmt = stmt.where(Task.planning_cycle_type == normalized_cycle_type)
     if planning_cycle_start_date is not None:
         if planning_cycle_type is not None:

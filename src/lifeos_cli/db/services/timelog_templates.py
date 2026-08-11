@@ -20,6 +20,7 @@ from lifeos_cli.db.services.model_utils import (
     ensure_optional_reference_exists,
 )
 from lifeos_cli.db.services.read_models import TimelogTemplateView, build_timelog_template_view
+from lifeos_cli.db.services.validation_utils import DomainValidationError
 
 MAX_TEMPLATE_DURATION_MINUTES = 24 * 60
 VALID_TEMPLATE_ORDERINGS = {"position", "usage", "recent"}
@@ -37,7 +38,7 @@ class TimelogTemplateAreaReferenceNotFoundError(LookupError):
     """Raised when a referenced area cannot be found."""
 
 
-class TimelogTemplateValidationError(ValueError):
+class TimelogTemplateValidationError(DomainValidationError):
     """Raised when timelog template data is invalid."""
 
 

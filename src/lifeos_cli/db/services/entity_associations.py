@@ -19,6 +19,7 @@ from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
+from lifeos_cli.db.services.validation_utils import DomainValidationError, choice_validator
 
 VALID_ASSOCIATION_MODELS = frozenset(
     {"event", "habit_action", "note", "person", "task", "timelog", "vision"}
@@ -36,26 +37,23 @@ MODEL_MAP: dict[str, Any] = {
 }
 
 
-def validate_association_model(model_name: str) -> str:
-    """Validate one weak-association model name."""
-    normalized = model_name.strip().lower()
-    if normalized not in VALID_ASSOCIATION_MODELS:
-        allowed = ", ".join(sorted(VALID_ASSOCIATION_MODELS))
-        raise ValueError(
-            f"Unsupported association model {normalized!r}. Expected one of: {allowed}"
-        )
-    return normalized
+class AssociationValidationError(DomainValidationError):
+    """Raised when a weak-association input is invalid."""
 
 
-def validate_association_link_type(link_type: str) -> str:
-    """Validate one weak-association link type."""
-    normalized = link_type.strip().lower()
-    if normalized not in VALID_ASSOCIATION_LINK_TYPES:
-        allowed = ", ".join(sorted(VALID_ASSOCIATION_LINK_TYPES))
-        raise ValueError(
-            f"Unsupported association link type {normalized!r}. Expected one of: {allowed}"
-        )
-    return normalized
+_validate_association_model = choice_validator(
+    VALID_ASSOCIATION_MODELS,
+    error_cls=AssociationValidationError,
+    label="association model",
+    error_verb="Unsupported",
+)
+
+_validate_association_link_type = choice_validator(
+    VALID_ASSOCIATION_LINK_TYPES,
+    error_cls=AssociationValidationError,
+    label="association link type",
+    error_verb="Unsupported",
+)
 
 
 async def _load_existing_ids(
@@ -66,7 +64,7 @@ async def _load_existing_ids(
 ) -> set[UUID]:
     if not identifiers:
         return set()
-    model_cls = MODEL_MAP[validate_association_model(model_name)]
+    model_cls = MODEL_MAP[model_name]
     stmt = select(model_cls.id).where(model_cls.id.in_(identifiers), model_cls.deleted_at.is_(None))
     rows = await session.execute(stmt)
     return set(rows.scalars().all())
@@ -83,9 +81,9 @@ async def set_association_links(
     replace: bool = True,
 ) -> None:
     """Create or replace weak links after validating both endpoints exist."""
-    normalized_source_model = validate_association_model(source_model)
-    normalized_target_model = validate_association_model(target_model)
-    normalized_link_type = validate_association_link_type(link_type)
+    normalized_source_model = _validate_association_model(source_model)
+    normalized_target_model = _validate_association_model(target_model)
+    normalized_link_type = _validate_association_link_type(link_type)
     unique_target_ids = deduplicate_preserving_order(target_ids)
 
     if source_id not in await _load_existing_ids(
@@ -158,8 +156,8 @@ async def get_target_ids_for_sources(
     """Return mapping source_id -> target_ids for one weak link family."""
     if not source_ids:
         return {}
-    normalized_source_model = validate_association_model(source_model)
-    normalized_target_model = validate_association_model(target_model)
+    normalized_source_model = _validate_association_model(source_model)
+    normalized_target_model = _validate_association_model(target_model)
     source_cls = aliased(MODEL_MAP[normalized_source_model])
     target_cls = aliased(MODEL_MAP[normalized_target_model])
     stmt = (
@@ -176,7 +174,8 @@ async def get_target_ids_for_sources(
         .order_by(Association.created_at.asc(), Association.id.asc())
     )
     if link_type is not None:
-        stmt = stmt.where(Association.link_type == validate_association_link_type(link_type))
+        normalized_link_type = _validate_association_link_type(link_type)
+        stmt = stmt.where(Association.link_type == normalized_link_type)
     rows = await session.execute(stmt)
     mapping: dict[UUID, list[UUID]] = defaultdict(list)
     for source_id, target_id in rows.all():
@@ -195,8 +194,8 @@ async def count_sources_for_targets(
     """Return mapping target_id -> linked source count."""
     if not target_ids:
         return {}
-    normalized_source_model = validate_association_model(source_model)
-    normalized_target_model = validate_association_model(target_model)
+    normalized_source_model = _validate_association_model(source_model)
+    normalized_target_model = _validate_association_model(target_model)
     source_cls = aliased(MODEL_MAP[normalized_source_model])
     target_cls = aliased(MODEL_MAP[normalized_target_model])
     stmt = (
@@ -213,7 +212,8 @@ async def count_sources_for_targets(
         .group_by(Association.target_id)
     )
     if link_type is not None:
-        stmt = stmt.where(Association.link_type == validate_association_link_type(link_type))
+        normalized_link_type = _validate_association_link_type(link_type)
+        stmt = stmt.where(Association.link_type == normalized_link_type)
     rows = await session.execute(stmt)
     return {target_id: count for target_id, count in rows.all()}
 

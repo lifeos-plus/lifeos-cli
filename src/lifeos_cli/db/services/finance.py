@@ -24,6 +24,7 @@ from lifeos_cli.db.models.finance import (
     FinanceTree,
     FinanceTreeNode,
 )
+from lifeos_cli.db.services.validation_utils import DomainValidationError
 
 DEFAULT_FINANCE_CURRENCY = "USD"
 DEFAULT_FINANCE_ASSET_DECIMAL_PLACES = 2
@@ -75,7 +76,7 @@ def _finance_snapshot_entries_loader() -> Any:
     )
 
 
-class FinanceValidationError(ValueError):
+class FinanceValidationError(DomainValidationError):
     """Raised when finance input is invalid."""
 
 

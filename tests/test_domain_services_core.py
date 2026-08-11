@@ -709,3 +709,19 @@ def test_create_vision_syncs_people_without_committing(
     assert len(vision.people) == 1
     session.flush.assert_awaited_once()
     session.commit.assert_not_called()
+
+
+def test_list_visions_rejects_invalid_status() -> None:
+    async def scenario() -> None:
+        engine, session_factory = await _create_sqlite_session_factory()
+        try:
+            async with session_factory() as session:
+                with pytest.raises(
+                    visions.VisionValidationError,
+                    match="Invalid vision status 'bogus'. Expected one of: ",
+                ):
+                    await visions.list_visions(session, status="bogus")
+        finally:
+            await engine.dispose()
+
+    asyncio.run(scenario())
