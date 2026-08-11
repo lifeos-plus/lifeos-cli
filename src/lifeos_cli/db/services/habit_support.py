@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.calendar_adapter import CalendarGranularity, get_calendar_period_range
 from lifeos_cli.application.time_preferences import (
+    get_day_start_datetime,
     get_operational_date,
-    get_utc_window_for_local_date,
     get_week_bounds,
 )
 from lifeos_cli.config import get_preferences_settings
@@ -269,7 +269,7 @@ def _build_habit_series_definition(
     target_per_cycle: int,
 ) -> SeriesDefinition:
     return build_series_definition(
-        anchor_start=get_utc_window_for_local_date(start_date)[0],
+        anchor_start=get_day_start_datetime(start_date),
         anchor_end=None,
         frequency="daily",
         byweekday=cadence_weekdays,

@@ -6,6 +6,7 @@ import pytest
 
 from lifeos_cli.application.time_preferences import (
     apply_preferred_timezone,
+    get_day_start_datetime,
     get_operational_date,
     get_utc_half_open_window_for_local_date_range,
     get_utc_window_for_local_date,
@@ -72,6 +73,18 @@ def test_get_utc_window_for_local_date_respects_day_start_boundary(monkeypatch, 
 
     assert window_start.isoformat() == "2026-04-10T08:00:00+00:00"
     assert window_end.isoformat() == "2026-04-11T08:00:00+00:00"
+    clear_config_cache()
+
+
+def test_get_day_start_datetime_uses_configured_timezone_and_day_start(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    install_test_config(monkeypatch=monkeypatch, tmp_path=tmp_path, include_preferences=True)
+
+    day_start = get_day_start_datetime(date(2026, 4, 10))
+
+    assert day_start.isoformat() == "2026-04-10T04:00:00-04:00"
     clear_config_cache()
 
 

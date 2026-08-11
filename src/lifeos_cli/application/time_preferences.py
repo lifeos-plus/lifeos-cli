@@ -54,15 +54,20 @@ def get_operational_date(value: datetime | None = None) -> date:
     return local_value.date()
 
 
-def get_utc_window_for_local_date(target_date: date) -> tuple[datetime, datetime]:
-    """Return the UTC datetime window for one configured local operational day."""
+def get_day_start_datetime(target_date: date) -> datetime:
+    """Return the configured local day-start datetime for one local date."""
     preferences = get_preferences_settings()
     hour, minute = (int(part) for part in preferences.day_starts_at.split(":"))
-    local_start = datetime.combine(
+    return datetime.combine(
         target_date,
         time(hour=hour, minute=minute),
         tzinfo=ZoneInfo(preferences.timezone),
     )
+
+
+def get_utc_window_for_local_date(target_date: date) -> tuple[datetime, datetime]:
+    """Return the UTC datetime window for one configured local operational day."""
+    local_start = get_day_start_datetime(target_date)
     local_end = local_start + timedelta(days=1)
     return (
         local_start.astimezone(UTC),
