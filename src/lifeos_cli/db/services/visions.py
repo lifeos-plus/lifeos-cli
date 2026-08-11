@@ -29,7 +29,7 @@ from lifeos_cli.db.services.model_utils import (
 )
 from lifeos_cli.db.services.read_models import VisionView, build_vision_view
 from lifeos_cli.db.services.task_effort import recompute_subtree_totals
-from lifeos_cli.db.services.validation_utils import DomainValidationError, choice_validator
+from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
 
 VALID_VISION_STATUSES = {"active", "archived", "fruit"}
 VISION_EXPERIENCE_RATE_MAX = MAX_VISION_EXPERIENCE_RATE_PER_HOUR
@@ -74,14 +74,6 @@ class VisionValidationError(DomainValidationError):
 
 class VisionNotReadyForHarvestError(ValueError):
     """Raised when a vision cannot be harvested yet."""
-
-
-validate_vision_status = choice_validator(
-    VALID_VISION_STATUSES,
-    error_cls=VisionValidationError,
-    label="vision status",
-    doc="Validate a vision status.",
-)
 
 
 def validate_vision_experience_rate(experience_rate_per_hour: int | None) -> int | None:
@@ -257,7 +249,12 @@ async def create_vision(
     vision = Vision(
         name=normalized_name,
         description=description,
-        status=validate_vision_status(status),
+        status=validate_choice(
+            status,
+            VALID_VISION_STATUSES,
+            error_cls=VisionValidationError,
+            label="vision status",
+        ),
         area_id=area_id,
         experience_rate_per_hour=validate_vision_experience_rate(experience_rate_per_hour),
     )
@@ -298,7 +295,13 @@ async def list_visions(
     stmt = select(Vision)
     stmt = stmt.where(Vision.deleted_at.is_(None))
     if status is not None:
-        stmt = stmt.where(Vision.status == validate_vision_status(status))
+        normalized_status = validate_choice(
+            status,
+            VALID_VISION_STATUSES,
+            error_cls=VisionValidationError,
+            label="vision status",
+        )
+        stmt = stmt.where(Vision.status == normalized_status)
     if area_id is not None:
         stmt = stmt.where(Vision.area_id == area_id)
     if person_id is not None:
@@ -352,7 +355,12 @@ async def update_vision(
     elif description is not None:
         vision.description = description
     if status is not None:
-        vision.status = validate_vision_status(status)
+        vision.status = validate_choice(
+            status,
+            VALID_VISION_STATUSES,
+            error_cls=VisionValidationError,
+            label="vision status",
+        )
     if clear_area:
         vision.area_id = None
     elif area_id is not None:

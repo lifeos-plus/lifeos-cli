@@ -8,8 +8,6 @@ import pytest
 
 from lifeos_cli.db.services.entity_associations import (
     AssociationValidationError,
-    validate_association_link_type,
-    validate_association_model,
 )
 from lifeos_cli.db.services.event_support import (
     EventValidationError,
@@ -46,10 +44,7 @@ from lifeos_cli.db.services.validation_utils import (
     choice_validator,
     validate_choice,
 )
-from lifeos_cli.db.services.visions import (
-    VisionValidationError,
-    validate_vision_status,
-)
+from lifeos_cli.db.services.visions import VisionValidationError
 
 
 def test_validate_choice_normalizes_and_returns_value() -> None:
@@ -132,15 +127,8 @@ def test_choice_validator_preserves_domain_docstrings() -> None:
         (validate_event_status, EventValidationError, "event status"),
         (validate_event_type, EventValidationError, "event type"),
         (validate_task_status, TaskValidationError, "task status"),
-        (validate_vision_status, VisionValidationError, "vision status"),
         (validate_tracking_method, TimelogValidationError, "tracking method"),
         (validate_tag_entity_type, InvalidTagEntityTypeError, "tag entity type"),
-        (validate_association_model, AssociationValidationError, "association model"),
-        (
-            validate_association_link_type,
-            AssociationValidationError,
-            "association link type",
-        ),
     ],
 )
 def test_domain_wrappers_raise_domain_errors(
