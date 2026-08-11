@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any
@@ -31,7 +30,8 @@ from lifeos_web.response_schemas.finance import (
     FinanceTreeResponse,
     FinanceTreeSnapshotMeta,
 )
-from lifeos_web.schemas import ListResponse, Pagination
+from lifeos_web.router_utils import page_envelope, soft_delete
+from lifeos_web.schemas import ListResponse
 from lifeos_web.serialization import to_jsonable
 
 router = APIRouter(prefix="/finance", tags=["finance"])
@@ -161,22 +161,6 @@ class FinanceRateSnapshotUpdate(BaseModel):
     note: str | None = None
     metadata: dict[str, Any] | None = None
     entries: list[FinanceRateSnapshotEntryCreate] | None = None
-
-
-def _page_envelope(
-    *,
-    items: list[dict[str, object]],
-    page: int,
-    size: int,
-    total: int,
-    meta: dict[str, object] | None = None,
-) -> ListResponse:
-    pages = math.ceil(total / size) if size > 0 else 0
-    return ListResponse(
-        items=items,
-        pagination=Pagination(page=page, size=size, total=total, pages=pages),
-        meta=meta or {},
-    )
 
 
 def _decimal_str(value: Decimal | None) -> str | None:
@@ -391,7 +375,7 @@ async def list_assets(
         offset=(page - 1) * size,
     )
     total = await finance_services.count_finance_assets(session)
-    return _page_envelope(
+    return page_envelope(
         items=[_asset_payload(asset) for asset in assets],
         page=page,
         size=size,
@@ -443,10 +427,7 @@ async def update_asset(
 @router.delete("/assets/{asset_id}", status_code=204)
 async def delete_asset(asset_id: UUID, session: SessionDep) -> None:
     """Soft-delete one finance asset."""
-    try:
-        await finance_services.delete_finance_asset(session, asset_id=asset_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await soft_delete(finance_services.delete_finance_asset, session=session, asset_id=asset_id)
 
 
 @router.get(
@@ -469,7 +450,7 @@ async def list_trees(
         total = await finance_services.count_finance_trees(session)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _page_envelope(
+    return page_envelope(
         items=[_tree_payload(tree) for tree in trees],
         page=page,
         size=size,
@@ -497,7 +478,7 @@ async def list_rate_snapshots(
         total = await finance_services.count_finance_rate_snapshots(session)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _page_envelope(
+    return page_envelope(
         items=[_rate_snapshot_payload(snapshot) for snapshot in rate_snapshots],
         page=page,
         size=size,
@@ -610,16 +591,13 @@ async def update_rate_snapshot(
 
 
 @router.delete("/rate-snapshots/{rate_snapshot_id}", status_code=204)
-async def delete_rate_snapshot(rate_snapshot_id: UUID, session: SessionDep) -> Response:
+async def delete_rate_snapshot(rate_snapshot_id: UUID, session: SessionDep) -> None:
     """Delete an exchange-rate snapshot."""
-    try:
-        await finance_services.delete_finance_rate_snapshot(
-            session,
-            rate_snapshot_id=rate_snapshot_id,
-        )
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return Response(status_code=204)
+    await soft_delete(
+        finance_services.delete_finance_rate_snapshot,
+        session=session,
+        rate_snapshot_id=rate_snapshot_id,
+    )
 
 
 @router.post("/trees", response_model=FinanceTreeResponse, response_model_exclude_unset=True)
@@ -764,10 +742,7 @@ async def update_finance_node(
 @router.delete("/nodes/{node_id}", status_code=204)
 async def delete_finance_node(node_id: UUID, session: SessionDep) -> None:
     """Soft-delete one finance node."""
-    try:
-        await finance_services.delete_finance_node(session, node_id=node_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await soft_delete(finance_services.delete_finance_node, session=session, node_id=node_id)
 
 
 @router.get(
@@ -790,7 +765,7 @@ async def list_tree_snapshots(
         offset=(page - 1) * size,
     )
     total = await finance_services.count_finance_snapshots(session, tree_id=tree_id)
-    return _page_envelope(
+    return page_envelope(
         items=[
             _snapshot_payload(snapshot, decimal_places_by_code=decimal_places_by_code)
             for snapshot in snapshots
@@ -864,7 +839,7 @@ async def list_snapshots(
     )
     total = await finance_services.count_finance_snapshots(session)
     decimal_places_by_code = await _finance_asset_decimal_places(session)
-    return _page_envelope(
+    return page_envelope(
         items=[
             _snapshot_payload(snapshot, decimal_places_by_code=decimal_places_by_code)
             for snapshot in snapshots
@@ -948,10 +923,10 @@ async def update_snapshot(
 
 
 @router.delete("/snapshots/{snapshot_id}", status_code=204)
-async def delete_snapshot(snapshot_id: UUID, session: SessionDep) -> Response:
+async def delete_snapshot(snapshot_id: UUID, session: SessionDep) -> None:
     """Delete a finance snapshot."""
-    try:
-        await finance_services.delete_finance_snapshot(session, snapshot_id=snapshot_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return Response(status_code=204)
+    await soft_delete(
+        finance_services.delete_finance_snapshot,
+        session=session,
+        snapshot_id=snapshot_id,
+    )

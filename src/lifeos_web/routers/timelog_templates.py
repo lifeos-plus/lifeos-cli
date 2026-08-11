@@ -16,6 +16,7 @@ from lifeos_web.response_schemas.timelogs import (
     TimelogTemplateListMeta,
     TimelogTemplateResponse,
 )
+from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import (
     ListResponse,
     Pagination,
@@ -225,10 +226,11 @@ async def update_timelog_template(
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_timelog_template(template_id: UUID, session: SessionDep) -> None:
     """Soft-delete a timelog quick template."""
-    try:
-        await template_services.delete_template(session, template_id=template_id)
-    except template_services.TimelogTemplateNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await soft_delete(
+        template_services.delete_template,
+        session=session,
+        template_id=template_id,
+    )
 
 
 @router.post(

@@ -26,6 +26,7 @@ from lifeos_web.response_schemas.timelogs import (
     TimelogListMeta,
     TimelogResponse,
 )
+from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import (
     ListResponse,
     Pagination,
@@ -316,12 +317,6 @@ async def update_timelog(
 
 
 @router.delete("/{timelog_id}", status_code=204)
-async def delete_timelog(
-    timelog_id: UUID,
-    session: SessionDep,
-) -> None:
+async def delete_timelog(timelog_id: UUID, session: SessionDep) -> None:
     """Soft-delete a timelog."""
-    try:
-        await timelog_services.delete_timelog(session, timelog_id=timelog_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await soft_delete(timelog_services.delete_timelog, session=session, timelog_id=timelog_id)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from datetime import date
 from typing import Annotated, Any
 from uuid import UUID
@@ -22,9 +21,9 @@ from lifeos_web.response_schemas.tasks import (
     TaskStatsResponse,
     TaskTreeResponse,
 )
+from lifeos_web.router_utils import page_envelope, soft_delete
 from lifeos_web.schemas import (
     ListResponse,
-    Pagination,
     TaskCreate,
     TaskReorderRequest,
     TaskStatusUpdate,
@@ -63,22 +62,6 @@ def _collect_task_tree_ids(tasks: list[Any]) -> list[UUID]:
     for task in tasks:
         visit(task)
     return task_ids
-
-
-def _page_envelope(
-    *,
-    items: list[dict[str, object]],
-    page: int,
-    size: int,
-    total: int,
-    meta: dict[str, object],
-) -> ListResponse:
-    pages = math.ceil(total / size) if size > 0 else 0
-    return ListResponse(
-        items=items,
-        pagination=Pagination(page=page, size=size, total=total, pages=pages),
-        meta=meta,
-    )
 
 
 def _task_tree_payload(
@@ -202,7 +185,7 @@ async def list_tasks(
         session,
         task_ids=[row.id for row in rows],
     )
-    return _page_envelope(
+    return page_envelope(
         items=[
             _task_list_payload(
                 row,
@@ -355,10 +338,7 @@ async def update_task(
 @router.delete("/{task_id}", status_code=204)
 async def delete_task(task_id: UUID, session: SessionDep) -> None:
     """Soft-delete one task."""
-    try:
-        await task_services.delete_task(session, task_id=task_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await soft_delete(task_services.delete_task, session=session, task_id=task_id)
 
 
 @router.patch(

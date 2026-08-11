@@ -16,6 +16,7 @@ from lifeos_web.response_schemas.notes import (
     NotePersonStatsResponse,
     NoteResponse,
 )
+from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import ListResponse, NoteCreate, NoteUpdate, Pagination
 from lifeos_web.serialization import task_summary_payload, to_jsonable_dict
 
@@ -205,12 +206,6 @@ async def update_note(
 
 
 @router.delete("/{note_id}", status_code=204)
-async def delete_note(
-    note_id: UUID,
-    session: SessionDep,
-) -> None:
+async def delete_note(note_id: UUID, session: SessionDep) -> None:
     """Soft-delete a note."""
-    try:
-        await note_services.delete_note(session, note_id=note_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await soft_delete(note_services.delete_note, session=session, note_id=note_id)
