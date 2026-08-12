@@ -23,6 +23,7 @@ from lifeos_web.response_schemas.persons import (
     PersonListMeta,
     PersonResponse,
 )
+from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import ListResponse, Pagination
 
 router = APIRouter(prefix="/persons", tags=["persons"])
@@ -203,10 +204,7 @@ async def update_person(
 @router.delete("/{person_id}", status_code=204)
 async def delete_person(person_id: UUID, session: SessionDep) -> None:
     """Soft-delete a person."""
-    try:
-        await people_services.delete_person(session, person_id=person_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await soft_delete(people_services.delete_person, session=session, person_id=person_id)
 
 
 @router.get(

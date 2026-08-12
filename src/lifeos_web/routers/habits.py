@@ -25,6 +25,7 @@ from lifeos_web.response_schemas.habits import (
     HabitOverviewResponse,
     HabitResponse,
 )
+from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import HabitActionUpdate, HabitCreate, HabitUpdate, ListResponse, Pagination
 from lifeos_web.serialization import to_jsonable
 
@@ -241,15 +242,9 @@ async def update_habit(
 
 
 @router.delete("/{habit_id}", status_code=204)
-async def delete_habit(
-    habit_id: UUID,
-    session: SessionDep,
-) -> None:
+async def delete_habit(habit_id: UUID, session: SessionDep) -> None:
     """Soft-delete a habit."""
-    try:
-        await habit_services.delete_habit(session, habit_id=habit_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await soft_delete(habit_services.delete_habit, session=session, habit_id=habit_id)
 
 
 @router.get(

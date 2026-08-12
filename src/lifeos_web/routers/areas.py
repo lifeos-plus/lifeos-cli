@@ -14,6 +14,7 @@ from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.services import areas as area_services
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.areas import AreaListMeta, AreaResponse
+from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import ListResponse, Pagination
 
 router = APIRouter(prefix="/areas", tags=["areas"])
@@ -162,10 +163,7 @@ async def update_area(
 @router.delete("/{area_id}", status_code=204)
 async def delete_area(area_id: UUID, session: SessionDep) -> None:
     """Soft-delete a LifeOS area."""
-    try:
-        await area_services.delete_area(session, area_id=area_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await soft_delete(area_services.delete_area, session=session, area_id=area_id)
 
 
 @router.post("/{area_id}/activate", response_model=AreaResponse)

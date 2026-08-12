@@ -51,7 +51,6 @@ def test_web_command_is_registered() -> None:
 
 
 def test_web_finance_decimal_serialization_avoids_scientific_zero() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.routers.finance import _asset_decimal_str, _decimal_str
 
     assert _decimal_str(Decimal("0E-8")) == "0.00000000"
@@ -75,7 +74,6 @@ def test_web_finance_decimal_serialization_avoids_scientific_zero() -> None:
 
 
 def test_web_finance_payloads_exclude_unconsumed_audit_fields() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_cli.db.models.finance import (
         FinanceAsset,
         FinanceRateSnapshot,
@@ -277,7 +275,6 @@ def test_web_finance_payloads_exclude_unconsumed_audit_fields() -> None:
 
 
 def test_web_routes_do_not_expose_deleted_records() -> None:
-    pytest.importorskip("fastapi")
     from fastapi.routing import APIRoute
 
     from lifeos_web.app import create_app
@@ -294,7 +291,6 @@ def test_web_routes_do_not_expose_deleted_records() -> None:
 
 
 def test_web_vision_payload_excludes_unconsumed_audit_fields() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.response_schemas.visions import VisionResponse, VisionWithTasksResponse
     from lifeos_web.routers.visions import _vision_payload
 
@@ -347,7 +343,6 @@ def test_web_vision_payload_excludes_unconsumed_audit_fields() -> None:
 
 
 def test_web_task_hierarchy_payload_excludes_deleted_at() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.response_schemas.tasks import TaskTreeResponse
     from lifeos_web.routers.tasks import _task_tree_payload
 
@@ -407,8 +402,6 @@ def test_web_task_hierarchy_payload_excludes_deleted_at() -> None:
 def test_web_task_list_basic_payload_excludes_full_task_fields(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tasks
 
     timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=UTC)
@@ -490,7 +483,6 @@ def test_web_task_list_basic_payload_excludes_full_task_fields(
 
 
 def test_web_general_payloads_exclude_unconsumed_audit_fields() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.response_schemas.areas import AreaResponse
     from lifeos_web.response_schemas.habits import HabitResponse
     from lifeos_web.response_schemas.persons import PersonResponse
@@ -570,7 +562,6 @@ def test_web_general_payloads_exclude_unconsumed_audit_fields() -> None:
 
 
 def test_web_person_payload_preserves_tag_categories() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.routers.persons import _person_payload
 
     payload = _person_payload(
@@ -610,7 +601,6 @@ def test_web_person_payload_preserves_tag_categories() -> None:
 
 
 def test_web_person_timelog_activity_payload_exposes_timeline_fields() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_cli.db.services.person_activity_queries import (
         PersonActivity,
         _timelog_total_minutes,
@@ -640,7 +630,6 @@ def test_web_person_timelog_activity_payload_exposes_timeline_fields() -> None:
 def test_web_habit_action_payload_uses_slim_habit_summary(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.routers import habits
 
     habit_id = UUID("11111111-1111-1111-1111-111111111111")
@@ -753,7 +742,6 @@ def test_cli_rejects_deleted_record_visibility_flags_on_consumer_commands() -> N
 
 
 def test_planned_event_recurrence_until_accepts_utc_z_suffix() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.routers.planned_events import _create_input
     from lifeos_web.schemas import PlannedEventCreate
 
@@ -774,7 +762,6 @@ def test_planned_event_recurrence_until_accepts_utc_z_suffix() -> None:
 
 
 def test_planned_event_rrule_preserves_advanced_recurrence_details() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.response_schemas.planned_events import PlannedEventResponse
     from lifeos_web.routers.planned_events import _create_input, _planned_event_payload
     from lifeos_web.schemas import PlannedEventCreate
@@ -838,7 +825,6 @@ def test_planned_event_rrule_preserves_advanced_recurrence_details() -> None:
 
 
 def test_planned_event_create_ignores_rrule_when_not_recurring() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.routers.planned_events import _create_input
     from lifeos_web.schemas import PlannedEventCreate
 
@@ -856,7 +842,6 @@ def test_planned_event_create_ignores_rrule_when_not_recurring() -> None:
 
 
 def test_web_app_registers_core_resource_routes() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.app import app
 
     route_paths: set[str] = set()
@@ -891,8 +876,6 @@ def test_web_app_registers_core_resource_routes() -> None:
 def test_web_tasks_list_uses_count_for_pagination_and_query(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tasks as task_router
 
     captured: dict[str, object] = {}
@@ -980,8 +963,6 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
 def test_web_tasks_reorder_route_precedes_task_id_route(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tasks as task_router
     from lifeos_web.schemas import TaskReorderItem, TaskReorderRequest
 
@@ -1018,8 +999,6 @@ def test_web_tasks_reorder_route_precedes_task_id_route(
 
 
 def test_web_static_assets_disable_cache(tmp_path: Path) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.app import SPAStaticFiles
 
     static_dir = tmp_path / "static"
@@ -1052,7 +1031,6 @@ def test_web_static_assets_disable_cache(tmp_path: Path) -> None:
 
 
 def test_web_server_preflights_configured_database_driver(monkeypatch: pytest.MonkeyPatch) -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web import server
 
     checked_urls: list[str] = []
@@ -1075,8 +1053,6 @@ def test_web_server_preflights_configured_database_driver(monkeypatch: pytest.Mo
 def test_web_timelog_without_area_filter_maps_to_lifeos_without_area(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import timelogs
 
     captured: dict[str, TimelogListInput | TimelogQueryFilters] = {}
@@ -1121,8 +1097,6 @@ def test_web_timelog_without_area_filter_maps_to_lifeos_without_area(
 def test_web_timelog_template_list_maps_pagination_and_order(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import timelog_templates
 
     captured: dict[str, object] = {}
@@ -1165,8 +1139,6 @@ def test_web_timelog_template_list_maps_pagination_and_order(
 
 
 def test_web_timelog_template_payload_excludes_unconsumed_audit_fields() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.response_schemas.timelogs import TimelogTemplateResponse
     from lifeos_web.routers.timelog_templates import _template_payload
 
@@ -1213,8 +1185,6 @@ def test_web_timelog_template_payload_excludes_unconsumed_audit_fields() -> None
 def test_web_timelog_template_update_preserves_explicit_nulls(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import timelog_templates
     from lifeos_web.schemas import TimelogTemplateUpdate
 
@@ -1281,8 +1251,6 @@ def test_web_timelog_template_update_preserves_explicit_nulls(
 def test_web_timelog_without_task_filter_maps_to_lifeos_without_task(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import timelogs
 
     captured: dict[str, TimelogListInput | TimelogQueryFilters] = {}
@@ -1327,8 +1295,6 @@ def test_web_timelog_without_task_filter_maps_to_lifeos_without_task(
 def test_web_timelog_window_filters_map_to_lifeos_window_filters(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import timelogs
 
     captured: dict[str, TimelogListInput | TimelogQueryFilters] = {}
@@ -1380,8 +1346,6 @@ def test_web_timelog_window_filters_map_to_lifeos_window_filters(
 
 
 def test_web_timelog_rejects_mixed_date_and_window_filters() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import timelogs
 
     with pytest.raises(Exception) as exc_info:
@@ -1401,8 +1365,6 @@ def test_web_timelog_rejects_mixed_date_and_window_filters() -> None:
 
 
 def test_web_timelog_rejects_task_id_with_without_task() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import timelogs
 
     with pytest.raises(Exception) as exc_info:
@@ -1419,8 +1381,6 @@ def test_web_timelog_rejects_task_id_with_without_task() -> None:
 
 
 def test_web_timelog_rejects_with_task_with_other_task_filters() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import timelogs
 
     with pytest.raises(Exception) as exc_info:
@@ -1439,8 +1399,6 @@ def test_web_timelog_rejects_with_task_with_other_task_filters() -> None:
 
 
 def test_web_timelog_rejects_partial_date_filter() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import timelogs
 
     with pytest.raises(Exception) as exc_info:
@@ -1458,8 +1416,6 @@ def test_web_timelog_rejects_partial_date_filter() -> None:
 
 
 def test_web_timelog_latest_end_time_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import timelogs
 
     async def fake_get_latest_timelog_end_time(_session: object) -> datetime | None:
@@ -1477,8 +1433,6 @@ def test_web_timelog_latest_end_time_endpoint(monkeypatch: pytest.MonkeyPatch) -
 
 
 def test_web_timelog_payload_exposes_linked_task_summary() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.response_schemas.timelogs import TimelogResponse
     from lifeos_web.routers.timelogs import _timelog_payload
 
@@ -1521,8 +1475,6 @@ def test_web_timelog_payload_exposes_linked_task_summary() -> None:
 
 
 def test_web_timelog_payload_serializes_naive_storage_datetimes_as_utc() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers.timelogs import _timelog_payload
 
     payload = _timelog_payload(
@@ -1551,8 +1503,6 @@ def test_web_timelog_payload_serializes_naive_storage_datetimes_as_utc() -> None
 
 
 def test_web_task_summary_payload_maps_tooltip_enrichment_fields() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.response_schemas.common import TaskSummaryResponse
     from lifeos_web.serialization import task_summary_payload
 
@@ -1601,8 +1551,6 @@ def test_web_task_summary_payload_maps_tooltip_enrichment_fields() -> None:
 
 
 def test_web_task_summary_payload_omits_missing_enrichment_fields() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.serialization import task_summary_payload
 
     payload = task_summary_payload(
@@ -1631,8 +1579,6 @@ def test_web_task_summary_payload_omits_missing_enrichment_fields() -> None:
 
 
 def test_web_timelog_payload_includes_tooltip_task_summary_fields() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.response_schemas.timelogs import TimelogResponse
     from lifeos_web.routers.timelogs import _timelog_payload
 
@@ -1683,8 +1629,6 @@ def test_web_timelog_payload_includes_tooltip_task_summary_fields() -> None:
 def test_web_person_note_activity_payload_avoids_duplicate_note_content(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_cli.db.services import person_activity_queries
 
     note_id = UUID("11111111-1111-1111-1111-111111111111")
@@ -1751,8 +1695,6 @@ def test_web_person_note_activity_payload_avoids_duplicate_note_content(
 def test_web_task_update_null_planning_cycle_translates_to_clear_flag(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tasks
     from lifeos_web.schemas import TaskUpdate
 
@@ -1785,8 +1727,6 @@ def test_web_task_update_null_planning_cycle_translates_to_clear_flag(
 def test_web_task_update_null_parent_and_estimated_effort_translate_to_clear_flags(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tasks
     from lifeos_web.schemas import TaskUpdate
 
@@ -1813,8 +1753,6 @@ def test_web_task_update_null_parent_and_estimated_effort_translate_to_clear_fla
 def test_web_vision_update_null_description_and_experience_clear_flags(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import visions
     from lifeos_web.schemas import VisionUpdate
 
@@ -1854,8 +1792,6 @@ def test_web_vision_update_null_description_and_experience_clear_flags(
 
 
 def test_web_vision_recompute_efforts_calls_service(monkeypatch: pytest.MonkeyPatch) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_cli.db.services.visions import VisionEffortRecomputeResult
     from lifeos_web.routers import visions
 
@@ -1891,8 +1827,6 @@ def test_web_vision_recompute_efforts_calls_service(monkeypatch: pytest.MonkeyPa
 
 
 def test_web_vision_sync_experience_calls_service(monkeypatch: pytest.MonkeyPatch) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import visions
 
     vision_id = UUID("55555555-5555-5555-5555-555555555555")
@@ -1937,8 +1871,6 @@ def test_web_vision_sync_experience_calls_service(monkeypatch: pytest.MonkeyPatc
 def test_web_vision_update_area_id_passes_through(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import visions
     from lifeos_web.schemas import VisionUpdate
 
@@ -1985,8 +1917,6 @@ def test_web_vision_update_area_id_passes_through(
 def test_web_habit_update_null_fields_translate_to_clear_flags(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import habits
     from lifeos_web.schemas import HabitUpdate
 
@@ -2024,8 +1954,6 @@ def test_web_habit_update_null_fields_translate_to_clear_flags(
 def test_web_habit_create_passes_repeat_count_and_cadence_fields(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import habits
     from lifeos_web.schemas import HabitCreate
 
@@ -2067,8 +1995,6 @@ def test_web_habit_create_passes_repeat_count_and_cadence_fields(
 def test_web_habit_update_passes_end_date(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import habits
     from lifeos_web.schemas import HabitUpdate
 
@@ -2101,8 +2027,6 @@ def test_web_habit_update_passes_end_date(
 def test_web_habit_actions_by_date_uses_lifecycle_aware_action_query(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import habits
 
     captured: dict[str, object] = {}
@@ -2132,8 +2056,6 @@ def test_web_habit_actions_by_date_uses_lifecycle_aware_action_query(
 def test_web_habit_actions_range_passes_reference_date(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import habits
 
     captured_expire: dict[str, object] = {}
@@ -2196,8 +2118,6 @@ def test_web_habit_actions_range_passes_reference_date(
 def test_web_habit_actions_for_habit_uses_center_window(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import habits
 
     captured: dict[str, object] = {}
@@ -2241,8 +2161,6 @@ def test_web_habit_actions_for_habit_uses_center_window(
 def test_web_habit_action_update_null_notes_maps_to_clear_notes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import habits
     from lifeos_web.schemas import HabitActionUpdate
 
@@ -2278,8 +2196,6 @@ def test_web_habit_action_update_null_notes_maps_to_clear_notes(
 def test_web_habit_action_by_date_update_null_notes_maps_to_clear_notes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import habits
     from lifeos_web.schemas import HabitActionUpdate
 
@@ -2320,8 +2236,6 @@ def test_web_habit_action_by_date_update_null_notes_maps_to_clear_notes(
 def test_web_timelog_update_null_fields_translate_to_clear_flags(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_cli.db.services.timelog_support import TimelogUpdateInput
     from lifeos_web.routers import timelogs
     from lifeos_web.schemas import TimelogUpdate
@@ -2382,8 +2296,6 @@ def test_web_timelog_update_null_fields_translate_to_clear_flags(
 def test_web_timelog_batch_task_replace_maps_to_lifeos_task_update(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import timelogs
     from lifeos_web.schemas import TimelogBatchTaskUpdate, TimelogBatchUpdate
 
@@ -2432,8 +2344,6 @@ def test_web_timelog_batch_task_replace_maps_to_lifeos_task_update(
 def test_web_tag_create_maps_to_lifeos_tag_service(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tags
     from lifeos_web.schemas import TagCreate
 
@@ -2477,8 +2387,6 @@ def test_web_tag_create_maps_to_lifeos_tag_service(
 def test_web_tag_list_selector_payload_excludes_unconsumed_fields(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tags
 
     tag = TagView(
@@ -2529,8 +2437,6 @@ def test_web_tag_list_selector_payload_excludes_unconsumed_fields(
 def test_web_tag_categories_include_builtin_and_existing_categories(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tags
 
     async def fake_list_tag_categories(
@@ -2560,8 +2466,6 @@ def test_web_tag_categories_include_builtin_and_existing_categories(
 
 
 def test_web_tag_category_create_returns_normalized_option() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tags
     from lifeos_web.schemas import TagCategoryCreate
 
@@ -2582,8 +2486,6 @@ def test_web_tag_category_create_returns_normalized_option() -> None:
 def test_web_tag_category_rename_maps_to_lifeos_tag_service(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tags
     from lifeos_web.schemas import TagCategoryUpdate
 
@@ -2616,8 +2518,6 @@ def test_web_tag_category_rename_maps_to_lifeos_tag_service(
 def test_web_tag_bulk_category_update_returns_updated_tags(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tags
     from lifeos_web.schemas import TagBulkCategoryUpdate
 
@@ -2668,8 +2568,6 @@ def test_web_tag_bulk_category_update_returns_updated_tags(
 def test_web_tag_usage_endpoint_returns_tagged_record_count(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import tags
 
     tag_id = UUID("11111111-1111-1111-1111-111111111111")
@@ -2712,8 +2610,6 @@ def test_web_tag_usage_endpoint_returns_tagged_record_count(
 def test_web_stats_tag_usage_endpoint_returns_counts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import stats
 
     tag_id = UUID("11111111-1111-1111-1111-111111111111")
@@ -2746,8 +2642,6 @@ def test_web_stats_tag_usage_endpoint_returns_counts(
 def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import stats
 
     area_id = UUID("11111111-1111-1111-1111-111111111111")
@@ -2827,8 +2721,6 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
 def test_web_stats_calendar_context_comes_from_backend_preferences(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import stats
 
     async def fake_get_range(
@@ -2872,8 +2764,6 @@ def test_web_stats_calendar_context_comes_from_backend_preferences(
 def test_web_note_person_usage_stats_endpoint_returns_counts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_cli.db.services.notes import NotePersonUsage
     from lifeos_web.routers import notes
 
@@ -2913,8 +2803,6 @@ def test_web_note_person_usage_stats_endpoint_returns_counts(
 def test_web_note_create_maps_selector_associations_to_lifeos_note_service(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import notes
     from lifeos_web.schemas import NoteCreate
 
@@ -2969,8 +2857,6 @@ def test_web_note_create_maps_selector_associations_to_lifeos_note_service(
 
 
 def test_web_note_payload_exposes_primary_task_for_notes_page() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers.notes import _note_payload
 
     task = TaskSummaryView(
@@ -3056,8 +2942,6 @@ def test_web_note_payload_exposes_primary_task_for_notes_page() -> None:
 
 
 def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.response_schemas.notes import NoteResponse
     from lifeos_web.routers.notes import _note_payload
 
@@ -3109,8 +2993,6 @@ def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
 
 
 def test_web_note_payload_uses_null_primary_task_without_association() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers.notes import _note_payload
 
     note = NoteView(
@@ -3134,8 +3016,6 @@ def test_web_timezone_preference_persists_to_cli_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers.preferences import PreferenceUpdate, get_preference, set_preference
 
     config_path = install_test_config(
@@ -3169,8 +3049,6 @@ def test_web_timezone_preference_converges_env_override_to_cli_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_cli.db import session as db_session
     from lifeos_web.routers.preferences import get_preference
 
@@ -3194,8 +3072,6 @@ def test_web_timezone_preference_updates_process_env_override(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers.preferences import PreferenceUpdate, get_preference, set_preference
 
     config_path = install_test_config(
@@ -3225,8 +3101,6 @@ def test_web_vision_experience_preference_persists_to_cli_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers import preferences as preferences_router
     from lifeos_web.routers.preferences import PreferenceUpdate, get_preference, set_preference
 
@@ -3266,8 +3140,6 @@ def test_web_theme_preference_persists_to_cli_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_cli.db import session as db_session
     from lifeos_web.routers.preferences import PreferenceUpdate, get_preference, set_preference
 
@@ -3298,8 +3170,6 @@ def test_web_language_preference_persists_to_cli_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers.preferences import PreferenceUpdate, get_preference, set_preference
 
     config_path = install_test_config(
@@ -3329,8 +3199,6 @@ def test_web_visible_modules_preference_persists_to_cli_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers.preferences import PreferenceUpdate, get_preference, set_preference
 
     config_path = install_test_config(
@@ -3359,8 +3227,6 @@ def test_web_calendar_preferences_persist_to_cli_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers.preferences import PreferenceUpdate, get_preference, set_preference
 
     config_path = install_test_config(
@@ -3406,8 +3272,6 @@ def test_web_note_collapse_preference_persists_to_cli_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers.preferences import PreferenceUpdate, get_preference, set_preference
 
     config_path = install_test_config(
@@ -3434,8 +3298,6 @@ def test_web_default_inbox_vision_preference_persists_to_cli_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_web.routers.preferences import PreferenceUpdate, get_preference, set_preference
 
     config_path = install_test_config(

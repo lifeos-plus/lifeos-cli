@@ -216,8 +216,6 @@ def test_habit_action_notes_are_stored_as_linked_notes() -> None:
 
 
 def test_task_relation_counts_exclude_soft_deleted_records() -> None:
-    pytest.importorskip("fastapi")
-
     from lifeos_cli.db.services.task_queries import load_task_relation_counts
 
     async def run() -> None:

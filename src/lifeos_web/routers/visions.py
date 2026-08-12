@@ -18,6 +18,7 @@ from lifeos_web.response_schemas.visions import (
     VisionStatsResponse,
     VisionWithTasksResponse,
 )
+from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import ListResponse, Pagination, VisionCreate, VisionUpdate
 from lifeos_web.serialization import task_summary_payload, to_jsonable, to_jsonable_dict
 
@@ -143,15 +144,9 @@ async def update_vision(
 
 
 @router.delete("/{vision_id}", status_code=204)
-async def delete_vision(
-    vision_id: UUID,
-    session: SessionDep,
-) -> None:
+async def delete_vision(vision_id: UUID, session: SessionDep) -> None:
     """Soft-delete a vision."""
-    try:
-        await vision_services.delete_vision(session, vision_id=vision_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await soft_delete(vision_services.delete_vision, session=session, vision_id=vision_id)
 
 
 @router.get("/{vision_id}/with-tasks", response_model=VisionResponse)

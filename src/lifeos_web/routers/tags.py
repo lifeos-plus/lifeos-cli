@@ -20,6 +20,7 @@ from lifeos_web.response_schemas.tags import (
     TagSelectorResponse,
     TagUsageResponse,
 )
+from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import (
     ListResponse,
     Pagination,
@@ -273,7 +274,4 @@ async def update_tag(
 @router.delete("/{tag_id}", status_code=204)
 async def delete_tag(tag_id: UUID, session: SessionDep) -> None:
     """Soft-delete a LifeOS tag."""
-    try:
-        await tag_services.delete_tag(session, tag_id=tag_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await soft_delete(tag_services.delete_tag, session=session, tag_id=tag_id)

@@ -22,8 +22,6 @@ from lifeos_cli.config import clear_config_cache
 from lifeos_cli.db import session as db_session
 from tests.config_support import write_test_config
 
-pytest.importorskip("fastapi")
-
 
 @pytest.fixture
 def http_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
