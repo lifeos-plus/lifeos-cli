@@ -14,6 +14,8 @@ from lifeos_cli.db import maintenance
 _PERSON_ID = "11111111-1111-1111-1111-111111111111"
 _TASK_ID = "22222222-2222-2222-2222-222222222222"
 _NOTE_ID = "33333333-3333-3333-3333-333333333333"
+_AREA_ENTITY_ID = "55555555-5555-5555-5555-555555555555"
+_ARCHIVE_TABLE = "person_associations_legacy_20260812"
 _PREVIOUS_REVISION = "20260704_1500"
 _MIGRATION_REVISION = "20260812_1200"
 _TIMESTAMP = "2026-08-12 00:00:00+00:00"
@@ -21,9 +23,7 @@ _TIMESTAMP = "2026-08-12 00:00:00+00:00"
 
 def _table_names(database_path: Path) -> set[str]:
     with sqlite3.connect(database_path) as connection:
-        rows = connection.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
+        rows = connection.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
     return {row[0] for row in rows}
 
 
@@ -42,14 +42,16 @@ def _association_rows(
 
 def _person_association_rows(
     database_path: Path,
+    table_name: str,
 ) -> list[tuple[str, UUID, UUID]]:
     with sqlite3.connect(database_path) as connection:
-        return [
+        rows = [
             (entity_type, UUID(entity_id), UUID(person_id))
             for entity_type, entity_id, person_id in connection.execute(
-                "SELECT entity_type, entity_id, person_id FROM person_associations"
+                f"SELECT entity_type, entity_id, person_id FROM {table_name} ORDER BY entity_type"
             ).fetchall()
         ]
+    return rows
 
 
 def test_person_links_migration_roundtrip(tmp_path: Path) -> None:
@@ -65,14 +67,18 @@ def test_person_links_migration_roundtrip(tmp_path: Path) -> None:
 
         with sqlite3.connect(database_path) as connection:
             connection.execute(
-                "INSERT INTO people (id, name, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?)",
+                "INSERT INTO people (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
                 (_PERSON_ID.replace("-", ""), "Alice", _TIMESTAMP, _TIMESTAMP),
             )
             connection.execute(
                 "INSERT INTO person_associations (entity_type, entity_id, person_id) "
                 "VALUES ('task', ?, ?)",
-                (_TASK_ID, _PERSON_ID),
+                (_TASK_ID.replace("-", ""), _PERSON_ID.replace("-", "")),
+            )
+            connection.execute(
+                "INSERT INTO person_associations (entity_type, entity_id, person_id) "
+                "VALUES ('area', ?, ?)",
+                (_AREA_ENTITY_ID.replace("-", ""), _PERSON_ID.replace("-", "")),
             )
             connection.execute(
                 "INSERT INTO associations "
@@ -81,8 +87,8 @@ def test_person_links_migration_roundtrip(tmp_path: Path) -> None:
                 "VALUES (?, 'note', ?, 'person', ?, 'is_about', ?, ?)",
                 (
                     "44444444-4444-4444-4444-444444444444",
-                    _NOTE_ID,
-                    _PERSON_ID,
+                    _NOTE_ID.replace("-", ""),
+                    _PERSON_ID.replace("-", ""),
                     _TIMESTAMP,
                     _TIMESTAMP,
                 ),
@@ -91,6 +97,11 @@ def test_person_links_migration_roundtrip(tmp_path: Path) -> None:
         command.upgrade(alembic_config, _MIGRATION_REVISION)
 
         assert "person_associations" not in _table_names(database_path)
+        assert _ARCHIVE_TABLE in _table_names(database_path)
+        assert _person_association_rows(database_path, _ARCHIVE_TABLE) == [
+            ("area", UUID(_AREA_ENTITY_ID), UUID(_PERSON_ID)),
+            ("task", UUID(_TASK_ID), UUID(_PERSON_ID)),
+        ]
         association_rows = _association_rows(database_path)
         assert (
             "note",
@@ -106,12 +117,20 @@ def test_person_links_migration_roundtrip(tmp_path: Path) -> None:
             UUID(_PERSON_ID),
             "is_about",
         ) in association_rows
+        assert (
+            "area",
+            UUID(_AREA_ENTITY_ID),
+            "person",
+            UUID(_PERSON_ID),
+            "is_about",
+        ) not in association_rows
 
         command.downgrade(alembic_config, _PREVIOUS_REVISION)
 
-        assert "person_associations" in _table_names(database_path)
-        assert _person_association_rows(database_path) == [
-            ("task", UUID(_TASK_ID), UUID(_PERSON_ID))
+        assert _ARCHIVE_TABLE not in _table_names(database_path)
+        assert _person_association_rows(database_path, "person_associations") == [
+            ("area", UUID(_AREA_ENTITY_ID), UUID(_PERSON_ID)),
+            ("task", UUID(_TASK_ID), UUID(_PERSON_ID)),
         ]
         association_rows = _association_rows(database_path)
         assert (

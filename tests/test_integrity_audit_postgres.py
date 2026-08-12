@@ -54,9 +54,7 @@ def test_postgres_audit_detects_and_repairs_dangling_links(
             await session.commit()
 
             report = await audit_referential_integrity(session)
-            assert {"missing_source", "missing_target"} <= {
-                issue.kind for issue in report.issues
-            }
+            assert {"missing_source", "missing_target"} <= {issue.kind for issue in report.issues}
 
             repaired = await audit_referential_integrity(session, repair=True)
             assert repaired.repaired_count == 1

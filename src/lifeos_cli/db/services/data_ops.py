@@ -35,7 +35,6 @@ from lifeos_cli.db.models import (
     Vision,
 )
 from lifeos_cli.db.models.association import (
-    PERSON_LINK_TYPE,
     PERSON_TARGET_MODEL,
 )
 from lifeos_cli.db.models.tag_association import tag_associations
@@ -492,7 +491,6 @@ async def export_resource_snapshot(
             source_model=spec.person_entity_type,
             source_ids=entity_ids,
             target_model=PERSON_TARGET_MODEL,
-            link_type=PERSON_LINK_TYPE,
         )
         if spec.person_entity_type
         else {}
@@ -541,7 +539,6 @@ async def export_resource_snapshot(
             source_model="note",
             source_ids=entity_ids,
             target_model="person",
-            link_type="is_about",
         )
         if resource == "note"
         else {}

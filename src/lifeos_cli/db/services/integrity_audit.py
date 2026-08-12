@@ -116,9 +116,7 @@ async def audit_associations(
                 IntegrityIssue(
                     table="associations",
                     kind="invalid_source_type",
-                    message=(
-                        f"Unsupported source model {source_model!r} in associations"
-                    ),
+                    message=(f"Unsupported source model {source_model!r} in associations"),
                     entity_type=source_model,
                     entity_id=source_id,
                     related_type=target_model,
@@ -131,9 +129,7 @@ async def audit_associations(
                 IntegrityIssue(
                     table="associations",
                     kind="invalid_target_type",
-                    message=(
-                        f"Unsupported target model {target_model!r} in associations"
-                    ),
+                    message=(f"Unsupported target model {target_model!r} in associations"),
                     entity_type=source_model,
                     entity_id=source_id,
                     related_type=target_model,
@@ -275,8 +271,7 @@ async def audit_tag_associations(
                         table="tag_associations",
                         kind="missing_entity",
                         message=(
-                            f"Entity {entity_type}:{entity_id} does not exist "
-                            "in tag_associations"
+                            f"Entity {entity_type}:{entity_id} does not exist in tag_associations"
                         ),
                         entity_type=entity_type,
                         entity_id=entity_id,
@@ -291,8 +286,7 @@ async def audit_tag_associations(
                         table="tag_associations",
                         kind="soft_deleted_entity",
                         message=(
-                            f"Entity {entity_type}:{entity_id} is soft-deleted "
-                            "in tag_associations"
+                            f"Entity {entity_type}:{entity_id} is soft-deleted in tag_associations"
                         ),
                         entity_type=entity_type,
                         entity_id=entity_id,

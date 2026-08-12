@@ -186,6 +186,73 @@ def test_sync_entity_people_replaces_links() -> None:
     asyncio.run(scenario())
 
 
+def test_sync_entity_people_replaces_person_links_across_link_types() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                person = Person(name="Alice")
+                note = Note(content="Canonical replacement")
+                session.add_all([person, note])
+                await session.flush()
+                await entity_associations.set_association_links(
+                    session,
+                    source_model="note",
+                    source_id=note.id,
+                    target_model="person",
+                    target_ids=[person.id],
+                    link_type="relates_to",
+                )
+                await session.flush()
+
+                await entity_people.sync_entity_people(
+                    session,
+                    entity_id=note.id,
+                    entity_type="note",
+                    desired_person_ids=[person.id],
+                )
+                await session.flush()
+
+                links = list((await session.execute(select(Association))).scalars())
+                assert len(links) == 1
+                assert links[0].link_type == PERSON_LINK_TYPE
+                people = await entity_people.load_people_for_entities(
+                    session,
+                    entity_ids=[note.id],
+                    entity_type="note",
+                )
+                assert people == {note.id: [person]}
+
+    asyncio.run(scenario())
+
+
+def test_load_people_for_entities_returns_person_links_with_any_link_type() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                person = Person(name="Alice")
+                note = Note(content="Non-canonical person link")
+                session.add_all([person, note])
+                await session.flush()
+                await entity_associations.set_association_links(
+                    session,
+                    source_model="note",
+                    source_id=note.id,
+                    target_model="person",
+                    target_ids=[person.id],
+                    link_type="relates_to",
+                )
+                await session.flush()
+
+                people = await entity_people.load_people_for_entities(
+                    session,
+                    entity_ids=[note.id],
+                    entity_type="note",
+                )
+                assert people == {note.id: [person]}
+
+    asyncio.run(scenario())
+
+
 def test_load_people_for_entities_hides_soft_deleted_person() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:

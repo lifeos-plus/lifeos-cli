@@ -468,7 +468,6 @@ async def _replace_batch_timelog_people(
             Association.source_model == "timelog",
             Association.source_id.in_(unique_timelog_ids),
             Association.target_model == PERSON_TARGET_MODEL,
-            Association.link_type == PERSON_LINK_TYPE,
         )
     )
     if not unique_person_ids:
@@ -577,7 +576,6 @@ async def batch_add_timelog_people(
             Association.source_model == "timelog",
             Association.source_id.in_(active_ids),
             Association.target_model == PERSON_TARGET_MODEL,
-            Association.link_type == PERSON_LINK_TYPE,
         )
     )
     existing_by_timelog: dict[UUID, set[UUID]] = {timelog_id: set() for timelog_id in active_ids}
