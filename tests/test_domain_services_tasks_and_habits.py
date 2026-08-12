@@ -9,15 +9,8 @@ from uuid import UUID
 
 import pytest
 from sqlalchemy import event, select
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
 
 from lifeos_cli.application import time_preferences
-from lifeos_cli.db.base import Base
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import (
@@ -31,23 +24,11 @@ from lifeos_cli.db.services import (
     task_support,
     tasks,
 )
-from lifeos_cli.db.session import configure_async_engine
+from tests.support import create_sqlite_session_factory, sqlite_session_factory
 
 
 async def _identity_task_view(_: object, task: object) -> object:
     return task
-
-
-async def _create_sqlite_session_factory() -> tuple[
-    AsyncEngine,
-    async_sessionmaker[AsyncSession],
-]:
-    engine = configure_async_engine(
-        create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
-    )
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-    return engine, async_sessionmaker(engine, expire_on_commit=False, future=True)
 
 
 def test_validate_planning_cycle_requires_complete_fields() -> None:
@@ -497,8 +478,7 @@ def test_update_task_can_clear_people_without_committing(
 
 def test_validate_parent_task_rejects_circular_reference() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 vision = Vision(name="Work")
                 session.add(vision)
@@ -521,16 +501,13 @@ def test_validate_parent_task_rejects_circular_reference() -> None:
                         parent_task_id=child.id,
                         child_task_id=root.id,
                     )
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
 
 def test_validate_parent_task_rejects_excessive_depth() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 vision = Vision(name="Work")
                 session.add(vision)
@@ -554,16 +531,13 @@ def test_validate_parent_task_rejects_excessive_depth() -> None:
                         parent_task_id=previous_task.id,
                         child_task_id=UUID("99999999-9999-9999-9999-999999999999"),
                     )
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
 
 def test_validate_parent_task_stops_at_deleted_ancestor() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 vision = Vision(name="Work")
                 session.add(vision)
@@ -597,15 +571,13 @@ def test_validate_parent_task_stops_at_deleted_ancestor() -> None:
 
                 assert validated is not None
                 assert validated.id == leaf.id
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
 
 def test_load_task_subtree_uses_single_query_and_preserves_bfs_order() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
+        engine, session_factory = await create_sqlite_session_factory()
         try:
             executed_statements: list[str] = []
 

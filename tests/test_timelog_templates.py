@@ -4,40 +4,17 @@ import asyncio
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
 
-from lifeos_cli.db.base import Base
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.models.person import Person
 from lifeos_cli.db.models.timelog_template import TimelogTemplate
 from lifeos_cli.db.services import timelog_templates
-from lifeos_cli.db.session import configure_async_engine
-
-
-async def _create_sqlite_session_factory() -> tuple[
-    AsyncEngine,
-    async_sessionmaker[AsyncSession],
-]:
-    from lifeos_cli.db import models as db_models
-
-    assert db_models.TimelogTemplate is TimelogTemplate
-    engine = configure_async_engine(
-        create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
-    )
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-    return engine, async_sessionmaker(engine, expire_on_commit=False, future=True)
+from tests.support import sqlite_session_factory
 
 
 def test_create_template_hydrates_area_and_people() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 area = Area(name="Work", color="#123456", display_order=1)
                 person = Person(name="Alice")
@@ -62,16 +39,13 @@ def test_create_template_hydrates_area_and_people() -> None:
                 assert [summary.name for summary in template.people] == ["Alice"]
                 assert template.default_duration_minutes == 90
                 assert template.position == 0
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
 
 def test_list_templates_does_not_hydrate_soft_deleted_area() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 area = Area(name="Archived area", color="#123456", display_order=1)
                 session.add(area)
@@ -93,16 +67,13 @@ def test_list_templates_does_not_hydrate_soft_deleted_area() -> None:
                 assert templates[0].area_id == area.id
                 assert templates[0].area_name is None
                 assert templates[0].area_color is None
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
 
 def test_create_template_rejects_duplicate_active_title() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 await timelog_templates.create_template(
                     session,
@@ -114,16 +85,13 @@ def test_create_template_rejects_duplicate_active_title() -> None:
                         session,
                         payload=timelog_templates.TimelogTemplateCreateInput(title=" focus block "),
                     )
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
 
 def test_update_template_can_clear_optional_fields() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 area = Area(name="Health", color="#00AA00", display_order=1)
                 person = Person(name="Coach")
@@ -157,16 +125,13 @@ def test_update_template_can_clear_optional_fields() -> None:
                 assert updated.person_ids == ()
                 assert updated.people == ()
                 assert updated.default_duration_minutes is None
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
 
 def test_reorder_and_bump_usage_update_templates() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 first = await timelog_templates.create_template(
                     session,
@@ -198,7 +163,5 @@ def test_reorder_and_bump_usage_update_templates() -> None:
                     ("Second", 0),
                     ("First", 2),
                 ]
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())

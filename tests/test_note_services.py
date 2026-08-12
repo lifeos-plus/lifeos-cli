@@ -10,30 +10,14 @@ from uuid import UUID
 
 import pytest
 from sqlalchemy.exc import SAWarning
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
 
-from lifeos_cli.db.base import Base
 from lifeos_cli.db.models.habit import Habit
 from lifeos_cli.db.models.habit_action import HabitAction
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import habit_actions, notes, people, tags
-
-
-async def _create_sqlite_session_factory() -> tuple[
-    AsyncEngine,
-    async_sessionmaker[AsyncSession],
-]:
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-    return engine, async_sessionmaker(engine, expire_on_commit=False, future=True)
+from tests.support import sqlite_session_factory
 
 
 def test_create_note_flushes_without_committing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -63,8 +47,7 @@ def test_create_note_flushes_without_committing(monkeypatch: pytest.MonkeyPatch)
 
 def test_list_notes_by_tag_does_not_emit_cartesian_product_warning() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tag = await tags.create_tag(
                     session,
@@ -88,16 +71,13 @@ def test_list_notes_by_tag_does_not_emit_cartesian_product_warning() -> None:
                     and "cartesian product" in str(item.message)
                     for item in caught
                 )
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_list_notes_by_task_does_not_emit_cartesian_product_warning() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 vision = Vision(name="Planning")
                 session.add(vision)
@@ -121,16 +101,13 @@ def test_list_notes_by_task_does_not_emit_cartesian_product_warning() -> None:
                     and "cartesian product" in str(item.message)
                     for item in caught
                 )
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_note_can_link_to_habit_action() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 habit = Habit(
                     title="Walk",
@@ -155,16 +132,13 @@ def test_note_can_link_to_habit_action() -> None:
                 assert [row.id for row in rows] == [created_note.id]
                 assert rows[0].habit_actions[0].id == action.id
                 assert rows[0].habit_actions[0].habit_title == "Walk"
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_habit_action_notes_are_stored_as_linked_notes() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 habit = Habit(
                     title="Walk",
@@ -209,8 +183,6 @@ def test_habit_action_notes_are_stored_as_linked_notes() -> None:
                     date_values=(date(2026, 7, 4),),
                 )
                 assert cleared_action_views[0].linked_notes_count == 0
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
@@ -219,8 +191,7 @@ def test_task_relation_counts_exclude_soft_deleted_records() -> None:
     from lifeos_cli.db.services.task_queries import load_task_relation_counts
 
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 vision = Vision(name="Planning")
                 session.add(vision)
@@ -269,16 +240,13 @@ def test_task_relation_counts_exclude_soft_deleted_records() -> None:
 
                 assert note_counts == {task.id: 1}
                 assert timelog_counts == {task.id: 1}
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_count_note_usage_by_person_counts_active_notes() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 person = await people.create_person(session, name="Alice")
                 active_note = await notes.create_note(
@@ -299,8 +267,6 @@ def test_count_note_usage_by_person_counts_active_notes() -> None:
                 assert [(row.id, row.name, row.display_name, row.usage_count) for row in stats] == [
                     (person.id, "Alice", "Alice", 1),
                 ]
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 

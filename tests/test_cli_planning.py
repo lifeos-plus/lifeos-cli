@@ -7,16 +7,19 @@ from typing import cast
 from uuid import UUID
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli import cli
 from lifeos_cli.cli_support.resources.planning import handlers as planning_handlers
 from lifeos_cli.db import session as db_session
-from lifeos_cli.db.base import Base
 from lifeos_cli.db.models import Task, Vision
 from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services import tasks as task_services
-from tests.support import make_session_scope, utc_datetime
+from tests.support import (
+    make_session_scope,
+    sqlite_session_factory,
+    utc_datetime,
+)
 
 VISION_ONE = UUID("11111111-1111-1111-1111-111111111111")
 VISION_TWO = UUID("22222222-2222-2222-2222-222222222222")
@@ -96,15 +99,9 @@ async def _seed_planning_window(session: AsyncSession) -> UUID:
 async def _run_with_session(
     scenario,
 ) -> object:
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    try:
-        async with engine.begin() as connection:
-            await connection.run_sync(Base.metadata.create_all)
-        session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with sqlite_session_factory() as session_factory:
         async with session_factory() as session:
             return await scenario(session)
-    finally:
-        await engine.dispose()
 
 
 def test_get_planning_view_assembles_window_forest_with_context(
