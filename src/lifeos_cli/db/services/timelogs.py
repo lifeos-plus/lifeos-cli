@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import date, datetime
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, delete, func, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -15,9 +15,14 @@ from lifeos_cli.application.time_preferences import (
     get_utc_window_for_local_date_range,
     to_storage_timezone,
 )
+from lifeos_cli.db.base import utc_now
 from lifeos_cli.db.models.area import Area
+from lifeos_cli.db.models.association import (
+    PERSON_LINK_TYPE,
+    PERSON_TARGET_MODEL,
+    Association,
+)
 from lifeos_cli.db.models.person import Person
-from lifeos_cli.db.models.person_association import person_associations
 from lifeos_cli.db.models.tag import Tag
 from lifeos_cli.db.models.tag_association import tag_associations
 from lifeos_cli.db.models.task import Task
@@ -459,20 +464,28 @@ async def _replace_batch_timelog_people(
     if not unique_timelog_ids:
         return
     await session.execute(
-        delete(person_associations).where(
-            person_associations.c.entity_id.in_(unique_timelog_ids),
-            person_associations.c.entity_type == "timelog",
+        delete(Association).where(
+            Association.source_model == "timelog",
+            Association.source_id.in_(unique_timelog_ids),
+            Association.target_model == PERSON_TARGET_MODEL,
+            Association.link_type == PERSON_LINK_TYPE,
         )
     )
     if not unique_person_ids:
         return
+    now = utc_now()
     await session.execute(
-        person_associations.insert(),
+        insert(Association),
         [
             {
-                "entity_id": timelog_id,
-                "entity_type": "timelog",
-                "person_id": person_id,
+                "id": uuid4(),
+                "source_model": "timelog",
+                "source_id": timelog_id,
+                "target_model": PERSON_TARGET_MODEL,
+                "target_id": person_id,
+                "link_type": PERSON_LINK_TYPE,
+                "created_at": now,
+                "updated_at": now,
             }
             for timelog_id in unique_timelog_ids
             for person_id in unique_person_ids
@@ -560,16 +573,18 @@ async def batch_add_timelog_people(
         )
 
     rows = await session.execute(
-        select(person_associations.c.entity_id, person_associations.c.person_id).where(
-            person_associations.c.entity_type == "timelog",
-            person_associations.c.entity_id.in_(active_ids),
+        select(Association.source_id, Association.target_id).where(
+            Association.source_model == "timelog",
+            Association.source_id.in_(active_ids),
+            Association.target_model == PERSON_TARGET_MODEL,
+            Association.link_type == PERSON_LINK_TYPE,
         )
     )
     existing_by_timelog: dict[UUID, set[UUID]] = {timelog_id: set() for timelog_id in active_ids}
     for timelog_id, person_id in rows.all():
         existing_by_timelog.setdefault(timelog_id, set()).add(person_id)
 
-    insert_rows: list[dict[str, UUID | str]] = []
+    insert_rows: list[tuple[UUID, UUID]] = []
     updated_ids: list[UUID] = []
     unchanged_ids: list[UUID] = []
     for timelog_id in active_ids:
@@ -581,17 +596,26 @@ async def batch_add_timelog_people(
             unchanged_ids.append(timelog_id)
             continue
         updated_ids.append(timelog_id)
-        insert_rows.extend(
-            {
-                "entity_id": timelog_id,
-                "entity_type": "timelog",
-                "person_id": person_id,
-            }
-            for person_id in missing_person_ids
-        )
+        insert_rows.extend((timelog_id, person_id) for person_id in missing_person_ids)
 
     if insert_rows:
-        await session.execute(person_associations.insert(), insert_rows)
+        now = utc_now()
+        await session.execute(
+            insert(Association),
+            [
+                {
+                    "id": uuid4(),
+                    "source_model": "timelog",
+                    "source_id": timelog_id,
+                    "target_model": PERSON_TARGET_MODEL,
+                    "target_id": person_id,
+                    "link_type": PERSON_LINK_TYPE,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                for timelog_id, person_id in insert_rows
+            ],
+        )
         await session.flush()
 
     return TimelogBatchUpdateResult(
@@ -660,10 +684,11 @@ def _apply_timelog_area_task_filters(stmt: Any, *, filters: TimelogQueryFilters)
 def _apply_timelog_association_filters(stmt: Any, *, filters: TimelogQueryFilters) -> Any:
     if filters.person_id is not None:
         stmt = stmt.join(
-            person_associations,
-            (person_associations.c.entity_id == Timelog.id)
-            & (person_associations.c.entity_type == "timelog"),
-        ).where(person_associations.c.person_id == filters.person_id)
+            Association,
+            (Association.source_model == "timelog")
+            & (Association.source_id == Timelog.id)
+            & (Association.target_model == "person"),
+        ).where(Association.target_id == filters.person_id)
     if filters.tag_id is not None:
         stmt = stmt.join(
             tag_associations,

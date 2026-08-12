@@ -47,11 +47,18 @@ Core entities (see `src/lifeos_cli/db/models`):
 
 Generic weak associations connect entities across domain boundaries:
 
-- `Association` — polymorphic `source_model/source_id -> target_model/target_id`.
-- `PersonAssociation` — `entity_type/entity_id -> person_id`.
+- `Association` — polymorphic `source_model/source_id -> target_model/target_id`;
+  entity-to-person links use `target_model='person'` with the canonical
+  `link_type='is_about'`.
 - `TagAssociation` — `entity_type/entity_id -> tag_id`.
 
 These associations cannot use ordinary foreign keys for the polymorphic side; referential-integrity guarantees are enforced by services and integrity audit tools rather than the database alone.
+
+`db/services/integrity_audit.py` provides a read-only audit across both
+association tables and an explicit repair mode that only removes hard-dangling
+rows. Entity type allowlists for `associations` are defined once in
+`db/models/association.py` and drive the ORM check constraints, service
+validators, and data import/export adapters.
 
 ## 4. Configuration, Transactions, and Soft Deletes
 

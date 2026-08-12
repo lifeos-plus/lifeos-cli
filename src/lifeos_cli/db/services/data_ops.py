@@ -34,7 +34,10 @@ from lifeos_cli.db.models import (
     Timelog,
     Vision,
 )
-from lifeos_cli.db.models.person_association import person_associations
+from lifeos_cli.db.models.association import (
+    PERSON_LINK_TYPE,
+    PERSON_TARGET_MODEL,
+)
 from lifeos_cli.db.models.tag_association import tag_associations
 from lifeos_cli.db.services import (
     areas,
@@ -484,12 +487,12 @@ async def export_resource_snapshot(
         else {}
     )
     person_map = (
-        await _load_related_ids_for_entities(
+        await get_target_ids_for_sources(
             session,
-            association_table=person_associations,
-            related_id_column=person_associations.c.person_id,
-            entity_type=spec.person_entity_type,
-            entity_ids=entity_ids,
+            source_model=spec.person_entity_type,
+            source_ids=entity_ids,
+            target_model=PERSON_TARGET_MODEL,
+            link_type=PERSON_LINK_TYPE,
         )
         if spec.person_entity_type
         else {}
