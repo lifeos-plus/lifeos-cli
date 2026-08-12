@@ -5,16 +5,9 @@ from __future__ import annotations
 import asyncio
 
 import pytest
+from fastapi import HTTPException
 
-try:
-    from fastapi import HTTPException
-
-    from lifeos_web.router_utils import page_envelope, soft_delete
-except ImportError:
-    pytest.skip(
-        "fastapi is not installed; install the web extra to run these tests",
-        allow_module_level=True,
-    )
+from lifeos_web.router_utils import page_envelope, soft_delete
 
 
 async def _raise_lookup_error() -> None:

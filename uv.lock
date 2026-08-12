@@ -569,6 +569,7 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
+    { name = "fastapi" },
     { name = "httpx" },
     { name = "mypy" },
     { name = "pip-audit" },
@@ -591,6 +592,7 @@ web = [
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21,<1.0" },
     { name = "alembic", specifier = ">=1.16,<2.0" },
+    { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.115,<1.0" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.115,<1.0" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27,<1.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.18,<3.0" },

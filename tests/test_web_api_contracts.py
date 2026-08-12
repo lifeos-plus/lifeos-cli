@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 
 def _success_responses(openapi: dict[str, Any]) -> list[tuple[str, str, str, dict[str, Any]]]:
     responses: list[tuple[str, str, str, dict[str, Any]]] = []
@@ -25,7 +23,6 @@ def _is_unconstrained_schema(schema: dict[str, Any]) -> bool:
 
 
 def test_every_web_api_operation_has_an_explicit_success_contract() -> None:
-    pytest.importorskip("fastapi")
     from fastapi.routing import APIRoute
 
     from lifeos_web.app import create_app
@@ -65,7 +62,6 @@ def test_every_web_api_operation_has_an_explicit_success_contract() -> None:
 
 
 def test_openapi_success_responses_are_concrete_and_204_responses_are_empty() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.app import create_app
 
     responses = _success_responses(create_app().openapi())
@@ -89,7 +85,6 @@ def test_openapi_success_responses_are_concrete_and_204_responses_are_empty() ->
 
 
 def test_dynamic_json_values_are_an_explicit_recursive_union() -> None:
-    pytest.importorskip("fastapi")
     from lifeos_web.app import create_app
 
     schema = create_app().openapi()["components"]["schemas"]["JsonValue"]
