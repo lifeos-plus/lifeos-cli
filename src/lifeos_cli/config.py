@@ -298,16 +298,23 @@ def validate_week_starts_on(value: str) -> str:
     return normalized
 
 
-def validate_vision_experience_rate_per_hour(value: int | str) -> int:
-    """Validate the default vision experience rate preference."""
+def _validate_int_preference(value: int | str, *, field_name: str) -> int:
+    """Validate an integer preference value, rejecting booleans and non-integers."""
     if isinstance(value, bool):
-        raise ConfigurationError("Preference `vision_experience_rate_per_hour` must be an integer.")
+        raise ConfigurationError(f"Preference `{field_name}` must be an integer.")
     try:
         normalized = int(value)
     except (TypeError, ValueError) as exc:
-        raise ConfigurationError(
-            "Preference `vision_experience_rate_per_hour` must be an integer."
-        ) from exc
+        raise ConfigurationError(f"Preference `{field_name}` must be an integer.") from exc
+    return normalized
+
+
+def validate_vision_experience_rate_per_hour(value: int | str) -> int:
+    """Validate the default vision experience rate preference."""
+    normalized = _validate_int_preference(
+        value,
+        field_name="vision_experience_rate_per_hour",
+    )
     if normalized < 1 or normalized > MAX_VISION_EXPERIENCE_RATE_PER_HOUR:
         raise ConfigurationError(
             "Preference `vision_experience_rate_per_hour` must be between "
@@ -343,14 +350,10 @@ def _parse_string_list(value: object, *, field_name: str) -> list[str]:
 
 def validate_calendar_first_day_of_week(value: int | str) -> int:
     """Validate the preferred first day used by Web calendar views."""
-    if isinstance(value, bool):
-        raise ConfigurationError("Preference `calendar_first_day_of_week` must be an integer.")
-    try:
-        normalized = int(value)
-    except (TypeError, ValueError) as exc:
-        raise ConfigurationError(
-            "Preference `calendar_first_day_of_week` must be an integer."
-        ) from exc
+    normalized = _validate_int_preference(
+        value,
+        field_name="calendar_first_day_of_week",
+    )
     if normalized < 1 or normalized > 7:
         raise ConfigurationError("Preference `calendar_first_day_of_week` must be between 1 and 7.")
     return normalized
@@ -391,14 +394,10 @@ def validate_navigation_visible_modules(value: object) -> tuple[str, ...]:
 
 def validate_notes_card_min_collapsed_lines(value: int | str) -> int:
     """Validate the Web note card collapsed preview size."""
-    if isinstance(value, bool):
-        raise ConfigurationError("Preference `notes_card_min_collapsed_lines` must be an integer.")
-    try:
-        normalized = int(value)
-    except (TypeError, ValueError) as exc:
-        raise ConfigurationError(
-            "Preference `notes_card_min_collapsed_lines` must be an integer."
-        ) from exc
+    normalized = _validate_int_preference(
+        value,
+        field_name="notes_card_min_collapsed_lines",
+    )
     if normalized not in SUPPORTED_NOTES_CARD_MIN_COLLAPSED_LINES:
         supported = ", ".join(str(item) for item in SUPPORTED_NOTES_CARD_MIN_COLLAPSED_LINES)
         raise ConfigurationError(

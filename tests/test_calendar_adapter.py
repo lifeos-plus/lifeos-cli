@@ -5,7 +5,6 @@ from datetime import date
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from lifeos_cli.application.calendar_adapter import (
     GregorianCalendarAdapter,
@@ -15,13 +14,13 @@ from lifeos_cli.application.calendar_adapter import (
     iter_calendar_periods,
 )
 from lifeos_cli.config import ConfigurationError
-from lifeos_cli.db.base import Base
 from lifeos_cli.db.models import Task, Vision
 from lifeos_cli.db.services import task_queries
 from lifeos_cli.db.services.task_queries import (
     _planning_cycle_date_filter_range,
     count_tasks,
 )
+from tests.support import sqlite_session_factory
 
 
 def test_gregorian_calendar_adapter_uses_configured_week_start() -> None:
@@ -198,11 +197,7 @@ def test_task_planning_cycle_filter_includes_overlapping_physical_windows(
     )
 
     async def scenario() -> None:
-        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-        try:
-            async with engine.begin() as connection:
-                await connection.run_sync(Base.metadata.create_all)
-            session_factory = async_sessionmaker(engine, expire_on_commit=False)
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 vision = Vision(name="Planning")
                 session.add(vision)
@@ -234,8 +229,6 @@ def test_task_planning_cycle_filter_includes_overlapping_physical_windows(
                 )
 
                 assert count == 1
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 

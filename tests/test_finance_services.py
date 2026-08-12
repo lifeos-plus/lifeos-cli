@@ -6,33 +6,16 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
 
 from lifeos_cli.config import clear_config_cache
-from lifeos_cli.db.base import Base
 from lifeos_cli.db.services import finance
 from tests.config_support import install_test_config
-
-
-async def _create_sqlite_session_factory() -> tuple[
-    AsyncEngine,
-    async_sessionmaker[AsyncSession],
-]:
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-    return engine, async_sessionmaker(engine, expire_on_commit=False, future=True)
+from tests.support import sqlite_session_factory
 
 
 def test_finance_default_tree_and_snapshot_rollups() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -75,8 +58,6 @@ def test_finance_default_tree_and_snapshot_rollups() -> None:
                 trees = await finance.list_finance_trees(session)
                 assert len(trees) == 1
                 assert trees[0].id == tree.id
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
@@ -88,8 +69,7 @@ def test_finance_services_apply_configured_timezone_to_naive_timestamps(
     install_test_config(monkeypatch=monkeypatch, tmp_path=tmp_path, include_preferences=True)
 
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -145,8 +125,6 @@ def test_finance_services_apply_configured_timezone_to_naive_timestamps(
                 assert (
                     rate_snapshot.entries[0].captured_at.isoformat() == "2026-04-10T13:30:00+00:00"
                 )
-        finally:
-            await engine.dispose()
 
     try:
         asyncio.run(run())
@@ -156,8 +134,7 @@ def test_finance_services_apply_configured_timezone_to_naive_timestamps(
 
 def test_finance_snapshot_title_can_be_created_updated_and_cleared() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -205,16 +182,13 @@ def test_finance_snapshot_title_can_be_created_updated_and_cleared() -> None:
                     update_title=True,
                 )
                 assert cleared.title is None
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_default_finance_tree_is_global() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -230,16 +204,13 @@ def test_default_finance_tree_is_global() -> None:
                     primary_currency="CNY",
                 )
                 assert same_tree.id == tree.id
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_tree_update_delete_and_report_snapshot_listing() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 first_tree = await finance.create_finance_tree(
                     session,
@@ -318,16 +289,13 @@ def test_finance_tree_update_delete_and_report_snapshot_listing() -> None:
                 )
                 await finance.delete_finance_tree(session, tree_id=disposable_tree.id)
                 assert (await finance.get_finance_tree(session, tree_id=disposable_tree.id)) is None
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_assets_include_defaults_and_custom_assets() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 assets = await finance.list_finance_assets(session)
                 assert {"USD", "USDT", "CNY", "BTC"}.issubset({asset.code for asset in assets})
@@ -364,16 +332,13 @@ def test_finance_assets_include_defaults_and_custom_assets() -> None:
                 await finance.delete_finance_asset(session, asset_id=usd.id)
                 active_assets = await finance.list_finance_assets(session)
                 assert all(asset.deleted_at is None for asset in active_assets)
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_snapshot_amount_precision_follows_asset() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -424,16 +389,13 @@ def test_finance_snapshot_amount_precision_follows_asset() -> None:
                             )
                         ],
                     )
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_snapshot_supports_multiple_assets_under_one_account() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -489,16 +451,13 @@ def test_finance_snapshot_supports_multiple_assets_under_one_account() -> None:
                 assert snapshot.summary["amounts_by_currency"]["USDT"]["net_amount"] == (
                     "50.00000000"
                 )
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_snapshot_rejects_duplicate_asset_entries_for_one_account() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -534,16 +493,13 @@ def test_finance_snapshot_rejects_duplicate_asset_entries_for_one_account() -> N
                             ),
                         ],
                     )
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_snapshot_without_rate_snapshot_keeps_native_currency_totals() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -587,16 +543,13 @@ def test_finance_snapshot_without_rate_snapshot_keeps_native_currency_totals() -
                     and entry.amount == Decimal("10.00000000")
                     for entry in snapshot.entries
                 )
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_snapshot_supports_explicit_inverse_rate_snapshot() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -643,16 +596,13 @@ def test_finance_snapshot_supports_explicit_inverse_rate_snapshot() -> None:
                 assert snapshot.net_amount == Decimal("10.00000000")
                 assert snapshot.exchange_rates is not None
                 assert snapshot.exchange_rates["rates"]["EUR"]["derived"] is True
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_snapshot_uses_chained_rates_and_follows_rate_snapshot_updates() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -796,16 +746,13 @@ def test_finance_snapshot_uses_chained_rates_and_follows_rate_snapshot_updates()
                 assert cleared.summary is not None
                 assert cleared.summary["aggregation_mode"] == "native_by_currency"
                 assert cleared.summary["amounts_by_currency"]["BTC"]["net_amount"] == "0.10000000"
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_snapshot_with_incomplete_rate_snapshot_keeps_native_totals() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -857,16 +804,13 @@ def test_finance_snapshot_with_incomplete_rate_snapshot_keeps_native_totals() ->
                 assert snapshot.summary["net_amount"] == "0E-8"
                 assert snapshot.summary["missing_rate_currencies"] == ["EUR"]
                 assert snapshot.summary["amounts_by_currency"]["EUR"]["net_amount"] == "8.00000000"
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_rate_snapshot_can_be_updated_and_deleted() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 rate_snapshot = await finance.create_finance_rate_snapshot(
                     session,
@@ -921,16 +865,13 @@ def test_finance_rate_snapshot_can_be_updated_and_deleted() -> None:
                     is None
                 )
                 assert await finance.count_finance_rate_snapshots(session) == 0
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_snapshot_rate_snapshot_can_be_cleared() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -985,16 +926,13 @@ def test_finance_snapshot_rate_snapshot_can_be_cleared() -> None:
                 assert updated.net_amount == Decimal("0E-8")
                 assert updated.summary is not None
                 assert updated.summary["amounts_by_currency"]["EUR"]["net_amount"] == "10.00000000"
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_snapshot_can_be_updated_and_deleted() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -1056,16 +994,13 @@ def test_finance_snapshot_can_be_updated_and_deleted() -> None:
 
                 assert await finance.get_finance_snapshot(session, snapshot_id=snapshot.id) is None
                 assert await finance.count_finance_snapshots(session, tree_id=tree.id) == 0
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_tree_count_respects_deleted_scope() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 await finance.ensure_default_finance_tree(
                     session,
@@ -1079,16 +1014,13 @@ def test_finance_tree_count_respects_deleted_scope() -> None:
                 custom_tree.soft_delete()
 
                 assert await finance.count_finance_trees(session) == 1
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_finance_node_delete_soft_deletes_descendants() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tree = await finance.ensure_default_finance_tree(
                     session,
@@ -1114,7 +1046,5 @@ def test_finance_node_delete_soft_deletes_descendants() -> None:
 
                 assert {node.id for node in remaining}.isdisjoint({bank.id, checking.id})
                 assert next(node for node in remaining if node.id == assets.id).children_count == 0
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())

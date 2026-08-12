@@ -2,31 +2,13 @@ from __future__ import annotations
 
 import asyncio
 
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
-
-from lifeos_cli.db.base import Base
 from lifeos_cli.db.services import people, tags
-
-
-async def _create_sqlite_session_factory() -> tuple[
-    AsyncEngine,
-    async_sessionmaker[AsyncSession],
-]:
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-    return engine, async_sessionmaker(engine, expire_on_commit=False, future=True)
+from tests.support import sqlite_session_factory
 
 
 def test_count_person_tag_usage_counts_active_tagged_people() -> None:
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 tag = await tags.create_tag(
                     session,
@@ -54,7 +36,5 @@ def test_count_person_tag_usage_counts_active_tagged_people() -> None:
                 assert counts == {tag.id: 1}
                 assert await tags.count_tag_usage(session, tag_id=tag.id) == 1
                 assert active_person.tags[0].id == tag.id
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())

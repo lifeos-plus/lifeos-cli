@@ -14,6 +14,7 @@ repos:
         args: ["--severity=error"]
         files: ^scripts/.*\.sh$
   - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Keep in sync with the `ruff` pin in pyproject.toml dev dependencies.
     rev: v0.14.0
     hooks:
       - id: ruff

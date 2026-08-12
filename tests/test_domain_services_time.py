@@ -9,15 +9,8 @@ from uuid import UUID
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
 
 from lifeos_cli.config import clear_config_cache
-from lifeos_cli.db.base import Base
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.models.event import Event
 from lifeos_cli.db.models.task import Task
@@ -31,8 +24,10 @@ from lifeos_cli.db.services import (
     timelogs,
     visions,
 )
-from lifeos_cli.db.session import configure_async_engine
-from tests.support import utc_datetime
+from tests.support import (
+    sqlite_session_factory,
+    utc_datetime,
+)
 
 
 async def _identity_event_view(_: object, event: object) -> object:
@@ -46,21 +41,6 @@ async def _identity_timelog_view(_: object, timelog: object) -> object:
 def _set_timezone(monkeypatch: pytest.MonkeyPatch, timezone_name: str = "America/Toronto") -> None:
     clear_config_cache()
     monkeypatch.setenv("LIFEOS_TIMEZONE", timezone_name)
-
-
-async def _create_sqlite_session_factory() -> tuple[
-    AsyncEngine,
-    async_sessionmaker[AsyncSession],
-]:
-    from lifeos_cli.db import models as db_models
-
-    assert db_models.Event is Event
-    engine = configure_async_engine(
-        create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
-    )
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-    return engine, async_sessionmaker(engine, expire_on_commit=False, future=True)
 
 
 def test_create_event_flushes_without_committing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -167,8 +147,7 @@ def test_create_timelog_flushes_without_committing(monkeypatch: pytest.MonkeyPat
 
 def test_timelog_mutations_sync_vision_experience() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 vision = Vision(name="Build fitness", status="active")
                 session.add(vision)
@@ -221,16 +200,13 @@ def test_timelog_mutations_sync_vision_experience() -> None:
                 assert task.actual_effort_self == 0
                 assert task.actual_effort_total == 0
                 assert vision.experience_points == 0
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
 
 def test_task_delete_syncs_vision_experience() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 vision = Vision(name="Build focus", status="active")
                 session.add(vision)
@@ -260,8 +236,6 @@ def test_task_delete_syncs_vision_experience() -> None:
 
                 assert vision.experience_points == 0
                 assert vision.stage == 0
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
@@ -573,8 +547,7 @@ def test_timelog_minutes_uses_whole_positive_minutes() -> None:
 
 def test_recompute_vision_task_efforts_clears_old_parent_rollup() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 vision = Vision(name="Work")
                 session.add(vision)
@@ -617,8 +590,6 @@ def test_recompute_vision_task_efforts_clears_old_parent_rollup() -> None:
                 assert old_parent.actual_effort_total == 0
                 assert new_parent.actual_effort_total == 90
                 assert child.actual_effort_total == 90
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
@@ -685,8 +656,7 @@ def test_sqlite_roundtrip_returns_utc_aware_datetimes(monkeypatch: pytest.Monkey
     monkeypatch.setattr(events, "_build_event_view", _identity_event_view)
 
     async def run() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 event = Event(
                     title="SQLite appointment",
@@ -733,16 +703,13 @@ def test_sqlite_roundtrip_returns_utc_aware_datetimes(monkeypatch: pytest.Monkey
 
                 assert updated_event.start_time == utc_datetime(2026, 6, 15, 10, 30)
                 assert updated_event.end_time == utc_datetime(2026, 6, 15, 12, 0)
-        finally:
-            await engine.dispose()
 
     asyncio.run(run())
 
 
 def test_timelog_view_does_not_hydrate_soft_deleted_task() -> None:
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 vision = Vision(name="Work")
                 session.add(vision)
@@ -768,8 +735,6 @@ def test_timelog_view_does_not_hydrate_soft_deleted_task() -> None:
                 assert loaded is not None
                 assert loaded.task_id == task.id
                 assert loaded.task is None
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
@@ -780,8 +745,7 @@ def test_recompute_aggregated_timelog_stats_sums_daily_minutes_and_window_counts
     _set_timezone(monkeypatch, "UTC")
 
     async def scenario() -> None:
-        engine, session_factory = await _create_sqlite_session_factory()
-        try:
+        async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 area = Area(name="Deep work")
                 session.add(area)
@@ -830,8 +794,6 @@ def test_recompute_aggregated_timelog_stats_sums_daily_minutes_and_window_counts
                 assert len(month_report.rows) == 1
                 assert month_report.rows[0].minutes == 2940
                 assert month_report.rows[0].timelog_count == 2
-        finally:
-            await engine.dispose()
 
     asyncio.run(scenario())
 
