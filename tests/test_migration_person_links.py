@@ -15,7 +15,6 @@ _PERSON_ID = "11111111-1111-1111-1111-111111111111"
 _TASK_ID = "22222222-2222-2222-2222-222222222222"
 _NOTE_ID = "33333333-3333-3333-3333-333333333333"
 _AREA_ENTITY_ID = "55555555-5555-5555-5555-555555555555"
-_ARCHIVE_TABLE = "person_associations_legacy_20260812"
 _PREVIOUS_REVISION = "20260704_1500"
 _MIGRATION_REVISION = "20260812_1200"
 _TIMESTAMP = "2026-08-12 00:00:00+00:00"
@@ -97,11 +96,6 @@ def test_person_links_migration_roundtrip(tmp_path: Path) -> None:
         command.upgrade(alembic_config, _MIGRATION_REVISION)
 
         assert "person_associations" not in _table_names(database_path)
-        assert _ARCHIVE_TABLE in _table_names(database_path)
-        assert _person_association_rows(database_path, _ARCHIVE_TABLE) == [
-            ("area", UUID(_AREA_ENTITY_ID), UUID(_PERSON_ID)),
-            ("task", UUID(_TASK_ID), UUID(_PERSON_ID)),
-        ]
         association_rows = _association_rows(database_path)
         assert (
             "note",
@@ -127,9 +121,7 @@ def test_person_links_migration_roundtrip(tmp_path: Path) -> None:
 
         command.downgrade(alembic_config, _PREVIOUS_REVISION)
 
-        assert _ARCHIVE_TABLE not in _table_names(database_path)
         assert _person_association_rows(database_path, "person_associations") == [
-            ("area", UUID(_AREA_ENTITY_ID), UUID(_PERSON_ID)),
             ("task", UUID(_TASK_ID), UUID(_PERSON_ID)),
         ]
         association_rows = _association_rows(database_path)

@@ -61,10 +61,10 @@ rows. Entity type allowlists for `associations` are defined once in
 `db/models/association.py` and drive the ORM check constraints, service
 validators, and data import/export adapters.
 
-The migration that unified person links renames the legacy
-`person_associations` table to `person_associations_legacy_20260812` instead of
-dropping it, so no existing row is lost during an upgrade; operators can drop
-the archive after verifying the new layout.
+The migration that unified person links copies the supported rows into
+`associations` and then drops the legacy `person_associations` table. Upgrades
+assume an operator-level whole-database backup; rows whose entity type
+`associations` cannot represent are skipped with a logged warning.
 
 ## 4. Configuration, Transactions, and Soft Deletes
 
