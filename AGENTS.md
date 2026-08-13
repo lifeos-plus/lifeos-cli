@@ -25,6 +25,7 @@ The following rules apply to coding agent collaboration in this repository. Thes
 - Use English for code, comments, commit messages, and canonical repository documents.
 - Localized Markdown companions are allowed when they are explicitly scoped, linked from the canonical English document, and kept aligned with it.
 - Keep the root `README.md` in English as the canonical repository entrypoint. Localized companions such as `README.zh-Hans.md` must link back to `README.md`, and `README.md` should link to the available localized companion documents.
+- Do not hard-wrap text in repository documents; keep each paragraph on a single line and let the editor soft-wrap long lines. Markdown tables, code blocks, and ASCII art are exempt because their line layout is meaningful.
 - For multi-line PR bodies or comments, write to a temporary file first and pass it through `gh`.
 
 ## 4. Validation and Release Safety

@@ -17,9 +17,9 @@ from lifeos_cli.application.time_preferences import (
     to_storage_timezone,
 )
 from lifeos_cli.db.models.area import Area
+from lifeos_cli.db.models.association import Association
 from lifeos_cli.db.models.event import Event
 from lifeos_cli.db.models.event_occurrence_exception import EventOccurrenceException
-from lifeos_cli.db.models.person_association import person_associations
 from lifeos_cli.db.models.tag_association import tag_associations
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.services.batching import BatchDeleteResult, batch_delete_records
@@ -554,10 +554,11 @@ def _apply_event_query_filters(stmt: Any, *, filters: EventQueryFilters) -> Any:
         stmt = stmt.where(Event.task_id == filters.task_id)
     if filters.person_id is not None:
         stmt = stmt.join(
-            person_associations,
-            (person_associations.c.entity_id == Event.id)
-            & (person_associations.c.entity_type == "event"),
-        ).where(person_associations.c.person_id == filters.person_id)
+            Association,
+            (Association.source_model == "event")
+            & (Association.source_id == Event.id)
+            & (Association.target_model == "person"),
+        ).where(Association.target_id == filters.person_id)
     if filters.tag_id is not None:
         stmt = stmt.join(
             tag_associations,

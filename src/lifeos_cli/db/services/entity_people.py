@@ -1,16 +1,29 @@
-"""Helpers for generic entity-to-person links."""
+"""Helpers for generic entity-to-person links.
+
+Entity-to-person links live in the ``associations`` table with
+``target_model='person'``. Writes canonicalize to ``link_type='is_about'``,
+while reads treat every person-targeted association as a person link. The
+service API mirrors the historical ``person_associations`` helpers so call
+sites are unchanged while the storage is unified.
+"""
 
 from __future__ import annotations
 
-from collections import defaultdict
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from lifeos_cli.db.models.association import (
+    PERSON_LINK_TYPE,
+    PERSON_TARGET_MODEL,
+    Association,
+)
 from lifeos_cli.db.models.person import Person
-from lifeos_cli.db.models.person_association import person_associations
-from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
+from lifeos_cli.db.services.entity_associations import (
+    load_people_for_sources,
+    set_association_links,
+)
 
 
 async def sync_entity_people(
@@ -20,35 +33,27 @@ async def sync_entity_people(
     entity_type: str,
     desired_person_ids: list[UUID],
 ) -> None:
-    """Replace an entity's linked people with the provided identifiers."""
-    unique_person_ids = deduplicate_preserving_order(desired_person_ids)
-    existing_stmt = select(Person.id).where(
-        Person.id.in_(unique_person_ids),
-        Person.deleted_at.is_(None),
-    )
-    existing_rows = await session.execute(existing_stmt)
-    existing_person_ids = set(existing_rows.scalars().all())
+    """Replace an entity's linked people with the provided identifiers.
 
-    missing = [
-        str(person_id) for person_id in unique_person_ids if person_id not in existing_person_ids
-    ]
-    if missing:
-        raise LookupError(f"Unknown person IDs for entity type {entity_type}: {', '.join(missing)}")
-
+    All existing person-targeted associations for the entity are removed so
+    links written with a non-canonical link type cannot survive a replace.
+    """
     await session.execute(
-        delete(person_associations).where(
-            person_associations.c.entity_id == entity_id,
-            person_associations.c.entity_type == entity_type,
+        delete(Association).where(
+            Association.source_model == entity_type,
+            Association.source_id == entity_id,
+            Association.target_model == PERSON_TARGET_MODEL,
         )
     )
-    for person_id in unique_person_ids:
-        await session.execute(
-            person_associations.insert().values(
-                entity_id=entity_id,
-                entity_type=entity_type,
-                person_id=person_id,
-            )
-        )
+    await set_association_links(
+        session,
+        source_model=entity_type,
+        source_id=entity_id,
+        target_model=PERSON_TARGET_MODEL,
+        target_ids=desired_person_ids,
+        link_type=PERSON_LINK_TYPE,
+        replace=True,
+    )
 
 
 async def load_people_for_entities(
@@ -58,21 +63,8 @@ async def load_people_for_entities(
     entity_type: str,
 ) -> dict[UUID, list[Person]]:
     """Return people grouped by entity identifier."""
-    if not entity_ids:
-        return {}
-
-    stmt = (
-        select(person_associations.c.entity_id, Person)
-        .join(Person, Person.id == person_associations.c.person_id)
-        .where(
-            person_associations.c.entity_type == entity_type,
-            person_associations.c.entity_id.in_(entity_ids),
-            Person.deleted_at.is_(None),
-        )
-        .order_by(Person.name.asc(), Person.id.asc())
+    return await load_people_for_sources(
+        session,
+        source_model=entity_type,
+        source_ids=entity_ids,
     )
-    rows = await session.execute(stmt)
-    grouped: defaultdict[UUID, list[Person]] = defaultdict(list)
-    for entity_id, person in rows.all():
-        grouped[entity_id].append(person)
-    return dict(grouped)

@@ -19,7 +19,6 @@ from lifeos_cli.config import ConfigurationError, get_preferences_settings
 from lifeos_cli.db.models.association import Association
 from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.person import Person
-from lifeos_cli.db.models.person_association import person_associations
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
@@ -229,10 +228,11 @@ def _apply_task_filters(
         stmt = stmt.where(Task.parent_task_id == parent_task_id)
     if person_id is not None:
         stmt = stmt.join(
-            person_associations,
-            (person_associations.c.entity_id == Task.id)
-            & (person_associations.c.entity_type == "task"),
-        ).where(person_associations.c.person_id == person_id)
+            Association,
+            (Association.source_model == "task")
+            & (Association.source_id == Task.id)
+            & (Association.target_model == "person"),
+        ).where(Association.target_id == person_id)
     if status is not None:
         stmt = stmt.where(Task.status == validate_task_status(status))
     included_statuses = _parse_status_csv(status_in)

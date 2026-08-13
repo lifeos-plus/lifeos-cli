@@ -9,10 +9,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.models.area import Area
+from lifeos_cli.db.models.association import Association
 from lifeos_cli.db.models.event import Event
 from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.person import Person
-from lifeos_cli.db.models.person_association import person_associations
 from lifeos_cli.db.models.tag import Tag
 from lifeos_cli.db.models.tag_association import tag_associations
 from lifeos_cli.db.models.task import Task
@@ -167,10 +167,11 @@ async def list_tags(
         stmt = stmt.where(Tag.category == normalize_tag_category(category))
     if person_id is not None:
         stmt = stmt.join(
-            person_associations,
-            (person_associations.c.entity_id == Tag.id)
-            & (person_associations.c.entity_type == "tag"),
-        ).where(person_associations.c.person_id == person_id)
+            Association,
+            (Association.source_model == "tag")
+            & (Association.source_id == Tag.id)
+            & (Association.target_model == "person"),
+        ).where(Association.target_id == person_id)
     stmt = stmt.order_by(Tag.name.asc(), Tag.id.asc()).offset(offset).limit(limit)
     tags = list((await session.execute(stmt)).scalars())
     return await _build_tag_views(session, tags)

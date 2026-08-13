@@ -9,10 +9,12 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lifeos_cli.db.models.association import Association
+from lifeos_cli.db.models.association import (
+    PERSON_TARGET_MODEL,
+    Association,
+)
 from lifeos_cli.db.models.event import Event
 from lifeos_cli.db.models.note import Note
-from lifeos_cli.db.models.person_association import person_associations
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
@@ -59,13 +61,16 @@ async def _load_person_entity_ids(
 ) -> dict[str, list[UUID]]:
     rows = await session.execute(
         select(
-            person_associations.c.entity_type,
-            person_associations.c.entity_id,
-        ).where(person_associations.c.person_id == person_id)
+            Association.source_model,
+            Association.source_id,
+        ).where(
+            Association.target_model == PERSON_TARGET_MODEL,
+            Association.target_id == person_id,
+        )
     )
     grouped: dict[str, list[UUID]] = {}
-    for entity_type, entity_id in rows.all():
-        grouped.setdefault(str(entity_type), []).append(entity_id)
+    for source_model, source_id in rows.all():
+        grouped.setdefault(str(source_model), []).append(source_id)
     return grouped
 
 

@@ -15,7 +15,7 @@ from lifeos_cli.config import (
     validate_vision_experience_rate_per_hour,
 )
 from lifeos_cli.db.models.area import Area
-from lifeos_cli.db.models.person_association import person_associations
+from lifeos_cli.db.models.association import Association
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services.batching import BatchDeleteResult, batch_delete_records
@@ -303,10 +303,11 @@ async def list_visions(
         stmt = stmt.where(Vision.area_id == area_id)
     if person_id is not None:
         stmt = stmt.join(
-            person_associations,
-            (person_associations.c.entity_id == Vision.id)
-            & (person_associations.c.entity_type == "vision"),
-        ).where(person_associations.c.person_id == person_id)
+            Association,
+            (Association.source_model == "vision")
+            & (Association.source_id == Vision.id)
+            & (Association.target_model == "person"),
+        ).where(Association.target_id == person_id)
     stmt = stmt.order_by(Vision.created_at.desc(), Vision.id.desc()).offset(offset).limit(limit)
     visions = list((await session.execute(stmt)).scalars())
     return await _build_vision_views(session, visions)

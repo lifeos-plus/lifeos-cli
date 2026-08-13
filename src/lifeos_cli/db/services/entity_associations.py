@@ -3,17 +3,21 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any
 from uuid import UUID
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
-from lifeos_cli.db.models.association import Association
+from lifeos_cli.db.models.association import (
+    ASSOCIATION_MODEL_MAP,
+    ASSOCIATION_SOURCE_MODELS,
+    ASSOCIATION_TARGET_MODELS,
+    VALID_ASSOCIATION_LINK_TYPES,
+    Association,
+)
 from lifeos_cli.db.models.event import Event
 from lifeos_cli.db.models.habit_action import HabitAction
-from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.person import Person
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
@@ -21,30 +25,24 @@ from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
 from lifeos_cli.db.services.validation_utils import DomainValidationError, choice_validator
 
-VALID_ASSOCIATION_MODELS = frozenset(
-    {"event", "habit_action", "note", "person", "task", "timelog", "vision"}
-)
-VALID_ASSOCIATION_LINK_TYPES = frozenset({"is_about", "relates_to", "captured_from"})
-
-MODEL_MAP: dict[str, Any] = {
-    "event": Event,
-    "habit_action": HabitAction,
-    "note": Note,
-    "person": Person,
-    "task": Task,
-    "timelog": Timelog,
-    "vision": Vision,
-}
+MODEL_MAP = ASSOCIATION_MODEL_MAP
 
 
 class AssociationValidationError(DomainValidationError):
     """Raised when a weak-association input is invalid."""
 
 
-_validate_association_model = choice_validator(
-    VALID_ASSOCIATION_MODELS,
+_validate_association_source = choice_validator(
+    ASSOCIATION_SOURCE_MODELS,
     error_cls=AssociationValidationError,
     label="association model",
+    error_verb="Unsupported",
+)
+
+_validate_association_target = choice_validator(
+    ASSOCIATION_TARGET_MODELS,
+    error_cls=AssociationValidationError,
+    label="association target model",
     error_verb="Unsupported",
 )
 
@@ -81,8 +79,8 @@ async def set_association_links(
     replace: bool = True,
 ) -> None:
     """Create or replace weak links after validating both endpoints exist."""
-    normalized_source_model = _validate_association_model(source_model)
-    normalized_target_model = _validate_association_model(target_model)
+    normalized_source_model = _validate_association_source(source_model)
+    normalized_target_model = _validate_association_target(target_model)
     normalized_link_type = _validate_association_link_type(link_type)
     unique_target_ids = deduplicate_preserving_order(target_ids)
 
@@ -156,8 +154,8 @@ async def get_target_ids_for_sources(
     """Return mapping source_id -> target_ids for one weak link family."""
     if not source_ids:
         return {}
-    normalized_source_model = _validate_association_model(source_model)
-    normalized_target_model = _validate_association_model(target_model)
+    normalized_source_model = _validate_association_source(source_model)
+    normalized_target_model = _validate_association_target(target_model)
     source_cls = aliased(MODEL_MAP[normalized_source_model])
     target_cls = aliased(MODEL_MAP[normalized_target_model])
     stmt = (
@@ -194,8 +192,8 @@ async def count_sources_for_targets(
     """Return mapping target_id -> linked source count."""
     if not target_ids:
         return {}
-    normalized_source_model = _validate_association_model(source_model)
-    normalized_target_model = _validate_association_model(target_model)
+    normalized_source_model = _validate_association_source(source_model)
+    normalized_target_model = _validate_association_target(target_model)
     source_cls = aliased(MODEL_MAP[normalized_source_model])
     target_cls = aliased(MODEL_MAP[normalized_target_model])
     stmt = (
@@ -223,9 +221,13 @@ async def load_people_for_sources(
     *,
     source_model: str,
     source_ids: list[UUID],
-    link_type: str,
+    link_type: str | None = None,
 ) -> dict[UUID, list[Person]]:
-    """Load people grouped by source identifier."""
+    """Load people grouped by source identifier.
+
+    When ``link_type`` is omitted, every person-targeted association counts as
+    a person link; entity-to-person writes canonicalize to ``is_about``.
+    """
     mapping = await get_target_ids_for_sources(
         session,
         source_model=source_model,

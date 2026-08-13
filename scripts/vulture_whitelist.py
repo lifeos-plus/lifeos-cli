@@ -22,6 +22,7 @@ _keep(
     _compile_add_days_sqlite,
     _clear_sqlite_runtime,
     _exclude_soft_deleted_rows_by_default,
+    related_type,
     _allow_postgres_url_logic_tests_without_driver,
     list_actions_by_date,
     list_actions_for_habit,

@@ -1196,7 +1196,7 @@ def test_list_event_occurrences_applies_all_supported_filters() -> None:
     override_sql = str(session.statements[1])
 
     for statement_sql in (master_sql, override_sql):
-        assert "person_associations" in statement_sql
+        assert "person_associations" not in statement_sql
         assert "tag_associations" in statement_sql
         assert "events.area_id" in statement_sql
         assert "events.task_id" in statement_sql
