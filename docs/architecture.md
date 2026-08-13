@@ -47,24 +47,12 @@ Core entities (see `src/lifeos_cli/db/models`):
 
 Generic weak associations connect entities across domain boundaries:
 
-- `Association` — polymorphic `source_model/source_id -> target_model/target_id`;
-  entity-to-person links use `target_model='person'`; writes canonicalize to
-  `link_type='is_about'`, while reads treat every person-targeted association
-  as a person link.
+- `Association` — polymorphic `source_model/source_id -> target_model/target_id`; entity-to-person links use `target_model='person'`; writes canonicalize to `link_type='is_about'`, while reads treat every person-targeted association as a person link.
 - `TagAssociation` — `entity_type/entity_id -> tag_id`.
 
 These associations cannot use ordinary foreign keys for the polymorphic side; referential-integrity guarantees are enforced by services and integrity audit tools rather than the database alone.
 
-`db/services/integrity_audit.py` provides a read-only audit across both
-association tables and an explicit repair mode that only removes hard-dangling
-rows. Entity type allowlists for `associations` are defined once in
-`db/models/association.py` and drive the ORM check constraints, service
-validators, and data import/export adapters.
-
-The migration that unified person links copies the supported rows into
-`associations` and then drops the legacy `person_associations` table. Upgrades
-assume an operator-level whole-database backup; rows whose entity type
-`associations` cannot represent are skipped with a logged warning.
+`db/services/integrity_audit.py` provides a read-only audit across both association tables and an explicit repair mode that only removes hard-dangling rows. Entity type allowlists for `associations` are defined once in `db/models/association.py` and drive the ORM check constraints, service validators, and data import/export adapters.
 
 ## 4. Configuration, Transactions, and Soft Deletes
 

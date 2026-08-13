@@ -96,9 +96,7 @@ Static-analysis governance:
 - Do not push directly to protected branches.
 - Create or link a tracking issue for substantive development work.
 - Use English commit-message style for PR titles.
-- Use conventional-commit prefixes for commit messages, for example `feat`, `fix`,
-  `refactor`, `perf`, `test`, `docs`, `chore`, `build`, `deps`, `style`, or
-  `revert`. Avoid inventing ad-hoc prefixes so commit history stays greppable.
+- Use conventional-commit prefixes for commit messages, for example `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore`, `build`, `deps`, `style`, or `revert`. Avoid inventing ad-hoc prefixes so commit history stays greppable.
 - Link relevant issues in the PR description using `Closes #xx` or `Related #xx`.
 
 ## Documentation
