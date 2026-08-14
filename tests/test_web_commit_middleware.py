@@ -10,7 +10,7 @@ from fastapi import Request
 from starlette.datastructures import State
 from starlette.responses import JSONResponse
 
-from lifeos_web.app import commit_session_middleware
+from lifeos_web.app import commit_session_middleware, create_app
 
 
 class FakeSession:
@@ -76,3 +76,8 @@ def test_commit_skipped_when_no_session_registered() -> None:
 
 def test_middleware_is_async_callable() -> None:
     assert asyncio.iscoroutinefunction(commit_session_middleware)
+
+
+def test_create_app_registers_commit_middleware() -> None:
+    dispatches = [middleware.kwargs.get("dispatch") for middleware in create_app().user_middleware]
+    assert commit_session_middleware in dispatches
