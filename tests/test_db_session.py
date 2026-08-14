@@ -101,3 +101,78 @@ def test_configure_sqlite_connection_sets_concurrency_pragmas() -> None:
         "PRAGMA journal_mode=WAL",
         f"PRAGMA busy_timeout={db_session.SQLITE_BUSY_TIMEOUT_MS}",
     ]
+
+
+def _patch_session_factory(
+    monkeypatch: pytest.MonkeyPatch,
+    session: object,
+) -> None:
+    monkeypatch.setattr(
+        db_session,
+        "get_async_session_factory",
+        lambda: lambda: session,
+    )
+
+
+def test_session_scope_commits_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = SimpleNamespace(
+        commit=AsyncMock(),
+        rollback=AsyncMock(),
+        close=AsyncMock(),
+    )
+    _patch_session_factory(monkeypatch, session)
+
+    async def run_scope() -> None:
+        async with db_session.session_scope():
+            pass
+
+    asyncio.run(run_scope())
+
+    session.commit.assert_awaited_once()
+    session.rollback.assert_not_awaited()
+    session.close.assert_awaited_once()
+
+
+def test_session_scope_skips_commit_when_commit_on_exit_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = SimpleNamespace(
+        commit=AsyncMock(),
+        rollback=AsyncMock(),
+        close=AsyncMock(),
+    )
+    _patch_session_factory(monkeypatch, session)
+
+    async def run_scope() -> None:
+        async with db_session.session_scope(commit_on_exit=False):
+            pass
+
+    asyncio.run(run_scope())
+
+    session.commit.assert_not_awaited()
+    session.rollback.assert_not_awaited()
+    session.close.assert_awaited_once()
+
+
+def test_session_scope_rolls_back_on_error_when_commit_on_exit_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = SimpleNamespace(
+        commit=AsyncMock(),
+        rollback=AsyncMock(),
+        close=AsyncMock(),
+    )
+    _patch_session_factory(monkeypatch, session)
+
+    async def run_scope() -> None:
+        async with db_session.session_scope(commit_on_exit=False):
+            raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        asyncio.run(run_scope())
+
+    session.commit.assert_not_awaited()
+    session.rollback.assert_awaited_once()
+    session.close.assert_awaited_once()

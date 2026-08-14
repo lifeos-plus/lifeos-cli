@@ -11,6 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from lifeos_web.deps import LIFEOS_SESSION_STATE_KEY
 from lifeos_web.routers import (
     areas,
     finance,
@@ -64,8 +65,12 @@ class CommitSessionMiddleware:
     read immediately after a write (for example the Web UI refetching a list
     right after a POST). Committing when the response starts closes that
     window: the client cannot receive any response byte before the write is
-    durable and visible to reads. Failed writes surface as a 5xx instead of a
-    misleading 2xx.
+    durable and visible to reads. Error responses are rolled back before they
+    are sent, and failed commits surface as a 5xx instead of a misleading 2xx.
+
+    This middleware is the sole transaction finalizer for Web request
+    sessions; ``get_db_session`` registers the session on the request scope
+    and never commits it itself.
     """
 
     def __init__(self, app: ASGIApp) -> None:
@@ -79,9 +84,12 @@ class CommitSessionMiddleware:
         async def send_with_commit(message: Message) -> None:
             if message["type"] == "http.response.start":
                 status = message.get("status", 200)
-                session = scope.setdefault("state", {}).get("lifeos_session")
-                if session is not None and status < 400:
-                    await session.commit()
+                session = scope.setdefault("state", {}).get(LIFEOS_SESSION_STATE_KEY)
+                if session is not None:
+                    if status < 400:
+                        await session.commit()
+                    else:
+                        await session.rollback()
             await send(message)
 
         await self.app(scope, receive, send_with_commit)

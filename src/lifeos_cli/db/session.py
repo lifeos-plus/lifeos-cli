@@ -103,12 +103,22 @@ def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 @asynccontextmanager
-async def session_scope() -> AsyncIterator[AsyncSession]:
-    """Open an async session and roll back automatically on failure."""
+async def session_scope(
+    *,
+    commit_on_exit: bool = True,
+) -> AsyncIterator[AsyncSession]:
+    """Open an async session and roll back automatically on failure.
+
+    By default the session is committed when the block exits normally. Callers
+    that finalize the transaction elsewhere (for example the Web response
+    middleware committing before the response is sent) pass
+    ``commit_on_exit=False`` so there is exactly one commit point.
+    """
     session = get_async_session_factory()()
     try:
         yield session
-        await session.commit()
+        if commit_on_exit:
+            await session.commit()
     except Exception:
         await session.rollback()
         raise
