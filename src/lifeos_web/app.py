@@ -9,8 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import Response
-from starlette.types import Scope
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from lifeos_web.deps import LIFEOS_SESSION_STATE_KEY
 from lifeos_web.routers import (
     areas,
     finance,
@@ -56,6 +57,44 @@ class SPAStaticFiles(StaticFiles):
         return response
 
 
+class CommitSessionMiddleware:
+    """Commit the request session before the response start event is sent.
+
+    FastAPI runs the exit code of ``yield`` dependencies after the response is
+    sent, so ``session_scope``'s teardown commit is too late for clients that
+    read immediately after a write (for example the Web UI refetching a list
+    right after a POST). Committing when the response starts closes that
+    window: the client cannot receive any response byte before the write is
+    durable and visible to reads. Error responses are rolled back before they
+    are sent, and failed commits surface as a 5xx instead of a misleading 2xx.
+
+    This middleware is the sole transaction finalizer for Web request
+    sessions; ``get_db_session`` registers the session on the request scope
+    and never commits it itself.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_commit(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                status = message.get("status", 200)
+                session = scope.setdefault("state", {}).get(LIFEOS_SESSION_STATE_KEY)
+                if session is not None:
+                    if status < 400:
+                        await session.commit()
+                    else:
+                        await session.rollback()
+            await send(message)
+
+        await self.app(scope, receive, send_with_commit)
+
+
 def create_app(*, static_dir: Path | None = None) -> FastAPI:
     """Create the local LifeOS Web FastAPI application."""
     app = FastAPI(
@@ -72,6 +111,7 @@ def create_app(*, static_dir: Path | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(CommitSessionMiddleware)
     app.include_router(health.router)
     app.include_router(tasks.router, prefix=API_PREFIX)
     app.include_router(visions.router, prefix=API_PREFIX)
