@@ -66,6 +66,15 @@ async def get_latest_timelog_end_time(session: SessionDep) -> dict[str, str | No
     }
 
 
+@router.get("/{timelog_id}", response_model=TimelogResponse, response_model_exclude_unset=True)
+async def get_timelog(timelog_id: UUID, session: SessionDep) -> dict[str, object]:
+    """Return one active timelog by identifier."""
+    timelog = await timelog_services.get_timelog(session, timelog_id=timelog_id)
+    if timelog is None:
+        raise HTTPException(status_code=404, detail=f"Timelog {timelog_id} was not found")
+    return _timelog_payload(timelog)
+
+
 @router.get(
     "/",
     response_model=ListResponse[TimelogResponse, TimelogListMeta],
