@@ -3,81 +3,105 @@
 from __future__ import annotations
 
 import asyncio
-import types
-from typing import cast
 
-from fastapi import Request
-from starlette.datastructures import State
-from starlette.responses import JSONResponse
+from starlette.types import Message, Receive, Scope, Send
 
-from lifeos_web.app import commit_session_middleware, create_app
+from lifeos_web.app import CommitSessionMiddleware, create_app
 
 
 class FakeSession:
-    """Stand-in for an AsyncSession that records commits."""
+    """Stand-in for an AsyncSession that records commit ordering."""
 
     def __init__(self) -> None:
+        self.log: list[str] = []
         self.commits = 0
 
     async def commit(self) -> None:
         self.commits += 1
+        self.log.append("commit")
 
 
-class FakeCallNext:
-    """Callable that returns a canned response and records invocation."""
+def _run_middleware(
+    *,
+    session: FakeSession | None,
+    status: int,
+    scope_type: str = "http",
+) -> tuple[list[str], FakeSession | None]:
+    """Drive the middleware through a canned response and capture ordering."""
+    log: list[str] = []
+    if session is not None:
+        session.log = log
+    scope: Scope = {"type": scope_type, "state": {}}
+    if session is not None:
+        scope["state"]["lifeos_session"] = session
 
-    def __init__(self, response: JSONResponse) -> None:
-        self.response = response
-        self.invoked = False
+    async def receive() -> Message:
+        return {"type": "http.request", "body": b"", "more_body": False}
 
-    async def __call__(self, request: object) -> JSONResponse:
-        self.invoked = True
-        return self.response
+    async def send(message: Message) -> None:
+        log.append(f"send:{message['type']}")
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "http.response.start", "status": status})
+        await send({"type": "http.response.body", "body": b""})
+
+    asyncio.run(CommitSessionMiddleware(app)(scope, receive, send))
+    return log, session
 
 
-def _request_with_session(session: FakeSession | None) -> Request:
-    state = State({"lifeos_session": session} if session is not None else {})
-    return cast(Request, types.SimpleNamespace(state=state))
-
-
-def test_commit_runs_for_successful_response() -> None:
+def test_commit_runs_before_response_start_is_sent() -> None:
     session = FakeSession()
-    response = JSONResponse({"ok": True}, status_code=200)
-    call_next = FakeCallNext(response)
 
-    result = asyncio.run(commit_session_middleware(_request_with_session(session), call_next))
+    log, returned_session = _run_middleware(session=session, status=200)
 
-    assert call_next.invoked is True
-    assert result is response
-    assert session.commits == 1
+    assert returned_session is not None
+    assert returned_session.commits == 1
+    assert log.index("commit") < log.index("send:http.response.start")
 
 
 def test_commit_skipped_for_error_response() -> None:
     session = FakeSession()
-    response = JSONResponse({"detail": "boom"}, status_code=500)
 
-    result = asyncio.run(
-        commit_session_middleware(_request_with_session(session), FakeCallNext(response))
-    )
+    log, returned_session = _run_middleware(session=session, status=500)
 
-    assert result is response
-    assert session.commits == 0
+    assert returned_session is not None
+    assert returned_session.commits == 0
+    assert "commit" not in log
 
 
 def test_commit_skipped_when_no_session_registered() -> None:
-    response = JSONResponse({"ok": True}, status_code=200)
+    log, _ = _run_middleware(session=None, status=200)
 
-    result = asyncio.run(
-        commit_session_middleware(_request_with_session(None), FakeCallNext(response))
+    assert "commit" not in log
+
+
+def test_non_http_scopes_pass_through() -> None:
+    log: list[str] = []
+
+    async def receive() -> Message:
+        return {"type": "lifespan.startup"}
+
+    async def send(message: Message) -> None:
+        log.append(f"send:{message['type']}")
+
+    async def app(scope: Scope, receive: Receive, send: Send) -> None:
+        await send({"type": "lifespan.startup.complete"})
+
+    asyncio.run(
+        CommitSessionMiddleware(app)(
+            {"type": "lifespan", "state": {}},
+            receive,
+            send,
+        )
     )
 
-    assert result is response
-
-
-def test_middleware_is_async_callable() -> None:
-    assert asyncio.iscoroutinefunction(commit_session_middleware)
+    assert log == ["send:lifespan.startup.complete"]
 
 
 def test_create_app_registers_commit_middleware() -> None:
-    dispatches = [middleware.kwargs.get("dispatch") for middleware in create_app().user_middleware]
-    assert commit_session_middleware in dispatches
+    middleware_classes = [middleware.cls for middleware in create_app().user_middleware]
+    assert CommitSessionMiddleware in middleware_classes
+
+
+def test_middleware_is_async_callable() -> None:
+    assert asyncio.iscoroutinefunction(CommitSessionMiddleware.__call__)

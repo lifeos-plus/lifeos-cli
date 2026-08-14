@@ -13,9 +13,10 @@ from lifeos_cli.db.session import session_scope
 async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
     """Yield one transactional session using the configured LifeOS database.
 
-    The session is registered on ``request.state`` so the request middleware
-    can commit it before the HTTP response is sent, guaranteeing that a 2xx
-    response implies durable, immediately readable data.
+    The session is registered on ``request.state`` (backed by ``scope["state"]``)
+    so the response middleware can commit it before the HTTP response start
+    event is sent, guaranteeing that a 2xx response implies durable,
+    immediately readable data.
     """
     async with session_scope() as session:
         request.state.lifeos_session = session
