@@ -98,6 +98,41 @@ def test_vision_task_create_list_detail_and_not_found(http_client) -> None:
     assert missing_response.status_code == 404
 
 
+def test_timelog_create_list_detail_and_not_found(http_client) -> None:
+    create_response = http_client.post(
+        "/api/v1/timelogs/",
+        json={
+            "title": "HTTP integration timelog",
+            "start_time": "2026-08-14T01:20:00.000Z",
+            "end_time": "2026-08-14T01:30:00.000Z",
+            "tracking_method": "manual",
+            "area_id": None,
+            "person_ids": None,
+        },
+    )
+    assert create_response.status_code == 200
+    timelog_id = create_response.json()["id"]
+
+    list_response = http_client.get(
+        "/api/v1/timelogs/",
+        params={
+            "window_start": "2026-08-13T16:00:00.000Z",
+            "window_end": "2026-08-14T15:59:59.999Z",
+            "page": 1,
+            "size": 500,
+        },
+    )
+    assert list_response.status_code == 200
+    assert any(item["id"] == timelog_id for item in list_response.json()["items"])
+
+    detail_response = http_client.get(f"/api/v1/timelogs/{timelog_id}")
+    assert detail_response.status_code == 200
+    assert detail_response.json()["id"] == timelog_id
+
+    missing_response = http_client.get(f"/api/v1/timelogs/{uuid.uuid4()}")
+    assert missing_response.status_code == 404
+
+
 def test_note_create_list_and_delete(http_client) -> None:
     create_response = http_client.post(
         "/api/v1/notes/",
