@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -56,6 +57,25 @@ class SPAStaticFiles(StaticFiles):
         return response
 
 
+async def commit_session_middleware(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    """Commit the request session before the response is sent to the client.
+
+    FastAPI runs the exit code of ``yield`` dependencies after the response is
+    sent, so ``session_scope``'s teardown commit is too late for clients that
+    read immediately after a write (for example the Web UI refetching a list
+    right after a POST). Committing here closes that window: once a successful
+    response reaches the client, the write is durable and visible to reads.
+    """
+    response = await call_next(request)
+    session = getattr(request.state, "lifeos_session", None)
+    if session is not None and response.status_code < 400:
+        await session.commit()
+    return response
+
+
 def create_app(*, static_dir: Path | None = None) -> FastAPI:
     """Create the local LifeOS Web FastAPI application."""
     app = FastAPI(
@@ -72,6 +92,7 @@ def create_app(*, static_dir: Path | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.middleware("http")(commit_session_middleware)
     app.include_router(health.router)
     app.include_router(tasks.router, prefix=API_PREFIX)
     app.include_router(visions.router, prefix=API_PREFIX)

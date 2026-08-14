@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
+from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.session import session_scope
 
 
-async def get_db_session() -> AsyncIterator[AsyncSession]:
-    """Yield one transactional session using the configured LifeOS database."""
+async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
+    """Yield one transactional session using the configured LifeOS database.
+
+    The session is registered on ``request.state`` so the request middleware
+    can commit it before the HTTP response is sent, guaranteeing that a 2xx
+    response implies durable, immediately readable data.
+    """
     async with session_scope() as session:
+        request.state.lifeos_session = session
         yield session
