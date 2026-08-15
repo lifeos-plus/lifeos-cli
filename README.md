@@ -197,6 +197,8 @@ For repository changes, run the primary validation entrypoint:
 bash ./scripts/doctor.sh
 ```
 
+`doctor.sh` also enforces a line-coverage floor (currently 74%) for the `lifeos_cli` and `lifeos_web` packages on the main test suite, so coverage regressions are caught in the same gate as lint and type errors.
+
 For CLI documentation review, the help audit script executes the parser tree and renders a Markdown report:
 
 ```bash

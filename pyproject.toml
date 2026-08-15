@@ -107,3 +107,11 @@ testpaths = ["tests"]
 markers = [
     "integration: runs real CLI integration tests against a configured PostgreSQL database",
 ]
+
+[tool.coverage.run]
+source = ["lifeos_cli", "lifeos_web"]
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.1.0",
+]
