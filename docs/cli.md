@@ -121,6 +121,15 @@ The script walks the parser tree, executes every discovered `--help` invocation,
 uv run python scripts/audit_cli_help.py --path-prefix "timelog stats"
 ```
 
+The same script emits a machine-readable command reference without spawning subprocesses:
+
+```bash
+uv run python scripts/audit_cli_help.py --format json
+uv run python scripts/audit_cli_help.py --format json --path-prefix "task list"
+```
+
+The JSON reference is locale-aware, includes the package version, and describes every command node with its summary, description, usage, examples, notes, and structured arguments (name, kind, metavar, choices, required, nargs, default). It is intended for agents and tooling that need the full command grammar in one fetch instead of walking `--help` one level at a time.
+
 Localized help should be reviewed through the same command surface by setting the runtime language preference or `LIFEOS_LANGUAGE`.
 
 ## Safety Model

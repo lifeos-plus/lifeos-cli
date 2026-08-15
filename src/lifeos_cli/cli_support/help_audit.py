@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shlex
 import subprocess
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
+
+from lifeos_cli.application.package_metadata import get_installed_package_version
+from lifeos_cli.i18n import resolve_locale
 
 
 @dataclass(frozen=True)
@@ -149,3 +154,107 @@ def render_help_audit_report(results: Sequence[HelpAuditResult]) -> str:
                 ]
             )
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _describe_parser_argument(action: argparse.Action) -> dict[str, Any] | None:
+    """Describe one argparse action as a JSON-safe reference entry."""
+    if isinstance(action, argparse._SubParsersAction):
+        return None
+    option_strings = getattr(action, "option_strings", None)
+    if option_strings and any(flag in ("-h", "--help") for flag in option_strings):
+        return None
+    is_positional = not option_strings
+    name = option_strings[0] if option_strings else action.dest
+    default = action.default
+    if default is not None and not isinstance(default, (str, int, float, bool)):
+        default = str(default)
+    required = bool(action.required) or (is_positional and action.nargs not in ("*", "?"))
+    return {
+        "name": name,
+        "kind": "positional" if is_positional else "option",
+        "metavar": action.metavar,
+        "help": action.help,
+        "choices": list(action.choices) if action.choices is not None else None,
+        "required": required,
+        "nargs": action.nargs,
+        "default": default,
+    }
+
+
+def _describe_parser_node(
+    parser: argparse.ArgumentParser,
+    path: tuple[str, ...],
+) -> dict[str, Any]:
+    """Describe one parser node as a JSON-safe command reference entry."""
+    help_content = getattr(parser, "_lifeos_help_content", None)
+    description = help_content.description if help_content is not None else parser.description
+    arguments: list[dict[str, Any]] = []
+    for action in parser._actions:
+        entry = _describe_parser_argument(action)
+        if entry is not None:
+            arguments.append(entry)
+    return {
+        "path": list(path),
+        "summary": (help_content.summary if help_content is not None else parser.description),
+        "description": description,
+        "usage": parser.format_usage().strip(),
+        "examples": list(help_content.examples) if help_content is not None else [],
+        "notes": list(help_content.notes) if help_content is not None else [],
+        "arguments": arguments,
+    }
+
+
+def _walk_parser(
+    parser: argparse.ArgumentParser,
+    path: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    """Collect reference nodes for every subcommand in declaration order."""
+    nodes: list[dict[str, Any]] = []
+    subparsers_action = _get_subparsers_action(parser)
+    if subparsers_action is None:
+        return nodes
+    for name, child in subparsers_action.choices.items():
+        child_path = (*path, name)
+        nodes.append(_describe_parser_node(child, child_path))
+        nodes.extend(_walk_parser(child, child_path))
+    return nodes
+
+
+def build_machine_readable_reference(
+    parser: argparse.ArgumentParser,
+) -> dict[str, Any]:
+    """Build a JSON-safe reference for the full CLI parser tree.
+
+    The reference mirrors the current locale and package version, so callers
+    can pin both when consuming it.
+    """
+    return {
+        "version": get_installed_package_version(),
+        "locale": resolve_locale(),
+        "command_shape": "lifeos <resource> <action> [arguments] [options]",
+        "commands": _walk_parser(parser, ()),
+    }
+
+
+def filter_reference_commands(
+    reference: dict[str, Any],
+    *,
+    path_prefix: Sequence[str],
+) -> dict[str, Any]:
+    """Restrict a machine-readable reference to one command subtree."""
+    prefix = tuple(path_prefix)
+    commands = [
+        command
+        for command in reference["commands"]
+        if tuple(command["path"])[: len(prefix)] == prefix
+    ]
+    return {**reference, "commands": commands}
+
+
+def render_machine_readable_reference(
+    reference: dict[str, Any],
+    *,
+    indent: int = 2,
+) -> str:
+    """Render a machine-readable command reference as JSON text."""
+    return json.dumps(reference, ensure_ascii=False, indent=indent) + "\n"
