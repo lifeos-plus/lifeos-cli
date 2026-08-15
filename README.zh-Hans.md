@@ -50,7 +50,7 @@ English: [README.md](README.md)
 | Relationships | `people` 支持关系元数据、生日/纪念日、tags、相关活动、anniversaries，以及来自 events、notes、timelogs 的链接。 |
 | Taxonomy | `tag` 支持 category/entity-type 元数据，以及跨资源 association counts。 |
 | Finance | 支持 assets、可复用 finance trees、nodes、instant/period snapshots、exchange-rate snapshots、default tree bootstrap，以及资产负债表/现金流风格的数据建模。 |
-| Data portability | 支持规范 JSON/JSONL export/import、完整 bundle backup/restore、dry-run validation、row-level errors 和面向机器的 batch update/delete。 |
+| Data portability | 支持规范 JSON/JSONL export/import、完整 bundle backup/restore、dry-run validation、row-level errors、自然键 upsert import 和面向机器的 batch update/delete。 |
 | Configuration | 持久化 database 与 preference 配置，包括 timezone、language、day boundary、week boundary、theme 和默认 vision experience rate。 |
 | Local Web API | FastAPI routers 覆盖 health、tasks、visions、habits、notes、timelogs、timelog templates、people、areas、finance、planned events、stats、tags 和 preferences。 |
 | Web UI | 位于 `lifeos-plus/lifeos-web` 的一方 Vite/React workspace，覆盖 visions、habits、planning、timelog、finance、insights/stats、schedule/calendar、notes、people 和 settings。 |
@@ -182,6 +182,7 @@ npm run dev
 - 以 `--help` 作为主命令参考的 help-first 模型
 - 围绕 `list` 和 `show` 构建的 identifier-driven 发现流程
 - 面向列表的紧凑摘要输出，以及面向详情的标注字段输出
+- 在 `list`、`search`、`show` 读命令上可选的 `--json` 输出，便于稳定的机器解析；默认紧凑文本输出保持不变
 - 使用 `task_id`、`vision_id`、`event_id` 等实体化主键列表头
 - 持久化语言偏好，便于 agent 匹配面向人类 payload 的语言
 - 数据 import/export 命令支持机器生成的清理、迁移和备份流程
