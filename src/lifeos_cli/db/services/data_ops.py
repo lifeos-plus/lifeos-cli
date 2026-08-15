@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 
 from sqlalchemy import delete, insert, select, text, update
@@ -73,6 +73,16 @@ SUPPORTED_DATA_RESOURCES = (
 )
 BUNDLE_RESOURCE_ORDER = SUPPORTED_DATA_RESOURCES
 BUNDLE_SCHEMA_VERSION = 3
+
+# Single-field natural keys that are safe upsert matchers per resource. The
+# field must be effectively unique among active records; resources without a
+# safe key stay id-only for idempotent syncs.
+NATURAL_KEY_FIELDS_BY_RESOURCE: dict[str, frozenset[str]] = {
+    "area": frozenset({"name"}),
+    "vision": frozenset({"name"}),
+    "people": frozenset({"name"}),
+    "habit": frozenset({"title"}),
+}
 
 
 class DataOperationError(RuntimeError):
@@ -406,6 +416,53 @@ def prepare_snapshot_row(resource: str, index: int, payload: dict[str, Any]) -> 
         note_habit_action_ids=note_habit_action_ids,
         occurrence_exceptions=occurrence_exceptions,
     )
+
+
+def validate_upsert_key(resource: str, key_field: str) -> None:
+    """Validate that one resource supports natural-key upsert for a field."""
+    allowed_fields = NATURAL_KEY_FIELDS_BY_RESOURCE.get(resource, frozenset())
+    if key_field not in allowed_fields:
+        allowed_text = ", ".join(sorted(allowed_fields)) or "none"
+        raise DataOperationError(
+            f"Natural-key upsert is not supported for {resource!r} field "
+            f"{key_field!r}; supported keys: {allowed_text}."
+        )
+
+
+async def resolve_upsert_row_id(
+    session: AsyncSession,
+    *,
+    resource: str,
+    row: dict[str, Any],
+    key_field: str,
+    index: int,
+) -> dict[str, Any]:
+    """Resolve one import row's id from its natural key.
+
+    Returns the row with the matching active record's id injected when one
+    exists, a fresh UUID when no match exists and the row has no id, or the
+    row unchanged when a match exists and the row already carries the same id.
+    """
+    raw_key_value = row.get(key_field)
+    if raw_key_value is None or str(raw_key_value).strip() == "":
+        raise DataOperationError(f"Row {index} is missing a value for upsert key `{key_field}`.")
+    spec = RESOURCE_SPECS[resource]
+    column = getattr(spec.model, key_field)
+    matches = (
+        (await session.execute(select(spec.model.id).where(column == raw_key_value)))
+        .scalars()
+        .all()
+    )
+    if len(matches) > 1:
+        raise DataOperationError(
+            f"Row {index} upsert key `{key_field}` is ambiguous: "
+            f"{len(matches)} active records match."
+        )
+    if matches:
+        return {**row, "id": str(matches[0])}
+    if "id" not in row or row["id"] is None or str(row["id"]).strip() == "":
+        return {**row, "id": str(uuid4())}
+    return row
 
 
 async def _load_related_ids_for_entities(

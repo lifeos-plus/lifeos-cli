@@ -271,6 +271,143 @@ def test_main_data_import_records_lookup_failures_without_crashing(
     assert session.rolled_back is True
 
 
+def test_main_data_import_upsert_requires_key(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = cli.main(
+        [
+            "data",
+            "import",
+            "area",
+            "--file",
+            "areas.jsonl",
+            "--mode",
+            "upsert",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "--mode upsert requires --key <field>." in captured.err
+
+
+def test_main_data_import_rejects_key_without_upsert_mode(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = cli.main(
+        [
+            "data",
+            "import",
+            "area",
+            "--file",
+            "areas.jsonl",
+            "--key",
+            "name",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "--key is only supported with --mode upsert." in captured.err
+
+
+def test_main_data_import_bundle_rejects_mode_and_key(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = cli.main(
+        [
+            "data",
+            "import",
+            "bundle",
+            "--file",
+            "lifeos-bundle.zip",
+            "--mode",
+            "upsert",
+            "--key",
+            "name",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "--mode and --key apply to single-resource imports only." in captured.err
+
+
+def test_main_data_import_upsert_resolves_natural_key_before_import(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    session = FakeAsyncSession()
+    input_path = tmp_path / "areas.jsonl"
+    input_path.write_text('{"name":"Health"}\n', encoding="utf-8")
+
+    resolved_rows: list[dict[str, object]] = []
+
+    async def fake_resolve_upsert_row_id(
+        _session_obj: object,
+        *,
+        resource: str,
+        row: dict[str, object],
+        key_field: str,
+        index: int,
+    ) -> dict[str, object]:
+        assert resource == "area"
+        assert key_field == "name"
+        assert index == 1
+        return {**row, "id": "11111111-1111-1111-1111-111111111111"}
+
+    async def fake_import_resource_snapshot(
+        _session_obj: object,
+        *,
+        resource: str,
+        rows: list[dict[str, object]],
+    ) -> data_ops.DataImportReport:
+        resolved_rows.extend(rows)
+        return data_ops.DataImportReport(
+            resource=resource,
+            processed_count=len(rows),
+            created_count=1,
+            updated_count=0,
+            failed_count=0,
+            failures=(),
+        )
+
+    async def fake_run_post_import_hooks(_session_obj: object, *, resources: set[str]) -> None:
+        _ = resources
+
+    monkeypatch.setattr(
+        db_session,
+        "get_async_session_factory",
+        _make_session_factory_getter(session),
+    )
+    monkeypatch.setattr(data_ops, "resolve_upsert_row_id", fake_resolve_upsert_row_id)
+    monkeypatch.setattr(data_ops, "import_resource_snapshot", fake_import_resource_snapshot)
+    monkeypatch.setattr(data_ops, "run_post_import_hooks", fake_run_post_import_hooks)
+
+    exit_code = cli.main(
+        [
+            "data",
+            "import",
+            "area",
+            "--file",
+            str(input_path),
+            "--format",
+            "jsonl",
+            "--mode",
+            "upsert",
+            "--key",
+            "name",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Created rows: 1" in captured.out
+    assert resolved_rows == [{"name": "Health", "id": "11111111-1111-1111-1111-111111111111"}]
+    assert session.committed is True
+
+
 def test_main_data_batch_update_records_lookup_failures_without_crashing(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

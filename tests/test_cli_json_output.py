@@ -82,9 +82,7 @@ def test_area_show_json_prints_one_object(
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
     monkeypatch.setattr(areas, "get_area", fake_get_area)
 
-    exit_code = cli.main(
-        ["area", "show", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "--json"]
-    )
+    exit_code = cli.main(["area", "show", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "--json"])
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
 
