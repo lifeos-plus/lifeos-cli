@@ -43,6 +43,15 @@ The current CLI output stays intentionally simple and scriptable.
 - `add` and `update` commands print short confirmation messages
 - public `delete` commands report soft-delete results only
 
+`list`, `search`, and `show` read commands accept an opt-in `--json` flag that leaves the default text output untouched:
+
+- JSON output is pretty-printed, preserves non-ASCII characters, and is emitted as one array of record objects for list-style commands
+- commands that support `--count` emit `{"items": [...], "total_count": N}` when `--count --json` are combined
+- timestamps render as explicit UTC ISO strings (for example `2026-04-10T12:00:00Z`), UUIDs render as strings, and Decimal amounts render as strings so precision is preserved
+- JSON payloads expose the full underlying record fields; for example note content is not truncated or whitespace-normalized the way text summaries are
+
+The `--json` shape follows the Web API serialization conventions where the two surfaces overlap, so callers that already consume the API can reuse their field handling.
+
 ## Installation and Initialization
 
 Install the published CLI:

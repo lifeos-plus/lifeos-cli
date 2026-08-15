@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
+from lifeos_cli.cli_support.json_output import print_json_items, print_json_payload
 from lifeos_cli.cli_support.output_utils import (
     NOTE_SUMMARY_COLUMNS,
     NOTE_SUMMARY_COLUMNS_WITH_COUNTS,
@@ -113,6 +114,9 @@ async def handle_note_list_async(args: argparse.Namespace) -> int:
                 limit=args.limit,
                 offset=args.offset,
             )
+    if args.json:
+        print_json_items(notes)
+        return 0
     print_summary_rows(
         items=notes,
         columns=NOTE_SUMMARY_COLUMNS_WITH_COUNTS if args.with_counts else NOTE_SUMMARY_COLUMNS,
@@ -158,6 +162,9 @@ async def handle_note_search_async(args: argparse.Namespace) -> int:
                 limit=args.limit,
                 offset=args.offset,
             )
+    if args.json:
+        print_json_items(notes)
+        return 0
     print_summary_rows(
         items=notes,
         columns=NOTE_SUMMARY_COLUMNS_WITH_COUNTS if args.with_counts else NOTE_SUMMARY_COLUMNS,
@@ -176,6 +183,9 @@ async def handle_note_show_async(args: argparse.Namespace) -> int:
         )
     if note is None:
         return cli_handler_utils.print_missing_record_error("Note", args.note_id)
+    if args.json:
+        print_json_payload(note)
+        return 0
     print(format_note_detail(note))
     return 0
 

@@ -6,6 +6,7 @@ import argparse
 from typing import cast
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
+from lifeos_cli.cli_support.json_output import print_json_items, print_json_payload
 from lifeos_cli.cli_support.output_utils import (
     format_summary_header,
     format_timestamp,
@@ -220,6 +221,9 @@ async def handle_habit_list_async(args: argparse.Namespace) -> int:
                     else None
                 )
                 trailer_lines = () if total_count is None else (f"Total habits: {total_count}",)
+                if args.json:
+                    print_json_items(overviews, total_count=total_count)
+                    return 0
                 print_summary_rows(
                     items=overviews,
                     columns=HABIT_SUMMARY_WITH_STATS_COLUMNS,
@@ -248,6 +252,9 @@ async def handle_habit_list_async(args: argparse.Namespace) -> int:
             )
         except habit_services.HabitValidationError as exc:
             return cli_handler_utils.print_cli_error(exc)
+    if args.json:
+        print_json_items(habits, total_count=total_count)
+        return 0
     trailer_lines = () if total_count is None else (f"Total habits: {total_count}",)
     print_summary_rows(
         items=habits,
@@ -269,6 +276,9 @@ async def handle_habit_show_async(args: argparse.Namespace) -> int:
         except habit_services.HabitNotFoundError as exc:
             return cli_handler_utils.print_cli_error(exc)
     habit, stats = _extract_habit_overview(overview)
+    if args.json:
+        print_json_payload(overview)
+        return 0
     print(_format_habit_detail(habit, stats))
     return 0
 

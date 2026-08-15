@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
+from lifeos_cli.cli_support.json_output import print_json_items, print_json_payload
 from lifeos_cli.cli_support.output_utils import (
     format_timestamp,
     print_batch_result,
@@ -68,6 +69,9 @@ async def handle_area_list_async(args: argparse.Namespace) -> int:
             limit=args.limit,
             offset=args.offset,
         )
+    if args.json:
+        print_json_items(areas)
+        return 0
     print_summary_rows(
         items=areas,
         columns=AREA_SUMMARY_COLUMNS,
@@ -85,6 +89,9 @@ async def handle_area_show_async(args: argparse.Namespace) -> int:
         )
     if area is None:
         return cli_handler_utils.print_missing_record_error("Area", args.area_id)
+    if args.json:
+        print_json_payload(area)
+        return 0
     print(_format_area_detail(area))
     return 0
 

@@ -10,6 +10,7 @@ from lifeos_cli.cli_support.help_utils import (
     add_documented_help_parser,
     add_documented_parser,
 )
+from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
     add_identifier_list_argument,
@@ -132,6 +133,7 @@ def build_vision_list_parser(
         "--person-id", type=UUID, help=_("common.messages.filter_by_linked_person_identifier")
     )
     add_limit_offset_arguments(list_parser)
+    add_json_output_argument(list_parser)
     list_parser.set_defaults(handler=make_sync_handler(handle_vision_list_async))
 
 
@@ -152,6 +154,7 @@ def build_vision_show_parser(
         ),
     )
     show_parser.add_argument("vision_id", type=UUID, help=_("common.messages.vision_identifier"))
+    add_json_output_argument(show_parser)
     show_parser.set_defaults(handler=make_sync_handler(handle_vision_show_async))
 
 

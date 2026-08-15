@@ -71,7 +71,8 @@
     "parser": {
       "maximum_number_of_results_to_return": "返回结果的最大数量",
       "noun_identifiers_to_action_verb": "用于{action_verb}的{noun}标识符",
-      "number_of_results_to_skip": "要跳过的结果数量"
+      "number_of_results_to_skip": "要跳过的结果数量",
+      "output_as_json": "改为输出结构化 JSON，而不是默认的文本输出"
     }
   },
   "resources": {

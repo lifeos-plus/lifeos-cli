@@ -184,6 +184,7 @@ Any agent runtime that can execute terminal commands and inspect command output 
 - help-first command model, with `--help` as the primary command reference
 - identifier-driven discovery flows built around `list` and `show`
 - compact summary output for lists and labeled output for record detail views
+- opt-in `--json` output on `list`, `search`, and `show` read commands for stable machine parsing; the default compact text output is unchanged
 - entity-specific primary-key headers such as `task_id`, `vision_id`, and `event_id`
 - persisted language preference so agents can match human-authored payload language
 - data import/export commands for machine-generated cleanup, migration, and backup flows

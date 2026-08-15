@@ -6,6 +6,7 @@ import argparse
 from uuid import UUID
 
 from lifeos_cli.cli_support.help_utils import HelpContent, add_documented_parser
+from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
     add_limit_offset_arguments,
@@ -98,6 +99,7 @@ def build_task_list_parser(
         "--content", help=_("resources.task.parser_read_models.filter_by_exact_task_content")
     )
     add_limit_offset_arguments(list_parser)
+    add_json_output_argument(list_parser)
     list_parser.set_defaults(handler=make_sync_handler(handle_task_list_async))
 
 
@@ -118,6 +120,7 @@ def build_task_show_parser(
         ),
     )
     show_parser.add_argument("task_id", type=UUID, help=_("common.messages.task_identifier"))
+    add_json_output_argument(show_parser)
     show_parser.set_defaults(handler=make_sync_handler(handle_task_show_async))
 
 

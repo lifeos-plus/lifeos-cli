@@ -71,7 +71,8 @@
     "parser": {
       "maximum_number_of_results_to_return": "Maximum number of results to return",
       "noun_identifiers_to_action_verb": "{noun} identifiers to {action_verb}",
-      "number_of_results_to_skip": "Number of results to skip"
+      "number_of_results_to_skip": "Number of results to skip",
+      "output_as_json": "Print structured JSON output instead of the default text output"
     }
   },
   "resources": {

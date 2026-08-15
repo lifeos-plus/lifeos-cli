@@ -7,6 +7,7 @@ import sys
 from uuid import UUID
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
+from lifeos_cli.cli_support.json_output import print_json_items, print_json_payload
 from lifeos_cli.cli_support.output_utils import (
     format_timestamp,
     print_batch_result,
@@ -152,6 +153,9 @@ async def handle_task_list_async(args: argparse.Namespace) -> int:
             )
         except ValueError as exc:
             return cli_handler_utils.print_cli_error(exc)
+    if args.json:
+        print_json_items(tasks)
+        return 0
     print_summary_rows(
         items=tasks,
         columns=TASK_SUMMARY_COLUMNS,
@@ -169,6 +173,9 @@ async def handle_task_show_async(args: argparse.Namespace) -> int:
         )
     if task is None:
         return cli_handler_utils.print_missing_record_error("Task", args.task_id)
+    if args.json:
+        print_json_payload(task)
+        return 0
     print(_format_task_detail(task))
     return 0
 

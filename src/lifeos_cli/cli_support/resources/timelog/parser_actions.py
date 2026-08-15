@@ -10,6 +10,7 @@ from lifeos_cli.cli_support.help_utils import (
     add_documented_parser,
     help_message,
 )
+from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
     add_date_range_arguments,
@@ -328,6 +329,7 @@ def _add_timelog_query_arguments(parser: argparse.ArgumentParser) -> None:
         "--count", action="store_true", help=_("common.messages.print_total_matched_count")
     )
     add_limit_offset_arguments(parser)
+    add_json_output_argument(parser)
 
 
 def build_timelog_show_parser(
@@ -351,6 +353,7 @@ def build_timelog_show_parser(
     show_parser.add_argument(
         "timelog_id", type=UUID, help=_("resources.timelog.parser_actions.timelog_identifier")
     )
+    add_json_output_argument(show_parser)
     show_parser.set_defaults(handler=make_sync_handler(handle_timelog_show_async))
 
 
