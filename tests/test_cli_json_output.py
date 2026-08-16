@@ -8,7 +8,8 @@ from uuid import UUID
 import pytest
 
 from lifeos_cli import cli
-from lifeos_cli.cli_support.json_output import print_json_payload, to_jsonable
+from lifeos_cli.application.serialization import to_jsonable
+from lifeos_cli.cli_support.json_output import print_json_payload
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import areas, notes, timelogs, visions
 from tests.support import make_record, make_session_scope, utc_datetime
