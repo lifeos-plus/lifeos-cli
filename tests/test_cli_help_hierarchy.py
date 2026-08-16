@@ -50,9 +50,9 @@ def test_main_note_without_action_prints_resource_help(capsys) -> None:
         (
             "finance",
             (
-                "lifeos finance tree-add --help",
-                "lifeos finance node-add --help",
-                "lifeos finance snapshot-add --help",
+                "lifeos finance tree --help",
+                "lifeos finance node --help",
+                "lifeos finance snapshot --help",
             ),
         ),
         ("note", ("lifeos note add --help", "lifeos note list --help", "lifeos note batch --help")),

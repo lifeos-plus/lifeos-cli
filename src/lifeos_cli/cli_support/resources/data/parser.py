@@ -257,6 +257,7 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                 _(
                     "resources.data.parser.use_resource_specific_delete_commands_when_you_want_narrower_human_guided_changes"
                 ),
+                _("common.messages.use_resource_batch_delete_for_inline_id_bulk_workflows"),
             ),
         ),
     )

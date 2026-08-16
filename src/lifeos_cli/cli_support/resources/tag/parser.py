@@ -13,7 +13,7 @@ from lifeos_cli.cli_support.help_utils import (
 from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
-    add_identifier_list_argument,
+    add_batch_delete_namespace,
     add_limit_offset_arguments,
 )
 from lifeos_cli.cli_support.resources.tag.handlers import (
@@ -235,33 +235,23 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
     delete_parser.add_argument("tag_id", type=UUID, help=_("resources.tag.parser.tag_identifier"))
     delete_parser.set_defaults(handler=make_sync_handler(handle_tag_delete_async))
 
-    batch_parser = add_documented_help_parser(
+    add_batch_delete_namespace(
         tag_subparsers,
-        "batch",
-        help_content=HelpContent(
-            summary=_("resources.tag.parser.run_batch_tag_operations"),
-            description=_("resources.tag.parser.delete_multiple_tags_in_one_command"),
-            examples=(
-                "lifeos tag batch delete --help",
-                "lifeos tag batch delete --ids <tag-id-1> <tag-id-2>",
-            ),
-            notes=(_("common.messages.this_namespace_currently_exposes_only_delete_workflow"),),
-        ),
-    )
-    batch_subparsers = batch_parser.add_subparsers(
         dest="tag_batch_command",
-        title=_("common.messages.batch_actions"),
-        metavar=_("common.messages.batch_action"),
-    )
-
-    batch_delete_parser = add_documented_parser(
-        batch_subparsers,
-        "delete",
-        help_content=HelpContent(
-            summary=_("resources.tag.parser.delete_multiple_tags"),
-            description=_("resources.tag.parser.delete_multiple_tags_by_identifier"),
-            examples=("lifeos tag batch delete --ids <tag-id-1> <tag-id-2>",),
+        ids_dest="tag_ids",
+        noun="tag",
+        delete_handler=make_sync_handler(handle_tag_batch_delete_async),
+        batch_summary=_("resources.tag.parser.run_batch_tag_operations"),
+        batch_description=_("resources.tag.parser.delete_multiple_tags_in_one_command"),
+        batch_examples=(
+            "lifeos tag batch delete --help",
+            "lifeos tag batch delete --ids <tag-id-1> <tag-id-2>",
         ),
+        batch_notes=(
+            _("common.messages.this_namespace_currently_exposes_only_delete_workflow"),
+            _("common.messages.use_data_batch_delete_for_file_or_stream_bulk_workflows"),
+        ),
+        delete_summary=_("resources.tag.parser.delete_multiple_tags"),
+        delete_description=_("resources.tag.parser.delete_multiple_tags_by_identifier"),
+        delete_examples=("lifeos tag batch delete --ids <tag-id-1> <tag-id-2>",),
     )
-    add_identifier_list_argument(batch_delete_parser, dest="tag_ids", noun="tag")
-    batch_delete_parser.set_defaults(handler=make_sync_handler(handle_tag_batch_delete_async))

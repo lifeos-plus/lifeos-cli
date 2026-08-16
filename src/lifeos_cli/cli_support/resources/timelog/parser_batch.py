@@ -10,7 +10,10 @@ from lifeos_cli.cli_support.help_utils import (
     add_documented_help_parser,
     add_documented_parser,
 )
-from lifeos_cli.cli_support.parser_common import add_identifier_list_argument
+from lifeos_cli.cli_support.parser_common import (
+    add_batch_delete_action,
+    add_identifier_list_argument,
+)
 from lifeos_cli.cli_support.resources.timelog.handlers import (
     handle_timelog_batch_delete_async,
     handle_timelog_batch_update_async,
@@ -129,14 +132,14 @@ def build_timelog_batch_parser(
     )
     batch_update_parser.set_defaults(handler=make_sync_handler(handle_timelog_batch_update_async))
 
-    batch_delete_parser = add_documented_parser(
+    add_batch_delete_action(
         batch_subparsers,
-        "delete",
-        help_content=HelpContent(
-            summary=_("resources.timelog.parser_batch.delete_multiple_timelogs"),
-            description=_("resources.timelog.parser_batch.delete_multiple_timelogs_by_identifier"),
-            examples=("lifeos timelog batch delete --ids <timelog-id-1> <timelog-id-2>",),
+        ids_dest="timelog_ids",
+        noun="timelog",
+        delete_handler=make_sync_handler(handle_timelog_batch_delete_async),
+        delete_summary=_("resources.timelog.parser_batch.delete_multiple_timelogs"),
+        delete_description=_(
+            "resources.timelog.parser_batch.delete_multiple_timelogs_by_identifier"
         ),
+        delete_examples=("lifeos timelog batch delete --ids <timelog-id-1> <timelog-id-2>",),
     )
-    add_identifier_list_argument(batch_delete_parser, dest="timelog_ids", noun="timelog")
-    batch_delete_parser.set_defaults(handler=make_sync_handler(handle_timelog_batch_delete_async))

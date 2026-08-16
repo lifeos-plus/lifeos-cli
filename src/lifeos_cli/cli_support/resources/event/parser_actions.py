@@ -8,15 +8,14 @@ from uuid import UUID
 
 from lifeos_cli.cli_support.help_utils import (
     HelpContent,
-    add_documented_help_parser,
     add_documented_parser,
     help_message,
 )
 from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
+    add_batch_delete_namespace,
     add_date_range_arguments,
-    add_identifier_list_argument,
     add_limit_offset_arguments,
     add_start_end_date_arguments,
 )
@@ -586,32 +585,24 @@ def build_event_batch_parser(
     event_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
     """Build the event batch command tree."""
-    batch_parser = add_documented_help_parser(
+    add_batch_delete_namespace(
         event_subparsers,
-        "batch",
-        help_content=HelpContent(
-            summary=_("resources.event.parser_actions.run_batch_event_operations"),
-            description=_("resources.event.parser_actions.delete_multiple_events_in_one_command"),
-            examples=(
-                "lifeos event batch delete --help",
-                "lifeos event batch delete --ids <event-id-1> <event-id-2>",
-            ),
-            notes=(_("common.messages.this_namespace_currently_exposes_only_delete_workflow"),),
-        ),
-    )
-    batch_subparsers = batch_parser.add_subparsers(
         dest="event_batch_command",
-        title=_("common.messages.batch_actions"),
+        ids_dest="event_ids",
+        noun="event",
+        delete_handler=make_sync_handler(handle_event_batch_delete_async),
+        batch_summary=_("resources.event.parser_actions.run_batch_event_operations"),
+        batch_description=_("resources.event.parser_actions.delete_multiple_events_in_one_command"),
+        batch_examples=(
+            "lifeos event batch delete --help",
+            "lifeos event batch delete --ids <event-id-1> <event-id-2>",
+        ),
+        batch_notes=(
+            _("common.messages.this_namespace_currently_exposes_only_delete_workflow"),
+            _("common.messages.use_data_batch_delete_for_file_or_stream_bulk_workflows"),
+        ),
+        delete_summary=_("resources.event.parser_actions.delete_multiple_events"),
+        delete_description=_("resources.event.parser_actions.delete_multiple_events_by_identifier"),
+        delete_examples=("lifeos event batch delete --ids <event-id-1> <event-id-2>",),
         metavar=_("common.messages.batch_action_hyphenated_metavar"),
     )
-    batch_delete_parser = add_documented_parser(
-        batch_subparsers,
-        "delete",
-        help_content=HelpContent(
-            summary=_("resources.event.parser_actions.delete_multiple_events"),
-            description=_("resources.event.parser_actions.delete_multiple_events_by_identifier"),
-            examples=("lifeos event batch delete --ids <event-id-1> <event-id-2>",),
-        ),
-    )
-    add_identifier_list_argument(batch_delete_parser, dest="event_ids", noun="event")
-    batch_delete_parser.set_defaults(handler=make_sync_handler(handle_event_batch_delete_async))

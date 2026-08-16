@@ -684,6 +684,28 @@ def test_cli_parser_supports_timelog_search_advanced_filters() -> None:
     assert args.count is True
 
 
+def test_cli_parser_requires_query_for_timelog_search() -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["timelog", "search", "--date", "2026-04-10"])
+
+    assert exc_info.value.code == 2
+
+    args = parser.parse_args(["timelog", "search", "--query", "deep work"])
+    assert args.timelog_command == "search"
+    assert args.query == "deep work"
+
+
+def test_cli_parser_keeps_query_optional_for_timelog_list() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["timelog", "list", "--date", "2026-04-10"])
+
+    assert args.timelog_command == "list"
+    assert args.query is None
+
+
 def test_cli_parser_supports_task_list_person_filter() -> None:
     parser = build_parser()
     args = parser.parse_args(

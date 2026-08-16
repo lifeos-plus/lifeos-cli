@@ -7,13 +7,12 @@ from uuid import UUID
 
 from lifeos_cli.cli_support.help_utils import (
     HelpContent,
-    add_documented_help_parser,
     add_documented_parser,
 )
 from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
-    add_identifier_list_argument,
+    add_batch_delete_namespace,
     add_limit_offset_arguments,
 )
 from lifeos_cli.cli_support.resources.vision.handlers import (
@@ -413,33 +412,27 @@ def build_vision_batch_parser(
     vision_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
     """Build the vision batch command tree."""
-    batch_parser = add_documented_help_parser(
+    add_batch_delete_namespace(
         vision_subparsers,
-        "batch",
-        help_content=HelpContent(
-            summary=_("resources.vision.parser_actions.run_batch_vision_operations"),
-            description=_("resources.vision.parser_actions.delete_multiple_visions_in_one_command"),
-            examples=(
-                "lifeos vision batch delete --help",
-                "lifeos vision batch delete --ids <vision-id-1> <vision-id-2>",
-            ),
-            notes=(_("common.messages.this_namespace_currently_exposes_only_delete_workflow"),),
-        ),
-    )
-    batch_subparsers = batch_parser.add_subparsers(
         dest="vision_batch_command",
-        title=_("common.messages.batch_actions"),
-        metavar=_("common.messages.batch_action"),
-    )
-
-    batch_delete_parser = add_documented_parser(
-        batch_subparsers,
-        "delete",
-        help_content=HelpContent(
-            summary=_("resources.vision.parser_actions.delete_multiple_visions"),
-            description=_("resources.vision.parser_actions.delete_multiple_visions_by_identifier"),
-            examples=("lifeos vision batch delete --ids <vision-id-1> <vision-id-2>",),
+        ids_dest="vision_ids",
+        noun="vision",
+        delete_handler=make_sync_handler(handle_vision_batch_delete_async),
+        batch_summary=_("resources.vision.parser_actions.run_batch_vision_operations"),
+        batch_description=_(
+            "resources.vision.parser_actions.delete_multiple_visions_in_one_command"
         ),
+        batch_examples=(
+            "lifeos vision batch delete --help",
+            "lifeos vision batch delete --ids <vision-id-1> <vision-id-2>",
+        ),
+        batch_notes=(
+            _("common.messages.this_namespace_currently_exposes_only_delete_workflow"),
+            _("common.messages.use_data_batch_delete_for_file_or_stream_bulk_workflows"),
+        ),
+        delete_summary=_("resources.vision.parser_actions.delete_multiple_visions"),
+        delete_description=_(
+            "resources.vision.parser_actions.delete_multiple_visions_by_identifier"
+        ),
+        delete_examples=("lifeos vision batch delete --ids <vision-id-1> <vision-id-2>",),
     )
-    add_identifier_list_argument(batch_delete_parser, dest="vision_ids", noun="vision")
-    batch_delete_parser.set_defaults(handler=make_sync_handler(handle_vision_batch_delete_async))
