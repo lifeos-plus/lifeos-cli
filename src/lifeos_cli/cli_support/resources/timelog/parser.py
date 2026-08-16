@@ -48,7 +48,7 @@ def build_timelog_parser(subparsers: argparse._SubParsersAction[argparse.Argumen
                 ),
                 _("resources.timelog.parser.use_stats_for_timelog_stats_grouped_by_area"),
                 _(
-                    "resources.timelog.parser.see_lifeos_timelog_batch_help_for_bulk_update_and_delete_workflows"
+                    "resources.timelog.parser.see_lifeos_timelog_batch_help_for_bulk_update_workflows"
                 ),
             ),
         ),

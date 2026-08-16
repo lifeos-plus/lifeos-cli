@@ -104,14 +104,11 @@ def test_main_resource_help_surfaces_action_help_examples(
     [
         (
             ["note", "batch"],
-            ("lifeos note batch update-content --help", "lifeos note batch delete --help"),
+            ("lifeos note batch update-content --help",),
         ),
         (
             ["timelog", "batch"],
-            (
-                "lifeos timelog batch update --help",
-                "lifeos timelog batch delete --help",
-            ),
+            ("lifeos timelog batch update --help",),
         ),
         (
             ["timelog", "stats"],
@@ -145,7 +142,7 @@ def test_namespace_help_surfaces_nested_help_examples(
         ),
         (
             ["timelog", "batch"],
-            "Run bulk update and delete operations for timelogs.",
+            "Run bulk update operations for timelogs.",
         ),
         (
             ["timelog", "stats"],
@@ -210,11 +207,11 @@ def test_resource_help_avoids_action_level_contract_details(
     [
         (
             "note",
-            "See `lifeos note batch --help` for bulk `update-content` and `delete` workflows.",
+            "See `lifeos note batch --help` for bulk `update-content` workflows.",
         ),
         (
             "timelog",
-            "See `lifeos timelog batch --help` for bulk `update` and `delete` workflows.",
+            "See `lifeos timelog batch --help` for bulk `update` workflows.",
         ),
     ],
 )
@@ -322,4 +319,3 @@ def test_cli_note_batch_help_explains_namespace_intent(capsys) -> None:
     assert "Run note operations that target multiple records in one command." in captured.out
     assert "Use `update-content` for bulk find/replace across active note content." in captured.out
     assert "update-content" in captured.out
-    assert "delete" in captured.out

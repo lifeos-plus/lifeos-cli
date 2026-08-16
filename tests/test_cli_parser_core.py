@@ -83,12 +83,12 @@ def test_cli_parser_supports_init_preference_flags() -> None:
     assert args.vision_experience_rate_per_hour == 120
 
 
-def test_cli_parser_supports_config_set_command() -> None:
+def test_cli_parser_supports_config_update_command() -> None:
     parser = build_parser()
-    args = parser.parse_args(["config", "set", "preferences.timezone", "America/Toronto"])
+    args = parser.parse_args(["config", "update", "preferences.timezone", "America/Toronto"])
 
     assert args.resource == "config"
-    assert args.config_command == "set"
+    assert args.config_command == "update"
     assert args.key == "preferences.timezone"
     assert args.value == "America/Toronto"
 

@@ -38,7 +38,7 @@ def build_note_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                     "resources.note.parser.run_lifeos_init_before_using_note_commands_for_first_time"
                 ),
                 _(
-                    "resources.note.parser.see_lifeos_note_batch_help_for_bulk_update_content_and_delete_workflows"
+                    "resources.note.parser.see_lifeos_note_batch_help_for_bulk_update_content_workflows"
                 ),
             ),
         ),

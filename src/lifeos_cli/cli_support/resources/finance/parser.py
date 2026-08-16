@@ -318,6 +318,7 @@ def _tree_help(action: str) -> HelpContent:
         summary=_("resources.finance.parser.ensure_default_finance_tree_exists"),
         description=_("resources.finance.parser.create_global_default_finance_tree_if_missing"),
         examples=("lifeos finance tree ensure-default",),
+        notes=(_("resources.finance.parser.ensure_default_tree_is_idempotent"),),
     )
 
 

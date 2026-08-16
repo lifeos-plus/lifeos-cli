@@ -334,7 +334,7 @@ def test_main_note_batch_update_content_prints_summary(
     assert "Unchanged note IDs:" in captured.out
 
 
-def test_main_note_batch_delete_reports_failures(
+def test_main_note_delete_multiple_reports_failures(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -359,9 +359,7 @@ def test_main_note_batch_delete_reports_failures(
     exit_code = cli.main(
         [
             "note",
-            "batch",
             "delete",
-            "--ids",
             "11111111-1111-1111-1111-111111111111",
             "22222222-2222-2222-2222-222222222222",
         ]

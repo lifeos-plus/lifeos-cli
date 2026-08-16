@@ -14,10 +14,10 @@
 │   └── update  —  Update an area
 │           args: area_id [required]; --name; --description; --clear-description; --color; --icon; --clear-icon; --active; --display-order
 ├── config  —  Inspect runtime configuration
-│   ├── set  —  Persist one config value
-│   │       args: key [required]; value [required]; --show-secrets
-│   └── show  —  Show effective configuration
-│           args: --show-secrets; --json
+│   ├── show  —  Show effective configuration
+│   │       args: --show-secrets; --json
+│   └── update  —  Persist one config value
+│           args: key [required]; value [required]; --show-secrets
 ├── data  —  Run unified data import/export and batch commands
 │   ├── batch-delete  —  Batch-delete one resource by identifiers
 │   │       args: target [required]; --id; --ids-file; --file; --stdin; --format; --dry-run; --error-file
@@ -130,12 +130,10 @@
 │   ├── add  —  Create a note
 │   │       args: content [nargs=?]; --stdin; --file; --tag-id; --person-id; --task-id; --vision-id; --event-id; --timelog-id; --habit-action-id
 │   ├── batch  —  Run batch note operations
-│   │   ├── delete  —  Delete multiple notes
-│   │   │       args: --ids
 │   │   └── update-content  —  Find and replace note content in bulk
 │   │           args: --ids; --find-text; --replace-text; --case-sensitive
 │   ├── delete  —  Delete a note
-│   │       args: note_id [required]
+│   │       args: note_ids [required]
 │   ├── list  —  List notes
 │   │       args: --tag-id; --event-id; --person-id; --task-id; --timelog-id; --vision-id; --habit-action-id; --with-counts; --limit; --offset; --json
 │   ├── search  —  Search notes
@@ -199,12 +197,10 @@
 │   ├── add  —  Create a timelog
 │   │       args: title [nargs=?]; --start-time; --end-time; --entry; --stdin; --file; --first-start-time; --yes; --tracking-method; --location; --energy-level; --notes; --area-id; --task-id; --tag-id; --person-id
 │   ├── batch  —  Run batch timelog operations
-│   │   ├── delete  —  Delete multiple timelogs
-│   │   │       args: --ids
 │   │   └── update  —  Update multiple timelogs
 │   │           args: --ids; --title; --find-title-text; --replace-title-text; --area-id; --clear-area; --task-id; --clear-task; --tag-id; --clear-tags; --person-id; --clear-person
 │   ├── delete  —  Delete a timelog
-│   │       args: timelog_id [required]
+│   │       args: timelog_ids [required]
 │   ├── list  —  List timelogs
 │   │       args: --title-contains; --notes-contains; --query; --tracking-method; --area-id; --area-name; --without-area; --task-id; --without-task; --person-id; --tag-id; --with-counts; --date; --start-date; --end-date; --start-time; --end-time; --count; --limit; --offset; --json
 │   ├── search  —  Search timelogs

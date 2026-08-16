@@ -451,7 +451,7 @@ def test_cli_init_and_config_help_explain_bootstrap_boundary(capsys) -> None:
 
     captured = capsys.readouterr()
 
-    assert "Use `config set` for supported follow-up edits" in captured.out
+    assert "Use `config update` for supported follow-up edits" in captured.out
 
     with pytest.raises(SystemExit):
         parser.parse_args(["config", "--help"])
@@ -459,7 +459,7 @@ def test_cli_init_and_config_help_explain_bootstrap_boundary(capsys) -> None:
     captured = capsys.readouterr()
 
     assert "Use `show` to inspect effective values" in captured.out
-    expected = "Use `set` to persist supported keys without re-running the full init flow."
+    expected = "Use `update` to persist supported keys without re-running the full init flow."
     assert expected in captured.out
 
     with pytest.raises(SystemExit):
@@ -467,11 +467,13 @@ def test_cli_init_and_config_help_explain_bootstrap_boundary(capsys) -> None:
 
     captured = capsys.readouterr()
 
-    expected = "Use `config set` to persist one supported key after reviewing the current values."
+    expected = (
+        "Use `config update` to persist one supported key after reviewing the current values."
+    )
     assert expected in captured.out
 
     with pytest.raises(SystemExit):
-        parser.parse_args(["config", "set", "--help"])
+        parser.parse_args(["config", "update", "--help"])
 
     captured = capsys.readouterr()
 
@@ -1019,8 +1021,8 @@ def test_cli_help_shows_update_clear_examples(
             "lifeos vision delete <vision-id-1> <vision-id-2>",
         ),
         (
-            ["timelog", "batch", "delete", "--help"],
-            "lifeos timelog batch delete --ids <timelog-id-1> <timelog-id-2>",
+            ["timelog", "delete", "--help"],
+            "lifeos timelog delete <timelog-id-1> <timelog-id-2>",
         ),
     ],
 )
@@ -1080,8 +1082,8 @@ def test_cli_batch_action_ids_help_matches_action_semantics(
             "lifeos config show --show-secrets",
         ),
         (
-            ["config", "set", "--help"],
-            "lifeos config set database.url "
+            ["config", "update", "--help"],
+            "lifeos config update database.url "
             "sqlite+aiosqlite:///$HOME/.lifeos/work.db "
             "--show-secrets",
         ),

@@ -116,10 +116,10 @@ Inspect and adjust runtime preferences:
 
 ```bash
 lifeos config show
-lifeos config set preferences.timezone America/Toronto
-lifeos config set preferences.language zh-Hans
-lifeos config set preferences.day_starts_at 04:00
-lifeos config set preferences.week_starts_on monday
+lifeos config update preferences.timezone America/Toronto
+lifeos config update preferences.language zh-Hans
+lifeos config update preferences.day_starts_at 04:00
+lifeos config update preferences.week_starts_on monday
 ```
 
 ## Common CLI Workflows

@@ -28,7 +28,7 @@ def test_collect_help_invocations_covers_nested_parser_paths() -> None:
     assert ("note", "batch", "update-content", "--help") in paths
     assert ("timelog", "search", "--help") in paths
     assert ("timelog", "stats", "day", "--help") in paths
-    assert ("config", "set", "--help") in paths
+    assert ("config", "update", "--help") in paths
 
 
 def test_filter_help_invocations_limits_results_to_one_subtree() -> None:

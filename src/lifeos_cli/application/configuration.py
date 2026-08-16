@@ -95,7 +95,7 @@ SUPPORTED_CONFIG_KEYS = (
 
 @dataclass(frozen=True)
 class ConfigSetResult:
-    """Result of one config set write operation."""
+    """Result of one config update write operation."""
 
     key: str
     config_path: Path
@@ -260,7 +260,7 @@ def set_runtime_config_value(
         next_backend = database_policy(validated_database_url).backend_name
         if current_backend is not None and current_backend != next_backend:
             raise ConfigurationError(
-                "Switching between PostgreSQL and SQLite with `config set database.url` is not "
+                "Switching between PostgreSQL and SQLite with `config update database.url` is not "
                 "supported. Re-run `lifeos init --database-url ...` and provide `--schema` "
                 "when targeting PostgreSQL."
             )

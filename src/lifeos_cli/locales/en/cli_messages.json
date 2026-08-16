@@ -292,6 +292,7 @@
         "manage_nodes_inside_one_finance_tree": "Add, list, show, update, and delete nodes inside one finance tree.",
         "manage_finance_trees": "Manage finance trees",
         "manage_finance_trees_and_default_tree": "Create, inspect, update, and delete finance trees and the global default tree.",
+        "ensure_default_tree_is_idempotent": "Idempotent: returns the existing default tree when one exists; `--primary-currency` is only used when creating the tree.",
         "show_finance_asset": "Show a finance asset",
         "show_one_finance_asset_and_precision": "Show one finance asset with its precision settings.",
         "show_finance_tree_node": "Show a finance tree node",
@@ -418,18 +419,15 @@
         "capture_and_manage_notes": "Capture and manage notes",
         "create_inspect_update_and_delete_note_records": "Create, inspect, update, and delete note records.",
         "run_lifeos_init_before_using_note_commands_for_first_time": "Run `lifeos init` before using note commands for the first time.",
-        "see_lifeos_note_batch_help_for_bulk_update_content_and_delete_workflows": "See `lifeos note batch --help` for bulk `update-content` and `delete` workflows."
+        "see_lifeos_note_batch_help_for_bulk_update_content_workflows": "See `lifeos note batch --help` for bulk `update-content` workflows."
       },
       "parser_actions": {
         "apply_find_replace_operation_across_multiple_active_notes": "Apply a find/replace operation across multiple active notes.",
         "batch_commands_currently_accept_note_ids_directly": "Batch commands currently accept note IDs directly.",
         "create_new_note_from_inline_text_stdin_or_file": "Create a new note from inline text, stdin, or a file.",
         "create_note": "Create a note",
-        "delete_multiple_notes": "Delete multiple notes",
-        "delete_multiple_notes_in_one_command": "Delete multiple notes in one command.",
         "delete_note": "Delete a note",
         "delete_note_by_identifier": "Delete a note by identifier.",
-        "failed_note_ids_are_printed_to_stderr_while_successful_deletes_stay_on": "Failed note IDs are printed to stderr while successful deletes stay on stdout.",
         "failed_note_ids_are_printed_to_stderr_while_successful_updates_stay_on": "Failed note IDs are printed to stderr while successful updates stay on stdout.",
         "filter_by_linked_event": "Filter by linked event",
         "filter_by_linked_habit_action": "Filter by linked habit action",
@@ -442,7 +440,6 @@
         "multi_word_queries_are_split_into_tokens_and_matched_with_or_semantics": "Multi-word queries are split into tokens and matched with OR semantics.",
         "note_identifier": "Note identifier",
         "omitted_fields_remain_unchanged_use_clear_flags_to_remove_links": "Omitted fields remain unchanged. Use `--clear-*` flags to remove links.",
-        "one_or_more_note_identifiers_to_delete": "One or more note identifiers to delete",
         "one_or_more_note_identifiers_to_update": "One or more note identifiers to update",
         "only_active_notes_are_updated_by_this_command": "Only active notes are updated by this command.",
         "read_note_content_from_standard_input": "Read note content from standard input",
@@ -477,12 +474,10 @@
         "show_full_note_content": "Show full note content",
         "show_single_note_with_full_metadata_and_original_content_body": "Show a single note with full metadata and the original content body.",
         "text_to_find_in_each_target_note": "Text to find in each target note",
-        "this_command_mirrors_lifeos_note_delete_but_works_across_many_note_ids": "This command mirrors `lifeos note delete`, but works across many note IDs.",
         "this_is_first_batch_editing_primitive_for_notes_and_provides_base_shape": "This is the first batch-editing primitive for notes and provides a base shape for future bulk operations.",
         "update_note": "Update a note",
         "update_note_content_and_weak_associations_in_place": "Update note content and weak associations in place.",
         "use_case_sensitive_find_replace_instead_of_case_insensitive_matching": "Use a case-sensitive find/replace instead of case-insensitive matching",
-        "use_delete_to_remove_multiple_notes_by_identifier": "Use `delete` to remove multiple notes by identifier.",
         "use_limit_and_offset_together_for_pagination": "Use --limit and --offset together for pagination.",
         "use_relation_flags_without_content_when_only_links_need_to_change": "Use relation flags without `content` when only links need to change.",
         "use_stdin_or_file_for_multi_line_note_content": "Use `--stdin` or `--file` for multi-line note content.",
@@ -731,11 +726,11 @@
       "parser": {
         "create_and_maintain_actual_time_records": "Create and maintain actual time records.",
         "manage_actual_time_records": "Manage actual time records",
-        "see_lifeos_timelog_batch_help_for_bulk_update_and_delete_workflows": "See `lifeos timelog batch --help` for bulk `update` and `delete` workflows.",
         "timelogs_can_optionally_reference_one_area_and_one_task": "Timelogs can optionally reference one area and one task.",
         "timelogs_represent_what_really_happened_and_how_time_was_spent": "Timelogs represent what really happened and how time was spent.",
         "use_list_as_primary_query_entrypoint_for_timelogs": "Use `list` for general timelog browsing and `search` for keyword or advanced queries.",
-        "use_stats_for_timelog_stats_grouped_by_area": "Use `stats` for timelog stats grouped by area."
+        "use_stats_for_timelog_stats_grouped_by_area": "Use `stats` for timelog stats grouped by area.",
+        "see_lifeos_timelog_batch_help_for_bulk_update_workflows": "See `lifeos timelog batch --help` for bulk `update` workflows."
       },
       "parser_actions": {
         "clear_energy_level": "Clear energy level",
@@ -789,21 +784,18 @@
         "write_quick_batch_timelogs_without_interactive_confirmation_after_preview": "Write quick batch timelogs without interactive confirmation after preview"
       },
       "parser_batch": {
-        "delete_multiple_timelogs": "Delete multiple timelogs",
-        "delete_multiple_timelogs_by_identifier": "Delete multiple timelogs by identifier.",
         "repeat_same_tag_id_or_person_id_flag_to_replace_multiple_linked": "Repeat the same `--tag-id` or `--person-id` flag to replace multiple linked tags or people.",
         "replace_full_title": "Replace the full title",
         "replace_linked_area": "Replace linked area",
         "replace_linked_task": "Replace linked task",
         "replacement_text_for_title_matches": "Replacement text for title matches",
         "run_batch_timelog_operations": "Run batch timelog operations",
-        "run_bulk_update_and_delete_operations_for_timelogs": "Run bulk update and delete operations for timelogs.",
         "title_text_to_find": "Title text to find",
         "update_multiple_timelogs": "Update multiple timelogs",
         "update_mutable_fields_across_multiple_active_timelogs": "Update mutable fields across multiple active timelogs.",
         "use_clear_flags_to_remove_optional_links": "Use `--clear-*` flags to remove optional links.",
-        "use_delete_to_remove_multiple_timelogs_in_one_command": "Use `delete` to remove multiple timelogs in one command.",
-        "use_update_to_edit_mutable_fields_across_active_timelogs": "Use `update` to edit mutable fields across active timelogs."
+        "use_update_to_edit_mutable_fields_across_active_timelogs": "Use `update` to edit mutable fields across active timelogs.",
+        "run_bulk_update_operations_for_timelogs": "Run bulk update operations for timelogs."
       },
       "parser_stats": {
         "calendar_month_in_yyyy_mm_format": "Calendar month in YYYY-MM format",
@@ -917,14 +909,14 @@
       "supported_config_key_to_update": "Supported config key to update",
       "supported_keys_keys": "Supported keys: {keys}",
       "this_command_writes_config_file_not_environment_variables": "This command writes the config file, not environment variables.",
-      "use_config_set_to_persist_one_supported_key_after_reviewing_current_values": "Use `config set` to persist one supported key after reviewing the current values.",
       "use_config_show_to_inspect_effective_values_after_environment_overrides": "Use `config show` to inspect the effective values after environment overrides.",
       "use_lifeos_init_for_first_time_bootstrap_or_when_changing_schema_binding": "Use `lifeos init` for first-time bootstrap or when changing the schema binding.",
       "use_lifeos_init_schema_name_to_change_database_schema_binding": "Use `lifeos init --schema <name>` to change the database schema binding.",
-      "use_set_to_persist_supported_keys_into_local_config_file": "Use `set` to persist supported keys into the local config file.",
-      "use_set_to_persist_supported_keys_without_re_running_full_init_flow": "Use `set` to persist supported keys without re-running the full init flow.",
       "use_show_to_inspect_effective_values_after_config_file_and_env_resolution": "Use `show` to inspect effective values after config-file and env resolution.",
-      "write_one_supported_config_key_to_local_config_file": "Write one supported config key to the local config file."
+      "write_one_supported_config_key_to_local_config_file": "Write one supported config key to the local config file.",
+      "use_config_update_to_persist_one_supported_key_after_reviewing_current_values": "Use `config update` to persist one supported key after reviewing the current values.",
+      "use_update_to_persist_supported_keys_into_local_config_file": "Use `update` to persist supported keys into the local config file.",
+      "use_update_to_persist_supported_keys_without_re_running_full_init_flow": "Use `update` to persist supported keys without re-running the full init flow."
     },
     "config_handlers": {
       "enable_sql_echo_logging": "Enable SQL echo logging"
@@ -978,7 +970,7 @@
       "preferred_language_tag_for_example_en_en_ca_or_zh_hans": "Preferred language tag, for example en, en-CA, or zh-Hans",
       "re_run_lifeos_init_at_any_time_to_update_stored_preferences": "Re-run `lifeos init` at any time to update stored preferences.",
       "this_command_is_recommended_first_step_after_installing_lifeos_cli": "This command is the recommended first step after installing lifeos-cli.",
-      "use_config_set_for_supported_follow_up_edits_when_you_do_not": "Use `config set` for supported follow-up edits when you do not need to re-run the full bootstrap flow."
+      "use_config_update_for_supported_follow_up_edits_when_you_do_not": "Use `config update` for supported follow-up edits when you do not need to re-run the full bootstrap flow."
     }
   }
 }

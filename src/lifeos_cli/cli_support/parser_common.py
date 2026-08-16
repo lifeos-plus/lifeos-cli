@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable
 from uuid import UUID
 
 from lifeos_cli.cli_support.help_utils import (
     HelpContent,
     add_documented_help_parser,
-    add_documented_parser,
 )
 from lifeos_cli.cli_support.time_args import parse_date_value
 from lifeos_cli.i18n import cli_message as _
@@ -93,44 +91,6 @@ def add_start_end_date_arguments(
         type=parse_date_value,
         help=end_date_help,
     )
-
-
-def add_batch_delete_action(
-    batch_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
-    *,
-    ids_dest: str,
-    noun: str,
-    delete_handler: Callable[[argparse.Namespace], int],
-    delete_summary: str,
-    delete_description: str,
-    delete_examples: tuple[str, ...] = (),
-    delete_notes: tuple[str, ...] = (),
-    ids_help: str | None = None,
-) -> None:
-    """Register the standard ``batch delete`` action inside a batch namespace."""
-    batch_delete_parser = add_documented_parser(
-        batch_subparsers,
-        "delete",
-        help_content=HelpContent(
-            summary=delete_summary,
-            description=delete_description,
-            examples=delete_examples,
-            notes=delete_notes,
-        ),
-    )
-    if ids_help is None:
-        add_identifier_list_argument(batch_delete_parser, dest=ids_dest, noun=noun)
-    else:
-        batch_delete_parser.add_argument(
-            "--ids",
-            dest=ids_dest,
-            metavar=f"{noun}-id",
-            nargs="+",
-            required=True,
-            type=UUID,
-            help=ids_help,
-        )
-    batch_delete_parser.set_defaults(handler=delete_handler)
 
 
 def add_batch_namespace(

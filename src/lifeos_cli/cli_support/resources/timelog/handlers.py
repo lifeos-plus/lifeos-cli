@@ -433,11 +433,22 @@ async def handle_timelog_update_async(args: argparse.Namespace) -> int:
 
 async def handle_timelog_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
+        if len(args.timelog_ids) > 1:
+            result = await timelog_services.batch_delete_timelogs(
+                session,
+                timelog_ids=args.timelog_ids,
+            )
+            return print_batch_result(
+                success_label="Deleted timelogs",
+                success_count=result.deleted_count,
+                failed_label="Failed timelog IDs",
+                result=result,
+            )
         try:
-            await timelog_services.delete_timelog(session, timelog_id=args.timelog_id)
+            await timelog_services.delete_timelog(session, timelog_id=args.timelog_ids[0])
         except timelog_services.TimelogNotFoundError as exc:
             return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted timelog {args.timelog_id}")
+    print(f"Soft-deleted timelog {args.timelog_ids[0]}")
     return 0
 
 
@@ -508,20 +519,6 @@ async def handle_timelog_batch_update_async(args: argparse.Namespace) -> int:
     for error in result.errors:
         print(f"Error: {error}", file=sys.stderr)
     return 1 if result.failed_ids else 0
-
-
-async def handle_timelog_batch_delete_async(args: argparse.Namespace) -> int:
-    async with db_session.session_scope() as session:
-        result = await timelog_services.batch_delete_timelogs(
-            session,
-            timelog_ids=list(args.timelog_ids),
-        )
-    return print_batch_result(
-        success_label="Deleted timelogs",
-        success_count=result.deleted_count,
-        failed_label="Failed timelog IDs",
-        result=result,
-    )
 
 
 async def handle_timelog_stats_day_async(args: argparse.Namespace) -> int:

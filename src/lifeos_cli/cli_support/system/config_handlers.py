@@ -128,7 +128,7 @@ def _config_json_payload(*, show_secrets: bool) -> dict[str, object]:
     return payload
 
 
-def handle_config_set(args: argparse.Namespace) -> int:
+def handle_config_update(args: argparse.Namespace) -> int:
     """Persist one supported config key to the local config file."""
     result = set_runtime_config_value(key=args.key, value=args.value)
     print(f"Updated config file: {result.config_path}")

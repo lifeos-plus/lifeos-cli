@@ -292,6 +292,7 @@
         "manage_nodes_inside_one_finance_tree": "在单个 `finance tree` 内添加、列出、显示、更新和删除节点。",
         "manage_finance_trees": "管理 `finance tree`",
         "manage_finance_trees_and_default_tree": "创建、查看、更新和删除 `finance tree` 及全局默认 tree。",
+        "ensure_default_tree_is_idempotent": "幂等：默认 tree 已存在时直接返回；`--primary-currency` 仅在创建时生效。",
         "show_finance_asset": "显示 `finance asset`",
         "show_one_finance_asset_and_precision": "显示单个 `finance asset` 及其精度设置。",
         "show_finance_tree_node": "显示 `finance tree` 节点",
@@ -418,18 +419,15 @@
         "capture_and_manage_notes": "记录和管理 `note`",
         "create_inspect_update_and_delete_note_records": "创建、查看、更新和删除 `note` 记录。",
         "run_lifeos_init_before_using_note_commands_for_first_time": "首次使用 `note` 命令前，请先运行 `lifeos init`。",
-        "see_lifeos_note_batch_help_for_bulk_update_content_and_delete_workflows": "批量 `update-content` 和 `delete` 工作流请查看 `lifeos note batch --help`。"
+        "see_lifeos_note_batch_help_for_bulk_update_content_workflows": "批量 `update-content` 工作流请查看 `lifeos note batch --help`。"
       },
       "parser_actions": {
         "apply_find_replace_operation_across_multiple_active_notes": "在多个活动 `note` 中应用查找/替换操作。",
         "batch_commands_currently_accept_note_ids_directly": "批处理命令目前直接接受 `note` ID。",
         "create_new_note_from_inline_text_stdin_or_file": "从内联文本、标准输入或文件创建新 `note`。",
         "create_note": "创建 `note`",
-        "delete_multiple_notes": "删除多个 `note`",
-        "delete_multiple_notes_in_one_command": "在一个命令中删除多个 `note`。",
         "delete_note": "删除 `note`",
         "delete_note_by_identifier": "通过标识符删除 `note`。",
-        "failed_note_ids_are_printed_to_stderr_while_successful_deletes_stay_on": "失败的 `note` ID 会打印到 stderr，而成功的删除则保留在 stdout 上。",
         "failed_note_ids_are_printed_to_stderr_while_successful_updates_stay_on": "失败的 `note` ID 会打印到 stderr，而成功的更新则保留在 stdout 上。",
         "filter_by_linked_event": "按关联的 `event` 过滤",
         "filter_by_linked_habit_action": "按关联的 `habit-action` 过滤",
@@ -442,7 +440,6 @@
         "multi_word_queries_are_split_into_tokens_and_matched_with_or_semantics": "多词查询被拆分为标记并使用 OR 语义进行匹配。",
         "note_identifier": "`note` 标识符",
         "omitted_fields_remain_unchanged_use_clear_flags_to_remove_links": "省略的字段保持不变。使用 `--clear-*` 参数删除链接。",
-        "one_or_more_note_identifiers_to_delete": "要删除的一个或多个 `note` 标识符",
         "one_or_more_note_identifiers_to_update": "要更新的一个或多个 `note` 标识符",
         "only_active_notes_are_updated_by_this_command": "此命令仅更新活动 `note`。",
         "read_note_content_from_standard_input": "从标准输入读取 `note` 内容",
@@ -477,12 +474,10 @@
         "show_full_note_content": "显示完整 `note` 内容",
         "show_single_note_with_full_metadata_and_original_content_body": "显示包含完整元数据和原始内容正文的单个 `note`。",
         "text_to_find_in_each_target_note": "在每个目标 `note` 中查找的文本",
-        "this_command_mirrors_lifeos_note_delete_but_works_across_many_note_ids": "此命令镜像 `lifeos note delete`，但适用于许多 `note` ID。",
         "this_is_first_batch_editing_primitive_for_notes_and_provides_base_shape": "这是第一个面向 `note` 的批量编辑原语，并为后续批量操作提供基础形状。",
         "update_note": "更新 `note`",
         "update_note_content_and_weak_associations_in_place": "更新 `note` 内容和薄弱关联。",
         "use_case_sensitive_find_replace_instead_of_case_insensitive_matching": "使用区分大小写的查找/替换而不是不区分大小写的匹配",
-        "use_delete_to_remove_multiple_notes_by_identifier": "使用 `delete` 按标识符删除多个 `note`。",
         "use_limit_and_offset_together_for_pagination": "一起使用 --limit 和 --offset 进行分页。",
         "use_relation_flags_without_content_when_only_links_need_to_change": "当仅需要更改链接时，使用不带 `content ` 的关系标志。",
         "use_stdin_or_file_for_multi_line_note_content": "使用 `--stdin` 或 `--file` 处理多行 `note` 内容。",
@@ -731,11 +726,11 @@
       "parser": {
         "create_and_maintain_actual_time_records": "创建并维护 `timelog`。",
         "manage_actual_time_records": "管理 `timelog`",
-        "see_lifeos_timelog_batch_help_for_bulk_update_and_delete_workflows": "批量 `update` 和 `delete` 工作流请查看 `lifeos timelog batch --help`。",
         "timelogs_can_optionally_reference_one_area_and_one_task": "`timelog` 可以选择关联一个 `area` 和一个 `task`。",
         "timelogs_represent_what_really_happened_and_how_time_was_spent": "`timelog` 代表真实发生的事情以及时间是如何被使用的。",
         "use_list_as_primary_query_entrypoint_for_timelogs": "使用 `list` 浏览通用 `timelog`，使用 `search` 处理关键词或高级查询。",
-        "use_stats_for_timelog_stats_grouped_by_area": "使用 `stats` 查看按 `area` 分组的 `timelog` 统计。"
+        "use_stats_for_timelog_stats_grouped_by_area": "使用 `stats` 查看按 `area` 分组的 `timelog` 统计。",
+        "see_lifeos_timelog_batch_help_for_bulk_update_workflows": "批量 `update` 工作流请查看 `lifeos timelog batch --help`。"
       },
       "parser_actions": {
         "clear_energy_level": "清除能量等级",
@@ -789,21 +784,18 @@
         "write_quick_batch_timelogs_without_interactive_confirmation_after_preview": "预览后直接写入快捷批量 `timelog`，无需交互确认"
       },
       "parser_batch": {
-        "delete_multiple_timelogs": "删除多个 `timelog`",
-        "delete_multiple_timelogs_by_identifier": "按标识符删除多个 `timelog`。",
         "repeat_same_tag_id_or_person_id_flag_to_replace_multiple_linked": "重复使用同一个 `--tag-id` 或 `--person-id` 参数，即可替换多个已关联的 `tag` 或 `person`。",
         "replace_full_title": "替换完整标题",
         "replace_linked_area": "替换链接 `area`",
         "replace_linked_task": "替换链接 `task`",
         "replacement_text_for_title_matches": "标题匹配的替换文本",
         "run_batch_timelog_operations": "执行批量 `timelog` 操作",
-        "run_bulk_update_and_delete_operations_for_timelogs": "对 `timelog` 执行批量 update 和 delete 操作。",
         "title_text_to_find": "要查找的标题文本",
         "update_multiple_timelogs": "更新多个 `timelog`",
         "update_mutable_fields_across_multiple_active_timelogs": "更新多个活动 `timelog` 中的可变字段。",
         "use_clear_flags_to_remove_optional_links": "使用 `--clear-*` 参数删除可选链接。",
-        "use_delete_to_remove_multiple_timelogs_in_one_command": "使用 `delete` 在一个命令中删除多个 `timelog`。",
-        "use_update_to_edit_mutable_fields_across_active_timelogs": "使用 `update` 编辑多个活动 `timelog` 的可变字段。"
+        "use_update_to_edit_mutable_fields_across_active_timelogs": "使用 `update` 编辑多个活动 `timelog` 的可变字段。",
+        "run_bulk_update_operations_for_timelogs": "对多个 `timelog` 运行批量更新操作。"
       },
       "parser_stats": {
         "calendar_month_in_yyyy_mm_format": "YYYY-MM 格式的日历月份",
@@ -917,14 +909,14 @@
       "supported_config_key_to_update": "支持更新配置键",
       "supported_keys_keys": "支持的密钥：{keys}",
       "this_command_writes_config_file_not_environment_variables": "该命令写入配置文件，而不是环境变量。",
-      "use_config_set_to_persist_one_supported_key_after_reviewing_current_values": "查看当前值后，使用 `config set` 持久化一个受支持的键。",
       "use_config_show_to_inspect_effective_values_after_environment_overrides": "使用 `config show` 检查环境覆盖后的有效值。",
       "use_lifeos_init_for_first_time_bootstrap_or_when_changing_schema_binding": "首次引导或更改 schema 绑定时，请使用 `lifeos init`。",
       "use_lifeos_init_schema_name_to_change_database_schema_binding": "如需修改数据库 schema 绑定，请重新运行 `lifeos init --schema <name>`。",
-      "use_set_to_persist_supported_keys_into_local_config_file": "使用 `set ` 将支持的密钥保存到本地配置文件中。",
-      "use_set_to_persist_supported_keys_without_re_running_full_init_flow": "使用 `set` 持久化受支持的键，无需重新运行完整 init 流程。",
       "use_show_to_inspect_effective_values_after_config_file_and_env_resolution": "使用 `show` 检查配置文件和环境变量解析后的有效值。",
-      "write_one_supported_config_key_to_local_config_file": "将一个受支持的配置密钥写入本地配置文件。"
+      "write_one_supported_config_key_to_local_config_file": "将一个受支持的配置密钥写入本地配置文件。",
+      "use_config_update_to_persist_one_supported_key_after_reviewing_current_values": "查看当前值后，使用 `config update` 持久化一个受支持的键。",
+      "use_update_to_persist_supported_keys_into_local_config_file": "使用 `set ` 将支持的密钥保存到本地配置文件中。",
+      "use_update_to_persist_supported_keys_without_re_running_full_init_flow": "使用 `update` 持久化受支持的键，无需重新运行完整 init 流程。"
     },
     "config_handlers": {
       "enable_sql_echo_logging": "启用 SQL 回显日志记录"
@@ -978,7 +970,7 @@
       "preferred_language_tag_for_example_en_en_ca_or_zh_hans": "首选语言 `tag`，例如 en、en-CA 或 zh-Hans",
       "re_run_lifeos_init_at_any_time_to_update_stored_preferences": "随时重新运行 `lifeos init` 以更新存储的偏好。",
       "this_command_is_recommended_first_step_after_installing_lifeos_cli": "此命令是安装 lifeos-cli 后建议执行的第一步。",
-      "use_config_set_for_supported_follow_up_edits_when_you_do_not": "当不需要重新运行完整引导流程时，请使用 `config set` 进行受支持的后续编辑。"
+      "use_config_update_for_supported_follow_up_edits_when_you_do_not": "当不需要重新运行完整引导流程时，请使用 `config update` 进行受支持的后续编辑。"
     }
   }
 }

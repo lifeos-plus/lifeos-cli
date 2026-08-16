@@ -482,10 +482,18 @@ def build_timelog_delete_parser(
         help_content=HelpContent(
             summary=_("resources.timelog.parser_actions.delete_timelog"),
             description=_("resources.timelog.parser_actions.delete_one_timelog"),
-            examples=("lifeos timelog delete 11111111-1111-1111-1111-111111111111",),
+            examples=(
+                "lifeos timelog delete 11111111-1111-1111-1111-111111111111",
+                "lifeos timelog delete <timelog-id-1> <timelog-id-2>",
+            ),
+            notes=(_("common.messages.delete_accepts_one_or_more_identifiers"),),
         ),
     )
     delete_parser.add_argument(
-        "timelog_id", type=UUID, help=_("resources.timelog.parser_actions.timelog_identifier")
+        "timelog_ids",
+        type=UUID,
+        nargs="+",
+        metavar="timelog-id",
+        help=_("common.parser.noun_identifiers_to_delete").format(noun="Timelog"),
     )
     delete_parser.set_defaults(handler=make_sync_handler(handle_timelog_delete_async))

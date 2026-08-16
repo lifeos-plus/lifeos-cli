@@ -734,7 +734,7 @@ def test_set_runtime_config_value_rejects_backend_switch_between_postgresql_and_
         assert "Switching between PostgreSQL and SQLite" in str(exc)
         assert "lifeos init --database-url" in str(exc)
     else:
-        raise AssertionError("cross-backend config set should fail")
+        raise AssertionError("cross-backend config update should fail")
 
     content = config_path.read_text(encoding="utf-8")
     assert 'url = "postgresql+psycopg://localhost/lifeos"' in content
