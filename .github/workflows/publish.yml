@@ -90,7 +90,25 @@ jobs:
           PY
 
       - name: Export Web API OpenAPI document
-        run: uv run --extra web python scripts/export_web_openapi.py --output /tmp/openapi.json
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+        run: |
+          uv run --extra web python scripts/export_web_openapi.py \
+            --output /tmp/openapi.json \
+            --release-tag "$RELEASE_TAG"
+          python - <<'PY'
+          import json
+          import os
+
+          document = json.load(open("/tmp/openapi.json"))
+          recorded = document["info"].get("x-lifeos-cli-release")
+          expected = os.environ["RELEASE_TAG"]
+          if recorded != expected:
+              raise SystemExit(
+                  f"openapi.json provenance {recorded!r} does not match release tag {expected!r}"
+              )
+          print(f"Validated OpenAPI provenance: {recorded}")
+          PY
 
       - name: Publish to PyPI
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_to_pypi }}
