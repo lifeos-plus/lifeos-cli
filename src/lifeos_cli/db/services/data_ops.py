@@ -443,6 +443,7 @@ async def resolve_upsert_row_id(
     exists, a fresh UUID when no match exists and the row has no id, or the
     row unchanged when a match exists and the row already carries the same id.
     """
+    validate_upsert_key(resource, key_field)
     raw_key_value = row.get(key_field)
     if raw_key_value is None or str(raw_key_value).strip() == "":
         raise DataOperationError(f"Row {index} is missing a value for upsert key `{key_field}`.")

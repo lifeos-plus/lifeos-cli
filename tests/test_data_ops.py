@@ -398,3 +398,16 @@ def test_resolve_upsert_row_id_rejects_missing_key_value() -> None:
                     )
 
     asyncio.run(scenario())
+
+
+def test_resolve_upsert_row_id_rejects_unsupported_key_before_session_use() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="supported keys: none"):
+        asyncio.run(
+            data_ops.resolve_upsert_row_id(
+                cast(AsyncSession, None),
+                resource="note",
+                row={"content": "hello"},
+                key_field="content",
+                index=1,
+            )
+        )
