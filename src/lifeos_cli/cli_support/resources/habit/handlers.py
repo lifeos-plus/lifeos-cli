@@ -342,11 +342,22 @@ async def handle_habit_update_async(args: argparse.Namespace) -> int:
 
 async def handle_habit_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
+        if len(args.habit_ids) > 1:
+            result = await habit_services.batch_delete_habits(
+                session,
+                habit_ids=args.habit_ids,
+            )
+            return print_batch_result(
+                success_label="Deleted habits",
+                success_count=result.deleted_count,
+                failed_label="Failed habit IDs",
+                result=result,
+            )
         try:
-            await habit_services.delete_habit(session, habit_id=args.habit_id)
+            await habit_services.delete_habit(session, habit_id=args.habit_ids[0])
         except habit_services.HabitNotFoundError as exc:
             return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted habit {args.habit_id}")
+    print(f"Soft-deleted habit {args.habit_ids[0]}")
     return 0
 
 
@@ -371,17 +382,3 @@ async def handle_habit_task_associations_async(_: argparse.Namespace) -> int:
         for habit in habits:
             print(f"{task_id}\t{habit.id}\t{habit.status}\t{habit.start_date}\t{habit.title}")
     return 0
-
-
-async def handle_habit_batch_delete_async(args: argparse.Namespace) -> int:
-    async with db_session.session_scope() as session:
-        result = await habit_services.batch_delete_habits(
-            session,
-            habit_ids=list(args.habit_ids),
-        )
-    return print_batch_result(
-        success_label="Deleted habits",
-        success_count=result.deleted_count,
-        failed_label="Failed habit IDs",
-        result=result,
-    )

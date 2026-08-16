@@ -145,24 +145,20 @@ async def handle_tag_update_async(args: argparse.Namespace) -> int:
 
 async def handle_tag_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
+        if len(args.tag_ids) > 1:
+            result = await tag_services.batch_delete_tags(
+                session,
+                tag_ids=args.tag_ids,
+            )
+            return print_batch_result(
+                success_label="Deleted tags",
+                success_count=result.deleted_count,
+                failed_label="Failed tag IDs",
+                result=result,
+            )
         try:
-            await tag_services.delete_tag(session, tag_id=args.tag_id)
+            await tag_services.delete_tag(session, tag_id=args.tag_ids[0])
         except tag_services.TagNotFoundError as exc:
             return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted tag {args.tag_id}")
+    print(f"Soft-deleted tag {args.tag_ids[0]}")
     return 0
-
-
-async def handle_tag_batch_delete_async(args: argparse.Namespace) -> int:
-    """Delete multiple tags in one command."""
-    async with db_session.session_scope() as session:
-        result = await tag_services.batch_delete_tags(
-            session,
-            tag_ids=list(args.tag_ids),
-        )
-    return print_batch_result(
-        success_label="Deleted tags",
-        success_count=result.deleted_count,
-        failed_label="Failed tag IDs",
-        result=result,
-    )

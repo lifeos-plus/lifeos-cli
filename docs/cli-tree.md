@@ -5,11 +5,8 @@
 ├── area  —  Manage life areas
 │   ├── add  —  Create an area
 │   │       args: name [required]; --description; --color; --icon; --inactive; --display-order
-│   ├── batch  —  Run batch area operations
-│   │   └── delete  —  Delete multiple areas
-│   │           args: --ids
 │   ├── delete  —  Delete an area
-│   │       args: area_id [required]
+│   │       args: area_ids [required]
 │   ├── list  —  List areas
 │   │       args: --include-inactive; --limit; --offset; --json
 │   ├── show  —  Show an area
@@ -36,11 +33,8 @@
 ├── event  —  Manage planned schedule events
 │   ├── add  —  Create an event
 │   │       args: title [required]; --description; --start-time; --end-time; --priority; --status; --type; --all-day; --area-id; --task-id; --recurrence-frequency; --recurrence-interval; --recurrence-count; --recurrence-until; --recurrence-weekdays; --recurrence-month-days; --recurrence-months; --recurrence-weekday-ordinal; --tag-id; --person-id
-│   ├── batch  —  Run batch event operations
-│   │   └── delete  —  Delete multiple events
-│   │           args: --ids
 │   ├── delete  —  Delete an event
-│   │       args: event_id [required]; --scope; --instance-start
+│   │       args: event_ids [required]; --scope; --instance-start
 │   ├── list  —  List events
 │   │       args: --title-contains; --status; --type; --area-id; --task-id; --person-id; --tag-id; --date; --start-date; --end-date; --start-time; --end-time; --limit; --offset; --json
 │   ├── show  —  Show an event
@@ -108,11 +102,8 @@
 ├── habit  —  Manage recurring habits
 │   ├── add  —  Create a habit
 │   │       args: title [required]; --description; --start-date; --duration-days; --cadence-frequency; --weekdays; --weekends-only; --monthdays; --target-per-cycle; --target-per-week; --task-id
-│   ├── batch  —  Run bulk habit operations
-│   │   └── delete  —  Delete multiple habits
-│   │           args: --ids
 │   ├── delete  —  Delete a habit
-│   │       args: habit_id [required]
+│   │       args: habit_ids [required]
 │   ├── list  —  List habits
 │   │       args: --status; --title; --active-window-only; --with-stats; --count; --limit; --offset; --json
 │   ├── show  —  Show a habit
@@ -123,11 +114,8 @@
 │   └── update  —  Update a habit
 │           args: habit_id [required]; --title; --description; --clear-description; --start-date; --duration-days; --cadence-frequency; --weekdays; --weekends-only; --clear-weekdays; --monthdays; --clear-monthdays; --target-per-cycle; --target-per-week; --status; --task-id; --clear-task
 ├── habit-action  —  Manage dated habit actions
-│   ├── batch  —  Run batch habit-action operations
-│   │   └── delete  —  Delete multiple habit actions
-│   │           args: --ids
 │   ├── delete  —  Delete a habit action
-│   │       args: action_id [required]
+│   │       args: action_ids [required]
 │   ├── list  —  List habit actions
 │   │       args: --habit-id; --status; --date; --start-date; --end-date; --count; --limit; --offset; --json
 │   ├── log  —  Update a habit action by date
@@ -159,11 +147,8 @@
 ├── person  —  Manage person and relationships
 │   ├── add  —  Create a person
 │   │       args: name [required]; --description; --nickname; --birth-date; --location; --tag-id
-│   ├── batch  —  Run batch person operations
-│   │   └── delete  —  Delete multiple people
-│   │           args: --ids
 │   ├── delete  —  Delete a person
-│   │       args: person_id [required]
+│   │       args: person_ids [required]
 │   ├── list  —  List people
 │   │       args: --search; --tag-id; --limit; --offset; --json
 │   ├── show  —  Show a person
@@ -181,11 +166,8 @@
 ├── tag  —  Manage tags
 │   ├── add  —  Create a tag
 │   │       args: name [required]; --entity-type; --category; --description; --color; --person-id
-│   ├── batch  —  Run batch tag operations
-│   │   └── delete  —  Delete multiple tags
-│   │           args: --ids
 │   ├── delete  —  Delete a tag
-│   │       args: tag_id [required]
+│   │       args: tag_ids [required]
 │   ├── list  —  List tags
 │   │       args: --entity-type; --category; --person-id; --limit; --offset; --json
 │   ├── show  —  Show a tag
@@ -195,11 +177,8 @@
 ├── task  —  Manage hierarchical tasks
 │   ├── add  —  Create a task
 │   │       args: content [required]; --vision-id; --description; --parent-task-id; --status; --priority; --display-order; --person-id; --estimated-effort; --planning-cycle-type; --planning-cycle-days; --planning-cycle-start-date
-│   ├── batch  —  Run batch task operations
-│   │   └── delete  —  Delete multiple tasks
-│   │           args: --ids
 │   ├── delete  —  Delete a task
-│   │       args: task_id [required]
+│   │       args: task_ids [required]
 │   ├── hierarchy  —  Show a vision task hierarchy
 │   │       args: vision_id [required]
 │   ├── list  —  List tasks
@@ -252,11 +231,8 @@
 │   │       args: name [required]; --description; --status; --area-id; --person-id; --experience-rate-per-hour
 │   ├── add-experience  —  Add vision experience
 │   │       args: vision_id [required]; --points
-│   ├── batch  —  Run batch vision operations
-│   │   └── delete  —  Delete multiple visions
-│   │           args: --ids
 │   ├── delete  —  Delete a vision
-│   │       args: vision_id [required]
+│   │       args: vision_ids [required]
 │   ├── harvest  —  Harvest a vision
 │   │       args: vision_id [required]
 │   ├── list  —  List visions

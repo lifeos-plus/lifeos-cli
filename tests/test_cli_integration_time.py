@@ -250,16 +250,14 @@ def test_real_cli_event_and_timelog_workflow(integration_context: IntegrationCon
     assert_ok(event_delete_result)
     assert f"Soft-deleted event {first_event_id}" in event_delete_result.stdout
 
-    event_batch_delete_result = run_lifeos(
+    event_delete_second_result = run_lifeos(
         integration_context,
         "event",
-        "batch",
         "delete",
-        "--ids",
         second_event_id,
     )
-    assert_ok(event_batch_delete_result)
-    assert "Deleted events: 1" in event_batch_delete_result.stdout
+    assert_ok(event_delete_second_result)
+    assert f"Soft-deleted event {second_event_id}" in event_delete_second_result.stdout
 
     timelog_delete_result = run_lifeos(
         integration_context,

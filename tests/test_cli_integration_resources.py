@@ -364,76 +364,66 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
     assert_ok(person_delete_result)
     assert f"Soft-deleted person {person_one_id}" in person_delete_result.stdout
 
-    person_batch_delete_result = run_lifeos(
+    person_delete_second_result = run_lifeos(
         integration_context,
         "person",
-        "batch",
         "delete",
-        "--ids",
         person_two_id,
     )
-    assert_ok(person_batch_delete_result)
-    assert "Deleted people: 1" in person_batch_delete_result.stdout
+    assert_ok(person_delete_second_result)
+    assert f"Soft-deleted person {person_two_id}" in person_delete_second_result.stdout
 
     tag_delete_result = run_lifeos(integration_context, "tag", "delete", tag_one_id)
     assert_ok(tag_delete_result)
     assert f"Soft-deleted tag {tag_one_id}" in tag_delete_result.stdout
 
-    tag_batch_delete_result = run_lifeos(
+    tag_delete_second_result = run_lifeos(
         integration_context,
         "tag",
-        "batch",
         "delete",
-        "--ids",
         tag_two_id,
     )
-    assert_ok(tag_batch_delete_result)
-    assert "Deleted tags: 1" in tag_batch_delete_result.stdout
+    assert_ok(tag_delete_second_result)
+    assert f"Soft-deleted tag {tag_two_id}" in tag_delete_second_result.stdout
 
     task_delete_result = run_lifeos(integration_context, "task", "delete", task_two_id)
     assert_ok(task_delete_result)
     assert f"Soft-deleted task {task_two_id}" in task_delete_result.stdout
 
-    task_batch_delete_result = run_lifeos(
+    task_delete_second_result = run_lifeos(
         integration_context,
         "task",
-        "batch",
         "delete",
-        "--ids",
         task_one_id,
     )
-    assert_ok(task_batch_delete_result)
-    assert "Deleted tasks: 1" in task_batch_delete_result.stdout
+    assert_ok(task_delete_second_result)
+    assert f"Soft-deleted task {task_one_id}" in task_delete_second_result.stdout
 
     vision_delete_result = run_lifeos(integration_context, "vision", "delete", vision_one_id)
     assert_ok(vision_delete_result)
     assert f"Soft-deleted vision {vision_one_id}" in vision_delete_result.stdout
 
-    vision_batch_delete_result = run_lifeos(
+    vision_delete_second_result = run_lifeos(
         integration_context,
         "vision",
-        "batch",
         "delete",
-        "--ids",
         vision_two_id,
     )
-    assert_ok(vision_batch_delete_result)
-    assert "Deleted visions: 1" in vision_batch_delete_result.stdout
+    assert_ok(vision_delete_second_result)
+    assert f"Soft-deleted vision {vision_two_id}" in vision_delete_second_result.stdout
 
     area_delete_result = run_lifeos(integration_context, "area", "delete", area_one_id)
     assert_ok(area_delete_result)
     assert f"Soft-deleted area {area_one_id}" in area_delete_result.stdout
 
-    area_batch_delete_result = run_lifeos(
+    area_delete_second_result = run_lifeos(
         integration_context,
         "area",
-        "batch",
         "delete",
-        "--ids",
         area_two_id,
     )
-    assert_ok(area_batch_delete_result)
-    assert "Deleted areas: 1" in area_batch_delete_result.stdout
+    assert_ok(area_delete_second_result)
+    assert f"Soft-deleted area {area_two_id}" in area_delete_second_result.stdout
 
     deleted_area_result = run_lifeos(
         integration_context,

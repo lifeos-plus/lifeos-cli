@@ -10,7 +10,6 @@ from lifeos_cli.cli_support.help_utils import (
 )
 from lifeos_cli.cli_support.resources.event.parser_actions import (
     build_event_add_parser,
-    build_event_batch_parser,
     build_event_delete_parser,
     build_event_list_parser,
     build_event_show_parser,
@@ -44,7 +43,6 @@ def build_event_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentP
                 _(
                     "resources.event.parser.event_types_distinguish_hard_appointments_flexible_timeblocks_and_deadlines"
                 ),
-                _("resources.event.parser.see_lifeos_event_batch_help_for_bulk_delete_operations"),
             ),
         ),
     )
@@ -59,4 +57,3 @@ def build_event_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentP
     build_event_show_parser(event_subparsers)
     build_event_update_parser(event_subparsers)
     build_event_delete_parser(event_subparsers)
-    build_event_batch_parser(event_subparsers)

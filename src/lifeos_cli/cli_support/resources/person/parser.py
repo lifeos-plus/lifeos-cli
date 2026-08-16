@@ -13,13 +13,11 @@ from lifeos_cli.cli_support.help_utils import (
 from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
-    add_batch_delete_namespace,
     add_limit_offset_arguments,
 )
 from lifeos_cli.cli_support.resources.person.handlers import (
     PERSON_SUMMARY_COLUMNS,
     handle_person_add_async,
-    handle_person_batch_delete_async,
     handle_person_delete_async,
     handle_person_list_async,
     handle_person_show_async,
@@ -59,9 +57,6 @@ def build_person_parser(subparsers: argparse._SubParsersAction[argparse.Argument
                     "resources.person.parser.person_is_intentional_cli_resource_name_for_this_domain"
                 ),
                 _("common.messages.use_list_as_primary_query_entrypoint_for_this_resource"),
-                _(
-                    "resources.person.parser.see_lifeos_person_batch_help_for_bulk_delete_operations"
-                ),
                 _(
                     "resources.person.parser.agent_callers_should_keep_human_partner_and_automation_identity_as_separate_records"
                 ),
@@ -253,33 +248,18 @@ def build_person_parser(subparsers: argparse._SubParsersAction[argparse.Argument
         help_content=HelpContent(
             summary=_("resources.person.parser.delete_person"),
             description=_("resources.person.parser.delete_person_description"),
-            examples=("lifeos person delete 11111111-1111-1111-1111-111111111111",),
+            examples=(
+                "lifeos person delete 11111111-1111-1111-1111-111111111111",
+                "lifeos person delete <person-id-1> <person-id-2>",
+            ),
+            notes=(_("common.messages.delete_accepts_one_or_more_identifiers"),),
         ),
     )
     delete_parser.add_argument(
-        "person_id", type=UUID, help=_("resources.person.parser.person_identifier")
+        "person_ids",
+        type=UUID,
+        nargs="+",
+        metavar="person-id",
+        help=_("common.parser.noun_identifiers_to_delete").format(noun="Person"),
     )
     delete_parser.set_defaults(handler=make_sync_handler(handle_person_delete_async))
-
-    add_batch_delete_namespace(
-        person_subparsers,
-        dest="person_batch_command",
-        ids_dest="person_ids",
-        noun="person",
-        delete_handler=make_sync_handler(handle_person_batch_delete_async),
-        batch_summary=_("resources.person.parser.run_batch_person_operations"),
-        batch_description=_(
-            "resources.person.parser.delete_multiple_person_records_in_one_command"
-        ),
-        batch_examples=(
-            "lifeos person batch delete --help",
-            "lifeos person batch delete --ids <person-id-1> <person-id-2>",
-        ),
-        batch_notes=(
-            _("common.messages.this_namespace_currently_exposes_only_delete_workflow"),
-            _("common.messages.use_data_batch_delete_for_file_or_stream_bulk_workflows"),
-        ),
-        delete_summary=_("resources.person.parser.delete_multiple_person"),
-        delete_description=_("resources.person.parser.delete_multiple_person_by_identifier"),
-        delete_examples=("lifeos person batch delete --ids <person-id-1> <person-id-2>",),
-    )

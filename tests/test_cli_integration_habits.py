@@ -199,17 +199,15 @@ def test_real_cli_habit_workflow(integration_context: IntegrationContext) -> Non
     assert_ok(habit_delete_result)
     assert f"Soft-deleted habit {first_habit_id}" in habit_delete_result.stdout
 
-    habit_batch_delete_result = run_lifeos(
+    habit_delete_multiple_result = run_lifeos(
         integration_context,
         "habit",
-        "batch",
         "delete",
-        "--ids",
         second_habit_id,
         weekly_habit_id,
     )
-    assert_ok(habit_batch_delete_result)
-    assert "Deleted habits: 2" in habit_batch_delete_result.stdout
+    assert_ok(habit_delete_multiple_result)
+    assert "Deleted habits: 2" in habit_delete_multiple_result.stdout
 
     deleted_habit_result = run_lifeos(integration_context, "habit", "list")
     assert_ok(deleted_habit_result)

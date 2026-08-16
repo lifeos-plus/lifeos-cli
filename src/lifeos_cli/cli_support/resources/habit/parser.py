@@ -10,7 +10,6 @@ from lifeos_cli.cli_support.help_utils import (
 )
 from lifeos_cli.cli_support.resources.habit.parser_actions import (
     build_habit_add_parser,
-    build_habit_batch_parser,
     build_habit_delete_parser,
     build_habit_list_parser,
     build_habit_show_parser,
@@ -50,7 +49,6 @@ def build_habit_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentP
                 _(
                     "resources.habit.parser.cadence_cycles_can_be_daily_weekly_monthly_or_yearly_while_habit_action"
                 ),
-                _("resources.habit.parser.see_lifeos_habit_batch_help_for_bulk_delete_operations"),
             ),
         ),
     )
@@ -67,4 +65,3 @@ def build_habit_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentP
     build_habit_delete_parser(habit_subparsers)
     build_habit_stats_parser(habit_subparsers)
     build_habit_task_associations_parser(habit_subparsers)
-    build_habit_batch_parser(habit_subparsers)

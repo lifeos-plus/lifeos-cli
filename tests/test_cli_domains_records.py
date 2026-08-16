@@ -639,7 +639,7 @@ def test_main_vision_read_model_commands_print_results(
     assert "completion_percentage: 1.00" in captured.out
 
 
-def test_main_person_batch_delete_reports_missing_ids(
+def test_main_person_delete_multiple_reports_missing_ids(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -648,9 +648,12 @@ def test_main_person_batch_delete_reports_missing_ids(
         *,
         person_ids: list[UUID],
     ) -> object:
-        assert person_ids == [UUID("33333333-3333-3333-3333-333333333333")]
+        assert person_ids == [
+            UUID("33333333-3333-3333-3333-333333333333"),
+            UUID("44444444-4444-4444-4444-444444444444"),
+        ]
         return make_record(
-            deleted_count=0,
+            deleted_count=1,
             failed_ids=(UUID("33333333-3333-3333-3333-333333333333"),),
             errors=("Person 33333333-3333-3333-3333-333333333333 was not found",),
         )
@@ -661,14 +664,13 @@ def test_main_person_batch_delete_reports_missing_ids(
     exit_code = cli.main(
         [
             "person",
-            "batch",
             "delete",
-            "--ids",
             "33333333-3333-3333-3333-333333333333",
+            "44444444-4444-4444-4444-444444444444",
         ]
     )
     captured = capsys.readouterr()
 
     assert exit_code == 1
-    assert "Deleted people: 0" in captured.out
+    assert "Deleted people: 1" in captured.out
     assert "Failed person IDs" in captured.err

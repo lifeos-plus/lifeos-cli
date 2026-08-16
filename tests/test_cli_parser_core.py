@@ -996,22 +996,19 @@ def test_cli_parser_supports_tag_list_person_filter() -> None:
     assert str(args.person_id) == "11111111-1111-1111-1111-111111111111"
 
 
-def test_cli_parser_supports_task_batch_delete_command() -> None:
+def test_cli_parser_supports_task_delete_multiple_identifiers() -> None:
     parser = build_parser()
     args = parser.parse_args(
         [
             "task",
-            "batch",
             "delete",
-            "--ids",
             "11111111-1111-1111-1111-111111111111",
             "22222222-2222-2222-2222-222222222222",
         ]
     )
 
     assert args.resource == "task"
-    assert args.task_command == "batch"
-    assert args.task_batch_command == "delete"
+    assert args.task_command == "delete"
     assert len(args.task_ids) == 2
 
 

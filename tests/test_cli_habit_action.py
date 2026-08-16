@@ -20,7 +20,6 @@ def test_habit_action_delete_and_batch_are_part_of_machine_reference() -> None:
     paths = {tuple(command["path"]) for command in reference["commands"]}
 
     assert ("habit-action", "delete") in paths
-    assert ("habit-action", "batch", "delete") in paths
 
 
 def test_habit_action_delete_prints_confirmation(
@@ -59,7 +58,7 @@ def test_habit_action_delete_missing_prints_error(
     assert "was not found" in captured.err
 
 
-def test_habit_action_batch_delete_prints_result(
+def test_habit_action_delete_multiple_prints_result(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -69,7 +68,14 @@ def test_habit_action_batch_delete_prints_result(
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
     monkeypatch.setattr(habit_action_services, "batch_delete_habit_actions", fake_batch_delete)
 
-    exit_code = cli.main(["habit-action", "batch", "delete", "--ids", str(ACTION_UUID)])
+    exit_code = cli.main(
+        [
+            "habit-action",
+            "delete",
+            str(ACTION_UUID),
+            "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        ]
+    )
     captured = capsys.readouterr()
 
     assert exit_code == 0

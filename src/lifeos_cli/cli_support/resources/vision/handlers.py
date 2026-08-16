@@ -214,11 +214,22 @@ async def handle_vision_update_async(args: argparse.Namespace) -> int:
 
 async def handle_vision_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
+        if len(args.vision_ids) > 1:
+            result = await vision_services.batch_delete_visions(
+                session,
+                vision_ids=args.vision_ids,
+            )
+            return print_batch_result(
+                success_label="Deleted visions",
+                success_count=result.deleted_count,
+                failed_label="Failed vision IDs",
+                result=result,
+            )
         try:
-            await vision_services.delete_vision(session, vision_id=args.vision_id)
+            await vision_services.delete_vision(session, vision_id=args.vision_ids[0])
         except vision_services.VisionNotFoundError as exc:
             return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted vision {args.vision_id}")
+    print(f"Soft-deleted vision {args.vision_ids[0]}")
     return 0
 
 
@@ -263,18 +274,3 @@ async def handle_vision_harvest_async(args: argparse.Namespace) -> int:
             return cli_handler_utils.print_cli_error(exc)
     print(f"Harvested vision {vision.id}")
     return 0
-
-
-async def handle_vision_batch_delete_async(args: argparse.Namespace) -> int:
-    """Delete multiple visions in one command."""
-    async with db_session.session_scope() as session:
-        result = await vision_services.batch_delete_visions(
-            session,
-            vision_ids=list(args.vision_ids),
-        )
-    return print_batch_result(
-        success_label="Deleted visions",
-        success_count=result.deleted_count,
-        failed_label="Failed vision IDs",
-        result=result,
-    )

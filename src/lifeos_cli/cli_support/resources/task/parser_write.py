@@ -266,8 +266,18 @@ def build_task_delete_parser(
         help_content=HelpContent(
             summary=_("resources.task.parser_write.delete_task"),
             description=_("resources.task.parser_write.delete_task_description"),
-            examples=("lifeos task delete 11111111-1111-1111-1111-111111111111",),
+            examples=(
+                "lifeos task delete 11111111-1111-1111-1111-111111111111",
+                "lifeos task delete <task-id-1> <task-id-2>",
+            ),
+            notes=(_("common.messages.delete_accepts_one_or_more_identifiers"),),
         ),
     )
-    delete_parser.add_argument("task_id", type=UUID, help=_("common.messages.task_identifier"))
+    delete_parser.add_argument(
+        "task_ids",
+        type=UUID,
+        nargs="+",
+        metavar="task-id",
+        help=_("common.parser.noun_identifiers_to_delete").format(noun="Task"),
+    )
     delete_parser.set_defaults(handler=make_sync_handler(handle_task_delete_async))

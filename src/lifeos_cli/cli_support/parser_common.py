@@ -158,38 +158,3 @@ def add_batch_namespace(
         title=_("common.messages.batch_actions"),
         metavar=_("common.messages.action"),
     )
-
-
-def add_batch_delete_namespace(
-    resource_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
-    *,
-    dest: str,
-    ids_dest: str,
-    noun: str,
-    delete_handler: Callable[[argparse.Namespace], int],
-    batch_summary: str,
-    batch_description: str,
-    batch_examples: tuple[str, ...],
-    delete_summary: str,
-    delete_description: str,
-    delete_examples: tuple[str, ...] = (),
-    batch_notes: tuple[str, ...] = (),
-) -> None:
-    """Build the standard ``batch delete`` namespace used by CRUD resources."""
-    batch_subparsers = add_batch_namespace(
-        resource_subparsers,
-        dest=dest,
-        batch_summary=batch_summary,
-        batch_description=batch_description,
-        batch_examples=batch_examples,
-        batch_notes=batch_notes,
-    )
-    add_batch_delete_action(
-        batch_subparsers,
-        ids_dest=ids_dest,
-        noun=noun,
-        delete_handler=delete_handler,
-        delete_summary=delete_summary,
-        delete_description=delete_description,
-        delete_examples=delete_examples,
-    )

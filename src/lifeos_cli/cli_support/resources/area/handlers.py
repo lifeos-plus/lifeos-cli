@@ -131,24 +131,20 @@ async def handle_area_update_async(args: argparse.Namespace) -> int:
 
 async def handle_area_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
+        if len(args.area_ids) > 1:
+            result = await area_services.batch_delete_areas(
+                session,
+                area_ids=args.area_ids,
+            )
+            return print_batch_result(
+                success_label="Deleted areas",
+                success_count=result.deleted_count,
+                failed_label="Failed area IDs",
+                result=result,
+            )
         try:
-            await area_services.delete_area(session, area_id=args.area_id)
+            await area_services.delete_area(session, area_id=args.area_ids[0])
         except area_services.AreaNotFoundError as exc:
             return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted area {args.area_id}")
+    print(f"Soft-deleted area {args.area_ids[0]}")
     return 0
-
-
-async def handle_area_batch_delete_async(args: argparse.Namespace) -> int:
-    """Delete multiple areas in one command."""
-    async with db_session.session_scope() as session:
-        result = await area_services.batch_delete_areas(
-            session,
-            area_ids=list(args.area_ids),
-        )
-    return print_batch_result(
-        success_label="Deleted areas",
-        success_count=result.deleted_count,
-        failed_label="Failed area IDs",
-        result=result,
-    )

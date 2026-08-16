@@ -14,7 +14,6 @@ from lifeos_cli.cli_support.help_utils import (
 from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
-    add_batch_delete_namespace,
     add_limit_offset_arguments,
 )
 from lifeos_cli.cli_support.resources.habit.handlers import (
@@ -22,7 +21,6 @@ from lifeos_cli.cli_support.resources.habit.handlers import (
     HABIT_SUMMARY_WITH_STATS_COLUMNS,
     HABIT_TASK_ASSOCIATION_COLUMNS,
     handle_habit_add_async,
-    handle_habit_batch_delete_async,
     handle_habit_delete_async,
     handle_habit_list_async,
     handle_habit_show_async,
@@ -382,10 +380,20 @@ def build_habit_delete_parser(
         help_content=HelpContent(
             summary=_("resources.habit.parser_actions.delete_habit"),
             description=_("resources.habit.parser_actions.delete_one_habit"),
-            examples=("lifeos habit delete 11111111-1111-1111-1111-111111111111",),
+            examples=(
+                "lifeos habit delete 11111111-1111-1111-1111-111111111111",
+                "lifeos habit delete <habit-id-1> <habit-id-2>",
+            ),
+            notes=(_("common.messages.delete_accepts_one_or_more_identifiers"),),
         ),
     )
-    delete_parser.add_argument("habit_id", type=UUID, help=_("common.messages.habit_identifier"))
+    delete_parser.add_argument(
+        "habit_ids",
+        type=UUID,
+        nargs="+",
+        metavar="habit-id",
+        help=_("common.parser.noun_identifiers_to_delete").format(noun="Habit"),
+    )
     delete_parser.set_defaults(handler=make_sync_handler(handle_habit_delete_async))
 
 
@@ -441,32 +449,4 @@ def build_habit_task_associations_parser(
     )
     associations_parser.set_defaults(
         handler=make_sync_handler(handle_habit_task_associations_async)
-    )
-
-
-def build_habit_batch_parser(
-    habit_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> None:
-    """Build the habit batch command tree."""
-    add_batch_delete_namespace(
-        habit_subparsers,
-        dest="habit_batch_command",
-        ids_dest="habit_ids",
-        noun="habit",
-        delete_handler=make_sync_handler(handle_habit_batch_delete_async),
-        batch_summary=_("resources.habit.parser_actions.run_bulk_habit_operations"),
-        batch_description=_("resources.habit.parser_actions.delete_multiple_habits_in_one_command"),
-        batch_examples=(
-            "lifeos habit batch delete --help",
-            "lifeos habit batch delete --ids <habit-id-1> <habit-id-2>",
-        ),
-        batch_notes=(
-            _("common.messages.this_namespace_currently_exposes_only_delete_workflow"),
-            _("common.messages.use_data_batch_delete_for_file_or_stream_bulk_workflows"),
-        ),
-        delete_summary=_("resources.habit.parser_actions.delete_multiple_habits"),
-        delete_description=_(
-            "resources.habit.parser_actions.delete_multiple_habits_in_one_command"
-        ),
-        delete_examples=("lifeos habit batch delete --ids <habit-id-1> <habit-id-2>",),
     )

@@ -363,7 +363,6 @@ def test_cli_planning_show_help_supports_zh_hans_locale(
                 "显示 `vision` 的 `task` 层级",
                 "使用 planning-cycle 字段表示更大的时间范围。"
                 "当 `task` 还需要具体的时间块时，请使用 `event`。",
-                "批量删除操作请查看 `lifeos task batch --help`。",
             ],
             [
                 "`vision``task`",

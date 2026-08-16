@@ -14,7 +14,6 @@ from lifeos_cli.cli_support.help_utils import (
 from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
-    add_batch_delete_namespace,
     add_date_range_arguments,
     add_limit_offset_arguments,
     add_start_end_date_arguments,
@@ -22,7 +21,6 @@ from lifeos_cli.cli_support.parser_common import (
 from lifeos_cli.cli_support.resources.event.handlers import (
     EVENT_SUMMARY_COLUMNS,
     handle_event_add_async,
-    handle_event_batch_delete_async,
     handle_event_delete_async,
     handle_event_list_async,
     handle_event_show_async,
@@ -553,6 +551,7 @@ def build_event_delete_parser(
             description=_("resources.event.parser_actions.delete_one_event"),
             examples=(
                 "lifeos event delete 11111111-1111-1111-1111-111111111111",
+                "lifeos event delete <event-id-1> <event-id-2>",
                 "lifeos event delete 11111111-1111-1111-1111-111111111111 "
                 "--scope single --instance-start 2026-04-10T09:00:00",
                 "lifeos event delete 11111111-1111-1111-1111-111111111111 "
@@ -562,11 +561,16 @@ def build_event_delete_parser(
                 help_message("notes.recurringScope.deletes"),
                 help_message("notes.recurringScope.instanceStartRequired"),
                 help_message("notes.datetime.configuredTimezone"),
+                _("common.messages.delete_accepts_one_or_more_identifiers"),
             ),
         ),
     )
     delete_parser.add_argument(
-        "event_id", type=UUID, help=_("resources.event.parser_actions.event_identifier")
+        "event_ids",
+        type=UUID,
+        nargs="+",
+        metavar="event-id",
+        help=_("common.parser.noun_identifiers_to_delete").format(noun="Event"),
     )
     delete_parser.add_argument(
         "--scope",
@@ -583,29 +587,3 @@ def build_event_delete_parser(
         ),
     )
     delete_parser.set_defaults(handler=make_sync_handler(handle_event_delete_async))
-
-
-def build_event_batch_parser(
-    event_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> None:
-    """Build the event batch command tree."""
-    add_batch_delete_namespace(
-        event_subparsers,
-        dest="event_batch_command",
-        ids_dest="event_ids",
-        noun="event",
-        delete_handler=make_sync_handler(handle_event_batch_delete_async),
-        batch_summary=_("resources.event.parser_actions.run_batch_event_operations"),
-        batch_description=_("resources.event.parser_actions.delete_multiple_events_in_one_command"),
-        batch_examples=(
-            "lifeos event batch delete --help",
-            "lifeos event batch delete --ids <event-id-1> <event-id-2>",
-        ),
-        batch_notes=(
-            _("common.messages.this_namespace_currently_exposes_only_delete_workflow"),
-            _("common.messages.use_data_batch_delete_for_file_or_stream_bulk_workflows"),
-        ),
-        delete_summary=_("resources.event.parser_actions.delete_multiple_events"),
-        delete_description=_("resources.event.parser_actions.delete_multiple_events_by_identifier"),
-        delete_examples=("lifeos event batch delete --ids <event-id-1> <event-id-2>",),
-    )

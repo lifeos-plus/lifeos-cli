@@ -394,18 +394,18 @@ def test_cli_data_help_explains_machine_workflow_boundaries(capsys) -> None:
         "Use resource-specific delete commands when you want narrower human-guided changes."
         in captured.out
     )
-    assert "use `lifeos <resource> batch delete` instead" in captured.out
+    assert "use `lifeos <resource> delete` instead" in captured.out
 
 
 def test_resource_batch_delete_help_points_to_data_batch_delete(capsys) -> None:
     parser = build_parser()
 
     with pytest.raises(SystemExit):
-        parser.parse_args(["area", "batch", "--help"])
+        parser.parse_args(["area", "delete", "--help"])
 
     captured = capsys.readouterr()
 
-    assert "use `lifeos data batch-delete` instead" in captured.out
+    assert "lifeos data batch-delete" in captured.out
 
 
 def test_cli_vision_experience_help_explains_manual_vs_synced_updates(capsys) -> None:
@@ -995,28 +995,28 @@ def test_cli_help_shows_update_clear_examples(
     ("argv", "expected"),
     [
         (
-            ["area", "batch", "delete", "--help"],
-            "lifeos area batch delete --ids <area-id-1> <area-id-2>",
+            ["area", "delete", "--help"],
+            "lifeos area delete <area-id-1> <area-id-2>",
         ),
         (
-            ["person", "batch", "delete", "--help"],
-            "lifeos person batch delete --ids <person-id-1> <person-id-2>",
+            ["person", "delete", "--help"],
+            "lifeos person delete <person-id-1> <person-id-2>",
         ),
         (
-            ["event", "batch", "delete", "--help"],
-            "lifeos event batch delete --ids <event-id-1> <event-id-2>",
+            ["event", "delete", "--help"],
+            "lifeos event delete <event-id-1> <event-id-2>",
         ),
         (
-            ["task", "batch", "delete", "--help"],
-            "lifeos task batch delete --ids <task-id-1> <task-id-2>",
+            ["task", "delete", "--help"],
+            "lifeos task delete <task-id-1> <task-id-2>",
         ),
         (
-            ["tag", "batch", "delete", "--help"],
-            "lifeos tag batch delete --ids <tag-id-1> <tag-id-2>",
+            ["tag", "delete", "--help"],
+            "lifeos tag delete <tag-id-1> <tag-id-2>",
         ),
         (
-            ["vision", "batch", "delete", "--help"],
-            "lifeos vision batch delete --ids <vision-id-1> <vision-id-2>",
+            ["vision", "delete", "--help"],
+            "lifeos vision delete <vision-id-1> <vision-id-2>",
         ),
         (
             ["timelog", "batch", "delete", "--help"],

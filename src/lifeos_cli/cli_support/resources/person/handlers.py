@@ -147,24 +147,20 @@ async def handle_person_update_async(args: argparse.Namespace) -> int:
 
 async def handle_person_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
+        if len(args.person_ids) > 1:
+            result = await person_services.batch_delete_person(
+                session,
+                person_ids=args.person_ids,
+            )
+            return print_batch_result(
+                success_label="Deleted people",
+                success_count=result.deleted_count,
+                failed_label="Failed person IDs",
+                result=result,
+            )
         try:
-            await person_services.delete_person(session, person_id=args.person_id)
+            await person_services.delete_person(session, person_id=args.person_ids[0])
         except person_services.PersonNotFoundError as exc:
             return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted person {args.person_id}")
+    print(f"Soft-deleted person {args.person_ids[0]}")
     return 0
-
-
-async def handle_person_batch_delete_async(args: argparse.Namespace) -> int:
-    """Delete multiple people in one command."""
-    async with db_session.session_scope() as session:
-        result = await person_services.batch_delete_person(
-            session,
-            person_ids=list(args.person_ids),
-        )
-    return print_batch_result(
-        success_label="Deleted people",
-        success_count=result.deleted_count,
-        failed_label="Failed person IDs",
-        result=result,
-    )

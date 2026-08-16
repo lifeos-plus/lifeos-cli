@@ -8,7 +8,6 @@ from lifeos_cli.cli_support.help_utils import (
     HelpContent,
     add_documented_help_parser,
 )
-from lifeos_cli.cli_support.resources.task.parser_batch import build_task_batch_parser
 from lifeos_cli.cli_support.resources.task.parser_read_models import (
     build_task_hierarchy_parser,
     build_task_list_parser,
@@ -57,7 +56,6 @@ def build_task_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                 _(
                     "resources.task.parser.use_lifeos_event_add_task_id_task_id_when_task_also_needs"
                 ),
-                _("resources.task.parser.see_lifeos_task_batch_help_for_bulk_delete_operations"),
             ),
         ),
     )
@@ -77,4 +75,3 @@ def build_task_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
     build_task_reorder_parser(task_subparsers)
     build_task_update_parser(task_subparsers)
     build_task_delete_parser(task_subparsers)
-    build_task_batch_parser(task_subparsers)

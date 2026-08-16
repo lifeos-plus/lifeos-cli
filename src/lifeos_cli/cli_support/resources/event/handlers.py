@@ -278,31 +278,35 @@ async def handle_event_update_async(args: argparse.Namespace) -> int:
 
 
 async def handle_event_delete_async(args: argparse.Namespace) -> int:
+    if len(args.event_ids) > 1 and (args.scope != "all" or args.instance_start is not None):
+        return cli_handler_utils.print_cli_error(
+            ValueError(
+                "--scope and --instance-start are only supported when deleting a single event."
+            )
+        )
     async with db_session.session_scope() as session:
+        if len(args.event_ids) > 1:
+            result = await event_services.batch_delete_events(
+                session,
+                event_ids=args.event_ids,
+            )
+            return print_batch_result(
+                success_label="Deleted events",
+                success_count=result.deleted_count,
+                failed_label="Failed event IDs",
+                result=result,
+            )
         try:
             await event_services.delete_event(
                 session,
-                event_id=args.event_id,
+                event_id=args.event_ids[0],
                 scope=args.scope,
                 instance_start=args.instance_start,
             )
-        except event_services.EventNotFoundError as exc:
+        except (
+            event_services.EventNotFoundError,
+            event_services.EventValidationError,
+        ) as exc:
             return cli_handler_utils.print_cli_error(exc)
-        except event_services.EventValidationError as exc:
-            return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted event {args.event_id}")
+    print(f"Soft-deleted event {args.event_ids[0]}")
     return 0
-
-
-async def handle_event_batch_delete_async(args: argparse.Namespace) -> int:
-    async with db_session.session_scope() as session:
-        result = await event_services.batch_delete_events(
-            session,
-            event_ids=list(args.event_ids),
-        )
-    return print_batch_result(
-        success_label="Deleted events",
-        success_count=result.deleted_count,
-        failed_label="Failed event IDs",
-        result=result,
-    )

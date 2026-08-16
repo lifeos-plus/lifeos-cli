@@ -159,7 +159,7 @@ Localized help should be reviewed through the same command surface by setting th
 The public CLI is intentionally conservative.
 
 - public `delete` commands only soft-delete records
-- public `batch delete` commands also only soft-delete records
+- public `delete` commands accept one or more identifiers and only soft-delete records
 - hard delete stays outside the public CLI
 
 This boundary should remain stable as more resources are added.

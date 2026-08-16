@@ -353,24 +353,20 @@ async def handle_task_update_async(args: argparse.Namespace) -> int:
 
 async def handle_task_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
+        if len(args.task_ids) > 1:
+            result = await task_services.batch_delete_tasks(
+                session,
+                task_ids=args.task_ids,
+            )
+            return print_batch_result(
+                success_label="Deleted tasks",
+                success_count=result.deleted_count,
+                failed_label="Failed task IDs",
+                result=result,
+            )
         try:
-            await task_services.delete_task(session, task_id=args.task_id)
+            await task_services.delete_task(session, task_id=args.task_ids[0])
         except task_services.TaskNotFoundError as exc:
             return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted task {args.task_id}")
+    print(f"Soft-deleted task {args.task_ids[0]}")
     return 0
-
-
-async def handle_task_batch_delete_async(args: argparse.Namespace) -> int:
-    """Delete multiple tasks in one command."""
-    async with db_session.session_scope() as session:
-        result = await task_services.batch_delete_tasks(
-            session,
-            task_ids=list(args.task_ids),
-        )
-    return print_batch_result(
-        success_label="Deleted tasks",
-        success_count=result.deleted_count,
-        failed_label="Failed task IDs",
-        result=result,
-    )

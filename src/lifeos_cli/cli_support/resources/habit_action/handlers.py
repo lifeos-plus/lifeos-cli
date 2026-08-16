@@ -168,29 +168,26 @@ async def handle_habit_action_log_async(args: argparse.Namespace) -> int:
 
 async def handle_habit_action_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
+        if len(args.action_ids) > 1:
+            result = await habit_action_services.batch_delete_habit_actions(
+                session,
+                action_ids=args.action_ids,
+            )
+            return print_batch_result(
+                success_label="Deleted habit actions",
+                success_count=result.deleted_count,
+                failed_label="Failed habit action IDs",
+                result=result,
+            )
         try:
             await habit_action_services.delete_habit_action(
                 session,
-                action_id=args.action_id,
+                action_id=args.action_ids[0],
             )
         except (
             habit_action_services.HabitActionNotFoundError,
             habit_action_services.InvalidHabitOperationError,
         ) as exc:
             return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted habit action {args.action_id}")
+    print(f"Soft-deleted habit action {args.action_ids[0]}")
     return 0
-
-
-async def handle_habit_action_batch_delete_async(args: argparse.Namespace) -> int:
-    async with db_session.session_scope() as session:
-        result = await habit_action_services.batch_delete_habit_actions(
-            session,
-            action_ids=list(args.action_ids),
-        )
-    return print_batch_result(
-        success_label="Deleted habit actions",
-        success_count=result.deleted_count,
-        failed_label="Failed habit action IDs",
-        result=result,
-    )

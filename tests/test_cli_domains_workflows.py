@@ -724,7 +724,7 @@ def test_main_task_move_preserves_parent_when_parent_flag_is_omitted(
     assert "Moved task 55555555-5555-5555-5555-555555555555" in captured.out
 
 
-def test_main_task_batch_delete_prints_summary(
+def test_main_task_delete_multiple_prints_summary(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -749,9 +749,7 @@ def test_main_task_batch_delete_prints_summary(
     exit_code = cli.main(
         [
             "task",
-            "batch",
             "delete",
-            "--ids",
             "11111111-1111-1111-1111-111111111111",
             "22222222-2222-2222-2222-222222222222",
         ]
