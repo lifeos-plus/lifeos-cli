@@ -4,8 +4,6 @@ import json
 import subprocess
 from pathlib import Path
 
-import pytest
-
 from lifeos_cli.cli import build_parser
 from lifeos_cli.cli_support.help_audit import (
     build_machine_readable_reference,
@@ -188,14 +186,6 @@ def test_render_command_tree_produces_indented_tree_with_leaf_arguments() -> Non
     assert "  list  —  List areas" in rendered
     assert "      args: --limit" in rendered
     assert "content [nargs=?]" in rendered
-
-
-def test_committed_cli_tree_is_current(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("LIFEOS_LANGUAGE", "en")
-    reference = build_machine_readable_reference(build_parser())
-    expected_path = Path(__file__).resolve().parents[1] / "docs" / "cli-tree.md"
-
-    assert expected_path.read_text(encoding="utf-8") == render_command_tree(reference)
 
 
 def test_machine_readable_reference_renders_valid_json_with_metadata() -> None:

@@ -150,8 +150,7 @@ LIFEOS_LANGUAGE=en uv run python scripts/audit_cli_help.py --format tree --outpu
 ```
 
 Regenerate the file whenever a command, argument, or summary changes; the
-`cli-tree-sync` pre-commit hook and the committed-tree test fail when the
-artifact drifts.
+`cli-tree-sync` pre-commit hook fails when the artifact drifts.
 
 Localized help should be reviewed through the same command surface by setting the runtime language preference or `LIFEOS_LANGUAGE`.
 
