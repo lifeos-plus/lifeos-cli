@@ -18,7 +18,10 @@ echo "[doctor] run lint"
 uv run pre-commit run --all-files
 
 echo "[doctor] run tests"
-uv run pytest -m "not integration"
+# Enforce the line-coverage floor for lifeos_cli and lifeos_web on the main
+# non-integration suite. The measured baseline is 75%; the floor is set at 74%
+# so routine additions do not fail by one line while regressions still break.
+uv run pytest -m "not integration" --cov --cov-report=term-missing --cov-fail-under=74
 
 echo "[doctor] export locked requirements with all extras"
 uv export --format requirements.txt --all-extras --no-dev --locked --no-emit-project \

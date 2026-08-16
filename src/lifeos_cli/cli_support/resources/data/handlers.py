@@ -209,15 +209,27 @@ async def _import_rows(
     rows: list[dict[str, Any]],
     dry_run: bool,
     continue_on_error: bool,
+    key_field: str | None = None,
 ) -> data_ops.DataImportReport:
+    if key_field is not None:
+        data_ops.validate_upsert_key(resource, key_field)
     session = db_session.get_async_session_factory()()
     created_count = 0
     updated_count = 0
     failures: list[data_ops.DataOperationFailure] = []
     try:
         for index, row in enumerate(rows, start=1):
+            original_row = row
             try:
                 async with session.begin_nested():
+                    if key_field is not None:
+                        row = await data_ops.resolve_upsert_row_id(
+                            session,
+                            resource=resource,
+                            row=row,
+                            key_field=key_field,
+                            index=index,
+                        )
                     report = await data_ops.import_resource_snapshot(
                         session,
                         resource=resource,
@@ -231,8 +243,8 @@ async def _import_rows(
                         index=index,
                         resource=resource,
                         message=str(exc),
-                        payload=row,
-                        record_id=_maybe_record_id(row),
+                        payload=original_row,
+                        record_id=_maybe_record_id(original_row),
                     )
                 )
                 if not continue_on_error:
@@ -257,7 +269,19 @@ async def _import_rows(
 
 async def handle_data_import_async(args: argparse.Namespace) -> int:
     try:
+        if args.mode == "upsert" and not args.key:
+            print("--mode upsert requires --key <field>.", file=sys.stderr)
+            return 1
+        if args.mode == "create" and args.key is not None:
+            print("--key is only supported with --mode upsert.", file=sys.stderr)
+            return 1
         if args.target == "bundle":
+            if args.mode == "upsert" or args.key is not None:
+                print(
+                    "--mode and --key apply to single-resource imports only.",
+                    file=sys.stderr,
+                )
+                return 1
             if args.continue_on_error:
                 print(
                     "Bundle import is atomic and does not support --continue-on-error.",
@@ -297,6 +321,7 @@ async def handle_data_import_async(args: argparse.Namespace) -> int:
             rows=rows,
             dry_run=args.dry_run,
             continue_on_error=args.continue_on_error,
+            key_field=args.key,
         )
         _write_failures(failure_path=args.error_file, failures=import_report.failures)
         print(f"Resource: {import_report.resource}")

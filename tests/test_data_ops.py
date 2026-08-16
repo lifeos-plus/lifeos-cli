@@ -6,16 +6,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
-from uuid import UUID
+from uuid import UUID, uuid4
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
-from sqlalchemy import Column
+from sqlalchemy import Column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.backend_policy import backend_policy_for_drivername
+from lifeos_cli.db.models.area import Area
+from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import data_ops
 from lifeos_cli.db.types import UTCDateTime
+from tests.support import sqlite_session_factory
 
 
 class FakeBatchSession:
@@ -294,3 +297,117 @@ def test_read_bundle_rejects_legacy_schema_version(tmp_path: Path) -> None:
         ),
     ):
         data_ops.read_bundle(bundle_path)
+
+
+def test_validate_upsert_key_rejects_unsupported_resources_and_fields() -> None:
+    data_ops.validate_upsert_key("area", "name")
+    data_ops.validate_upsert_key("habit", "title")
+
+    with pytest.raises(data_ops.DataOperationError, match="supported keys: none"):
+        data_ops.validate_upsert_key("note", "content")
+    with pytest.raises(data_ops.DataOperationError, match="supported keys: name"):
+        data_ops.validate_upsert_key("area", "display_order")
+
+
+def test_resolve_upsert_row_id_matches_existing_record_by_natural_key() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await data_ops.import_resource_snapshot(
+                    session,
+                    resource="area",
+                    rows=[{"id": str(uuid4()), "name": "Health"}],
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                area_id = (
+                    await session.execute(select(Area.id).where(Area.name == "Health"))
+                ).scalar_one()
+
+                resolved = await data_ops.resolve_upsert_row_id(
+                    session,
+                    resource="area",
+                    row={"name": "Health", "color": "#111111"},
+                    key_field="name",
+                    index=1,
+                )
+
+                assert UUID(resolved["id"]) == area_id
+                assert resolved["color"] == "#111111"
+
+    asyncio.run(scenario())
+
+
+def test_resolve_upsert_row_id_generates_id_when_no_match_exists() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                resolved = await data_ops.resolve_upsert_row_id(
+                    session,
+                    resource="area",
+                    row={"name": "Fitness"},
+                    key_field="name",
+                    index=1,
+                )
+
+                assert UUID(resolved["id"])
+                assert resolved["name"] == "Fitness"
+
+    asyncio.run(scenario())
+
+
+def test_resolve_upsert_row_id_rejects_ambiguous_natural_key() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                session.add(Vision(name="Launch"))
+                session.add(Vision(name="Launch"))
+                await session.commit()
+
+            async with session_factory() as session:
+                with pytest.raises(
+                    data_ops.DataOperationError,
+                    match="upsert key `name` is ambiguous",
+                ):
+                    await data_ops.resolve_upsert_row_id(
+                        session,
+                        resource="vision",
+                        row={"name": "Launch"},
+                        key_field="name",
+                        index=1,
+                    )
+
+    asyncio.run(scenario())
+
+
+def test_resolve_upsert_row_id_rejects_missing_key_value() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                with pytest.raises(
+                    data_ops.DataOperationError,
+                    match="Row 1 is missing a value for upsert key `name`",
+                ):
+                    await data_ops.resolve_upsert_row_id(
+                        session,
+                        resource="area",
+                        row={"name": None},
+                        key_field="name",
+                        index=1,
+                    )
+
+    asyncio.run(scenario())
+
+
+def test_resolve_upsert_row_id_rejects_unsupported_key_before_session_use() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="supported keys: none"):
+        asyncio.run(
+            data_ops.resolve_upsert_row_id(
+                cast(AsyncSession, None),
+                resource="note",
+                row={"content": "hello"},
+                key_field="content",
+                index=1,
+            )
+        )

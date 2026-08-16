@@ -6,6 +6,7 @@ import argparse
 import sys
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
+from lifeos_cli.cli_support.json_output import print_json_items, print_json_payload
 from lifeos_cli.cli_support.output_utils import format_timestamp, print_summary_rows
 from lifeos_cli.cli_support.time_args import DateArgumentError, resolve_date_selection_arguments
 from lifeos_cli.db import session as db_session
@@ -83,6 +84,9 @@ async def handle_habit_action_list_async(args: argparse.Namespace) -> int:
             habit_action_services.HabitValidationError,
         ) as exc:
             return cli_handler_utils.print_cli_error(exc)
+    if args.json:
+        print_json_items(actions, total_count=total_count)
+        return 0
     trailer_lines = () if total_count is None else (f"Total habit actions: {total_count}",)
     print_summary_rows(
         items=actions,
@@ -102,6 +106,9 @@ async def handle_habit_action_show_async(args: argparse.Namespace) -> int:
         )
     if action is None:
         return cli_handler_utils.print_missing_record_error("Habit action", args.action_id)
+    if args.json:
+        print_json_payload(action)
+        return 0
     print(_format_habit_action_detail(action))
     return 0
 

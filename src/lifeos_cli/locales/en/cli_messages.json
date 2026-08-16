@@ -71,7 +71,8 @@
     "parser": {
       "maximum_number_of_results_to_return": "Maximum number of results to return",
       "noun_identifiers_to_action_verb": "{noun} identifiers to {action_verb}",
-      "number_of_results_to_skip": "Number of results to skip"
+      "number_of_results_to_skip": "Number of results to skip",
+      "output_as_json": "Print structured JSON output instead of the default text output"
     }
   },
   "resources": {
@@ -160,7 +161,10 @@
         "validate_input_without_committing": "Validate input without committing",
         "validate_without_committing": "Validate without committing",
         "write_exported_data_to_file_instead_of_stdout": "Write exported data to a file instead of stdout",
-        "write_row_level_failures_to_jsonl_file": "Write row-level failures to a JSONL file"
+        "write_row_level_failures_to_jsonl_file": "Write row-level failures to a JSONL file",
+        "import_mode_create_or_upsert": "Import mode: create always inserts, upsert matches by --key and updates or inserts",
+        "natural_key_upsert_supported_keys_are_area_name_vision_name_people_name_and_habit_title": "Natural-key upsert supported keys: area.name, vision.name, people.name, habit.title",
+        "upsert_natural_key_field": "Upsert natural-key field used to match existing records"
       }
     },
     "event": {

@@ -6,6 +6,7 @@ import argparse
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any, cast
 
 from lifeos_cli.i18n import cli_message as _
 from lifeos_cli.i18n import keyed_message
@@ -100,13 +101,17 @@ def add_documented_parser(
     help_content: HelpContent,
 ) -> argparse.ArgumentParser:
     """Add a parser with structured description and examples."""
-    return subparsers.add_parser(
+    parser = subparsers.add_parser(
         name,
         help=help_content.summary,
         description=help_content.description,
         epilog=build_epilog(examples=help_content.examples, notes=help_content.notes),
         formatter_class=CompactSubcommandHelpFormatter,
     )
+    # Keep the structured content on the parser so machine-readable command
+    # references can introspect the tree without re-parsing rendered text.
+    cast(Any, parser)._lifeos_help_content = help_content
+    return parser
 
 
 def add_documented_help_parser(

@@ -9,6 +9,7 @@ from uuid import UUID
 
 from lifeos_cli.application.time_preferences import to_storage_timezone
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
+from lifeos_cli.cli_support.json_output import print_json_items, print_json_payload
 from lifeos_cli.cli_support.output_utils import format_timestamp, print_summary_rows
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.models.finance import (
@@ -226,6 +227,9 @@ async def handle_finance_asset_list_async(args: argparse.Namespace) -> int:
             limit=args.limit,
             offset=args.offset,
         )
+    if args.json:
+        print_json_items(assets)
+        return 0
     print_summary_rows(
         items=assets,
         columns=ASSET_SUMMARY_COLUMNS,
@@ -304,6 +308,9 @@ async def handle_finance_tree_list_async(args: argparse.Namespace) -> int:
             )
         except ValueError as exc:
             return cli_handler_utils.print_cli_error(exc)
+    if args.json:
+        print_json_items(trees)
+        return 0
     print_summary_rows(
         items=trees,
         columns=TREE_SUMMARY_COLUMNS,
@@ -321,6 +328,9 @@ async def handle_finance_tree_show_async(args: argparse.Namespace) -> int:
         )
     if tree is None:
         return cli_handler_utils.print_missing_record_error("Finance tree", args.tree_id)
+    if args.json:
+        print_json_payload(tree)
+        return 0
     print(_format_tree_detail(tree, list(tree.nodes)))
     return 0
 
@@ -428,6 +438,9 @@ async def handle_finance_rate_snapshot_list_async(args: argparse.Namespace) -> i
             )
         except ValueError as exc:
             return cli_handler_utils.print_cli_error(exc)
+    if args.json:
+        print_json_items(rate_snapshots)
+        return 0
     print_summary_rows(
         items=rate_snapshots,
         columns=RATE_SNAPSHOT_SUMMARY_COLUMNS,
@@ -448,6 +461,9 @@ async def handle_finance_rate_snapshot_show_async(args: argparse.Namespace) -> i
             "Finance rate snapshot",
             args.rate_snapshot_id,
         )
+    if args.json:
+        print_json_payload(rate_snapshot)
+        return 0
     print(_format_rate_snapshot_detail(rate_snapshot))
     return 0
 
@@ -465,6 +481,9 @@ async def handle_finance_snapshot_list_async(args: argparse.Namespace) -> int:
             return cli_handler_utils.print_cli_error(exc)
         assets = await finance_services.list_finance_assets(session)
     decimal_places_by_code = {asset.code: asset.decimal_places for asset in assets}
+    if args.json:
+        print_json_items(snapshots)
+        return 0
     print_summary_rows(
         items=snapshots,
         columns=SNAPSHOT_SUMMARY_COLUMNS,
@@ -486,6 +505,9 @@ async def handle_finance_snapshot_show_async(args: argparse.Namespace) -> int:
         assets = await finance_services.list_finance_assets(session)
     if snapshot is None:
         return cli_handler_utils.print_missing_record_error("Finance snapshot", args.snapshot_id)
+    if args.json:
+        print_json_payload(snapshot)
+        return 0
     decimal_places_by_code = {asset.code: asset.decimal_places for asset in assets}
     print(
         _format_snapshot_detail(

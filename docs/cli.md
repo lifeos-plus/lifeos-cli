@@ -43,6 +43,15 @@ The current CLI output stays intentionally simple and scriptable.
 - `add` and `update` commands print short confirmation messages
 - public `delete` commands report soft-delete results only
 
+`list`, `search`, and `show` read commands accept an opt-in `--json` flag that leaves the default text output untouched:
+
+- JSON output is pretty-printed, preserves non-ASCII characters, and is emitted as one array of record objects for list-style commands
+- commands that support `--count` emit `{"items": [...], "total_count": N}` when `--count --json` are combined
+- timestamps render as explicit UTC ISO strings (for example `2026-04-10T12:00:00Z`), UUIDs render as strings, and Decimal amounts render as strings so precision is preserved
+- JSON payloads expose the full underlying record fields; for example note content is not truncated or whitespace-normalized the way text summaries are
+
+The `--json` shape follows the Web API serialization conventions where the two surfaces overlap, so callers that already consume the API can reuse their field handling.
+
 ## Installation and Initialization
 
 Install the published CLI:
@@ -96,6 +105,8 @@ The current command tree is organized around a few stable families:
 - financial reality resources such as `finance`
 - system, Web, and portability commands such as `init`, `config`, `db`, `web`, and `data`
 
+`data import --mode upsert --key <field>` supports idempotent natural-key sync for `area.name`, `vision.name`, `people.name`, and `habit.title`: each row is matched against existing active records, updated when one match exists, and inserted otherwise (a fresh id is generated when the row has none). Ambiguous keys and missing key values are reported as row-level failures.
+
 Use `lifeos <resource> --help` to enter one family and then follow the resource-level help into the action or namespace you need.
 
 ## Help Review
@@ -111,6 +122,15 @@ The script walks the parser tree, executes every discovered `--help` invocation,
 ```bash
 uv run python scripts/audit_cli_help.py --path-prefix "timelog stats"
 ```
+
+The same script emits a machine-readable command reference without spawning subprocesses:
+
+```bash
+uv run python scripts/audit_cli_help.py --format json
+uv run python scripts/audit_cli_help.py --format json --path-prefix "task list"
+```
+
+The JSON reference is locale-aware, includes the package version, and describes every command node with its summary, description, usage, examples, notes, and structured arguments (name, kind, metavar, choices, required, nargs, default). It is intended for agents and tooling that need the full command grammar in one fetch instead of walking `--help` one level at a time.
 
 Localized help should be reviewed through the same command surface by setting the runtime language preference or `LIFEOS_LANGUAGE`.
 

@@ -10,6 +10,7 @@ from lifeos_cli.cli_support.help_utils import (
     add_documented_help_parser,
     add_documented_parser,
 )
+from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import (
     NOTE_SUMMARY_COLUMNS,
     NOTE_SUMMARY_COLUMNS_WITH_COUNTS,
@@ -196,6 +197,7 @@ def build_note_list_parser(
         help=_("common.messages.include_relationship_count_columns_in_summary_output"),
     )
     add_limit_offset_arguments(list_parser, row_noun="notes")
+    add_json_output_argument(list_parser)
     list_parser.set_defaults(handler=make_sync_handler(handle_note_list_async))
 
 
@@ -265,6 +267,7 @@ def build_note_search_parser(
         help=_("common.messages.include_relationship_count_columns_in_summary_output"),
     )
     add_limit_offset_arguments(search_parser, row_noun="matching notes")
+    add_json_output_argument(search_parser)
     search_parser.set_defaults(handler=make_sync_handler(handle_note_search_async))
 
 
@@ -291,6 +294,7 @@ def build_note_show_parser(
     show_parser.add_argument(
         "note_id", type=UUID, help=_("resources.note.parser_actions.note_identifier")
     )
+    add_json_output_argument(show_parser)
     show_parser.set_defaults(handler=make_sync_handler(handle_note_show_async))
 
 

@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
+from lifeos_cli.cli_support.json_output import print_json_items, print_json_payload
 from lifeos_cli.cli_support.output_utils import (
     format_id_lines,
     format_summary_header,
@@ -342,6 +343,9 @@ async def handle_timelog_list_async(args: argparse.Namespace) -> int:
             )
         except timelog_services.TimelogValidationError as exc:
             return cli_handler_utils.print_cli_error(exc)
+    if args.json:
+        print_json_items(timelogs, total_count=total_count)
+        return 0
     trailer_lines = () if total_count is None else (f"Total timelogs: {total_count}",)
     print_summary_rows(
         items=timelogs,
@@ -365,6 +369,9 @@ async def handle_timelog_show_async(args: argparse.Namespace) -> int:
         )
     if timelog is None:
         return cli_handler_utils.print_missing_record_error("Timelog", args.timelog_id)
+    if args.json:
+        print_json_payload(timelog)
+        return 0
     print(_format_timelog_detail(timelog))
     return 0
 

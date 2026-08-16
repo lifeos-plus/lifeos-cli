@@ -115,6 +115,7 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                 "lifeos data import timelog --file timelog.jsonl --format jsonl",
                 "lifeos data import note --stdin --format json",
                 "lifeos data import bundle --file lifeos-bundle.zip --replace-existing",
+                "lifeos data import area --file areas.json --mode upsert --key name",
             ),
             notes=(
                 _(
@@ -125,6 +126,9 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                 ),
                 _(
                     "resources.data.parser.use_dry_run_before_applying_large_file_or_full_bundle_restore"
+                ),
+                _(
+                    "resources.data.parser.natural_key_upsert_supported_keys_are_area_name_vision_name_people_name_and_habit_title"
                 ),
             ),
         ),
@@ -158,6 +162,17 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
         help=_(
             "resources.data.parser.for_bundle_imports_truncate_supported_data_before_restoring_bundle"
         ),
+    )
+    import_parser.add_argument(
+        "--mode",
+        choices=("create", "upsert"),
+        default="create",
+        help=_("resources.data.parser.import_mode_create_or_upsert"),
+    )
+    import_parser.add_argument(
+        "--key",
+        metavar="FIELD",
+        help=_("resources.data.parser.upsert_natural_key_field"),
     )
     import_parser.add_argument(
         "--error-file", help=_("resources.data.parser.write_row_level_failures_to_jsonl_file")

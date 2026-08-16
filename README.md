@@ -50,7 +50,7 @@ The implemented system covers the main quantified-self loop from planning to evi
 | Relationships | `people` records with relationship metadata, birthday/anniversary dates, tags, related activities, anniversaries, and links from events, notes, and timelogs. |
 | Taxonomy | `tag` records with category/entity-type metadata and association counts across supported resources. |
 | Finance | Assets, reusable finance trees, nodes, instant and period snapshots, exchange-rate snapshots, default tree bootstrapping, and balance-sheet/cashflow style data modeling. |
-| Data portability | Canonical JSON/JSONL export/import, full bundle backup/restore, dry-run validation, row-level errors, and machine-oriented batch update/delete. |
+| Data portability | Canonical JSON/JSONL export/import, full bundle backup/restore, dry-run validation, row-level errors, natural-key upsert imports, and machine-oriented batch update/delete. |
 | Configuration | Persistent database and preference configuration, including timezone, language, day boundary, week boundary, theme, and default vision experience rate. |
 | Local Web API | FastAPI routers for health, tasks, visions, habits, notes, timelogs, timelog templates, people, areas, finance, planned events, stats, tags, and preferences. |
 | Web UI | A first-party Vite/React workspace in `lifeos-plus/lifeos-web` for visions, habits, planning, timelog, finance, insights/stats, schedule/calendar, notes, people, and settings. |
@@ -184,6 +184,7 @@ Any agent runtime that can execute terminal commands and inspect command output 
 - help-first command model, with `--help` as the primary command reference
 - identifier-driven discovery flows built around `list` and `show`
 - compact summary output for lists and labeled output for record detail views
+- opt-in `--json` output on `list`, `search`, and `show` read commands for stable machine parsing; the default compact text output is unchanged
 - entity-specific primary-key headers such as `task_id`, `vision_id`, and `event_id`
 - persisted language preference so agents can match human-authored payload language
 - data import/export commands for machine-generated cleanup, migration, and backup flows
@@ -195,6 +196,8 @@ For repository changes, run the primary validation entrypoint:
 ```bash
 bash ./scripts/doctor.sh
 ```
+
+`doctor.sh` also enforces a line-coverage floor (currently 74%) for the `lifeos_cli` and `lifeos_web` packages on the main test suite, so coverage regressions are caught in the same gate as lint and type errors.
 
 For CLI documentation review, the help audit script executes the parser tree and renders a Markdown report:
 

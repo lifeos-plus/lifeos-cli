@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
+from lifeos_cli.cli_support.json_output import print_json_items, print_json_payload
 from lifeos_cli.cli_support.output_utils import (
     format_timestamp,
     print_batch_result,
@@ -154,6 +155,9 @@ async def handle_event_list_async(args: argparse.Namespace) -> int:
             )
         except event_services.EventValidationError as exc:
             return cli_handler_utils.print_cli_error(exc)
+    if args.json:
+        print_json_items(events)
+        return 0
     print_summary_rows(
         items=events,
         columns=EVENT_SUMMARY_COLUMNS,
@@ -171,6 +175,9 @@ async def handle_event_show_async(args: argparse.Namespace) -> int:
         )
     if event is None:
         return cli_handler_utils.print_missing_record_error("Event", args.event_id)
+    if args.json:
+        print_json_payload(event)
+        return 0
     print(_format_event_detail(event))
     return 0
 

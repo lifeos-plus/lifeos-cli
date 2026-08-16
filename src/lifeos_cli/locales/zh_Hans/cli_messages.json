@@ -71,7 +71,8 @@
     "parser": {
       "maximum_number_of_results_to_return": "返回结果的最大数量",
       "noun_identifiers_to_action_verb": "用于{action_verb}的{noun}标识符",
-      "number_of_results_to_skip": "要跳过的结果数量"
+      "number_of_results_to_skip": "要跳过的结果数量",
+      "output_as_json": "改为输出结构化 JSON，而不是默认的文本输出"
     }
   },
   "resources": {
@@ -160,7 +161,10 @@
         "validate_input_without_committing": "验证输入而不提交",
         "validate_without_committing": "验证而不提交",
         "write_exported_data_to_file_instead_of_stdout": "将导出的数据写入文件而不是 stdout",
-        "write_row_level_failures_to_jsonl_file": "将行级故障写入 JSONL 文件"
+        "write_row_level_failures_to_jsonl_file": "将行级故障写入 JSONL 文件",
+        "import_mode_create_or_upsert": "导入模式：create 始终新增；upsert 按 --key 匹配并更新或新增",
+        "natural_key_upsert_supported_keys_are_area_name_vision_name_people_name_and_habit_title": "自然键 upsert 支持字段：area.name、vision.name、people.name、habit.title",
+        "upsert_natural_key_field": "用于匹配现有记录的自然键字段"
       }
     },
     "event": {

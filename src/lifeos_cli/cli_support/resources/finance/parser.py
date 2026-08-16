@@ -10,6 +10,7 @@ from lifeos_cli.cli_support.help_utils import (
     add_documented_help_parser,
     add_documented_parser,
 )
+from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.parser_common import (
     add_limit_offset_arguments,
 )
@@ -78,6 +79,7 @@ def build_finance_parser(subparsers: argparse._SubParsersAction[argparse.Argumen
         ),
     )
     add_limit_offset_arguments(asset_list)
+    add_json_output_argument(asset_list)
     asset_list.set_defaults(handler=make_sync_handler(handle_finance_asset_list_async))
 
     asset_add = add_documented_parser(
@@ -154,6 +156,7 @@ def build_finance_parser(subparsers: argparse._SubParsersAction[argparse.Argumen
         ),
     )
     add_limit_offset_arguments(tree_list)
+    add_json_output_argument(tree_list)
     tree_list.set_defaults(handler=make_sync_handler(handle_finance_tree_list_async))
 
     tree_show = add_documented_parser(
@@ -166,6 +169,7 @@ def build_finance_parser(subparsers: argparse._SubParsersAction[argparse.Argumen
         ),
     )
     tree_show.add_argument("tree_id", type=UUID)
+    add_json_output_argument(tree_show)
     tree_show.set_defaults(handler=make_sync_handler(handle_finance_tree_show_async))
 
     ensure_default = add_documented_parser(
@@ -293,6 +297,7 @@ def build_finance_parser(subparsers: argparse._SubParsersAction[argparse.Argumen
         ),
     )
     add_limit_offset_arguments(rate_snapshot_list)
+    add_json_output_argument(rate_snapshot_list)
     rate_snapshot_list.set_defaults(
         handler=make_sync_handler(handle_finance_rate_snapshot_list_async)
     )
@@ -307,6 +312,7 @@ def build_finance_parser(subparsers: argparse._SubParsersAction[argparse.Argumen
         ),
     )
     rate_snapshot_show.add_argument("rate_snapshot_id", type=UUID)
+    add_json_output_argument(rate_snapshot_show)
     rate_snapshot_show.set_defaults(
         handler=make_sync_handler(handle_finance_rate_snapshot_show_async)
     )
@@ -325,6 +331,7 @@ def build_finance_parser(subparsers: argparse._SubParsersAction[argparse.Argumen
     )
     snapshot_list.add_argument("--tree-id", type=UUID)
     add_limit_offset_arguments(snapshot_list)
+    add_json_output_argument(snapshot_list)
     snapshot_list.set_defaults(handler=make_sync_handler(handle_finance_snapshot_list_async))
 
     snapshot_show = add_documented_parser(
@@ -337,4 +344,5 @@ def build_finance_parser(subparsers: argparse._SubParsersAction[argparse.Argumen
         ),
     )
     snapshot_show.add_argument("snapshot_id", type=UUID)
+    add_json_output_argument(snapshot_show)
     snapshot_show.set_defaults(handler=make_sync_handler(handle_finance_snapshot_show_async))
