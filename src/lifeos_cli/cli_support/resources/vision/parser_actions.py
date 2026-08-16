@@ -274,6 +274,7 @@ def build_vision_with_tasks_parser(
                 _(
                     "resources.vision.parser_actions.when_vision_has_tasks_tasks_section_prints_header_row_followed_by_tab"
                 ).format(columns=format_summary_column_list(VISION_WITH_TASKS_COLUMNS)),
+                _("resources.vision.parser_actions.with_tasks_related_views_note"),
             ),
         ),
     )

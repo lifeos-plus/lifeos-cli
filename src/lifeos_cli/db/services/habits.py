@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from lifeos_cli.db.services.habit_mutations import (
+    batch_delete_habit_actions,
     batch_delete_habits,
     create_habit,
     delete_habit,
+    delete_habit_action,
     update_habit,
     update_habit_action,
     update_habit_action_by_date,
@@ -41,10 +43,12 @@ __all__ = [
     "HabitTaskReferenceNotFoundError",
     "HabitValidationError",
     "InvalidHabitOperationError",
+    "batch_delete_habit_actions",
     "batch_delete_habits",
     "count_habit_actions",
     "count_habits",
     "create_habit",
+    "delete_habit_action",
     "delete_habit",
     "get_habit",
     "get_habit_action",

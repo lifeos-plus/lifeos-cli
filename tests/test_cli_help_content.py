@@ -394,10 +394,7 @@ def test_cli_data_help_explains_machine_workflow_boundaries(capsys) -> None:
         "Use resource-specific delete commands when you want narrower human-guided changes."
         in captured.out
     )
-    assert (
-        "use `lifeos <resource> batch delete` instead"
-        in captured.out
-    )
+    assert "use `lifeos <resource> batch delete` instead" in captured.out
 
 
 def test_resource_batch_delete_help_points_to_data_batch_delete(capsys) -> None:

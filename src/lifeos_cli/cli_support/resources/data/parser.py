@@ -59,6 +59,7 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                 _(
                     "resources.data.parser.use_dry_run_before_applying_large_imports_or_batch_changes"
                 ),
+                _("resources.data.parser.finance_not_yet_covered_by_data_namespace"),
             ),
         ),
     )

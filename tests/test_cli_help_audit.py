@@ -10,6 +10,7 @@ from lifeos_cli.cli_support.help_audit import (
     collect_help_invocations,
     filter_help_invocations,
     filter_reference_commands,
+    lint_help_summary_conventions,
     render_help_audit_report,
     render_machine_readable_reference,
     run_help_audit,
@@ -123,6 +124,28 @@ def test_machine_readable_reference_describes_arguments_and_content() -> None:
     ]
     assert [argument["name"] for argument in search_positional] == ["query"]
     assert search_positional[0]["required"] is True
+
+
+def test_lint_help_summary_conventions_flags_trailing_periods_and_empty_summaries() -> None:
+    reference = {
+        "commands": [
+            {"path": ["area", "list"], "summary": "List areas."},
+            {"path": ["note", "add"], "summary": "Add a note"},
+            {"path": ["config", "show"], "summary": ""},
+        ]
+    }
+
+    violations = lint_help_summary_conventions(reference)
+
+    assert any("area/list" in violation for violation in violations)
+    assert any("config/show" in violation for violation in violations)
+    assert not any("note/add" in violation for violation in violations)
+
+
+def test_built_parser_passes_summary_convention_lint() -> None:
+    reference = build_machine_readable_reference(build_parser())
+
+    assert lint_help_summary_conventions(reference) == []
 
 
 def test_machine_readable_reference_renders_valid_json_with_metadata() -> None:

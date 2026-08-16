@@ -19,6 +19,7 @@ from lifeos_cli.cli_support.help_audit import (
     collect_help_invocations,
     filter_help_invocations,
     filter_reference_commands,
+    lint_help_summary_conventions,
     render_help_audit_report,
     render_machine_readable_reference,
     run_help_audit,
@@ -54,6 +55,11 @@ def parse_args() -> argparse.Namespace:
         default="uv run lifeos",
         help="Executable prefix used to run help queries. Default: 'uv run lifeos'.",
     )
+    parser.add_argument(
+        "--check-summaries",
+        action="store_true",
+        help="Lint command summary conventions and exit non-zero on violations.",
+    )
     return parser.parse_args()
 
 
@@ -63,6 +69,24 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     command_prefix = tuple(shlex.split(args.command_prefix))
     path_prefix = tuple(shlex.split(args.path_prefix))
+
+    if args.check_summaries:
+        reference = build_machine_readable_reference(build_parser())
+        violations = lint_help_summary_conventions(reference)
+        if violations:
+            print(
+                "Command summary convention violations:",
+                file=sys.stderr,
+            )
+            for violation in violations:
+                print(f"  {violation}", file=sys.stderr)
+            print(
+                "Remove trailing periods from command summaries in the locale catalogs.",
+                file=sys.stderr,
+            )
+            return 1
+        print("All command summaries follow the summary conventions.")
+        return 0
 
     if args.format == "json":
         reference = build_machine_readable_reference(build_parser())

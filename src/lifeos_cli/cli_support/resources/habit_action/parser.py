@@ -13,12 +13,15 @@ from lifeos_cli.cli_support.help_utils import (
 from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
+    add_batch_delete_namespace,
     add_date_range_arguments,
     add_limit_offset_arguments,
     add_start_end_date_arguments,
 )
 from lifeos_cli.cli_support.resources.habit_action.handlers import (
     HABIT_ACTION_SUMMARY_COLUMNS,
+    handle_habit_action_batch_delete_async,
+    handle_habit_action_delete_async,
     handle_habit_action_list_async,
     handle_habit_action_log_async,
     handle_habit_action_show_async,
@@ -235,3 +238,51 @@ def build_habit_action_parser(
         help=_("resources.habit_action.parser.clear_optional_notes_field"),
     )
     log_parser.set_defaults(handler=make_sync_handler(handle_habit_action_log_async))
+
+    delete_parser = add_documented_parser(
+        action_subparsers,
+        "delete",
+        help_content=HelpContent(
+            summary=_("resources.habit_action.parser.delete_habit_action"),
+            description=_(
+                "resources.habit_action.parser.soft_delete_habit_action_within_editable_window"
+            ),
+            examples=("lifeos habit-action delete 11111111-1111-1111-1111-111111111111",),
+            notes=(
+                _(
+                    "resources.habit_action.parser.this_command_follows_same_editable_window_rules_as_update"
+                ),
+            ),
+        ),
+    )
+    delete_parser.add_argument(
+        "action_id", type=UUID, help=_("resources.habit_action.parser.habit_action_identifier")
+    )
+    delete_parser.set_defaults(handler=make_sync_handler(handle_habit_action_delete_async))
+
+    add_batch_delete_namespace(
+        action_subparsers,
+        dest="habit_action_batch_command",
+        ids_dest="action_ids",
+        noun="habit-action",
+        delete_handler=make_sync_handler(handle_habit_action_batch_delete_async),
+        batch_summary=_("resources.habit_action.parser.run_batch_habit_action_operations"),
+        batch_description=_(
+            "resources.habit_action.parser.delete_multiple_habit_actions_in_one_command"
+        ),
+        batch_examples=(
+            "lifeos habit-action batch delete --help",
+            "lifeos habit-action batch delete --ids <habit-action-id-1> <habit-action-id-2>",
+        ),
+        batch_notes=(
+            _("common.messages.this_namespace_currently_exposes_only_delete_workflow"),
+            _("common.messages.use_data_batch_delete_for_file_or_stream_bulk_workflows"),
+        ),
+        delete_summary=_("resources.habit_action.parser.delete_multiple_habit_actions"),
+        delete_description=_(
+            "resources.habit_action.parser.delete_multiple_habit_actions_by_identifier"
+        ),
+        delete_examples=(
+            "lifeos habit-action batch delete --ids <habit-action-id-1> <habit-action-id-2>",
+        ),
+    )

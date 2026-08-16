@@ -381,6 +381,9 @@ def build_event_update_parser(
                 help_message("notes.recurringScope.updates"),
                 help_message("notes.recurringScope.instanceStartRequired"),
                 _(
+                    "resources.event.parser_actions.distinction_between_clear_advanced_recurrence_and_clear_recurrence"
+                ),
+                _(
                     "resources.event.parser_actions.use_repeated_person_id_to_keep_human_only_agent_only_and_shared"
                 ),
             ),
@@ -489,7 +492,9 @@ def build_event_update_parser(
         help=_("resources.event.parser_actions.updated_recurrence_weekday_ordinal"),
     )
     update_parser.add_argument(
+        "--clear-advanced-recurrence",
         "--clear-recurrence-rule",
+        dest="clear_recurrence_rule",
         action="store_true",
         help=_("resources.event.parser_actions.remove_advanced_recurrence_rule_details"),
     )

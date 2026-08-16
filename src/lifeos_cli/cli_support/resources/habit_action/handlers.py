@@ -7,7 +7,11 @@ import sys
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
 from lifeos_cli.cli_support.json_output import print_json_items, print_json_payload
-from lifeos_cli.cli_support.output_utils import format_timestamp, print_summary_rows
+from lifeos_cli.cli_support.output_utils import (
+    format_timestamp,
+    print_batch_result,
+    print_summary_rows,
+)
 from lifeos_cli.cli_support.time_args import DateArgumentError, resolve_date_selection_arguments
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import habit_actions as habit_action_services
@@ -160,3 +164,33 @@ async def handle_habit_action_log_async(args: argparse.Namespace) -> int:
             return cli_handler_utils.print_cli_error(exc)
     print(f"Updated habit action {action.id}")
     return 0
+
+
+async def handle_habit_action_delete_async(args: argparse.Namespace) -> int:
+    async with db_session.session_scope() as session:
+        try:
+            await habit_action_services.delete_habit_action(
+                session,
+                action_id=args.action_id,
+            )
+        except (
+            habit_action_services.HabitActionNotFoundError,
+            habit_action_services.InvalidHabitOperationError,
+        ) as exc:
+            return cli_handler_utils.print_cli_error(exc)
+    print(f"Soft-deleted habit action {args.action_id}")
+    return 0
+
+
+async def handle_habit_action_batch_delete_async(args: argparse.Namespace) -> int:
+    async with db_session.session_scope() as session:
+        result = await habit_action_services.batch_delete_habit_actions(
+            session,
+            action_ids=list(args.action_ids),
+        )
+    return print_batch_result(
+        success_label="Deleted habit actions",
+        success_count=result.deleted_count,
+        failed_label="Failed habit action IDs",
+        result=result,
+    )

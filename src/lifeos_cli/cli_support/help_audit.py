@@ -258,3 +258,21 @@ def render_machine_readable_reference(
 ) -> str:
     """Render a machine-readable command reference as JSON text."""
     return json.dumps(reference, ensure_ascii=False, indent=indent) + "\n"
+
+
+def lint_help_summary_conventions(reference: dict[str, Any]) -> list[str]:
+    """Return command-summary convention violations for every parser node.
+
+    Summaries are the short command names shown in subcommand listings. The
+    repository convention is an imperative phrase without a trailing period
+    (for example ``List areas``, never ``List areas.``).
+    """
+    violations: list[str] = []
+    for command in reference["commands"]:
+        path = "/".join(command["path"])
+        summary = command.get("summary") or ""
+        if not summary.strip():
+            violations.append(f"{path}: summary is empty")
+        elif summary.rstrip().endswith((".", "。")):
+            violations.append(f"{path}: summary ends with a period")
+    return violations

@@ -706,6 +706,17 @@ def test_cli_parser_keeps_query_optional_for_timelog_list() -> None:
     assert args.query is None
 
 
+def test_cli_parser_supports_clear_advanced_recurrence_alias() -> None:
+    parser = build_parser()
+    event_uuid = "11111111-1111-1111-1111-111111111111"
+
+    args = parser.parse_args(["event", "update", event_uuid, "--clear-advanced-recurrence"])
+    assert args.clear_recurrence_rule is True
+
+    legacy_args = parser.parse_args(["event", "update", event_uuid, "--clear-recurrence-rule"])
+    assert legacy_args.clear_recurrence_rule is True
+
+
 def test_cli_parser_supports_task_list_person_filter() -> None:
     parser = build_parser()
     args = parser.parse_args(
