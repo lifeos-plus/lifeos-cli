@@ -17,7 +17,7 @@ class VisionResponse(ResponseModel):
     experience_points: int
     experience_rate_per_hour: int | None
     created_at: str
-    people: list[PersonNameResponse]
+    person: list[PersonNameResponse]
 
 
 class VisionWithTasksResponse(VisionResponse):

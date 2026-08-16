@@ -405,7 +405,7 @@ def test_update_task_can_clear_optional_fields_without_committing(
     session.commit.assert_not_called()
 
 
-def test_update_task_can_clear_people_without_committing(
+def test_update_task_can_clear_person_without_committing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     task = SimpleNamespace(
@@ -449,28 +449,28 @@ def test_update_task_can_clear_people_without_committing(
         assert parent_task_id is None
         assert child_task_id == task.id
 
-    async def fake_sync_people(_: object, **kwargs: object) -> None:
+    async def fake_sync_person(_: object, **kwargs: object) -> None:
         assert kwargs["entity_type"] == "task"
         assert kwargs["desired_person_ids"] == []
 
     monkeypatch.setattr(task_mutations, "load_model_by_id", fake_load_task)
     monkeypatch.setattr(task_mutations, "validate_parent_task", fake_validate_parent_task)
-    monkeypatch.setattr(task_mutations, "sync_entity_people", fake_sync_people)
+    monkeypatch.setattr(task_mutations, "sync_entity_person", fake_sync_person)
     monkeypatch.setattr(
         task_mutations,
         "_build_task_view",
-        AsyncMock(return_value=SimpleNamespace(**task.__dict__, people=())),
+        AsyncMock(return_value=SimpleNamespace(**task.__dict__, person=())),
     )
 
     updated_task = asyncio.run(
         task_mutations.update_task(
             cast(Any, session),
             task_id=UUID("99999999-9999-9999-9999-999999999999"),
-            clear_people=True,
+            clear_person=True,
         )
     )
 
-    assert updated_task.people == ()
+    assert updated_task.person == ()
     session.flush.assert_awaited_once()
     session.refresh.assert_awaited_once_with(task)
     session.commit.assert_not_called()
@@ -780,7 +780,7 @@ def test_get_task_with_subtasks_builds_tree(monkeypatch: pytest.MonkeyPatch) -> 
     )
     monkeypatch.setattr(
         task_queries,
-        "load_people_for_entities",
+        "load_person_for_entities",
         AsyncMock(return_value={root_task.id: [], child_task.id: []}),
     )
 

@@ -250,7 +250,7 @@ def _node(
         created_at=utc_datetime(2026, 1, 1),
         updated_at=utc_datetime(2026, 1, 1),
         deleted_at=None,
-        people=(),
+        person=(),
         subtasks=children,
         completion_percentage=0.0,
         depth=depth,

@@ -23,7 +23,7 @@ class NoteResponse(ResponseModel):
     updated_at: str
     deleted_at: str | None
     tags: list[TagSummaryResponse]
-    people: list[PersonSummaryResponse]
+    person: list[PersonSummaryResponse]
     tasks: list[TaskSummaryResponse]
     task: TaskSummaryResponse | None
     visions: list[VisionSummaryResponse]
@@ -50,4 +50,4 @@ class NotePersonStat(ResponseModel):
 
 class NotePersonStatsResponse(ResponseModel):
     person_stats: list[NotePersonStat]
-    total_persons: int
+    total_person: int

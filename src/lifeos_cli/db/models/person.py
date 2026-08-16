@@ -1,4 +1,4 @@
-"""Person model for social relationships and people context."""
+"""Person model for social relationships and person context."""
 
 from __future__ import annotations
 

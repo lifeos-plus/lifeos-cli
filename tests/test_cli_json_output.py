@@ -134,7 +134,7 @@ def test_note_search_json_preserves_full_content(
                 updated_at=utc_datetime(2026, 4, 10),
                 deleted_at=None,
                 tags=(),
-                people=(),
+                person=(),
                 tasks=(),
                 visions=(),
                 events=(),

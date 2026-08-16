@@ -70,7 +70,7 @@ class EventUpdateInput:
     tag_ids: list[UUID] | None = None
     clear_tags: bool = False
     person_ids: list[UUID] | None = None
-    clear_people: bool = False
+    clear_person: bool = False
     recurrence_frequency: str | None = None
     recurrence_interval: int | None = None
     recurrence_count: int | None = None

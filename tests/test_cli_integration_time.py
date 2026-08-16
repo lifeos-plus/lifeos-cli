@@ -34,7 +34,7 @@ def test_real_cli_event_and_timelog_workflow(integration_context: IntegrationCon
     assert_ok(task_result)
     task_id = extract_created_id(task_result.stdout)
 
-    person_result = run_lifeos(integration_context, "people", "add", "Coach")
+    person_result = run_lifeos(integration_context, "person", "add", "Coach")
     assert_ok(person_result)
     person_id = extract_created_id(person_result.stdout)
 
@@ -110,7 +110,7 @@ def test_real_cli_event_and_timelog_workflow(integration_context: IntegrationCon
 
     event_show_result = run_lifeos(integration_context, "event", "show", first_event_id)
     assert_ok(event_show_result)
-    assert "people: Coach" in event_show_result.stdout
+    assert "person: Coach" in event_show_result.stdout
     assert "tags: calendar" in event_show_result.stdout
 
     event_update_result = run_lifeos(
@@ -123,7 +123,7 @@ def test_real_cli_event_and_timelog_workflow(integration_context: IntegrationCon
         "--clear-task",
         "--clear-area",
         "--clear-tags",
-        "--clear-people",
+        "--clear-person",
         "--clear-end-time",
     )
     assert_ok(event_update_result)
@@ -133,7 +133,7 @@ def test_real_cli_event_and_timelog_workflow(integration_context: IntegrationCon
     assert "task_id: -" in updated_event_result.stdout
     assert "area_id: -" in updated_event_result.stdout
     assert "tags: -" in updated_event_result.stdout
-    assert "people: -" in updated_event_result.stdout
+    assert "person: -" in updated_event_result.stdout
 
     first_timelog_result = run_lifeos(
         integration_context,
@@ -206,7 +206,7 @@ def test_real_cli_event_and_timelog_workflow(integration_context: IntegrationCon
 
     timelog_show_result = run_lifeos(integration_context, "timelog", "show", first_timelog_id)
     assert_ok(timelog_show_result)
-    assert "people: Coach" in timelog_show_result.stdout
+    assert "person: Coach" in timelog_show_result.stdout
     assert "tags: tracked" in timelog_show_result.stdout
 
     timelog_update_result = run_lifeos(
@@ -219,7 +219,7 @@ def test_real_cli_event_and_timelog_workflow(integration_context: IntegrationCon
         "--clear-task",
         "--clear-area",
         "--clear-tags",
-        "--clear-people",
+        "--clear-person",
         "--clear-energy-level",
     )
     assert_ok(timelog_update_result)
@@ -234,7 +234,7 @@ def test_real_cli_event_and_timelog_workflow(integration_context: IntegrationCon
     assert "task_id: -" in updated_timelog_result.stdout
     assert "area_id: -" in updated_timelog_result.stdout
     assert "tags: -" in updated_timelog_result.stdout
-    assert "people: -" in updated_timelog_result.stdout
+    assert "person: -" in updated_timelog_result.stdout
 
     task_after_clear_timelog_result = run_lifeos(integration_context, "task", "show", task_id)
     assert_ok(task_after_clear_timelog_result)

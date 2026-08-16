@@ -38,25 +38,6 @@ def test_finance_nested_commands_are_part_of_machine_reference() -> None:
     ):
         assert path in paths
 
-    for deprecated_path in (
-        ("finance", "asset-list"),
-        ("finance", "tree-add"),
-        ("finance", "node-update"),
-        ("finance", "snapshot-show"),
-        ("finance", "rate-snapshot-add"),
-    ):
-        assert deprecated_path in paths
-
-
-def test_finance_deprecated_flat_command_help_marks_deprecation(capsys) -> None:
-    with pytest.raises(SystemExit) as exc_info:
-        cli.main(["finance", "asset-list", "--help"])
-    captured = capsys.readouterr()
-
-    assert exc_info.value.code == 0
-    assert "deprecated" in captured.out
-    assert "finance asset list" in captured.out
-
 
 def test_finance_asset_show_json(
     monkeypatch: pytest.MonkeyPatch,
@@ -283,20 +264,3 @@ def test_finance_rate_snapshot_delete_prints_confirmation(
 
     assert exit_code == 0
     assert f"Soft-deleted finance rate snapshot {RATE_SNAPSHOT_UUID}" in captured.out
-
-
-def test_deprecated_flat_asset_list_still_executes(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    async def fake_list_assets(_session: object, **_kwargs: object) -> list[object]:
-        return []
-
-    monkeypatch.setattr(db_session, "session_scope", make_session_scope())
-    monkeypatch.setattr(finance_services, "list_finance_assets", fake_list_assets)
-
-    exit_code = cli.main(["finance", "asset-list"])
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert "No finance assets found" in captured.out

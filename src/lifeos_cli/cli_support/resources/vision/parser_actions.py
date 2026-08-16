@@ -62,7 +62,7 @@ def build_vision_add_parser(
             ),
             notes=(
                 _(
-                    "common.messages.repeat_same_person_id_flag_to_associate_multiple_people_in_one_command"
+                    "common.messages.repeat_same_person_id_flag_to_associate_multiple_person_in_one_command"
                 ),
             ),
         ),
@@ -83,7 +83,7 @@ def build_vision_add_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_associate_one_or_more_people"),
+        help=_("common.messages.repeat_to_associate_one_or_more_person"),
     )
     add_parser.add_argument(
         "--experience-rate-per-hour",
@@ -191,9 +191,9 @@ def build_vision_update_parser(
                     "resources.vision.parser_actions.valid_statuses_currently_include_active_archived_and_fruit"
                 ),
                 _(
-                    "resources.vision.parser_actions.use_clear_flags_to_remove_optional_values_including_people"
+                    "resources.vision.parser_actions.use_clear_flags_to_remove_optional_values_including_person"
                 ),
-                _("common.messages.repeat_same_person_id_flag_to_replace_multiple_linked_people"),
+                _("common.messages.repeat_same_person_id_flag_to_replace_multiple_linked_person"),
             ),
         ),
     )
@@ -224,10 +224,10 @@ def build_vision_update_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     update_parser.add_argument(
-        "--clear-people", action="store_true", help=_("common.messages.remove_all_people")
+        "--clear-person", action="store_true", help=_("common.messages.remove_all_person")
     )
     update_parser.add_argument(
         "--experience-rate-per-hour",

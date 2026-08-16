@@ -117,7 +117,7 @@ def test_real_cli_note_associations_and_timelog_counts(
 ) -> None:
     init_context(integration_context)
 
-    person_result = run_lifeos(integration_context, "people", "add", "Alice")
+    person_result = run_lifeos(integration_context, "person", "add", "Alice")
     assert_ok(person_result)
     person_id = extract_created_id(person_result.stdout)
 
@@ -168,7 +168,7 @@ def test_real_cli_note_associations_and_timelog_counts(
 
     note_show_result = run_lifeos(integration_context, "note", "show", note_id)
     assert_ok(note_show_result)
-    assert "people: Alice" in note_show_result.stdout
+    assert "person: Alice" in note_show_result.stdout
     assert f"tasks: {task_id} | Investigate note associations" in note_show_result.stdout
     assert f"timelogs: {timelog_id} | Implementation session" in note_show_result.stdout
 

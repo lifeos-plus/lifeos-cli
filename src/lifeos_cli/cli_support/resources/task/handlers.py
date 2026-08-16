@@ -37,7 +37,7 @@ def _format_task_summary(task: task_services.TaskView) -> str:
 
 
 def _format_task_detail(task: task_services.TaskView) -> str:
-    people_names = ", ".join(person.name for person in task.people) if task.people else "-"
+    person_names = ", ".join(person.name for person in task.person) if task.person else "-"
     return "\n".join(
         (
             f"id: {task.id}",
@@ -52,7 +52,7 @@ def _format_task_detail(task: task_services.TaskView) -> str:
             f"planning_cycle_type: {task.planning_cycle_type or '-'}",
             f"planning_cycle_days: {task.planning_cycle_days or '-'}",
             f"planning_cycle_start_date: {task.planning_cycle_start_date or '-'}",
-            f"people: {people_names}",
+            f"person: {person_names}",
             f"actual_effort_self: {task.actual_effort_self}",
             f"actual_effort_total: {task.actual_effort_total}",
             f"created_at: {format_timestamp(task.created_at)}",
@@ -299,7 +299,7 @@ async def handle_task_update_async(args: argparse.Namespace) -> int:
             "--estimated-effort",
             "--clear-estimated-effort",
         ),
-        (args.clear_people and args.person_ids is not None, "--person-id", "--clear-people"),
+        (args.clear_person and args.person_ids is not None, "--person-id", "--clear-person"),
         (
             args.clear_planning_cycle
             and any(
@@ -331,7 +331,7 @@ async def handle_task_update_async(args: argparse.Namespace) -> int:
                 priority=args.priority,
                 display_order=args.display_order,
                 person_ids=args.person_ids,
-                clear_people=args.clear_people,
+                clear_person=args.clear_person,
                 estimated_effort=args.estimated_effort,
                 clear_estimated_effort=args.clear_estimated_effort,
                 planning_cycle_type=args.planning_cycle_type,

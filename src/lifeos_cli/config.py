@@ -44,7 +44,7 @@ DEFAULT_NAVIGATION_VISIBLE_MODULES = (
     "insights",
     "calendar",
     "notes",
-    "persons",
+    "person",
     "settings",
 )
 DEFAULT_NOTES_CARD_MIN_COLLAPSED_LINES = 5
@@ -382,6 +382,7 @@ def validate_calendar_seven_year_anchor_date(value: str) -> str:
 def validate_navigation_visible_modules(value: object) -> tuple[str, ...]:
     """Validate the Web navigation module visibility preference."""
     modules = _parse_string_list(value, field_name="navigation_visible_modules")
+    modules = ["person" if module == "persons" else module for module in modules]
     unsupported = [module for module in modules if module not in SUPPORTED_NAVIGATION_MODULES]
     if unsupported:
         supported = ", ".join(SUPPORTED_NAVIGATION_MODULES)

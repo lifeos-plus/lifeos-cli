@@ -64,7 +64,7 @@ def build_task_add_parser(
                     "resources.task.parser_write.use_lifeos_event_add_task_id_task_id_if_task_also_needs"
                 ),
                 _(
-                    "common.messages.repeat_same_person_id_flag_to_associate_multiple_people_in_one_command"
+                    "common.messages.repeat_same_person_id_flag_to_associate_multiple_person_in_one_command"
                 ),
                 _(
                     "resources.task.parser_write.when_agent_creates_tasks_on_behalf_of_human_use_person_id_to"
@@ -102,7 +102,7 @@ def build_task_add_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_associate_one_or_more_people"),
+        help=_("common.messages.repeat_to_associate_one_or_more_person"),
     )
     add_parser.add_argument(
         "--estimated-effort",
@@ -216,10 +216,10 @@ def build_task_update_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     update_parser.add_argument(
-        "--clear-people", action="store_true", help=_("common.messages.remove_all_people")
+        "--clear-person", action="store_true", help=_("common.messages.remove_all_person")
     )
     update_parser.add_argument(
         "--estimated-effort",

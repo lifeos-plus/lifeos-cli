@@ -103,7 +103,7 @@ NOTE_SUMMARY_COLUMNS_WITH_COUNTS = (
     "task_count",
     "vision_count",
     "event_count",
-    "people_count",
+    "person_count",
     "timelog_count",
     "habit_action_count",
     "tag_count",
@@ -123,7 +123,7 @@ def format_note_summary(note: NoteView, *, include_counts: bool = False) -> str:
     habit_actions = getattr(note, "habit_actions", ())
     return (
         f"{note.id}\t{status}\t{created_label}\t{len(note.tasks)}\t{len(note.visions)}\t"
-        f"{len(note.events)}\t{len(note.people)}\t{len(note.timelogs)}\t"
+        f"{len(note.events)}\t{len(note.person)}\t{len(note.timelogs)}\t"
         f"{len(habit_actions)}\t{len(note.tags)}\t{normalized_content}"
     )
 
@@ -132,7 +132,7 @@ def format_note_detail(note: NoteView) -> str:
     """Render a note with full metadata and multi-line content."""
     status = "deleted" if note.deleted_at is not None else "active"
     tag_names = ", ".join(tag.name for tag in note.tags)
-    people_names = ", ".join(person.name for person in note.people)
+    person_names = ", ".join(person.name for person in note.person)
     task_labels = ", ".join(f"{task.id} | {task.content}" for task in note.tasks)
     vision_labels = ", ".join(f"{vision.id} | {vision.name}" for vision in note.visions)
     event_labels = ", ".join(f"{event.id} | {event.title}" for event in note.events)
@@ -151,7 +151,7 @@ def format_note_detail(note: NoteView) -> str:
         f"tasks: {task_labels or '-'}",
         f"visions: {vision_labels or '-'}",
         f"events: {event_labels or '-'}",
-        f"people: {people_names or '-'}",
+        f"person: {person_names or '-'}",
         f"timelogs: {timelog_labels or '-'}",
         f"habit_actions: {habit_action_labels or '-'}",
         "content:",

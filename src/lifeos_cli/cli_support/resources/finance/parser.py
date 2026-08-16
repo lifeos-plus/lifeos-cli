@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Callable, Coroutine
-from dataclasses import replace
 from uuid import UUID
 
 from lifeos_cli.cli_support.help_utils import (
@@ -54,13 +53,6 @@ _NODE_ACTIONS = ("add", "list", "show", "update", "delete")
 _SNAPSHOT_ACTIONS = ("add", "list", "show", "update", "delete")
 _RATE_SNAPSHOT_ACTIONS = ("add", "list", "show", "update", "delete")
 
-# Flat names shipped before the nested namespace; kept as deprecated aliases.
-_FLAT_ASSET_ACTIONS = ("add", "list", "update", "delete")
-_FLAT_TREE_ACTIONS = ("add", "list", "show", "ensure-default")
-_FLAT_NODE_ACTIONS = ("add", "update", "delete")
-_FLAT_SNAPSHOT_ACTIONS = ("add", "list", "show")
-_FLAT_RATE_SNAPSHOT_ACTIONS = ("add", "list", "show")
-
 _ASSET_HANDLERS = {
     "add": handle_finance_asset_add_async,
     "list": handle_finance_asset_list_async,
@@ -97,19 +89,6 @@ _RATE_SNAPSHOT_HANDLERS = {
     "update": handle_finance_rate_snapshot_update_async,
     "delete": handle_finance_rate_snapshot_delete_async,
 }
-
-
-def _deprecated_flat_help(help_content: HelpContent, *, replacement: str) -> HelpContent:
-    """Mark one flat finance command as deprecated in favor of a nested path."""
-    return replace(
-        help_content,
-        notes=help_content.notes
-        + (
-            _("resources.finance.parser.deprecated_flat_command_note").format(
-                command=f"finance {replacement}"
-            ),
-        ),
-    )
 
 
 def _add_asset_arguments(parser: argparse.ArgumentParser, action: str) -> None:
@@ -471,12 +450,8 @@ def _register_command(
     add_arguments: Callable[[argparse.ArgumentParser, str], None],
     action: str,
     handler: Callable[[argparse.Namespace], Coroutine[object, object, int]],
-    flat: bool,
-    replacement: str,
 ) -> None:
-    """Register one finance action as a nested or deprecated flat command."""
-    if flat:
-        help_content = _deprecated_flat_help(help_content, replacement=replacement)
+    """Register one finance action inside its nested group."""
     parser = add_documented_parser(container, name, help_content=help_content)
     add_arguments(parser, action)
     parser.set_defaults(handler=make_sync_handler(handler))
@@ -508,8 +483,6 @@ def _build_asset_group(
             add_arguments=_add_asset_arguments,
             action=action,
             handler=_ASSET_HANDLERS[action],
-            flat=False,
-            replacement="",
         )
 
 
@@ -539,8 +512,6 @@ def _build_tree_group(
             add_arguments=_add_tree_arguments,
             action=action,
             handler=_TREE_HANDLERS[action],
-            flat=False,
-            replacement="",
         )
 
 
@@ -570,8 +541,6 @@ def _build_node_group(
             add_arguments=_add_node_arguments,
             action=action,
             handler=_NODE_HANDLERS[action],
-            flat=False,
-            replacement="",
         )
 
 
@@ -601,8 +570,6 @@ def _build_snapshot_group(
             add_arguments=_add_snapshot_arguments,
             action=action,
             handler=_SNAPSHOT_HANDLERS[action],
-            flat=False,
-            replacement="",
         )
 
 
@@ -632,69 +599,6 @@ def _build_rate_snapshot_group(
             add_arguments=_add_rate_snapshot_arguments,
             action=action,
             handler=_RATE_SNAPSHOT_HANDLERS[action],
-            flat=False,
-            replacement="",
-        )
-
-
-def _build_deprecated_flat_commands(
-    finance_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> None:
-    """Keep the pre-namespace flat finance commands working as deprecated aliases."""
-    for action in _FLAT_ASSET_ACTIONS:
-        _register_command(
-            finance_subparsers,
-            name=f"asset-{action}",
-            help_content=_asset_help(action),
-            add_arguments=_add_asset_arguments,
-            action=action,
-            handler=_ASSET_HANDLERS[action],
-            flat=True,
-            replacement=f"asset {action}",
-        )
-    for action in _FLAT_TREE_ACTIONS:
-        _register_command(
-            finance_subparsers,
-            name=f"tree-{action}",
-            help_content=_tree_help(action),
-            add_arguments=_add_tree_arguments,
-            action=action,
-            handler=_TREE_HANDLERS[action],
-            flat=True,
-            replacement=f"tree {action}",
-        )
-    for action in _FLAT_NODE_ACTIONS:
-        _register_command(
-            finance_subparsers,
-            name=f"node-{action}",
-            help_content=_node_help(action),
-            add_arguments=_add_node_arguments,
-            action=action,
-            handler=_NODE_HANDLERS[action],
-            flat=True,
-            replacement=f"node {action}",
-        )
-    for action in _FLAT_SNAPSHOT_ACTIONS:
-        _register_command(
-            finance_subparsers,
-            name=f"snapshot-{action}",
-            help_content=_snapshot_help(action),
-            add_arguments=_add_snapshot_arguments,
-            action=action,
-            handler=_SNAPSHOT_HANDLERS[action],
-            flat=True,
-            replacement=f"snapshot {action}",
-        )
-    for action in _FLAT_RATE_SNAPSHOT_ACTIONS:
-        _register_command(
-            finance_subparsers,
-            name=f"rate-snapshot-{action}",
-            help_content=_rate_snapshot_help(action),
-            add_arguments=_add_rate_snapshot_arguments,
-            action=action,
-            handler=_RATE_SNAPSHOT_HANDLERS[action],
-            flat=True,
-            replacement=f"rate-snapshot {action}",
         )
 
 
@@ -718,7 +622,6 @@ def build_finance_parser(
             notes=(
                 _("resources.finance.parser.instant_snapshots_appear_in_balance_sheet_view"),
                 _("resources.finance.parser.period_snapshots_appear_in_cashflow_view"),
-                _("resources.finance.parser.flat_commands_are_deprecated"),
             ),
         ),
     )
@@ -732,4 +635,3 @@ def build_finance_parser(
     _build_node_group(finance_subparsers)
     _build_snapshot_group(finance_subparsers)
     _build_rate_snapshot_group(finance_subparsers)
-    _build_deprecated_flat_commands(finance_subparsers)

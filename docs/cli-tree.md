@@ -46,7 +46,7 @@ event  —  Manage planned schedule events
   show  —  Show an event
       args: event_id [required]; --json
   update  —  Update an event
-      args: event_id [required]; --title; --description; --clear-description; --start-time; --end-time; --clear-end-time; --priority; --status; --type; --all-day; --area-id; --clear-area; --task-id; --clear-task; --recurrence-frequency; --recurrence-interval; --recurrence-count; --recurrence-until; --recurrence-weekdays; --recurrence-month-days; --recurrence-months; --recurrence-weekday-ordinal; --clear-advanced-recurrence; --clear-recurrence; --scope; --instance-start; --tag-id; --clear-tags; --person-id; --clear-people
+      args: event_id [required]; --title; --description; --clear-description; --start-time; --end-time; --clear-end-time; --priority; --status; --type; --all-day; --area-id; --clear-area; --task-id; --clear-task; --recurrence-frequency; --recurrence-interval; --recurrence-count; --recurrence-until; --recurrence-weekdays; --recurrence-month-days; --recurrence-months; --recurrence-weekday-ordinal; --clear-advanced-recurrence; --clear-recurrence; --scope; --instance-start; --tag-id; --clear-tags; --person-id; --clear-person
 finance  —  Manage unified finance trees and snapshots
   asset  —  Manage finance assets
     add  —  Create a finance asset
@@ -59,14 +59,6 @@ finance  —  Manage unified finance trees and snapshots
         args: asset_id [required]; --json
     update  —  Update a finance asset
         args: asset_id [required]; --code; --name; --decimal-places; --display-order
-  asset-add  —  Create a finance asset
-      args: code [required]; --name; --decimal-places; --display-order
-  asset-delete  —  Delete a finance asset
-      args: asset_id [required]
-  asset-list  —  List finance assets
-      args: --limit; --offset; --json
-  asset-update  —  Update a finance asset
-      args: asset_id [required]; --code; --name; --decimal-places; --display-order
   node  —  Manage finance tree nodes
     add  —  Add a finance tree node
         args: tree_id [required]; name [required]; --parent-id; --currency-code; --display-order
@@ -78,12 +70,6 @@ finance  —  Manage unified finance trees and snapshots
         args: node_id [required]; --json
     update  —  Update a finance node
         args: node_id [required]; --name; --currency-code; --display-order
-  node-add  —  Add a finance tree node
-      args: tree_id [required]; name [required]; --parent-id; --currency-code; --display-order
-  node-delete  —  Delete a finance node
-      args: node_id [required]
-  node-update  —  Update a finance node
-      args: node_id [required]; --name; --currency-code; --display-order
   rate-snapshot  —  Manage finance exchange-rate snapshots
     add  —  Create a finance exchange-rate snapshot
         args: --captured-at; --source; --note; --rate
@@ -95,12 +81,6 @@ finance  —  Manage unified finance trees and snapshots
         args: rate_snapshot_id [required]; --json
     update  —  Update a finance exchange-rate snapshot
         args: rate_snapshot_id [required]; --captured-at; --source; --note; --rate
-  rate-snapshot-add  —  Create a finance exchange-rate snapshot
-      args: --captured-at; --source; --note; --rate
-  rate-snapshot-list  —  List finance exchange-rate snapshots
-      args: --limit; --offset; --json
-  rate-snapshot-show  —  Show a finance exchange-rate snapshot
-      args: rate_snapshot_id [required]; --json
   snapshot  —  Manage finance snapshots
     add  —  Create a finance snapshot
         args: tree_id [required]; --title; --snapshot-ts; --period-start; --period-end; --primary-currency; --rate-snapshot-id; --note; --entry
@@ -112,12 +92,6 @@ finance  —  Manage unified finance trees and snapshots
         args: snapshot_id [required]; --json
     update  —  Update a finance snapshot
         args: snapshot_id [required]; --title; --snapshot-ts; --period-start; --period-end; --primary-currency; --rate-snapshot-id; --note; --entry
-  snapshot-add  —  Create a finance snapshot
-      args: tree_id [required]; --title; --snapshot-ts; --period-start; --period-end; --primary-currency; --rate-snapshot-id; --note; --entry
-  snapshot-list  —  List finance snapshots
-      args: --tree-id; --limit; --offset; --json
-  snapshot-show  —  Show a finance snapshot
-      args: snapshot_id [required]; --json
   tree  —  Manage finance trees
     add  —  Create a finance tree
         args: name [required]; --primary-currency; --display-order; --default
@@ -131,14 +105,6 @@ finance  —  Manage unified finance trees and snapshots
         args: tree_id [required]; --json
     update  —  Update a finance tree
         args: tree_id [required]; --name; --primary-currency; --display-order; --default
-  tree-add  —  Create a finance tree
-      args: name [required]; --primary-currency; --display-order; --default
-  tree-ensure-default  —  Ensure a default finance tree exists
-      args: --primary-currency
-  tree-list  —  List finance trees
-      args: --limit; --offset; --json
-  tree-show  —  Show a finance tree
-      args: tree_id [required]; --json
 habit  —  Manage recurring habits
   add  —  Create a habit
       args: title [required]; --description; --start-date; --duration-days; --cadence-frequency; --weekdays; --weekends-only; --monthdays; --target-per-cycle; --target-per-week; --task-id
@@ -189,16 +155,16 @@ note  —  Capture and manage notes
   show  —  Show full note content
       args: note_id [required]; --json
   update  —  Update a note
-      args: note_id [required]; content [nargs=?]; --tag-id; --clear-tags; --person-id; --clear-people; --task-id; --clear-tasks; --vision-id; --clear-visions; --event-id; --clear-events; --timelog-id; --clear-timelogs; --habit-action-id; --clear-habit-actions
-people  —  Manage people and relationships
+      args: note_id [required]; content [nargs=?]; --tag-id; --clear-tags; --person-id; --clear-person; --task-id; --clear-tasks; --vision-id; --clear-visions; --event-id; --clear-events; --timelog-id; --clear-timelogs; --habit-action-id; --clear-habit-actions
+person  —  Manage person and relationships
   add  —  Create a person
       args: name [required]; --description; --nickname; --birth-date; --location; --tag-id
-  batch  —  Run batch people operations
-    delete  —  Delete multiple people
+  batch  —  Run batch person operations
+    delete  —  Delete multiple person
         args: --ids
   delete  —  Delete a person
       args: person_id [required]
-  list  —  List people
+  list  —  List person
       args: --search; --tag-id; --limit; --offset; --json
   show  —  Show a person
       args: person_id [required]; --json
@@ -225,7 +191,7 @@ tag  —  Manage tags
   show  —  Show a tag
       args: tag_id [required]; --json
   update  —  Update a tag
-      args: tag_id [required]; --name; --entity-type; --category; --description; --clear-description; --color; --clear-color; --person-id; --clear-people
+      args: tag_id [required]; --name; --entity-type; --category; --description; --clear-description; --color; --clear-color; --person-id; --clear-person
 task  —  Manage hierarchical tasks
   add  —  Create a task
       args: content [required]; --vision-id; --description; --parent-task-id; --status; --priority; --display-order; --person-id; --estimated-effort; --planning-cycle-type; --planning-cycle-days; --planning-cycle-start-date
@@ -247,7 +213,7 @@ task  —  Manage hierarchical tasks
   stats  —  Show task statistics
       args: task_id [required]
   update  —  Update a task
-      args: task_id [required]; --content; --description; --clear-description; --parent-task-id; --clear-parent; --status; --priority; --display-order; --person-id; --clear-people; --estimated-effort; --clear-estimated-effort; --planning-cycle-type; --planning-cycle-days; --planning-cycle-start-date; --clear-planning-cycle
+      args: task_id [required]; --content; --description; --clear-description; --parent-task-id; --clear-parent; --status; --priority; --display-order; --person-id; --clear-person; --estimated-effort; --clear-estimated-effort; --planning-cycle-type; --planning-cycle-days; --planning-cycle-start-date; --clear-planning-cycle
   with-subtasks  —  Show a task subtree
       args: task_id [required]
 timelog  —  Manage actual time records
@@ -257,7 +223,7 @@ timelog  —  Manage actual time records
     delete  —  Delete multiple timelogs
         args: --ids
     update  —  Update multiple timelogs
-        args: --ids; --title; --find-title-text; --replace-title-text; --area-id; --clear-area; --task-id; --clear-task; --tag-id; --clear-tags; --person-id; --clear-people
+        args: --ids; --title; --find-title-text; --replace-title-text; --area-id; --clear-area; --task-id; --clear-task; --tag-id; --clear-tags; --person-id; --clear-person
   delete  —  Delete a timelog
       args: timelog_id [required]
   list  —  List timelogs
@@ -280,7 +246,7 @@ timelog  —  Manage actual time records
     year  —  Show one year of timelog stats grouped by area
         args: --year
   update  —  Update a timelog
-      args: timelog_id [required]; --title; --start-time; --end-time; --tracking-method; --location; --clear-location; --energy-level; --clear-energy-level; --notes; --clear-notes; --area-id; --clear-area; --task-id; --clear-task; --tag-id; --clear-tags; --person-id; --clear-people
+      args: timelog_id [required]; --title; --start-time; --end-time; --tracking-method; --location; --clear-location; --energy-level; --clear-energy-level; --notes; --clear-notes; --area-id; --clear-area; --task-id; --clear-task; --tag-id; --clear-tags; --person-id; --clear-person
 vision  —  Manage visions
   add  —  Create a vision
       args: name [required]; --description; --status; --area-id; --person-id; --experience-rate-per-hour
@@ -302,7 +268,7 @@ vision  —  Manage visions
   sync-experience  —  Sync vision experience
       args: vision_id [required]
   update  —  Update a vision
-      args: vision_id [required]; --name; --description; --clear-description; --status; --area-id; --clear-area; --person-id; --clear-people; --experience-rate-per-hour; --clear-experience-rate
+      args: vision_id [required]; --name; --description; --clear-description; --status; --area-id; --clear-area; --person-id; --clear-person; --experience-rate-per-hour; --clear-experience-rate
   with-tasks  —  Show a vision task tree
       args: vision_id [required]
 web  —  Run the optional local Web API

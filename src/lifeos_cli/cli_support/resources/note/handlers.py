@@ -194,7 +194,7 @@ async def handle_note_update_async(args: argparse.Namespace) -> int:
     """Update note content."""
     conflicts = (
         (args.clear_tags and args.tag_ids is not None, "--tag-id", "--clear-tags"),
-        (args.clear_people and args.person_ids is not None, "--person-id", "--clear-people"),
+        (args.clear_person and args.person_ids is not None, "--person-id", "--clear-person"),
         (args.clear_tasks and args.task_ids is not None, "--task-id", "--clear-tasks"),
         (args.clear_visions and args.vision_ids is not None, "--vision-id", "--clear-visions"),
         (args.clear_events and args.event_ids is not None, "--event-id", "--clear-events"),
@@ -215,7 +215,7 @@ async def handle_note_update_async(args: argparse.Namespace) -> int:
                 args.tag_ids is None
                 and not args.clear_tags
                 and args.person_ids is None
-                and not args.clear_people
+                and not args.clear_person
                 and args.task_ids is None
                 and not args.clear_tasks
                 and args.vision_ids is None
@@ -240,7 +240,7 @@ async def handle_note_update_async(args: argparse.Namespace) -> int:
                     tag_ids=args.tag_ids,
                     clear_tags=args.clear_tags,
                     person_ids=args.person_ids,
-                    clear_people=args.clear_people,
+                    clear_person=args.clear_person,
                     task_ids=args.task_ids,
                     clear_tasks=args.clear_tasks,
                     vision_ids=args.vision_ids,

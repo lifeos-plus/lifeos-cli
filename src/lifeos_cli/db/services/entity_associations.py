@@ -216,14 +216,14 @@ async def count_sources_for_targets(
     return {target_id: count for target_id, count in rows.all()}
 
 
-async def load_people_for_sources(
+async def load_person_for_sources(
     session: AsyncSession,
     *,
     source_model: str,
     source_ids: list[UUID],
     link_type: str | None = None,
 ) -> dict[UUID, list[Person]]:
-    """Load people grouped by source identifier.
+    """Load person grouped by source identifier.
 
     When ``link_type`` is omitted, every person-targeted association counts as
     a person link; entity-to-person writes canonicalize to ``is_about``.
@@ -240,10 +240,10 @@ async def load_people_for_sources(
         return {}
     stmt = select(Person).where(Person.id.in_(all_person_ids), Person.deleted_at.is_(None))
     rows = await session.execute(stmt)
-    people_by_id = {person.id: person for person in rows.scalars().all()}
+    person_by_id = {person.id: person for person in rows.scalars().all()}
     return {
         source_id: [
-            people_by_id[person_id] for person_id in person_ids if person_id in people_by_id
+            person_by_id[person_id] for person_id in person_ids if person_id in person_by_id
         ]
         for source_id, person_ids in mapping.items()
     }

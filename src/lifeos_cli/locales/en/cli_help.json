@@ -21,7 +21,7 @@
       "updates": "Use `--scope single|all_future|all` for recurring series updates."
     },
     "relations": {
-      "repeatTagOrPersonAttach": "Repeat the same `--tag-id` or `--person-id` flag to attach multiple tags or people in one command."
+      "repeatTagOrPersonAttach": "Repeat the same `--tag-id` or `--person-id` flag to attach multiple tags or person in one command."
     }
   }
 }

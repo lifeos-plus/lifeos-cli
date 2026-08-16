@@ -57,11 +57,11 @@ def test_main_note_without_action_prints_resource_help(capsys) -> None:
         ),
         ("note", ("lifeos note add --help", "lifeos note list --help", "lifeos note batch --help")),
         (
-            "people",
+            "person",
             (
-                "lifeos people add --help",
-                "lifeos people list --help",
-                "lifeos people batch --help",
+                "lifeos person add --help",
+                "lifeos person list --help",
+                "lifeos person batch --help",
             ),
         ),
         ("planning", ("lifeos planning show --help",)),
@@ -128,10 +128,10 @@ def test_main_resource_help_surfaces_action_help_examples(
             ("lifeos note batch update-content --help", "lifeos note batch delete --help"),
         ),
         (
-            ["people", "batch"],
+            ["person", "batch"],
             (
-                "lifeos people batch delete --help",
-                "lifeos people batch delete --ids <person-id-1> <person-id-2>",
+                "lifeos person batch delete --help",
+                "lifeos person batch delete --ids <person-id-1> <person-id-2>",
             ),
         ),
         (
@@ -191,7 +191,7 @@ def test_namespace_help_surfaces_nested_help_examples(
         (["area", "batch"], "Delete multiple areas in one command."),
         (["event", "batch"], "Delete multiple events in one command."),
         (["habit", "batch"], "Delete multiple habits in one command."),
-        (["people", "batch"], "Delete multiple people records in one command."),
+        (["person", "batch"], "Delete multiple person records in one command."),
         (["tag", "batch"], "Delete multiple tags in one command."),
         (["task", "batch"], "Delete multiple tasks in one command."),
         (["vision", "batch"], "Delete multiple visions in one command."),
@@ -229,7 +229,7 @@ def test_namespace_help_surfaces_user_facing_scope_guidance(
         (["event", "batch"], "Grouped namespace for multi-record event writes."),
         (["habit", "batch"], "Grouped namespace for multi-record habit writes."),
         (["note", "batch"], "Future note batch operations should be added under this namespace."),
-        (["people", "batch"], "bulk maintenance operations"),
+        (["person", "batch"], "bulk maintenance operations"),
         (["tag", "batch"], "adding many top-level verbs"),
         (["task", "batch"], "adding many top-level verbs"),
         (["timelog", "batch"], "Grouped namespace for multi-record timelog writes."),
@@ -255,7 +255,7 @@ def test_namespace_help_avoids_internal_structure_rationale(
         (["area", "batch"], "This namespace currently exposes only the `delete` workflow."),
         (["event", "batch"], "This namespace currently exposes only the `delete` workflow."),
         (["habit", "batch"], "This namespace currently exposes only the `delete` workflow."),
-        (["people", "batch"], "This namespace currently exposes only the `delete` workflow."),
+        (["person", "batch"], "This namespace currently exposes only the `delete` workflow."),
         (["tag", "batch"], "This namespace currently exposes only the `delete` workflow."),
         (["task", "batch"], "This namespace currently exposes only the `delete` workflow."),
         (["vision", "batch"], "This namespace currently exposes only the `delete` workflow."),
@@ -303,7 +303,7 @@ def test_resource_help_avoids_action_level_contract_details(
             "note",
             "See `lifeos note batch --help` for bulk `update-content` and `delete` workflows.",
         ),
-        ("people", "See `lifeos people batch --help` for bulk delete operations."),
+        ("person", "See `lifeos person batch --help` for bulk delete operations."),
         ("tag", "See `lifeos tag batch --help` for bulk delete operations."),
         ("task", "See `lifeos task batch --help` for bulk delete operations."),
         (
@@ -327,7 +327,7 @@ def test_resource_help_surfaces_concrete_batch_guidance(
 
 @pytest.mark.parametrize(
     "resource",
-    ("area", "event", "habit", "note", "people", "tag", "task", "timelog", "vision"),
+    ("area", "event", "habit", "note", "person", "tag", "task", "timelog", "vision"),
 )
 def test_resource_help_avoids_delete_behavior_contract_details(
     resource: str,

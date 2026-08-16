@@ -15,7 +15,7 @@ from lifeos_cli.db.models.association import (
 from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.person import Person
 from lifeos_cli.db.models.timelog import Timelog
-from lifeos_cli.db.services import entity_associations, entity_people
+from lifeos_cli.db.services import entity_associations, entity_person
 from tests.support import sqlite_session_factory, utc_datetime
 
 
@@ -122,7 +122,7 @@ def test_entity_person_links_are_stored_in_associations() -> None:
                 session.add_all([person, note])
                 await session.flush()
 
-                await entity_people.sync_entity_people(
+                await entity_person.sync_entity_person(
                     session,
                     entity_id=note.id,
                     entity_type="note",
@@ -141,17 +141,17 @@ def test_entity_person_links_are_stored_in_associations() -> None:
                     link.link_type,
                 ) == ("note", note.id, PERSON_TARGET_MODEL, person.id, PERSON_LINK_TYPE)
 
-                people = await entity_people.load_people_for_entities(
+                loaded_person_map = await entity_person.load_person_for_entities(
                     session,
                     entity_ids=[note.id],
                     entity_type="note",
                 )
-                assert people == {note.id: [person]}
+                assert loaded_person_map == {note.id: [person]}
 
     asyncio.run(scenario())
 
 
-def test_sync_entity_people_replaces_links() -> None:
+def test_sync_entity_person_replaces_links() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
@@ -161,14 +161,14 @@ def test_sync_entity_people_replaces_links() -> None:
                 session.add_all([first_person, second_person, note])
                 await session.flush()
 
-                await entity_people.sync_entity_people(
+                await entity_person.sync_entity_person(
                     session,
                     entity_id=note.id,
                     entity_type="note",
                     desired_person_ids=[first_person.id, second_person.id],
                 )
                 await session.flush()
-                await entity_people.sync_entity_people(
+                await entity_person.sync_entity_person(
                     session,
                     entity_id=note.id,
                     entity_type="note",
@@ -176,17 +176,17 @@ def test_sync_entity_people_replaces_links() -> None:
                 )
                 await session.flush()
 
-                people = await entity_people.load_people_for_entities(
+                person = await entity_person.load_person_for_entities(
                     session,
                     entity_ids=[note.id],
                     entity_type="note",
                 )
-                assert [person.id for person in people[note.id]] == [second_person.id]
+                assert [person.id for person in person[note.id]] == [second_person.id]
 
     asyncio.run(scenario())
 
 
-def test_sync_entity_people_replaces_person_links_across_link_types() -> None:
+def test_sync_entity_person_replaces_person_links_across_link_types() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
@@ -204,7 +204,7 @@ def test_sync_entity_people_replaces_person_links_across_link_types() -> None:
                 )
                 await session.flush()
 
-                await entity_people.sync_entity_people(
+                await entity_person.sync_entity_person(
                     session,
                     entity_id=note.id,
                     entity_type="note",
@@ -215,17 +215,17 @@ def test_sync_entity_people_replaces_person_links_across_link_types() -> None:
                 links = list((await session.execute(select(Association))).scalars())
                 assert len(links) == 1
                 assert links[0].link_type == PERSON_LINK_TYPE
-                people = await entity_people.load_people_for_entities(
+                loaded_person_map = await entity_person.load_person_for_entities(
                     session,
                     entity_ids=[note.id],
                     entity_type="note",
                 )
-                assert people == {note.id: [person]}
+                assert loaded_person_map == {note.id: [person]}
 
     asyncio.run(scenario())
 
 
-def test_load_people_for_entities_returns_person_links_with_any_link_type() -> None:
+def test_load_person_for_entities_returns_person_links_with_any_link_type() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
@@ -243,17 +243,17 @@ def test_load_people_for_entities_returns_person_links_with_any_link_type() -> N
                 )
                 await session.flush()
 
-                people = await entity_people.load_people_for_entities(
+                loaded_person_map = await entity_person.load_person_for_entities(
                     session,
                     entity_ids=[note.id],
                     entity_type="note",
                 )
-                assert people == {note.id: [person]}
+                assert loaded_person_map == {note.id: [person]}
 
     asyncio.run(scenario())
 
 
-def test_load_people_for_entities_hides_soft_deleted_person() -> None:
+def test_load_person_for_entities_hides_soft_deleted_person() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
@@ -262,7 +262,7 @@ def test_load_people_for_entities_hides_soft_deleted_person() -> None:
                 session.add_all([person, note])
                 await session.flush()
 
-                await entity_people.sync_entity_people(
+                await entity_person.sync_entity_person(
                     session,
                     entity_id=note.id,
                     entity_type="note",
@@ -271,17 +271,17 @@ def test_load_people_for_entities_hides_soft_deleted_person() -> None:
                 await session.flush()
                 person.soft_delete()
 
-                people = await entity_people.load_people_for_entities(
+                loaded_person_map = await entity_person.load_person_for_entities(
                     session,
                     entity_ids=[note.id],
                     entity_type="note",
                 )
-                assert people == {}
+                assert loaded_person_map == {}
 
     asyncio.run(scenario())
 
 
-def test_sync_entity_people_validates_source_model() -> None:
+def test_sync_entity_person_validates_source_model() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
@@ -289,7 +289,7 @@ def test_sync_entity_people_validates_source_model() -> None:
                     entity_associations.AssociationValidationError,
                     match="Unsupported association model 'bogus'. Expected one of: ",
                 ):
-                    await entity_people.sync_entity_people(
+                    await entity_person.sync_entity_person(
                         session,
                         entity_id=uuid4(),
                         entity_type="bogus",

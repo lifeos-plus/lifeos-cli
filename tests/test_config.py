@@ -518,6 +518,13 @@ def test_validate_web_preferences_reject_invalid_values() -> None:
             raise AssertionError("invalid Web preference should fail validation")
 
 
+def test_validate_navigation_visible_modules_normalizes_legacy_person_key() -> None:
+    assert validate_navigation_visible_modules(["persons", "notes"]) == (
+        "person",
+        "notes",
+    )
+
+
 def test_detect_default_language_uses_environment() -> None:
     assert detect_default_language({"LANG": "zh_Hans.UTF-8"}) == "zh-Hans"
 

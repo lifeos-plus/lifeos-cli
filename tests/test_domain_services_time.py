@@ -621,13 +621,13 @@ def test_update_event_can_clear_optional_fields(monkeypatch: pytest.MonkeyPatch)
     async def fake_sync_tags(_: object, **__: object) -> None:
         return None
 
-    async def fake_sync_people(_: object, **__: object) -> None:
+    async def fake_sync_person(_: object, **__: object) -> None:
         return None
 
     monkeypatch.setattr(events, "_get_event_model", fake_get_event)
     monkeypatch.setattr(events, "_build_event_view", _identity_event_view)
     monkeypatch.setattr(events, "sync_entity_tags", fake_sync_tags)
-    monkeypatch.setattr(events, "sync_entity_people", fake_sync_people)
+    monkeypatch.setattr(events, "sync_entity_person", fake_sync_person)
 
     updated_event = asyncio.run(
         events.update_event(
@@ -639,7 +639,7 @@ def test_update_event_can_clear_optional_fields(monkeypatch: pytest.MonkeyPatch)
                 clear_area=True,
                 clear_task=True,
                 clear_tags=True,
-                clear_people=True,
+                clear_person=True,
             ),
         )
     )
@@ -1299,13 +1299,13 @@ def test_update_timelog_can_clear_optional_fields(monkeypatch: pytest.MonkeyPatc
     async def fake_sync_tags(_: object, **__: object) -> None:
         return None
 
-    async def fake_sync_people(_: object, **__: object) -> None:
+    async def fake_sync_person(_: object, **__: object) -> None:
         return None
 
     monkeypatch.setattr(timelogs, "_get_timelog_model", fake_get_timelog)
     monkeypatch.setattr(timelogs, "_build_timelog_view", _identity_timelog_view)
     monkeypatch.setattr(timelogs, "sync_entity_tags", fake_sync_tags)
-    monkeypatch.setattr(timelogs, "sync_entity_people", fake_sync_people)
+    monkeypatch.setattr(timelogs, "sync_entity_person", fake_sync_person)
     recompute_task_effort = AsyncMock()
     monkeypatch.setattr(
         timelogs,
@@ -1336,7 +1336,7 @@ def test_update_timelog_can_clear_optional_fields(monkeypatch: pytest.MonkeyPatc
                 clear_area=True,
                 clear_task=True,
                 clear_tags=True,
-                clear_people=True,
+                clear_person=True,
             ),
         )
     )
@@ -1385,11 +1385,11 @@ def test_batch_update_timelogs_applies_title_replace_and_relation_updates(
         return {timelog_id: timelog}
 
     ensure_task = AsyncMock()
-    replace_people = AsyncMock()
+    replace_person = AsyncMock()
     flush_recompute = AsyncMock()
     monkeypatch.setattr(timelogs, "_load_batch_timelog_models", fake_load_batch_timelog_models)
     monkeypatch.setattr(timelogs, "ensure_timelog_task_exists", ensure_task)
-    monkeypatch.setattr(timelogs, "_replace_batch_timelog_people", replace_people)
+    monkeypatch.setattr(timelogs, "_replace_batch_timelog_person", replace_person)
     monkeypatch.setattr(
         timelogs,
         "_flush_and_recompute_batch_timelog_dependents",
@@ -1405,7 +1405,7 @@ def test_batch_update_timelogs_applies_title_replace_and_relation_updates(
                 replace_title_text="Focused",
                 changes=timelogs.TimelogUpdateInput(
                     task_id=task_id,
-                    clear_people=True,
+                    clear_person=True,
                 ),
             ),
         )
@@ -1416,7 +1416,7 @@ def test_batch_update_timelogs_applies_title_replace_and_relation_updates(
     assert timelog.title == "Focused work"
     assert timelog.task_id == task_id
     ensure_task.assert_awaited_once_with(cast(Any, session), task_id)
-    replace_people.assert_awaited_once_with(
+    replace_person.assert_awaited_once_with(
         cast(Any, session),
         timelog_ids=[timelog_id],
         desired_person_ids=[],

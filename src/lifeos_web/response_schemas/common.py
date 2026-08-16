@@ -8,11 +8,11 @@ from pydantic import BaseModel, ConfigDict
 from typing_extensions import TypeAliasType
 
 JsonScalar: TypeAlias = str | int | float | bool | None
-JsonValue = TypeAliasType(
+JsonValue = TypeAliasType(  # type: ignore[misc]
     "JsonValue",
-    JsonScalar | list["JsonValue"] | dict[str, "JsonValue"],
+    JsonScalar | list["JsonValue"] | dict[str, "JsonValue"],  # type: ignore[misc]
 )
-JsonObject: TypeAlias = dict[str, JsonValue]
+JsonObject: TypeAlias = dict[str, JsonValue]  # type: ignore[misc]
 
 
 class ResponseModel(BaseModel):

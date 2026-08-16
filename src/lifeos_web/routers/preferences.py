@@ -31,7 +31,7 @@ _VISIBLE_MODULES = [
     "insights",
     "calendar",
     "notes",
-    "persons",
+    "person",
     "settings",
 ]
 

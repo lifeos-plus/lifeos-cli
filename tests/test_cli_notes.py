@@ -142,7 +142,7 @@ def test_main_note_show_prints_multiline_content(
             updated_at=utc_datetime(2026, 4, 9, 3, 30, 0),
             deleted_at=None,
             tags=[],
-            people=[],
+            person=[],
             tasks=[],
             visions=[],
             events=[],
@@ -188,7 +188,7 @@ def test_main_note_show_prints_extended_relations(
             events=[
                 make_record(id=UUID("dddddddd-dddd-dddd-dddd-dddddddddddd"), title="Partner sync")
             ],
-            people=[make_record(id=UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), name="Alice")],
+            person=[make_record(id=UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), name="Alice")],
             timelogs=[
                 make_record(
                     id=UUID("ffffffff-ffff-ffff-ffff-ffffffffffff"),
@@ -210,7 +210,7 @@ def test_main_note_show_prints_extended_relations(
     )
     assert "visions: cccccccc-cccc-cccc-cccc-cccccccccccc | Graph notes" in captured.out
     assert "events: dddddddd-dddd-dddd-dddd-dddddddddddd | Partner sync" in captured.out
-    assert "people: Alice" in captured.out
+    assert "person: Alice" in captured.out
     assert "timelogs: ffffffff-ffff-ffff-ffff-ffffffffffff | Implementation session" in captured.out
 
 
@@ -257,7 +257,7 @@ def test_main_note_search_prints_matching_notes(
                 updated_at=utc_datetime(2026, 4, 9, 4, 5, 6),
                 deleted_at=None,
                 tags=[],
-                people=[],
+                person=[],
                 tasks=[],
                 visions=[],
                 events=[],
@@ -394,7 +394,7 @@ def test_main_note_list_prints_formatted_notes(
                 updated_at=utc_datetime(2026, 4, 9, 1, 2, 3),
                 deleted_at=None,
                 tags=[],
-                people=[],
+                person=[],
                 tasks=[],
                 visions=[],
                 events=[],
@@ -435,7 +435,7 @@ def test_main_note_list_can_include_relationship_counts(
                 updated_at=utc_datetime(2026, 4, 9, 1, 2, 3),
                 deleted_at=None,
                 tags=[object()],
-                people=[],
+                person=[],
                 tasks=[object()],
                 visions=[],
                 events=[],
@@ -451,7 +451,7 @@ def test_main_note_list_can_include_relationship_counts(
 
     assert exit_code == 0
     assert captured.out.splitlines() == [
-        "note_id\tstatus\tcreated_at\ttask_count\tvision_count\tevent_count\tpeople_count\ttimelog_count\thabit_action_count\ttag_count\tcontent",
+        "note_id\tstatus\tcreated_at\ttask_count\tvision_count\tevent_count\tperson_count\ttimelog_count\thabit_action_count\ttag_count\tcontent",
         (
             "22222222-2222-2222-2222-222222222222\tactive\t2026-04-09T01:02:03+00:00\t"
             "1\t0\t0\t0\t0\t0\t1\tfirst note"

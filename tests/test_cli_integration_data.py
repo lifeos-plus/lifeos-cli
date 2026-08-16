@@ -28,7 +28,7 @@ def test_real_cli_data_round_trip_and_batch_workflow(
     assert_ok(vision_result)
     vision_id = extract_created_id(vision_result.stdout)
 
-    person_result = run_lifeos(integration_context, "people", "add", "Alice")
+    person_result = run_lifeos(integration_context, "person", "add", "Alice")
     assert_ok(person_result)
     person_id = extract_created_id(person_result.stdout)
 
@@ -243,12 +243,12 @@ def test_real_cli_data_round_trip_and_batch_workflow(
     assert "title: Implementation session" in restored_timelog_result.stdout
     assert "notes: Initial draft" in restored_timelog_result.stdout
     assert "linked_notes_count: 1" in restored_timelog_result.stdout
-    assert "people: Alice" in restored_timelog_result.stdout
+    assert "person: Alice" in restored_timelog_result.stdout
     assert "tags: tracked" in restored_timelog_result.stdout
 
     restored_event_result = run_lifeos(integration_context, "event", "show", event_id)
     assert_ok(restored_event_result)
-    assert "people: Alice" in restored_event_result.stdout
+    assert "person: Alice" in restored_event_result.stdout
     assert "tags: calendar" in restored_event_result.stdout
 
     restored_habit_action_result = run_lifeos(
@@ -263,7 +263,7 @@ def test_real_cli_data_round_trip_and_batch_workflow(
     restored_note_result = run_lifeos(integration_context, "note", "show", note_id)
     assert_ok(restored_note_result)
     assert "Bundle restore checklist" in restored_note_result.stdout
-    assert "people: Alice" in restored_note_result.stdout
+    assert "person: Alice" in restored_note_result.stdout
     assert f"tasks: {task_id} | Implement data operations" in restored_note_result.stdout
     assert f"timelogs: {timelog_id} | Implementation session" in restored_note_result.stdout
 

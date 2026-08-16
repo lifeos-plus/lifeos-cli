@@ -151,7 +151,7 @@ def build_timelog_add_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_attach_one_or_more_people"),
+        help=_("common.messages.repeat_to_attach_one_or_more_person"),
     )
     add_parser.set_defaults(handler=make_sync_handler(handle_timelog_add_async))
 
@@ -386,7 +386,7 @@ def build_timelog_update_parser(
                 "lifeos timelog update 11111111-1111-1111-1111-111111111111 "
                 "--clear-task --clear-area",
                 "lifeos timelog update 11111111-1111-1111-1111-111111111111 "
-                "--clear-people --clear-tags",
+                "--clear-person --clear-tags",
             ),
             notes=(
                 help_message("notes.clearFlags.explicitOptionalValues"),
@@ -464,10 +464,10 @@ def build_timelog_update_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     update_parser.add_argument(
-        "--clear-people", action="store_true", help=_("common.messages.remove_all_people")
+        "--clear-person", action="store_true", help=_("common.messages.remove_all_person")
     )
     update_parser.set_defaults(handler=make_sync_handler(handle_timelog_update_async))
 

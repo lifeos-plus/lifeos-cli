@@ -48,7 +48,7 @@ def _template_payload(template: TimelogTemplateView) -> dict[str, object]:
         "area_name": template.area_name,
         "area_color": template.area_color,
         "person_ids": [str(person_id) for person_id in template.person_ids],
-        "people": [_person_payload(person) for person in template.people],
+        "person": [_person_payload(person) for person in template.person],
         "default_duration_minutes": template.default_duration_minutes,
         "position": template.position,
         "usage_count": template.usage_count,

@@ -21,7 +21,7 @@ from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services.batching import BatchDeleteResult, batch_delete_records
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
 from lifeos_cli.db.services.entity_associations import load_task_summary_details
-from lifeos_cli.db.services.entity_people import load_people_for_entities, sync_entity_people
+from lifeos_cli.db.services.entity_person import load_person_for_entities, sync_entity_person
 from lifeos_cli.db.services.model_utils import (
     load_model_by_id,
     load_view_by_id,
@@ -207,7 +207,7 @@ async def _build_vision_view(
     *,
     tasks: list[Task] | None = None,
 ) -> VisionView:
-    people_map = await load_people_for_entities(
+    person_map = await load_person_for_entities(
         session,
         entity_ids=[vision.id],
         entity_type="vision",
@@ -215,7 +215,7 @@ async def _build_vision_view(
     task_summary_details = await load_task_summary_details(session, tasks=tasks) if tasks else {}
     return build_vision_view(
         vision,
-        people=people_map.get(vision.id, ()),
+        person_records=person_map.get(vision.id, ()),
         tasks=tasks or (),
         task_summary_details=task_summary_details,
     )
@@ -227,12 +227,18 @@ async def _build_vision_views(
 ) -> list[VisionView]:
     if not visions:
         return []
-    people_map = await load_people_for_entities(
+    person_map = await load_person_for_entities(
         session,
         entity_ids=[vision.id for vision in visions],
         entity_type="vision",
     )
-    return [build_vision_view(vision, people=people_map.get(vision.id, ())) for vision in visions]
+    return [
+        build_vision_view(
+            vision,
+            person_records=person_map.get(vision.id, ()),
+        )
+        for vision in visions
+    ]
 
 
 async def create_vision(
@@ -263,7 +269,7 @@ async def create_vision(
     session.add(vision)
     await session.flush()
     if person_ids is not None:
-        await sync_entity_people(
+        await sync_entity_person(
             session, entity_id=vision.id, entity_type="vision", desired_person_ids=person_ids
         )
     await session.refresh(vision)
@@ -326,7 +332,7 @@ async def update_vision(
     experience_rate_per_hour: int | None = None,
     clear_experience_rate: bool = False,
     person_ids: list[UUID] | None = None,
-    clear_people: bool = False,
+    clear_person: bool = False,
 ) -> VisionView:
     """Update a vision."""
     vision = await load_model_by_id(
@@ -365,12 +371,12 @@ async def update_vision(
         vision.experience_rate_per_hour = validate_vision_experience_rate(experience_rate_per_hour)
     if clear_experience_rate or experience_rate_per_hour is not None:
         await sync_vision_experience_for_vision_ids(session, vision_ids=[vision.id])
-    if clear_people:
-        await sync_entity_people(
+    if clear_person:
+        await sync_entity_person(
             session, entity_id=vision.id, entity_type="vision", desired_person_ids=[]
         )
     elif person_ids is not None:
-        await sync_entity_people(
+        await sync_entity_person(
             session, entity_id=vision.id, entity_type="vision", desired_person_ids=person_ids
         )
     await session.flush()

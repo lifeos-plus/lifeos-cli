@@ -36,7 +36,7 @@ from lifeos_cli.db.services.entity_associations import (
     count_sources_for_targets,
     load_task_summary_details,
 )
-from lifeos_cli.db.services.entity_people import load_people_for_entities, sync_entity_people
+from lifeos_cli.db.services.entity_person import load_person_for_entities, sync_entity_person
 from lifeos_cli.db.services.entity_tags import load_tags_for_entities, sync_entity_tags
 from lifeos_cli.db.services.read_models import TimelogView, build_timelog_view
 from lifeos_cli.db.services.task_effort import (
@@ -87,7 +87,7 @@ async def _build_timelog_views(
         return []
     timelog_ids = [timelog.id for timelog in timelogs]
     tags_map = await load_tags_for_entities(session, entity_ids=timelog_ids, entity_type="timelog")
-    people_map = await load_people_for_entities(
+    person_map = await load_person_for_entities(
         session, entity_ids=timelog_ids, entity_type="timelog"
     )
     note_count_map = await count_sources_for_targets(
@@ -105,7 +105,7 @@ async def _build_timelog_views(
         build_timelog_view(
             timelog,
             tags=tags_map.get(timelog.id, ()),
-            people=people_map.get(timelog.id, ()),
+            person_records=person_map.get(timelog.id, ()),
             linked_notes_count=note_count_map.get(timelog.id, 0),
             task_summary_details=task_summary_details,
         )
@@ -368,7 +368,7 @@ async def _apply_timelog_association_updates(
     changes: TimelogUpdateInput,
 ) -> None:
     next_tag_ids = [] if changes.clear_tags else changes.tag_ids
-    next_person_ids = [] if changes.clear_people else changes.person_ids
+    next_person_ids = [] if changes.clear_person else changes.person_ids
     if next_tag_ids is not None:
         await sync_entity_tags(
             session,
@@ -377,7 +377,7 @@ async def _apply_timelog_association_updates(
             desired_tag_ids=next_tag_ids,
         )
     if next_person_ids is not None:
-        await sync_entity_people(
+        await sync_entity_person(
             session,
             entity_id=timelog.id,
             entity_type="timelog",
@@ -400,7 +400,7 @@ async def _load_batch_timelog_models(
     return {timelog.id: timelog for timelog in (await session.execute(stmt)).scalars()}
 
 
-async def _ensure_timelog_people_exist(
+async def _ensure_timelog_person_exist(
     session: AsyncSession,
     *,
     person_ids: list[UUID],
@@ -445,7 +445,7 @@ async def _ensure_timelog_tags_exist(
     return unique_tag_ids
 
 
-async def _replace_batch_timelog_people(
+async def _replace_batch_timelog_person(
     session: AsyncSession,
     *,
     timelog_ids: list[UUID],
@@ -456,7 +456,7 @@ async def _replace_batch_timelog_people(
     unique_person_ids = (
         validated_person_ids
         if validated_person_ids is not None
-        else await _ensure_timelog_people_exist(
+        else await _ensure_timelog_person_exist(
             session,
             person_ids=desired_person_ids,
         )
@@ -532,13 +532,13 @@ async def _replace_batch_timelog_tags(
     )
 
 
-async def batch_add_timelog_people(
+async def batch_add_timelog_person(
     session: AsyncSession,
     *,
     timelog_ids: list[UUID],
     person_ids: list[UUID],
 ) -> TimelogBatchUpdateResult:
-    """Add people links to multiple timelogs without rewriting unchanged links."""
+    """Add person links to multiple timelogs without rewriting unchanged links."""
     unique_timelog_ids = deduplicate_preserving_order(timelog_ids)
     timelogs_by_id = await _load_batch_timelog_models(session, timelog_ids=unique_timelog_ids)
 
@@ -551,7 +551,7 @@ async def batch_add_timelog_people(
 
     active_ids = [timelog_id for timelog_id in unique_timelog_ids if timelog_id in timelogs_by_id]
     try:
-        unique_person_ids = await _ensure_timelog_people_exist(session, person_ids=person_ids)
+        unique_person_ids = await _ensure_timelog_person_exist(session, person_ids=person_ids)
     except LookupError as exc:
         for timelog_id in active_ids:
             failed_ids.append(timelog_id)
@@ -770,7 +770,7 @@ async def create_timelog(
             desired_tag_ids=payload.tag_ids,
         )
     if payload.person_ids is not None:
-        await sync_entity_people(
+        await sync_entity_person(
             session,
             entity_id=timelog.id,
             entity_type="timelog",
@@ -922,10 +922,10 @@ async def batch_update_timelogs(
 
     person_error: Exception | None = None
     validated_person_ids: list[UUID] | None = None
-    next_person_ids = [] if changes.changes.clear_people else changes.changes.person_ids
+    next_person_ids = [] if changes.changes.clear_person else changes.changes.person_ids
     if next_person_ids is not None:
         try:
-            validated_person_ids = await _ensure_timelog_people_exist(
+            validated_person_ids = await _ensure_timelog_person_exist(
                 session,
                 person_ids=next_person_ids,
             )
@@ -1011,7 +1011,7 @@ async def batch_update_timelogs(
         updated_count += 1
 
     if updated_timelog_ids and next_person_ids is not None:
-        await _replace_batch_timelog_people(
+        await _replace_batch_timelog_person(
             session,
             timelog_ids=updated_timelog_ids,
             desired_person_ids=next_person_ids,

@@ -94,7 +94,7 @@ def build_note_add_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_associate_one_or_more_people"),
+        help=_("common.messages.repeat_to_associate_one_or_more_person"),
     )
     add_parser.add_argument(
         "--task-id",
@@ -329,7 +329,7 @@ def build_note_update_parser(
             ),
             notes=(
                 _(
-                    "resources.note.parser_actions.repeat_same_relation_flag_to_replace_multiple_linked_tags_people_tasks_visions"
+                    "resources.note.parser_actions.repeat_same_relation_flag_to_replace_multiple_linked_tags_person_tasks_visions"
                 ),
                 _(
                     "resources.note.parser_actions.use_relation_flags_without_content_when_only_links_need_to_change"
@@ -360,10 +360,10 @@ def build_note_update_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     update_parser.add_argument(
-        "--clear-people", action="store_true", help=_("common.messages.remove_all_people")
+        "--clear-person", action="store_true", help=_("common.messages.remove_all_person")
     )
     update_parser.add_argument(
         "--task-id",

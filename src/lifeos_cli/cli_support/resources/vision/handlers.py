@@ -26,7 +26,7 @@ def _format_vision_summary(vision: VisionView) -> str:
 
 
 def _format_vision_detail(vision: VisionView) -> str:
-    people_names = ", ".join(person.name for person in vision.people) if vision.people else "-"
+    person_names = ", ".join(person.name for person in vision.person) if vision.person else "-"
     return "\n".join(
         (
             f"id: {vision.id}",
@@ -37,7 +37,7 @@ def _format_vision_detail(vision: VisionView) -> str:
             f"experience_points: {vision.experience_points}",
             f"experience_rate_per_hour: {vision.experience_rate_per_hour or '-'}",
             f"area_id: {vision.area_id or '-'}",
-            f"people: {people_names}",
+            f"person: {person_names}",
             f"created_at: {format_timestamp(vision.created_at)}",
             f"updated_at: {format_timestamp(vision.updated_at)}",
             f"deleted_at: {format_timestamp(vision.deleted_at)}",
@@ -180,7 +180,7 @@ async def handle_vision_update_async(args: argparse.Namespace) -> int:
             "--experience-rate-per-hour",
             "--clear-experience-rate",
         ),
-        (args.clear_people and args.person_ids is not None, "--person-id", "--clear-people"),
+        (args.clear_person and args.person_ids is not None, "--person-id", "--clear-person"),
     )
     conflict_error = cli_handler_utils.validate_mutually_exclusive_pairs(conflicting_flags)
     if conflict_error is not None:
@@ -197,7 +197,7 @@ async def handle_vision_update_async(args: argparse.Namespace) -> int:
                 area_id=args.area_id,
                 clear_area=args.clear_area,
                 person_ids=args.person_ids,
-                clear_people=args.clear_people,
+                clear_person=args.clear_person,
                 experience_rate_per_hour=args.experience_rate_per_hour,
                 clear_experience_rate=args.clear_experience_rate,
             )

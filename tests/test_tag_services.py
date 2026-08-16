@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import asyncio
 
-from lifeos_cli.db.services import people, tags
+from lifeos_cli.db.services import person, tags
 from tests.support import sqlite_session_factory
 
 
-def test_count_person_tag_usage_counts_active_tagged_people() -> None:
+def test_count_person_tag_usage_counts_active_tagged_person() -> None:
     async def run() -> None:
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
@@ -16,17 +16,17 @@ def test_count_person_tag_usage_counts_active_tagged_people() -> None:
                     entity_type="person",
                     category="relationship",
                 )
-                active_person = await people.create_person(
+                active_person = await person.create_person(
                     session,
                     name="Alice",
                     tag_ids=[tag.id],
                 )
-                deleted_person = await people.create_person(
+                deleted_person = await person.create_person(
                     session,
                     name="Bob",
                     tag_ids=[tag.id],
                 )
-                await people.delete_person(session, person_id=deleted_person.id)
+                await person.delete_person(session, person_id=deleted_person.id)
 
                 counts = await tags.count_tag_usage_by_entity_type(
                     session,

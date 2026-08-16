@@ -20,7 +20,7 @@ from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services.batching import BatchDeleteResult, batch_delete_records
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
-from lifeos_cli.db.services.entity_people import load_people_for_entities, sync_entity_people
+from lifeos_cli.db.services.entity_person import load_person_for_entities, sync_entity_person
 from lifeos_cli.db.services.model_utils import (
     load_model_by_id,
     load_view_by_id,
@@ -112,7 +112,7 @@ async def create_tag(
     session.add(tag)
     await session.flush()
     if person_ids is not None:
-        await sync_entity_people(
+        await sync_entity_person(
             session, entity_id=tag.id, entity_type="tag", desired_person_ids=person_ids
         )
     await session.refresh(tag)
@@ -120,19 +120,19 @@ async def create_tag(
 
 
 async def _build_tag_view(session: AsyncSession, tag: Tag) -> TagView:
-    people_map = await load_people_for_entities(session, entity_ids=[tag.id], entity_type="tag")
-    return build_tag_view(tag, people=people_map.get(tag.id, ()))
+    person_map = await load_person_for_entities(session, entity_ids=[tag.id], entity_type="tag")
+    return build_tag_view(tag, person_records=person_map.get(tag.id, ()))
 
 
 async def _build_tag_views(session: AsyncSession, tags: list[Tag]) -> list[TagView]:
     if not tags:
         return []
-    people_map = await load_people_for_entities(
+    person_map = await load_person_for_entities(
         session,
         entity_ids=[tag.id for tag in tags],
         entity_type="tag",
     )
-    return [build_tag_view(tag, people=people_map.get(tag.id, ())) for tag in tags]
+    return [build_tag_view(tag, person_records=person_map.get(tag.id, ())) for tag in tags]
 
 
 async def get_tag(
@@ -205,7 +205,7 @@ async def update_tag(
     color: str | None = None,
     clear_color: bool = False,
     person_ids: list[UUID] | None = None,
-    clear_people: bool = False,
+    clear_person: bool = False,
 ) -> TagView:
     """Update a tag."""
     tag = await load_model_by_id(
@@ -242,12 +242,12 @@ async def update_tag(
         tag.color = None
     elif color is not None:
         tag.color = color
-    if clear_people:
-        await sync_entity_people(
+    if clear_person:
+        await sync_entity_person(
             session, entity_id=tag.id, entity_type="tag", desired_person_ids=[]
         )
     elif person_ids is not None:
-        await sync_entity_people(
+        await sync_entity_person(
             session, entity_id=tag.id, entity_type="tag", desired_person_ids=person_ids
         )
     await session.flush()

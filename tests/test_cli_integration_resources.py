@@ -152,7 +152,7 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
 
     person_one_result = run_lifeos(
         integration_context,
-        "people",
+        "person",
         "add",
         "Alice",
         "--location",
@@ -163,7 +163,7 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
 
     person_two_result = run_lifeos(
         integration_context,
-        "people",
+        "person",
         "add",
         "Bob",
         "--location",
@@ -172,20 +172,20 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
     assert_ok(person_two_result)
     person_two_id = extract_created_id(person_two_result.stdout)
 
-    person_show_result = run_lifeos(integration_context, "people", "show", person_one_id)
+    person_show_result = run_lifeos(integration_context, "person", "show", person_one_id)
     assert_ok(person_show_result)
     assert "location: Toronto" in person_show_result.stdout
 
-    people_update_result = run_lifeos(
+    person_update_result = run_lifeos(
         integration_context,
-        "people",
+        "person",
         "update",
         person_one_id,
         "--nickname",
         "ally",
         "--clear-location",
     )
-    assert_ok(people_update_result)
+    assert_ok(person_update_result)
 
     tag_one_result = run_lifeos(
         integration_context,
@@ -229,7 +229,7 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
     )
     assert_ok(tag_update_result)
 
-    tag_people_result = run_lifeos(
+    tag_person_result = run_lifeos(
         integration_context,
         "tag",
         "update",
@@ -237,7 +237,7 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
         "--person-id",
         person_one_id,
     )
-    assert_ok(tag_people_result)
+    assert_ok(tag_person_result)
 
     tag_clear_result = run_lifeos(
         integration_context,
@@ -249,7 +249,7 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
     )
     assert_ok(tag_clear_result)
 
-    vision_people_result = run_lifeos(
+    vision_person_result = run_lifeos(
         integration_context,
         "vision",
         "update",
@@ -259,9 +259,9 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
         "--person-id",
         person_two_id,
     )
-    assert_ok(vision_people_result)
+    assert_ok(vision_person_result)
 
-    task_people_result = run_lifeos(
+    task_person_result = run_lifeos(
         integration_context,
         "task",
         "update",
@@ -269,7 +269,7 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
         "--person-id",
         person_one_id,
     )
-    assert_ok(task_people_result)
+    assert_ok(task_person_result)
 
     assert area_one_id in run_lifeos(integration_context, "area", "list").stdout
     assert vision_one_id in run_lifeos(integration_context, "vision", "list").stdout
@@ -307,7 +307,7 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
         person_one_id
         in run_lifeos(
             integration_context,
-            "people",
+            "person",
             "list",
             "--search",
             "Ali",
@@ -336,44 +336,44 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
 
     area_show_result = run_lifeos(integration_context, "area", "show", area_one_id)
     assert_ok(area_show_result)
-    assert "people:" not in area_show_result.stdout
+    assert "person:" not in area_show_result.stdout
 
-    vision_show_with_people_result = run_lifeos(
+    vision_show_with_person_result = run_lifeos(
         integration_context,
         "vision",
         "show",
         vision_one_id,
     )
-    assert_ok(vision_show_with_people_result)
-    assert "people: Alice, Bob" in vision_show_with_people_result.stdout
+    assert_ok(vision_show_with_person_result)
+    assert "person: Alice, Bob" in vision_show_with_person_result.stdout
 
-    task_show_with_people_result = run_lifeos(integration_context, "task", "show", task_one_id)
-    assert_ok(task_show_with_people_result)
-    assert "people: Alice" in task_show_with_people_result.stdout
+    task_show_with_person_result = run_lifeos(integration_context, "task", "show", task_one_id)
+    assert_ok(task_show_with_person_result)
+    assert "person: Alice" in task_show_with_person_result.stdout
 
-    tag_show_with_people_result = run_lifeos(integration_context, "tag", "show", tag_one_id)
-    assert_ok(tag_show_with_people_result)
-    assert "people: Alice" in tag_show_with_people_result.stdout
+    tag_show_with_person_result = run_lifeos(integration_context, "tag", "show", tag_one_id)
+    assert_ok(tag_show_with_person_result)
+    assert "person: Alice" in tag_show_with_person_result.stdout
 
-    people_delete_result = run_lifeos(
+    person_delete_result = run_lifeos(
         integration_context,
-        "people",
+        "person",
         "delete",
         person_one_id,
     )
-    assert_ok(people_delete_result)
-    assert f"Soft-deleted person {person_one_id}" in people_delete_result.stdout
+    assert_ok(person_delete_result)
+    assert f"Soft-deleted person {person_one_id}" in person_delete_result.stdout
 
-    people_batch_delete_result = run_lifeos(
+    person_batch_delete_result = run_lifeos(
         integration_context,
-        "people",
+        "person",
         "batch",
         "delete",
         "--ids",
         person_two_id,
     )
-    assert_ok(people_batch_delete_result)
-    assert "Deleted people: 1" in people_batch_delete_result.stdout
+    assert_ok(person_batch_delete_result)
+    assert "Deleted person: 1" in person_batch_delete_result.stdout
 
     tag_delete_result = run_lifeos(integration_context, "tag", "delete", tag_one_id)
     assert_ok(tag_delete_result)

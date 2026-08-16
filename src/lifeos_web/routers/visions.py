@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.services import visions as vision_services
+from lifeos_cli.db.services.read_models import VisionView
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.visions import (
     VisionListMeta,
@@ -26,7 +27,7 @@ router = APIRouter(prefix="/visions", tags=["visions"])
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
 
 
-def _vision_payload(vision: object, *, include_tasks: bool = False) -> dict[str, object]:
+def _vision_payload(vision: VisionView, *, include_tasks: bool = False) -> dict[str, object]:
     """Serialize a vision for the Web UI."""
     payload: dict[str, object] = {
         "id": str(vision.id),
@@ -38,7 +39,7 @@ def _vision_payload(vision: object, *, include_tasks: bool = False) -> dict[str,
         "experience_points": vision.experience_points,
         "experience_rate_per_hour": vision.experience_rate_per_hour,
         "created_at": to_jsonable(vision.created_at),
-        "people": to_jsonable(vision.people),
+        "person": to_jsonable(vision.person),
     }
     if include_tasks:
         raw_tasks = to_jsonable(vision.tasks)
@@ -120,7 +121,7 @@ async def update_vision(
         "experience_rate_per_hour" in fields and payload.experience_rate_per_hour is None
     )
     clear_area = "area_id" in fields and payload.area_id is None
-    clear_people = "person_ids" in fields and payload.person_ids == []
+    clear_person = "person_ids" in fields and payload.person_ids == []
     try:
         vision = await vision_services.update_vision(
             session,
@@ -134,7 +135,7 @@ async def update_vision(
             experience_rate_per_hour=payload.experience_rate_per_hour,
             clear_experience_rate=clear_experience_rate,
             person_ids=payload.person_ids,
-            clear_people=clear_people,
+            clear_person=clear_person,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

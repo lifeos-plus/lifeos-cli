@@ -38,7 +38,7 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
             summary=_("resources.tag.parser.manage_tags"),
             description=(
                 _(
-                    "resources.tag.parser.create_and_maintain_tags_for_notes_people_visions_tasks_and_areas"
+                    "resources.tag.parser.create_and_maintain_tags_for_notes_person_visions_tasks_and_areas"
                 )
                 + "\n\n"
                 + _(
@@ -88,7 +88,7 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
             ),
             notes=(
                 _(
-                    "common.messages.repeat_same_person_id_flag_to_associate_multiple_people_in_one_command"
+                    "common.messages.repeat_same_person_id_flag_to_associate_multiple_person_in_one_command"
                 ),
             ),
         ),
@@ -110,7 +110,7 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_associate_one_or_more_people"),
+        help=_("common.messages.repeat_to_associate_one_or_more_person"),
     )
     add_parser.set_defaults(handler=make_sync_handler(handle_tag_add_async))
 
@@ -181,14 +181,14 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
                 "--person-id 11111111-1111-1111-1111-111111111111 "
                 "--person-id 22222222-2222-2222-2222-222222222222",
                 "lifeos tag update 11111111-1111-1111-1111-111111111111 "
-                "--clear-description --clear-people",
+                "--clear-description --clear-person",
                 "lifeos tag update 11111111-1111-1111-1111-111111111111 --clear-color",
             ),
             notes=(
                 _(
-                    "resources.tag.parser.use_clear_description_clear_color_or_clear_people_to_remove_optional_values"
+                    "resources.tag.parser.use_clear_description_clear_color_or_clear_person_to_remove_optional_values"
                 ),
-                _("common.messages.repeat_same_person_id_flag_to_replace_multiple_linked_people"),
+                _("common.messages.repeat_same_person_id_flag_to_replace_multiple_linked_person"),
             ),
         ),
     )
@@ -216,10 +216,10 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     update_parser.add_argument(
-        "--clear-people", action="store_true", help=_("common.messages.remove_all_people")
+        "--clear-person", action="store_true", help=_("common.messages.remove_all_person")
     )
     update_parser.set_defaults(handler=make_sync_handler(handle_tag_update_async))
 

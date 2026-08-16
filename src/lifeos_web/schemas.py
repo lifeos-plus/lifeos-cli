@@ -269,7 +269,7 @@ class TimelogBatchUpdate(BaseModel):
     title: TimelogBatchTitleUpdate | None = None
     task: TimelogBatchTaskUpdate | None = None
     area: TimelogBatchAreaUpdate | None = None
-    people: TimelogBatchPeopleUpdate | None = None
+    person: TimelogBatchPeopleUpdate | None = None
 
 
 class TimelogTemplateCreate(BaseModel):

@@ -46,7 +46,7 @@ TAG_SELECTOR_FIELDS = ("id", "name", "entity_type", "category")
 def _tag_payload(row: object, *, fields: str) -> dict[str, object]:
     payload = to_jsonable_dict(row)
     payload.pop("deleted_at", None)
-    payload.pop("people", None)
+    payload.pop("person", None)
     if fields == "selector":
         return {field: payload[field] for field in TAG_SELECTOR_FIELDS}
     return payload

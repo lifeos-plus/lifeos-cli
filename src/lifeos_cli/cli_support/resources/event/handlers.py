@@ -53,7 +53,7 @@ def _format_event_summary(event: event_services.EventOccurrence | event_services
 
 def _format_event_detail(event: event_services.EventView) -> str:
     tag_names = ", ".join(tag.name for tag in event.tags) if event.tags else "-"
-    people_names = ", ".join(person.name for person in event.people) if event.people else "-"
+    person_names = ", ".join(person.name for person in event.person) if event.person else "-"
     return "\n".join(
         (
             f"id: {event.id}",
@@ -75,7 +75,7 @@ def _format_event_detail(event: event_services.EventView) -> str:
             f"area_id: {event.area_id or '-'}",
             f"task_id: {event.task_id or '-'}",
             f"tags: {tag_names}",
-            f"people: {people_names}",
+            f"person: {person_names}",
             f"created_at: {format_timestamp(event.created_at)}",
             f"updated_at: {format_timestamp(event.updated_at)}",
             f"deleted_at: {format_timestamp(event.deleted_at)}",
@@ -193,7 +193,7 @@ async def handle_event_update_async(args: argparse.Namespace) -> int:
         (args.clear_area and args.area_id is not None, "--area-id", "--clear-area"),
         (args.clear_task and args.task_id is not None, "--task-id", "--clear-task"),
         (args.clear_tags and args.tag_ids is not None, "--tag-id", "--clear-tags"),
-        (args.clear_people and args.person_ids is not None, "--person-id", "--clear-people"),
+        (args.clear_person and args.person_ids is not None, "--person-id", "--clear-person"),
         (
             args.clear_recurrence
             and any(
@@ -253,7 +253,7 @@ async def handle_event_update_async(args: argparse.Namespace) -> int:
                     tag_ids=args.tag_ids,
                     clear_tags=args.clear_tags,
                     person_ids=args.person_ids,
-                    clear_people=args.clear_people,
+                    clear_person=args.clear_person,
                     recurrence_frequency=args.recurrence_frequency,
                     recurrence_interval=args.recurrence_interval,
                     recurrence_count=args.recurrence_count,

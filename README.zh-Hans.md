@@ -46,14 +46,14 @@ English: [README.md](README.md)
 | Daily schedule | `schedule` day/range 视图聚合 planned events、planning-cycle tasks 和 habit actions，并支持 overdue unfinished task / habit-action roll-forward。 |
 | Routines | `habit` 支持 daily/weekly/monthly/yearly cadence、weekday/weekend 控制、task 链接、stats 和按需 `habit-action` 物化。 |
 | Time reality | `timelog` 支持日期与日期时间录入、quick batch entry、list/search 过滤、关系链接、batch update/delete、templates 和按 area 分组的 stats。 |
-| Notes and reflection | `note` 支持 inline/stdin/file capture、search、完整内容展示、批量内容替换、软删除，并可关联 tasks、visions、events、people、timelogs 和 tags。 |
-| Relationships | `people` 支持关系元数据、生日/纪念日、tags、相关活动、anniversaries，以及来自 events、notes、timelogs 的链接。 |
+| Notes and reflection | `note` 支持 inline/stdin/file capture、search、完整内容展示、批量内容替换、软删除，并可关联 tasks、visions、events、person、timelogs 和 tags。 |
+| Relationships | `person` 支持关系元数据、生日/纪念日、tags、相关活动、anniversaries，以及来自 events、notes、timelogs 的链接。 |
 | Taxonomy | `tag` 支持 category/entity-type 元数据，以及跨资源 association counts。 |
 | Finance | 支持 assets、可复用 finance trees、nodes、instant/period snapshots、exchange-rate snapshots、default tree bootstrap，以及资产负债表/现金流风格的数据建模。 |
 | Data portability | 支持规范 JSON/JSONL export/import、完整 bundle backup/restore、dry-run validation、row-level errors、自然键 upsert import 和面向机器的 batch update/delete。 |
 | Configuration | 持久化 database 与 preference 配置，包括 timezone、language、day boundary、week boundary、theme 和默认 vision experience rate。 |
-| Local Web API | FastAPI routers 覆盖 health、tasks、visions、habits、notes、timelogs、timelog templates、people、areas、finance、planned events、stats、tags 和 preferences。 |
-| Web UI | 位于 `lifeos-plus/lifeos-web` 的一方 Vite/React workspace，覆盖 visions、habits、planning、timelog、finance、insights/stats、schedule/calendar、notes、people 和 settings。 |
+| Local Web API | FastAPI routers 覆盖 health、tasks、visions、habits、notes、timelogs、timelog templates、person、areas、finance、planned events、stats、tags 和 preferences。 |
+| Web UI | 位于 `lifeos-plus/lifeos-web` 的一方 Vite/React workspace，覆盖 visions、habits、planning、timelog、finance、insights/stats、schedule/calendar、notes、person 和 settings。 |
 
 ## Interfaces
 

@@ -26,6 +26,7 @@ from lifeos_cli.db.services.read_models import (
     TaskView,
     TimelogTemplateView,
     TimelogView,
+    VisionView,
 )
 from lifeos_cli.db.services.timelog_support import (
     TimelogBatchUpdateInput,
@@ -307,7 +308,7 @@ def test_web_vision_payload_excludes_unconsumed_audit_fields() -> None:
         created_at=timestamp,
         updated_at=timestamp,
         deleted_at=timestamp,
-        people=(),
+        person=(),
         tasks=(
             SimpleNamespace(
                 id=UUID("33333333-3333-3333-3333-333333333333"),
@@ -319,7 +320,8 @@ def test_web_vision_payload_excludes_unconsumed_audit_fields() -> None:
         ),
     )
 
-    payload = _vision_payload(vision)
+    vision_view = cast(VisionView, vision)
+    payload = _vision_payload(vision_view)
 
     assert set(payload) == {
         "id",
@@ -331,15 +333,15 @@ def test_web_vision_payload_excludes_unconsumed_audit_fields() -> None:
         "experience_points",
         "experience_rate_per_hour",
         "created_at",
-        "people",
+        "person",
     }
     assert payload["created_at"] == "2026-06-01T13:00:00Z"
     assert "updated_at" not in payload
     assert "deleted_at" not in payload
     assert "tasks" not in payload
-    assert "tasks" in _vision_payload(vision, include_tasks=True)
+    assert "tasks" in _vision_payload(vision_view, include_tasks=True)
     VisionResponse.model_validate(payload)
-    VisionWithTasksResponse.model_validate(_vision_payload(vision, include_tasks=True))
+    VisionWithTasksResponse.model_validate(_vision_payload(vision_view, include_tasks=True))
 
 
 def test_web_task_hierarchy_payload_excludes_deleted_at() -> None:
@@ -367,7 +369,7 @@ def test_web_task_hierarchy_payload_excludes_deleted_at() -> None:
             created_at=timestamp,
             updated_at=timestamp,
             deleted_at=timestamp,
-            people=(),
+            person=(),
             subtasks=subtasks,
             completion_percentage=0,
             depth=0,
@@ -423,7 +425,7 @@ def test_web_task_list_basic_payload_excludes_full_task_fields(
         created_at=timestamp,
         updated_at=timestamp,
         deleted_at=timestamp,
-        people=(PersonSummaryView(id=UUID("33333333-3333-3333-3333-333333333333"), name="A"),),
+        person=(PersonSummaryView(id=UUID("33333333-3333-3333-3333-333333333333"), name="A"),),
     )
 
     async def fake_list_tasks(_session: object, **_kwargs: object) -> list[TaskView]:
@@ -470,7 +472,7 @@ def test_web_task_list_basic_payload_excludes_full_task_fields(
         "planning_cycle_type": "day",
         "planning_cycle_days": 1,
         "planning_cycle_start_date": "2026-06-30",
-        "people": [{"id": "33333333-3333-3333-3333-333333333333", "name": "A"}],
+        "person": [{"id": "33333333-3333-3333-3333-333333333333", "name": "A"}],
         "notes_count": 4,
         "timelogs_count": 5,
     }
@@ -485,10 +487,10 @@ def test_web_task_list_basic_payload_excludes_full_task_fields(
 def test_web_general_payloads_exclude_unconsumed_audit_fields() -> None:
     from lifeos_web.response_schemas.areas import AreaResponse
     from lifeos_web.response_schemas.habits import HabitResponse
-    from lifeos_web.response_schemas.persons import PersonResponse
+    from lifeos_web.response_schemas.person import PersonResponse
     from lifeos_web.routers.areas import _area_payload
     from lifeos_web.routers.habits import _habit_model_payload
-    from lifeos_web.routers.persons import _person_payload
+    from lifeos_web.routers.person import _person_payload
 
     timestamp = datetime(2026, 6, 1, 13, 0, tzinfo=UTC)
 
@@ -562,7 +564,7 @@ def test_web_general_payloads_exclude_unconsumed_audit_fields() -> None:
 
 
 def test_web_person_payload_preserves_tag_categories() -> None:
-    from lifeos_web.routers.persons import _person_payload
+    from lifeos_web.routers.person import _person_payload
 
     payload = _person_payload(
         PersonView(
@@ -605,7 +607,7 @@ def test_web_person_timelog_activity_payload_exposes_timeline_fields() -> None:
         PersonActivity,
         _timelog_total_minutes,
     )
-    from lifeos_web.routers.persons import _activity_payload
+    from lifeos_web.routers.person import _activity_payload
 
     timestamp = datetime(2026, 7, 2, 9, 0, tzinfo=UTC)
     activity = PersonActivity(
@@ -722,8 +724,8 @@ def test_cli_rejects_deleted_record_visibility_flags_on_consumer_commands() -> N
         ("note", "list", "--include-deleted"),
         ("note", "search", "query", "--include-deleted"),
         ("note", "show", "11111111-1111-1111-1111-111111111111", "--include-deleted"),
-        ("people", "list", "--include-deleted"),
-        ("people", "show", "11111111-1111-1111-1111-111111111111", "--include-deleted"),
+        ("person", "list", "--include-deleted"),
+        ("person", "show", "11111111-1111-1111-1111-111111111111", "--include-deleted"),
         ("tag", "list", "--include-deleted"),
         ("tag", "show", "11111111-1111-1111-1111-111111111111", "--include-deleted"),
         ("task", "list", "--include-deleted"),
@@ -868,7 +870,7 @@ def test_web_app_registers_core_resource_routes() -> None:
     assert "/api/v1/visions/" in route_paths
     assert "/api/v1/habits/" in route_paths
     assert "/api/v1/habits/habit-task-associations/" in route_paths
-    assert "/api/v1/persons/" in route_paths
+    assert "/api/v1/person/" in route_paths
     assert "/api/v1/tags/" in route_paths
     assert "/api/v1/finance/trees" in route_paths
 
@@ -1150,7 +1152,7 @@ def test_web_timelog_template_payload_excludes_unconsumed_audit_fields() -> None
             area_name="Work",
             area_color="#111111",
             person_ids=(UUID("33333333-3333-3333-3333-333333333333"),),
-            people=(
+            person=(
                 PersonSummaryView(
                     id=UUID("33333333-3333-3333-3333-333333333333"),
                     name="A",
@@ -1167,7 +1169,7 @@ def test_web_timelog_template_payload_excludes_unconsumed_audit_fields() -> None
     )
 
     assert payload["person_ids"] == ["33333333-3333-3333-3333-333333333333"]
-    assert payload["people"] == [
+    assert payload["person"] == [
         {
             "id": "33333333-3333-3333-3333-333333333333",
             "name": "A",
@@ -1200,7 +1202,7 @@ def test_web_timelog_template_update_preserves_explicit_nulls(
             area_name=None,
             area_color=None,
             person_ids=(),
-            people=(PersonSummaryView(id=UUID("22222222-2222-2222-2222-222222222222"), name="A"),),
+            person=(PersonSummaryView(id=UUID("22222222-2222-2222-2222-222222222222"), name="A"),),
             default_duration_minutes=None,
             position=0,
             usage_count=0,
@@ -1237,7 +1239,7 @@ def test_web_timelog_template_update_preserves_explicit_nulls(
     assert changes.default_duration_minutes_provided is True
     assert changes.default_duration_minutes is None
     assert changes.person_ids_provided is False
-    assert response["people"] == [
+    assert response["person"] == [
         {
             "id": "22222222-2222-2222-2222-222222222222",
             "name": "A",
@@ -1772,7 +1774,7 @@ def test_web_vision_update_null_description_and_experience_clear_flags(
             created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
-            people=(),
+            person=(),
             tasks=(),
         )
 
@@ -1846,7 +1848,7 @@ def test_web_vision_sync_experience_calls_service(monkeypatch: pytest.MonkeyPatc
             created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
-            people=(),
+            person=(),
             tasks=(),
         )
 
@@ -1892,7 +1894,7 @@ def test_web_vision_update_area_id_passes_through(
             created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
-            people=(),
+            person=(),
             tasks=(),
         )
 
@@ -1909,7 +1911,7 @@ def test_web_vision_update_area_id_passes_through(
     assert captured["area_id"] == area_id
     assert captured["clear_area"] is False
     assert captured["person_ids"] == [person_id]
-    assert captured["clear_people"] is False
+    assert captured["clear_person"] is False
     assert response["area_id"] == str(area_id)
     assert set(response).issuperset({"id", "name", "area_id"})
 
@@ -2290,7 +2292,7 @@ def test_web_timelog_update_null_fields_translate_to_clear_flags(
     assert captured_changes.clear_notes is True
     assert captured_changes.clear_area is True
     assert captured_changes.clear_task is True
-    assert captured_changes.clear_people is True
+    assert captured_changes.clear_person is True
 
 
 def test_web_timelog_batch_task_replace_maps_to_lifeos_task_update(
@@ -2361,7 +2363,7 @@ def test_web_tag_create_maps_to_lifeos_tag_service(
             created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
-            people=(),
+            person=(),
         )
 
     monkeypatch.setattr(tags.tag_services, "create_tag", fake_create_tag)
@@ -2399,7 +2401,7 @@ def test_web_tag_list_selector_payload_excludes_unconsumed_fields(
         created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
         updated_at=datetime(2026, 6, 1, 14, 0, tzinfo=UTC),
         deleted_at=datetime(2026, 6, 1, 15, 0, tzinfo=UTC),
-        people=(PersonSummaryView(id=UUID("22222222-2222-2222-2222-222222222222"), name="A"),),
+        person=(PersonSummaryView(id=UUID("22222222-2222-2222-2222-222222222222"), name="A"),),
     )
 
     async def fake_list_tags(_session: object, **kwargs: object) -> list[TagView]:
@@ -2430,7 +2432,7 @@ def test_web_tag_list_selector_payload_excludes_unconsumed_fields(
     assert "created_at" not in payload
     assert "updated_at" not in payload
     assert "deleted_at" not in payload
-    assert "people" not in payload
+    assert "person" not in payload
     assert response.meta["fields"] == "selector"
 
 
@@ -2533,7 +2535,7 @@ def test_web_tag_bulk_category_update_returns_updated_tags(
         created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
         updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
         deleted_at=None,
-        people=(),
+        person=(),
     )
 
     async def fake_bulk_update_tag_categories(
@@ -2581,7 +2583,7 @@ def test_web_tag_usage_endpoint_returns_tagged_record_count(
         created_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
         updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
         deleted_at=None,
-        people=(),
+        person=(),
     )
 
     async def fake_get_tag(_session: object, *, tag_id: UUID) -> TagView | None:
@@ -2796,7 +2798,7 @@ def test_web_note_person_usage_stats_endpoint_returns_counts(
                 "usage_count": 3,
             }
         ],
-        "total_persons": 1,
+        "total_person": 1,
     }
 
 
@@ -2822,7 +2824,7 @@ def test_web_note_create_maps_selector_associations_to_lifeos_note_service(
             updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
             deleted_at=None,
             tags=(),
-            people=(),
+            person=(),
             tasks=(),
             visions=(),
             events=(),
@@ -2881,7 +2883,7 @@ def test_web_note_payload_exposes_primary_task_for_notes_page() -> None:
         updated_at=datetime(2026, 6, 1, 13, 0, tzinfo=UTC),
         deleted_at=None,
         tags=(tag,),
-        people=(person,),
+        person=(person,),
         tasks=(task,),
         habit_actions=(
             HabitActionSummaryView(
@@ -2918,7 +2920,7 @@ def test_web_note_payload_exposes_primary_task_for_notes_page() -> None:
             "updated_at": "",
         }
     ]
-    assert payload["people"] == [
+    assert payload["person"] == [
         {
             "id": str(person.id),
             "name": "Alice",
@@ -2938,7 +2940,7 @@ def test_web_note_payload_exposes_primary_task_for_notes_page() -> None:
             "status": "done",
         }
     ]
-    assert "persons" not in payload
+    assert "person" in payload
 
 
 def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
@@ -3007,8 +3009,8 @@ def test_web_note_payload_uses_null_primary_task_without_association() -> None:
 
     assert payload["tasks"] == []
     assert payload["task"] is None
-    assert payload["people"] == []
-    assert "persons" not in payload
+    assert payload["person"] == []
+    assert "person" in payload
     assert payload["tags"] == []
 
 

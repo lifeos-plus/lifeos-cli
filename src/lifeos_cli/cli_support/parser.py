@@ -21,7 +21,7 @@ from lifeos_cli.cli_support.resources.finance.parser import build_finance_parser
 from lifeos_cli.cli_support.resources.habit.parser import build_habit_parser
 from lifeos_cli.cli_support.resources.habit_action.parser import build_habit_action_parser
 from lifeos_cli.cli_support.resources.note.parser import build_note_parser
-from lifeos_cli.cli_support.resources.people.parser import build_people_parser
+from lifeos_cli.cli_support.resources.person.parser import build_person_parser
 from lifeos_cli.cli_support.resources.planning.parser import build_planning_parser
 from lifeos_cli.cli_support.resources.schedule.parser import build_schedule_parser
 from lifeos_cli.cli_support.resources.tag.parser import build_tag_parser
@@ -59,7 +59,7 @@ RESOURCE_BUILDERS: tuple[tuple[str, ResourceBuilder], ...] = (
     ("finance", build_finance_parser),
     ("schedule", build_schedule_parser),
     ("tag", build_tag_parser),
-    ("people", build_people_parser),
+    ("person", build_person_parser),
     ("vision", build_vision_parser),
     ("task", build_task_parser),
     ("planning", build_planning_parser),

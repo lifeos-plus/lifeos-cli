@@ -1,4 +1,4 @@
-"""CLI handlers for the people resource."""
+"""CLI handlers for the person resource."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from lifeos_cli.cli_support.output_utils import (
 )
 from lifeos_cli.cli_support.time_args import parse_optional_date_value
 from lifeos_cli.db import session as db_session
-from lifeos_cli.db.services import people as people_services
+from lifeos_cli.db.services import person as person_services
 from lifeos_cli.db.services.read_models import PersonView
 
 PERSON_SUMMARY_COLUMNS = ("person_id", "status", "name", "location", "tags")
@@ -44,10 +44,10 @@ def _format_person_detail(person: PersonView) -> str:
     )
 
 
-async def handle_people_add_async(args: argparse.Namespace) -> int:
+async def handle_person_add_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
         try:
-            person = await people_services.create_person(
+            person = await person_services.create_person(
                 session,
                 name=args.name,
                 description=args.description,
@@ -56,15 +56,15 @@ async def handle_people_add_async(args: argparse.Namespace) -> int:
                 location=args.location,
                 tag_ids=args.tag_id,
             )
-        except (people_services.PersonAlreadyExistsError, LookupError, ValueError) as exc:
+        except (person_services.PersonAlreadyExistsError, LookupError, ValueError) as exc:
             return cli_handler_utils.print_cli_error(exc)
     print(f"Created person {person.id}")
     return 0
 
 
-async def handle_people_list_async(args: argparse.Namespace) -> int:
+async def handle_person_list_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
-        people = await people_services.list_people(
+        person = await person_services.list_person(
             session,
             search=args.search,
             tag_id=args.tag_id,
@@ -72,20 +72,20 @@ async def handle_people_list_async(args: argparse.Namespace) -> int:
             offset=args.offset,
         )
     if args.json:
-        print_json_items(people)
+        print_json_items(person)
         return 0
     print_summary_rows(
-        items=people,
+        items=person,
         columns=PERSON_SUMMARY_COLUMNS,
         row_formatter=_format_person_summary,
-        empty_message="No people found.",
+        empty_message="No person found.",
     )
     return 0
 
 
-async def handle_people_show_async(args: argparse.Namespace) -> int:
+async def handle_person_show_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
-        person = await people_services.get_person(
+        person = await person_services.get_person(
             session,
             person_id=args.person_id,
         )
@@ -98,7 +98,7 @@ async def handle_people_show_async(args: argparse.Namespace) -> int:
     return 0
 
 
-async def handle_people_update_async(args: argparse.Namespace) -> int:
+async def handle_person_update_async(args: argparse.Namespace) -> int:
     conflicting_flags = (
         (
             args.clear_description and args.description is not None,
@@ -119,7 +119,7 @@ async def handle_people_update_async(args: argparse.Namespace) -> int:
         return conflict_error
     async with db_session.session_scope() as session:
         try:
-            person = await people_services.update_person(
+            person = await person_services.update_person(
                 session,
                 person_id=args.person_id,
                 name=args.name,
@@ -135,8 +135,8 @@ async def handle_people_update_async(args: argparse.Namespace) -> int:
                 clear_tags=args.clear_tags,
             )
         except (
-            people_services.PersonNotFoundError,
-            people_services.PersonAlreadyExistsError,
+            person_services.PersonNotFoundError,
+            person_services.PersonAlreadyExistsError,
             LookupError,
             ValueError,
         ) as exc:
@@ -145,25 +145,25 @@ async def handle_people_update_async(args: argparse.Namespace) -> int:
     return 0
 
 
-async def handle_people_delete_async(args: argparse.Namespace) -> int:
+async def handle_person_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
         try:
-            await people_services.delete_person(session, person_id=args.person_id)
-        except people_services.PersonNotFoundError as exc:
+            await person_services.delete_person(session, person_id=args.person_id)
+        except person_services.PersonNotFoundError as exc:
             return cli_handler_utils.print_cli_error(exc)
     print(f"Soft-deleted person {args.person_id}")
     return 0
 
 
-async def handle_people_batch_delete_async(args: argparse.Namespace) -> int:
-    """Delete multiple people in one command."""
+async def handle_person_batch_delete_async(args: argparse.Namespace) -> int:
+    """Delete multiple person in one command."""
     async with db_session.session_scope() as session:
-        result = await people_services.batch_delete_people(
+        result = await person_services.batch_delete_person(
             session,
             person_ids=list(args.person_ids),
         )
     return print_batch_result(
-        success_label="Deleted people",
+        success_label="Deleted person",
         success_count=result.deleted_count,
         failed_label="Failed person IDs",
         result=result,

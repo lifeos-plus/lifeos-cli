@@ -123,12 +123,12 @@ def build_timelog_batch_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     batch_update_parser.add_argument(
-        "--clear-people",
+        "--clear-person",
         action="store_true",
-        help=_("common.messages.remove_all_people"),
+        help=_("common.messages.remove_all_person"),
     )
     batch_update_parser.set_defaults(handler=make_sync_handler(handle_timelog_batch_update_async))
 

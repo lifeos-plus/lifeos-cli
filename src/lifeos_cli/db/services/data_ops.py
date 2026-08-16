@@ -44,7 +44,7 @@ from lifeos_cli.db.services import (
     habit_actions,
     habits,
     notes,
-    people,
+    person,
     tags,
     task_effort,
     tasks,
@@ -56,12 +56,12 @@ from lifeos_cli.db.services.entity_associations import (
     get_target_ids_for_sources,
     set_association_links,
 )
-from lifeos_cli.db.services.entity_people import sync_entity_people
+from lifeos_cli.db.services.entity_person import sync_entity_person
 from lifeos_cli.db.services.entity_tags import sync_entity_tags
 
 SUPPORTED_DATA_RESOURCES = (
     "area",
-    "people",
+    "person",
     "tag",
     "vision",
     "task",
@@ -74,13 +74,21 @@ SUPPORTED_DATA_RESOURCES = (
 BUNDLE_RESOURCE_ORDER = SUPPORTED_DATA_RESOURCES
 BUNDLE_SCHEMA_VERSION = 3
 
+# Resource keys used by bundles written before the person resource was
+# standardized to singular naming. Old archives stay importable by mapping
+# their entry names onto the current resource key; the new consumer surface
+# only exposes the current key.
+LEGACY_BUNDLE_RESOURCE_KEYS: dict[str, str] = {
+    "person": "people",
+}
+
 # Single-field natural keys that are safe upsert matchers per resource. The
 # field must be effectively unique among active records; resources without a
 # safe key stay id-only for idempotent syncs.
 NATURAL_KEY_FIELDS_BY_RESOURCE: dict[str, frozenset[str]] = {
     "area": frozenset({"name"}),
     "vision": frozenset({"name"}),
-    "people": frozenset({"name"}),
+    "person": frozenset({"name"}),
     "habit": frozenset({"title"}),
 }
 
@@ -175,8 +183,8 @@ class DataResourceSpec:
 
 RESOURCE_SPECS: dict[str, DataResourceSpec] = {
     "area": DataResourceSpec(resource="area", model=Area),
-    "people": DataResourceSpec(
-        resource="people",
+    "person": DataResourceSpec(
+        resource="person",
         model=Person,
         tag_entity_type="person",
     ),
@@ -215,7 +223,7 @@ RESOURCE_SPECS: dict[str, DataResourceSpec] = {
 
 DELETE_ARG_NAMES: dict[str, str] = {
     "area": "area_ids",
-    "people": "person_ids",
+    "person": "person_ids",
     "tag": "tag_ids",
     "vision": "vision_ids",
     "task": "task_ids",
@@ -684,7 +692,7 @@ async def _sync_snapshot_relations(
             desired_tag_ids=prepared_row.tag_ids,
         )
     if spec.person_entity_type is not None and prepared_row.person_ids is not None:
-        await sync_entity_people(
+        await sync_entity_person(
             session,
             entity_id=prepared_row.row_id,
             entity_type=spec.person_entity_type,
@@ -884,7 +892,7 @@ def _batch_update_area_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
     return kwargs
 
 
-def _batch_update_people_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
+def _batch_update_person_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
     kwargs: dict[str, Any] = {"person_id": UUID(str(payload["id"]))}
     if "name" in payload:
         kwargs["name"] = payload["name"]
@@ -903,7 +911,7 @@ def _batch_update_tag_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
             kwargs[field] = payload[field]
     kwargs.update(_null_means_clear(payload, field="description", clear_flag="clear_description"))
     kwargs.update(_null_means_clear(payload, field="color", clear_flag="clear_color"))
-    kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_people"))
+    kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_person"))
     return kwargs
 
 
@@ -921,7 +929,7 @@ def _batch_update_vision_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
             clear_flag="clear_experience_rate",
         )
     )
-    kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_people"))
+    kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_person"))
     return kwargs
 
 
@@ -945,7 +953,7 @@ def _batch_update_task_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
         for field in ("planning_cycle_type", "planning_cycle_days", "planning_cycle_start_date"):
             if field in payload:
                 kwargs[field] = payload[field]
-    kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_people"))
+    kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_person"))
     return kwargs
 
 
@@ -1005,7 +1013,7 @@ def _batch_update_event_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
     change_kwargs.update(_null_means_clear(payload, field="area_id", clear_flag="clear_area"))
     change_kwargs.update(_null_means_clear(payload, field="task_id", clear_flag="clear_task"))
     change_kwargs.update(_null_means_clear(payload, field="tag_ids", clear_flag="clear_tags"))
-    change_kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_people"))
+    change_kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_person"))
     if "recurrence_frequency" in payload and payload["recurrence_frequency"] is None:
         change_kwargs["clear_recurrence"] = True
     if "recurrence_rule" in payload and payload["recurrence_rule"] is None:
@@ -1029,7 +1037,7 @@ def _batch_update_timelog_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
     change_kwargs.update(_null_means_clear(payload, field="area_id", clear_flag="clear_area"))
     change_kwargs.update(_null_means_clear(payload, field="task_id", clear_flag="clear_task"))
     change_kwargs.update(_null_means_clear(payload, field="tag_ids", clear_flag="clear_tags"))
-    change_kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_people"))
+    change_kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_person"))
     return {
         "timelog_id": UUID(str(payload["id"])),
         "changes": timelogs.TimelogUpdateInput(**change_kwargs),
@@ -1043,7 +1051,7 @@ def _batch_update_note_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
             raise DataOperationError("Note batch update does not allow null `content`.")
         kwargs["content"] = payload["content"]
     kwargs.update(_null_means_clear(payload, field="tag_ids", clear_flag="clear_tags"))
-    kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_people"))
+    kwargs.update(_null_means_clear(payload, field="person_ids", clear_flag="clear_person"))
     if "task_ids" in payload:
         kwargs.update(_null_means_clear(payload, field="task_ids", clear_flag="clear_tasks"))
     kwargs.update(_null_means_clear(payload, field="vision_ids", clear_flag="clear_visions"))
@@ -1066,7 +1074,7 @@ def _batch_update_note_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
 
 UPDATE_KWARGS_BUILDERS: dict[str, Any] = {
     "area": _batch_update_area_kwargs,
-    "people": _batch_update_people_kwargs,
+    "person": _batch_update_person_kwargs,
     "tag": _batch_update_tag_kwargs,
     "vision": _batch_update_vision_kwargs,
     "task": _batch_update_task_kwargs,
@@ -1079,7 +1087,7 @@ UPDATE_KWARGS_BUILDERS: dict[str, Any] = {
 
 UPDATE_OPERATIONS: dict[str, Any] = {
     "area": areas.update_area,
-    "people": people.update_person,
+    "person": person.update_person,
     "tag": tags.update_tag,
     "vision": visions.update_vision,
     "task": tasks.update_task,
@@ -1092,7 +1100,7 @@ UPDATE_OPERATIONS: dict[str, Any] = {
 
 DELETE_OPERATIONS: dict[str, Any] = {
     "area": areas.batch_delete_areas,
-    "people": people.batch_delete_people,
+    "person": person.batch_delete_person,
     "tag": tags.batch_delete_tags,
     "vision": visions.batch_delete_visions,
     "task": tasks.batch_delete_tasks,
@@ -1305,6 +1313,10 @@ def read_bundle(path: Path) -> BundlePayload:
                 )
             for resource in BUNDLE_RESOURCE_ORDER:
                 entry_name = f"{resource}.jsonl"
+                legacy_key = LEGACY_BUNDLE_RESOURCE_KEYS.get(resource)
+                legacy_entry_name = f"{legacy_key}.jsonl" if legacy_key else None
+                if entry_name not in archive.namelist() and legacy_entry_name in archive.namelist():
+                    entry_name = legacy_entry_name
                 if entry_name not in archive.namelist():
                     resources[resource] = []
                     continue

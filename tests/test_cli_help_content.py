@@ -98,7 +98,7 @@ def test_cli_note_add_help_avoids_hard_wrapped_description_fragments(capsys) -> 
 
     assert (
         "Use this action to capture short thoughts, prompts, or raw text before linking them "
-        "to tasks, people, or timelogs."
+        "to tasks, person, or timelogs."
     ) in captured.out
     assert (
         "Use this action to capture short thoughts, prompts, or raw text before linking\nthem"
@@ -600,11 +600,11 @@ def test_cli_planning_show_help_documents_window_semantics(capsys) -> None:
     assert "--at" in captured.out and "--start" in captured.out
 
 
-def test_cli_people_help_describes_human_and_agent_subject_modeling(capsys) -> None:
+def test_cli_person_help_describes_human_and_agent_subject_modeling(capsys) -> None:
     parser = build_parser()
 
     with pytest.raises(SystemExit):
-        parser.parse_args(["people", "--help"])
+        parser.parse_args(["person", "--help"])
 
     captured = capsys.readouterr()
 
@@ -765,7 +765,7 @@ def test_cli_event_timelog_add_help_shows_shared_relation_note(
 
     assert (
         "Repeat the same `--tag-id` or `--person-id` flag to attach multiple tags "
-        "or people in one command."
+        "or person in one command."
     ) in captured.out
 
 
@@ -923,7 +923,7 @@ def test_cli_help_shows_repeated_relation_flag_examples(
             "lifeos area update 11111111-1111-1111-1111-111111111111 --clear-description",
         ),
         (
-            ["people", "update", "--help"],
+            ["person", "update", "--help"],
             "--clear-nicknames --clear-tags",
         ),
         (
@@ -964,7 +964,7 @@ def test_cli_help_shows_clear_and_scope_examples(
         ),
         (
             ["tag", "update", "--help"],
-            "--clear-description --clear-people",
+            "--clear-description --clear-person",
         ),
         (
             ["task", "update", "--help"],
@@ -999,8 +999,8 @@ def test_cli_help_shows_update_clear_examples(
             "lifeos area batch delete --ids <area-id-1> <area-id-2>",
         ),
         (
-            ["people", "batch", "delete", "--help"],
-            "lifeos people batch delete --ids <person-id-1> <person-id-2>",
+            ["person", "batch", "delete", "--help"],
+            "lifeos person batch delete --ids <person-id-1> <person-id-2>",
         ),
         (
             ["event", "batch", "delete", "--help"],

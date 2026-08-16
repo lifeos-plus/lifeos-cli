@@ -140,23 +140,24 @@ def _rrule_string(source_event: EventView) -> str | None:
         parts.append(f"UNTIL={format_utc_iso(source_event.recurrence_until)}")
     recurrence_rule = source_event.recurrence_rule or {}
     byday: list[str] = []
-    for weekday in recurrence_rule.get("byweekday", []):
-        byday.append(_WEEKDAY_NAME_TO_RRULE[str(weekday)])
-    for item in recurrence_rule.get("byweekday_ordinals", []):
+    byweekdays = recurrence_rule.get("byweekday", [])
+    if isinstance(byweekdays, list):
+        for weekday in byweekdays:
+            byday.append(_WEEKDAY_NAME_TO_RRULE[str(weekday)])
+    byweekday_ordinals = recurrence_rule.get("byweekday_ordinals", [])
+    for item in byweekday_ordinals if isinstance(byweekday_ordinals, list) else []:
         if not isinstance(item, Mapping):
             continue
         weekday_code = _WEEKDAY_NAME_TO_RRULE[str(item["weekday"])]
         byday.append(f"{item['ordinal']}{weekday_code}")
     if byday:
         parts.append(f"BYDAY={','.join(byday)}")
-    if recurrence_rule.get("bymonthday"):
-        parts.append(
-            "BYMONTHDAY=" + ",".join(str(value) for value in recurrence_rule.get("bymonthday", []))
-        )
-    if recurrence_rule.get("bymonth"):
-        parts.append(
-            "BYMONTH=" + ",".join(str(value) for value in recurrence_rule.get("bymonth", []))
-        )
+    bymonthdays = recurrence_rule.get("bymonthday", [])
+    if isinstance(bymonthdays, list) and bymonthdays:
+        parts.append("BYMONTHDAY=" + ",".join(str(value) for value in bymonthdays))
+    bymonths = recurrence_rule.get("bymonth", [])
+    if isinstance(bymonths, list) and bymonths:
+        parts.append("BYMONTH=" + ",".join(str(value) for value in bymonths))
     return ";".join(parts)
 
 
@@ -172,10 +173,10 @@ def _tag_names(planned_event_record: EventView | EventOccurrence) -> list[str]:
     return [tag.name for tag in planned_event_record.tags]
 
 
-def _people(planned_event_record: EventView | EventOccurrence) -> list[dict[str, str]]:
+def _person(planned_event_record: EventView | EventOccurrence) -> list[dict[str, str]]:
     if not isinstance(planned_event_record, EventView):
         return []
-    return [{"id": str(person.id), "name": person.name} for person in planned_event_record.people]
+    return [{"id": str(person.id), "name": person.name} for person in planned_event_record.person]
 
 
 def _planned_event_payload(
@@ -219,7 +220,7 @@ def _planned_event_payload(
         "is_instance": is_occurrence and recurrence_frequency is not None,
         "master_event_id": str(master_id) if master_id else None,
         "instance_id": str(planned_event_record.id) if is_occurrence else None,
-        "people": _people(source_event) if source_event else [],
+        "person": _person(source_event) if source_event else [],
     }
 
 
@@ -274,7 +275,7 @@ def _update_input(payload: PlannedEventUpdate) -> EventUpdateInput:
         task_id=payload.task_id,
         clear_task="task_id" in fields and payload.task_id is None,
         person_ids=payload.person_ids,
-        clear_people="person_ids" in fields and payload.person_ids == [],
+        clear_person="person_ids" in fields and payload.person_ids == [],
         recurrence_frequency=(
             str(recurrence.get("frequency"))
             if payload.is_recurring is not False and recurrence.get("frequency")

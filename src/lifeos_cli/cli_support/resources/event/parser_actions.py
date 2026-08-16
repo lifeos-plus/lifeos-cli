@@ -216,7 +216,7 @@ def build_event_add_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_attach_one_or_more_people"),
+        help=_("common.messages.repeat_to_attach_one_or_more_person"),
     )
     add_parser.set_defaults(handler=make_sync_handler(handle_event_add_async))
 
@@ -369,7 +369,7 @@ def build_event_update_parser(
                 "lifeos event update 11111111-1111-1111-1111-111111111111 "
                 "--clear-task --clear-area",
                 "lifeos event update 11111111-1111-1111-1111-111111111111 "
-                "--clear-people --clear-tags",
+                "--clear-person --clear-tags",
             ),
             notes=(
                 _(
@@ -493,7 +493,6 @@ def build_event_update_parser(
     )
     update_parser.add_argument(
         "--clear-advanced-recurrence",
-        "--clear-recurrence-rule",
         dest="clear_recurrence_rule",
         action="store_true",
         help=_("resources.event.parser_actions.remove_advanced_recurrence_rule_details"),
@@ -534,10 +533,10 @@ def build_event_update_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     update_parser.add_argument(
-        "--clear-people", action="store_true", help=_("common.messages.remove_all_people")
+        "--clear-person", action="store_true", help=_("common.messages.remove_all_person")
     )
     update_parser.set_defaults(handler=make_sync_handler(handle_event_update_async))
 

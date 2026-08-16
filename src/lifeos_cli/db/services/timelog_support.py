@@ -53,7 +53,7 @@ class TimelogUpdateInput:
     tag_ids: list[UUID] | None = None
     clear_tags: bool = False
     person_ids: list[UUID] | None = None
-    clear_people: bool = False
+    clear_person: bool = False
 
     def has_batch_update(self) -> bool:
         """Return whether this payload includes one batch-supported update."""
@@ -67,7 +67,7 @@ class TimelogUpdateInput:
                 self.tag_ids is not None,
                 self.clear_tags,
                 self.person_ids is not None,
-                self.clear_people,
+                self.clear_person,
             )
         )
 

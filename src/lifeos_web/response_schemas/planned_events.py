@@ -37,7 +37,7 @@ class PlannedEventResponse(ResponseModel):
     is_instance: bool
     master_event_id: str | None
     instance_id: str | None
-    people: list[PersonNameResponse]
+    person: list[PersonNameResponse]
 
 
 class PlannedEventListMeta(ResponseModel):
