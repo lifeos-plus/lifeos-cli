@@ -373,7 +373,7 @@ def test_real_cli_core_resource_workflow(integration_context: IntegrationContext
         person_two_id,
     )
     assert_ok(person_batch_delete_result)
-    assert "Deleted person: 1" in person_batch_delete_result.stdout
+    assert "Deleted people: 1" in person_batch_delete_result.stdout
 
     tag_delete_result = run_lifeos(integration_context, "tag", "delete", tag_one_id)
     assert_ok(tag_delete_result)

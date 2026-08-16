@@ -254,7 +254,7 @@ class TimelogBatchAreaUpdate(BaseModel):
     area_id: UUID | None = None
 
 
-class TimelogBatchPeopleUpdate(BaseModel):
+class TimelogBatchPersonUpdate(BaseModel):
     """Person association update payload for timelog batch edits."""
 
     mode: str = "replace"
@@ -269,7 +269,7 @@ class TimelogBatchUpdate(BaseModel):
     title: TimelogBatchTitleUpdate | None = None
     task: TimelogBatchTaskUpdate | None = None
     area: TimelogBatchAreaUpdate | None = None
-    person: TimelogBatchPeopleUpdate | None = None
+    person: TimelogBatchPersonUpdate | None = None
 
 
 class TimelogTemplateCreate(BaseModel):

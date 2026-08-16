@@ -62,7 +62,7 @@ async def load_person_for_entities(
     entity_ids: list[UUID],
     entity_type: str,
 ) -> dict[UUID, list[Person]]:
-    """Return person grouped by entity identifier."""
+    """Return people grouped by entity identifier."""
     return await load_person_for_sources(
         session,
         source_model=entity_type,

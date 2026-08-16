@@ -113,7 +113,7 @@ async def list_person(
     limit: int = 100,
     offset: int = 0,
 ) -> list[PersonView]:
-    """List person, optionally filtered by search or tag."""
+    """List people, optionally filtered by search or tag."""
     stmt = select(Person)
     stmt = stmt.where(Person.deleted_at.is_(None))
     if search:
@@ -231,7 +231,7 @@ async def batch_delete_person(
     *,
     person_ids: list[UUID],
 ) -> BatchDeleteResult:
-    """Soft-delete multiple person while preserving per-person error reporting."""
+    """Soft-delete multiple people while preserving per-person error reporting."""
     return await batch_delete_records(
         identifiers=deduplicate_preserving_order(person_ids),
         delete_record=lambda person_id: delete_person(session, person_id=person_id),

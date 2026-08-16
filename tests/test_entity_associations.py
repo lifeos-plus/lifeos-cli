@@ -176,12 +176,14 @@ def test_sync_entity_person_replaces_links() -> None:
                 )
                 await session.flush()
 
-                person = await entity_person.load_person_for_entities(
+                loaded_person_map = await entity_person.load_person_for_entities(
                     session,
                     entity_ids=[note.id],
                     entity_type="note",
                 )
-                assert [person.id for person in person[note.id]] == [second_person.id]
+                assert [
+                    record.id for record in loaded_person_map[note.id]
+                ] == [second_person.id]
 
     asyncio.run(scenario())
 

@@ -156,14 +156,14 @@ async def handle_person_delete_async(args: argparse.Namespace) -> int:
 
 
 async def handle_person_batch_delete_async(args: argparse.Namespace) -> int:
-    """Delete multiple person in one command."""
+    """Delete multiple people in one command."""
     async with db_session.session_scope() as session:
         result = await person_services.batch_delete_person(
             session,
             person_ids=list(args.person_ids),
         )
     return print_batch_result(
-        success_label="Deleted person",
+        success_label="Deleted people",
         success_count=result.deleted_count,
         failed_label="Failed person IDs",
         result=result,

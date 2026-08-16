@@ -23,7 +23,7 @@ Most personal systems fragment life into disconnected tools. Tasks live in one p
 - What actually happened?
 - What did I spend time on?
 - Which routines are real versus aspirational?
-- Which person, projects, and priorities am I actually serving?
+- Which people, projects, and priorities am I actually serving?
 - How do my plans, time, habits, notes, relationships, and finances connect?
 
 `lifeos-cli` treats a personal operating system as both a planning graph and an evidence ledger:

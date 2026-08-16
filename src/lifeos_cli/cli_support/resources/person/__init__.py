@@ -1,1 +1,1 @@
-"""People resource CLI support."""
+"""Person resource CLI support."""

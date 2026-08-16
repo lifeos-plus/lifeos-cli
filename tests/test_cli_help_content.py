@@ -98,7 +98,7 @@ def test_cli_note_add_help_avoids_hard_wrapped_description_fragments(capsys) -> 
 
     assert (
         "Use this action to capture short thoughts, prompts, or raw text before linking them "
-        "to tasks, person, or timelogs."
+        "to tasks, people, or timelogs."
     ) in captured.out
     assert (
         "Use this action to capture short thoughts, prompts, or raw text before linking\nthem"
@@ -765,7 +765,7 @@ def test_cli_event_timelog_add_help_shows_shared_relation_note(
 
     assert (
         "Repeat the same `--tag-id` or `--person-id` flag to attach multiple tags "
-        "or person in one command."
+        "or people in one command."
     ) in captured.out
 
 

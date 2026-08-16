@@ -395,7 +395,7 @@ def test_cli_planning_show_help_supports_zh_hans_locale(
                 "可选 `note`",
                 "`timelog``tag`",
                 "Repeat the same `--tag-id` or `--person-id` flag to attach "
-                "multiple tags or person in one command.",
+                "multiple tags or people in one command.",
             ],
         ),
         (

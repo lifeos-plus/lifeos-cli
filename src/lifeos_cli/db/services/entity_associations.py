@@ -223,7 +223,7 @@ async def load_person_for_sources(
     source_ids: list[UUID],
     link_type: str | None = None,
 ) -> dict[UUID, list[Person]]:
-    """Load person grouped by source identifier.
+    """Load people grouped by source identifier.
 
     When ``link_type`` is omitted, every person-targeted association counts as
     a person link; entity-to-person writes canonicalize to ``is_about``.

@@ -1,4 +1,4 @@
-"""People resource parser construction."""
+"""Person resource parser construction."""
 
 from __future__ import annotations
 

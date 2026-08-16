@@ -670,5 +670,5 @@ def test_main_person_batch_delete_reports_missing_ids(
     captured = capsys.readouterr()
 
     assert exit_code == 1
-    assert "Deleted person: 0" in captured.out
+    assert "Deleted people: 0" in captured.out
     assert "Failed person IDs" in captured.err

@@ -160,11 +160,11 @@ person  —  Manage person and relationships
   add  —  Create a person
       args: name [required]; --description; --nickname; --birth-date; --location; --tag-id
   batch  —  Run batch person operations
-    delete  —  Delete multiple person
+    delete  —  Delete multiple people
         args: --ids
   delete  —  Delete a person
       args: person_id [required]
-  list  —  List person
+  list  —  List people
       args: --search; --tag-id; --limit; --offset; --json
   show  —  Show a person
       args: person_id [required]; --json
