@@ -105,6 +105,12 @@ The current command tree is organized around a few stable families:
 - financial reality resources such as `finance`
 - system, Web, and portability commands such as `init`, `config`, `db`, `web`, and `data`
 
+`finance` uses nested namespaces (`finance asset`, `finance tree`, `finance node`,
+`finance snapshot`, and `finance rate-snapshot`), each with the standard
+`add`/`list`/`show`/`update`/`delete` actions. The legacy flat forms such as
+`lifeos finance asset-list` still work but are marked deprecated in help; migrate
+to the nested paths.
+
 `data import --mode upsert --key <field>` supports idempotent natural-key sync for `area.name`, `vision.name`, `people.name`, and `habit.title`: each row is matched against existing active records, updated when one match exists, and inserted otherwise (a fresh id is generated when the row has none). Ambiguous keys and missing key values are reported as row-level failures.
 
 Use `lifeos <resource> --help` to enter one family and then follow the resource-level help into the action or namespace you need.

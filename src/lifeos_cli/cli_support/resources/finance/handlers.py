@@ -23,6 +23,7 @@ from lifeos_cli.db.services import finance as finance_services
 
 ASSET_SUMMARY_COLUMNS = ("asset_id", "code", "decimal_places", "name")
 TREE_SUMMARY_COLUMNS = ("tree_id", "currency", "name")
+NODE_SUMMARY_COLUMNS = ("node_id", "parent_id", "currency", "name")
 SNAPSHOT_SUMMARY_COLUMNS = ("snapshot_id", "tree_id", "title", "period", "net_amount", "currency")
 RATE_SNAPSHOT_SUMMARY_COLUMNS = ("rate_snapshot_id", "captured_at", "pairs", "source")
 
@@ -176,6 +177,38 @@ def _format_rate_snapshot_detail(rate_snapshot: FinanceRateSnapshot) -> str:
             "entries:",
             "  base_currency\tquote_currency\trate\tsource\tcaptured_at",
             *(entry_lines or ["  -"]),
+        )
+    )
+
+
+def _format_asset_detail(asset: FinanceAsset) -> str:
+    return "\n".join(
+        (
+            f"id: {asset.id}",
+            f"code: {asset.code}",
+            f"name: {asset.name or '-'}",
+            f"decimal_places: {asset.decimal_places}",
+            f"display_order: {asset.display_order}",
+            f"created_at: {format_timestamp(asset.created_at)}",
+            f"updated_at: {format_timestamp(asset.updated_at)}",
+            f"deleted_at: {format_timestamp(asset.deleted_at)}",
+        )
+    )
+
+
+def _format_node_detail(node: FinanceTreeNode) -> str:
+    return "\n".join(
+        (
+            f"id: {node.id}",
+            f"tree_id: {node.tree_id}",
+            f"name: {node.name}",
+            f"parent_id: {node.parent_id or '-'}",
+            f"currency_code: {node.currency_code or '-'}",
+            f"depth: {node.depth}",
+            f"display_order: {node.display_order}",
+            f"children_count: {node.children_count}",
+            f"created_at: {format_timestamp(node.created_at)}",
+            f"updated_at: {format_timestamp(node.updated_at)}",
         )
     )
 
@@ -515,4 +548,144 @@ async def handle_finance_snapshot_show_async(args: argparse.Namespace) -> int:
             decimal_places_by_code=decimal_places_by_code,
         )
     )
+    return 0
+
+
+async def handle_finance_asset_show_async(args: argparse.Namespace) -> int:
+    async with db_session.session_scope() as session:
+        asset = await finance_services.get_finance_asset(session, asset_id=args.asset_id)
+    if asset is None:
+        return cli_handler_utils.print_missing_record_error("Finance asset", args.asset_id)
+    if args.json:
+        print_json_payload(asset)
+        return 0
+    print(_format_asset_detail(asset))
+    return 0
+
+
+async def handle_finance_node_list_async(args: argparse.Namespace) -> int:
+    async with db_session.session_scope() as session:
+        nodes = await finance_services.list_finance_nodes(session, tree_id=args.tree_id)
+    if args.json:
+        print_json_items(nodes)
+        return 0
+    print_summary_rows(
+        items=nodes,
+        columns=NODE_SUMMARY_COLUMNS,
+        row_formatter=_format_node_summary,
+        empty_message="No finance nodes found for this tree.",
+    )
+    return 0
+
+
+async def handle_finance_node_show_async(args: argparse.Namespace) -> int:
+    async with db_session.session_scope() as session:
+        node = await finance_services.get_finance_node(session, node_id=args.node_id)
+    if node is None:
+        return cli_handler_utils.print_missing_record_error("Finance node", args.node_id)
+    if args.json:
+        print_json_payload(node)
+        return 0
+    print(_format_node_detail(node))
+    return 0
+
+
+async def handle_finance_tree_update_async(args: argparse.Namespace) -> int:
+    async with db_session.session_scope() as session:
+        try:
+            tree = await finance_services.update_finance_tree(
+                session,
+                tree_id=args.tree_id,
+                name=args.name,
+                primary_currency=args.primary_currency,
+                display_order=args.display_order,
+                is_default=args.default,
+            )
+        except (LookupError, ValueError) as exc:
+            return cli_handler_utils.print_cli_error(exc)
+    print(f"Updated finance tree {tree.id}")
+    return 0
+
+
+async def handle_finance_tree_delete_async(args: argparse.Namespace) -> int:
+    async with db_session.session_scope() as session:
+        try:
+            await finance_services.delete_finance_tree(session, tree_id=args.tree_id)
+        except (LookupError, ValueError) as exc:
+            return cli_handler_utils.print_cli_error(exc)
+    print(f"Soft-deleted finance tree {args.tree_id}")
+    return 0
+
+
+async def handle_finance_snapshot_update_async(args: argparse.Namespace) -> int:
+    update_time_fields = any((args.snapshot_ts, args.period_start, args.period_end))
+    async with db_session.session_scope() as session:
+        try:
+            snapshot = await finance_services.update_finance_snapshot(
+                session,
+                snapshot_id=args.snapshot_id,
+                title=args.title,
+                snapshot_ts=_storage_datetime(args.snapshot_ts),
+                period_start=_storage_datetime(args.period_start),
+                period_end=_storage_datetime(args.period_end),
+                primary_currency=args.primary_currency,
+                rate_snapshot_id=args.rate_snapshot_id,
+                note=args.note,
+                entries=list(args.entries) if args.entries else None,
+                update_title=args.title is not None,
+                update_time_fields=update_time_fields,
+                update_primary_currency=args.primary_currency is not None,
+                update_rate_snapshot=args.rate_snapshot_id is not None,
+                update_note=args.note is not None,
+            )
+        except (LookupError, ValueError) as exc:
+            return cli_handler_utils.print_cli_error(exc)
+    print(f"Updated finance snapshot {snapshot.id}")
+    return 0
+
+
+async def handle_finance_snapshot_delete_async(args: argparse.Namespace) -> int:
+    async with db_session.session_scope() as session:
+        try:
+            await finance_services.delete_finance_snapshot(
+                session,
+                snapshot_id=args.snapshot_id,
+            )
+        except (LookupError, ValueError) as exc:
+            return cli_handler_utils.print_cli_error(exc)
+    print(f"Soft-deleted finance snapshot {args.snapshot_id}")
+    return 0
+
+
+async def handle_finance_rate_snapshot_update_async(args: argparse.Namespace) -> int:
+    async with db_session.session_scope() as session:
+        try:
+            rate_snapshot = await finance_services.update_finance_rate_snapshot(
+                session,
+                rate_snapshot_id=args.rate_snapshot_id,
+                captured_at=_storage_datetime(args.captured_at),
+                source=args.source,
+                note=args.note,
+                entries=list(args.rates) if args.rates else None,
+                update_captured_at=args.captured_at is not None,
+                update_source=args.source is not None,
+                update_note=args.note is not None,
+                update_entries=args.rates is not None,
+            )
+        except (LookupError, ValueError) as exc:
+            return cli_handler_utils.print_cli_error(exc)
+    print(f"Updated finance rate snapshot {rate_snapshot.id}")
+    return 0
+
+
+async def handle_finance_rate_snapshot_delete_async(args: argparse.Namespace) -> int:
+    async with db_session.session_scope() as session:
+        try:
+            await finance_services.delete_finance_rate_snapshot(
+                session,
+                rate_snapshot_id=args.rate_snapshot_id,
+            )
+        except (LookupError, ValueError) as exc:
+            return cli_handler_utils.print_cli_error(exc)
+    print(f"Soft-deleted finance rate snapshot {args.rate_snapshot_id}")
     return 0

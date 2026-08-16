@@ -235,6 +235,17 @@ async def list_finance_assets(
     return list((await session.execute(stmt)).scalars())
 
 
+async def get_finance_asset(
+    session: AsyncSession,
+    *,
+    asset_id: UUID,
+) -> FinanceAsset | None:
+    """Load one finance asset."""
+    stmt = select(FinanceAsset).where(FinanceAsset.id == asset_id).limit(1)
+    stmt = stmt.where(FinanceAsset.deleted_at.is_(None))
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def count_finance_assets(
     session: AsyncSession,
 ) -> int:
@@ -603,6 +614,15 @@ async def list_finance_nodes(
     stmt = stmt.where(FinanceTreeNode.deleted_at.is_(None))
     stmt = stmt.order_by(FinanceTreeNode.path.asc(), FinanceTreeNode.display_order.asc())
     return list((await session.execute(stmt)).scalars())
+
+
+async def get_finance_node(
+    session: AsyncSession,
+    *,
+    node_id: UUID,
+) -> FinanceTreeNode | None:
+    """Load one finance tree node with its tree and children."""
+    return await _get_node_model(session, node_id=node_id)
 
 
 async def create_finance_node(
