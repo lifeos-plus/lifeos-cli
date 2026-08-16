@@ -18,8 +18,6 @@
     "messages": {
       "action": "action",
       "actions": "actions",
-      "batch_action": "batch_action",
-      "batch_action_hyphenated_metavar": "batch-action",
       "batch_actions": "batch actions",
       "clear_linked_area": "Clear linked area",
       "clear_linked_task": "Clear linked task",
@@ -465,8 +463,6 @@
         "one_or_more_note_identifiers_to_delete": "One or more note identifiers to delete",
         "one_or_more_note_identifiers_to_update": "One or more note identifiers to update",
         "only_active_notes_are_updated_by_this_command": "Only active notes are updated by this command.",
-        "operation": "operation",
-        "operations": "operations",
         "read_note_content_from_standard_input": "Read note content from standard input",
         "read_note_content_from_utf_8_text_file": "Read note content from a UTF-8 text file",
         "remove_all_linked_events": "Remove all linked events",

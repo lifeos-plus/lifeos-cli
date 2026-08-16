@@ -133,6 +133,33 @@ def add_batch_delete_action(
     batch_delete_parser.set_defaults(handler=delete_handler)
 
 
+def add_batch_namespace(
+    resource_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    *,
+    dest: str,
+    batch_summary: str,
+    batch_description: str,
+    batch_examples: tuple[str, ...],
+    batch_notes: tuple[str, ...] = (),
+) -> argparse._SubParsersAction[argparse.ArgumentParser]:
+    """Create the standard ``batch`` command group and return its subparsers."""
+    batch_parser = add_documented_help_parser(
+        resource_subparsers,
+        "batch",
+        help_content=HelpContent(
+            summary=batch_summary,
+            description=batch_description,
+            examples=batch_examples,
+            notes=batch_notes,
+        ),
+    )
+    return batch_parser.add_subparsers(
+        dest=dest,
+        title=_("common.messages.batch_actions"),
+        metavar=_("common.messages.action"),
+    )
+
+
 def add_batch_delete_namespace(
     resource_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
     *,
@@ -147,23 +174,15 @@ def add_batch_delete_namespace(
     delete_description: str,
     delete_examples: tuple[str, ...] = (),
     batch_notes: tuple[str, ...] = (),
-    metavar: str | None = None,
 ) -> None:
     """Build the standard ``batch delete`` namespace used by CRUD resources."""
-    batch_parser = add_documented_help_parser(
+    batch_subparsers = add_batch_namespace(
         resource_subparsers,
-        "batch",
-        help_content=HelpContent(
-            summary=batch_summary,
-            description=batch_description,
-            examples=batch_examples,
-            notes=batch_notes,
-        ),
-    )
-    batch_subparsers = batch_parser.add_subparsers(
         dest=dest,
-        title=_("common.messages.batch_actions"),
-        metavar=metavar or _("common.messages.batch_action"),
+        batch_summary=batch_summary,
+        batch_description=batch_description,
+        batch_examples=batch_examples,
+        batch_notes=batch_notes,
     )
     add_batch_delete_action(
         batch_subparsers,

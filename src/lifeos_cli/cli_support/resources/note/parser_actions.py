@@ -7,7 +7,6 @@ from uuid import UUID
 
 from lifeos_cli.cli_support.help_utils import (
     HelpContent,
-    add_documented_help_parser,
     add_documented_parser,
 )
 from lifeos_cli.cli_support.json_output import add_json_output_argument
@@ -18,6 +17,7 @@ from lifeos_cli.cli_support.output_utils import (
 )
 from lifeos_cli.cli_support.parser_common import (
     add_batch_delete_action,
+    add_batch_namespace,
     add_limit_offset_arguments,
 )
 from lifeos_cli.cli_support.resources.note.handlers import (
@@ -465,35 +465,24 @@ def build_note_delete_parser(
 def build_note_batch_parser(
     note_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    batch_parser = add_documented_help_parser(
+    batch_subparsers = add_batch_namespace(
         note_subparsers,
-        "batch",
-        help_content=HelpContent(
-            summary=_("resources.note.parser_actions.run_batch_note_operations"),
-            description=_(
-                "resources.note.parser_actions.run_note_operations_that_target_multiple_records_in_one_command"
-            ),
-            examples=(
-                "lifeos note batch update-content --help",
-                "lifeos note batch delete --help",
-            ),
-            notes=(
-                _(
-                    "resources.note.parser_actions.use_update_content_for_bulk_find_replace_across_active_note_content"
-                ),
-                _(
-                    "resources.note.parser_actions.use_delete_to_remove_multiple_notes_by_identifier"
-                ),
-                _(
-                    "resources.note.parser_actions.batch_commands_currently_accept_note_ids_directly"
-                ),
-            ),
-        ),
-    )
-    batch_subparsers = batch_parser.add_subparsers(
         dest="note_batch_command",
-        title=_("resources.note.parser_actions.operations"),
-        metavar=_("resources.note.parser_actions.operation"),
+        batch_summary=_("resources.note.parser_actions.run_batch_note_operations"),
+        batch_description=_(
+            "resources.note.parser_actions.run_note_operations_that_target_multiple_records_in_one_command"
+        ),
+        batch_examples=(
+            "lifeos note batch update-content --help",
+            "lifeos note batch delete --help",
+        ),
+        batch_notes=(
+            _(
+                "resources.note.parser_actions.use_update_content_for_bulk_find_replace_across_active_note_content"
+            ),
+            _("resources.note.parser_actions.use_delete_to_remove_multiple_notes_by_identifier"),
+            _("resources.note.parser_actions.batch_commands_currently_accept_note_ids_directly"),
+        ),
     )
 
     batch_update_parser = add_documented_parser(

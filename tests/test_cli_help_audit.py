@@ -149,7 +149,7 @@ def test_built_parser_passes_summary_convention_lint() -> None:
     assert lint_help_summary_conventions(reference) == []
 
 
-def test_render_command_tree_produces_indented_tree_with_leaf_arguments() -> None:
+def test_render_command_tree_draws_explicit_connectors_and_leaf_arguments() -> None:
     reference = {
         "commands": [
             {
@@ -165,6 +165,7 @@ def test_render_command_tree_produces_indented_tree_with_leaf_arguments() -> Non
                 ],
             },
             {"path": ["area"], "summary": "Manage life areas", "arguments": []},
+            {"path": ["note"], "summary": "Manage notes", "arguments": []},
             {
                 "path": ["note", "add"],
                 "summary": "Add a note",
@@ -182,9 +183,10 @@ def test_render_command_tree_produces_indented_tree_with_leaf_arguments() -> Non
 
     rendered = render_command_tree(reference)
 
-    assert "area  —  Manage life areas" in rendered
-    assert "  list  —  List areas" in rendered
-    assert "      args: --limit" in rendered
+    assert "├── area  —  Manage life areas" in rendered
+    assert "└── note  —  Manage notes" in rendered
+    assert "└── list  —  List areas" in rendered
+    assert "        args: --limit" in rendered
     assert "content [nargs=?]" in rendered
 
 

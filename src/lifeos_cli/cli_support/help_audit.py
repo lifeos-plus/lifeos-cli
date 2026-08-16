@@ -300,10 +300,16 @@ def render_command_tree(reference: dict[str, Any]) -> str:
 
     The output is deterministic and intentionally free of timestamps or
     version strings so a committed artifact can be diffed against a
-    fresh regeneration.
+    fresh regeneration. Hierarchy is drawn with explicit tree connectors
+    (``├──``/``└──``/``│``) instead of whitespace indentation so the shape
+    stays unambiguous regardless of command-name lengths.
     """
     commands = sorted(reference["commands"], key=lambda command: command["path"])
-    paths = {tuple(command["path"]) for command in commands}
+    children_by_path: dict[tuple[str, ...], list[dict[str, Any]]] = {}
+    for command in commands:
+        path = tuple(command["path"])
+        parent = path[:-1]
+        children_by_path.setdefault(parent, []).append(command)
     lines = [
         "# LifeOS CLI command tree (complete)",
         "# shape: lifeos <resource> <action> [arguments] [options]",
@@ -313,18 +319,26 @@ def render_command_tree(reference: dict[str, Any]) -> str:
         ),
         "",
     ]
-    for command in commands:
-        path = tuple(command["path"])
-        depth = len(path)
-        indent = "  " * (depth - 1)
-        name = path[-1] if depth else "lifeos"
-        summary = command.get("summary") or ""
-        lines.append(f"{indent}{name}  —  {summary}")
-        is_leaf = not any(
-            candidate[:depth] == path and len(candidate) > depth for candidate in paths
-        )
-        if is_leaf:
-            args = _render_command_arguments(command.get("arguments", []))
-            if args:
-                lines.append(f"{indent}    args: {args}")
+
+    def _render_siblings(
+        prefix: str,
+        siblings: list[dict[str, Any]],
+    ) -> None:
+        for index, command in enumerate(siblings):
+            is_last = index == len(siblings) - 1
+            connector = "└── " if is_last else "├── "
+            path = tuple(command["path"])
+            name = path[-1]
+            summary = command.get("summary") or ""
+            lines.append(f"{prefix}{connector}{name}  —  {summary}")
+            continuation = prefix + ("    " if is_last else "│   ")
+            children = children_by_path.get(path, [])
+            if children:
+                _render_siblings(continuation, children)
+            else:
+                args = _render_command_arguments(command.get("arguments", []))
+                if args:
+                    lines.append(f"{continuation}    args: {args}")
+
+    _render_siblings("", children_by_path.get((), []))
     return "\n".join(lines) + "\n"

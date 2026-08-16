@@ -608,5 +608,4 @@ def build_event_batch_parser(
         delete_summary=_("resources.event.parser_actions.delete_multiple_events"),
         delete_description=_("resources.event.parser_actions.delete_multiple_events_by_identifier"),
         delete_examples=("lifeos event batch delete --ids <event-id-1> <event-id-2>",),
-        metavar=_("common.messages.batch_action_hyphenated_metavar"),
     )

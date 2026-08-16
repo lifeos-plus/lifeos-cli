@@ -18,8 +18,6 @@
     "messages": {
       "action": "操作",
       "actions": "操作",
-      "batch_action": "批量操作",
-      "batch_action_hyphenated_metavar": "批量操作",
       "batch_actions": "批量操作",
       "clear_linked_area": "清除关联的 `area`",
       "clear_linked_task": "清除关联的 `task`",
@@ -465,8 +463,6 @@
         "one_or_more_note_identifiers_to_delete": "要删除的一个或多个 `note` 标识符",
         "one_or_more_note_identifiers_to_update": "要更新的一个或多个 `note` 标识符",
         "only_active_notes_are_updated_by_this_command": "此命令仅更新活动 `note`。",
-        "operation": "操作",
-        "operations": "操作",
         "read_note_content_from_standard_input": "从标准输入读取 `note` 内容",
         "read_note_content_from_utf_8_text_file": "从 UTF-8 文本文件中读取 `note` 内容",
         "remove_all_linked_events": "移除所有关联的 `event`",

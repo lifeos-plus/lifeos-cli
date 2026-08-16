@@ -469,5 +469,4 @@ def build_habit_batch_parser(
             "resources.habit.parser_actions.delete_multiple_habits_in_one_command"
         ),
         delete_examples=("lifeos habit batch delete --ids <habit-id-1> <habit-id-2>",),
-        metavar=_("common.messages.batch_action_hyphenated_metavar"),
     )
