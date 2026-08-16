@@ -372,7 +372,10 @@ async def batch_delete_habit_actions(
     return await batch_delete_records(
         identifiers=deduplicate_preserving_order(action_ids),
         delete_record=lambda action_id: delete_habit_action(session, action_id=action_id),
-        handled_exceptions=(HabitActionNotFoundError,),
+        handled_exceptions=(
+            HabitActionNotFoundError,
+            InvalidHabitOperationError,
+        ),
     )
 
 

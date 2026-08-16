@@ -27,6 +27,40 @@ from lifeos_cli.db.services import (
 from tests.support import create_sqlite_session_factory, sqlite_session_factory
 
 
+def test_batch_delete_habit_actions_reports_window_errors_per_record(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inside_window = UUID("11111111-1111-1111-1111-111111111111")
+    outside_window = UUID("22222222-2222-2222-2222-222222222222")
+
+    async def fake_delete_habit_action(
+        _session: object,
+        *,
+        action_id: UUID,
+    ) -> None:
+        if action_id == outside_window:
+            raise habit_support.InvalidHabitOperationError(
+                "Habit action cannot be modified outside the allowed time window"
+            )
+
+    monkeypatch.setattr(
+        habit_mutations,
+        "delete_habit_action",
+        fake_delete_habit_action,
+    )
+
+    result = asyncio.run(
+        habit_mutations.batch_delete_habit_actions(
+            cast(Any, object()),
+            action_ids=[inside_window, outside_window],
+        )
+    )
+
+    assert result.deleted_count == 1
+    assert result.failed_ids == (outside_window,)
+    assert "outside the allowed time window" in result.errors[0]
+
+
 async def _identity_task_view(_: object, task: object) -> object:
     return task
 
