@@ -276,3 +276,55 @@ def lint_help_summary_conventions(reference: dict[str, Any]) -> list[str]:
         elif summary.rstrip().endswith((".", "。")):
             violations.append(f"{path}: summary ends with a period")
     return violations
+
+
+def _render_command_arguments(arguments: Sequence[dict[str, Any]]) -> str:
+    """Render one command's structured arguments as a compact reference line."""
+    parts: list[str] = []
+    for argument in arguments:
+        name = argument["name"]
+        if argument["kind"] == "positional":
+            rendered = name
+            if argument["required"]:
+                rendered += " [required]"
+            elif argument["nargs"] in ("*", "?"):
+                rendered += f" [nargs={argument['nargs']}]"
+            parts.append(rendered)
+        else:
+            parts.append(name)
+    return "; ".join(parts)
+
+
+def render_command_tree(reference: dict[str, Any]) -> str:
+    """Render the command tree as a stable plain-text reference.
+
+    The output is deterministic and intentionally free of timestamps or
+    version strings so a committed artifact can be diffed against a
+    fresh regeneration.
+    """
+    commands = sorted(reference["commands"], key=lambda command: command["path"])
+    paths = {tuple(command["path"]) for command in commands}
+    lines = [
+        "# LifeOS CLI command tree (complete)",
+        "# shape: lifeos <resource> <action> [arguments] [options]",
+        (
+            "# regenerate: LIFEOS_LANGUAGE=en uv run python scripts/audit_cli_help.py "
+            "--format tree --output docs/cli-tree.md"
+        ),
+        "",
+    ]
+    for command in commands:
+        path = tuple(command["path"])
+        depth = len(path)
+        indent = "  " * (depth - 1)
+        name = path[-1] if depth else "lifeos"
+        summary = command.get("summary") or ""
+        lines.append(f"{indent}{name}  —  {summary}")
+        is_leaf = not any(
+            candidate[:depth] == path and len(candidate) > depth for candidate in paths
+        )
+        if is_leaf:
+            args = _render_command_arguments(command.get("arguments", []))
+            if args:
+                lines.append(f"{indent}    args: {args}")
+    return "\n".join(lines) + "\n"

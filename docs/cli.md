@@ -142,6 +142,17 @@ uv run python scripts/audit_cli_help.py --format json --path-prefix "task list"
 
 The JSON reference is locale-aware, includes the package version, and describes every command node with its summary, description, usage, examples, notes, and structured arguments (name, kind, metavar, choices, required, nargs, default). It is intended for agents and tooling that need the full command grammar in one fetch instead of walking `--help` one level at a time.
 
+The same script renders a plain-text command tree that is committed as
+[docs/cli-tree.md](cli-tree.md) and kept current by a pre-commit check:
+
+```bash
+LIFEOS_LANGUAGE=en uv run python scripts/audit_cli_help.py --format tree --output docs/cli-tree.md
+```
+
+Regenerate the file whenever a command, argument, or summary changes; the
+`cli-tree-sync` pre-commit hook and the committed-tree test fail when the
+artifact drifts.
+
 Localized help should be reviewed through the same command surface by setting the runtime language preference or `LIFEOS_LANGUAGE`.
 
 ## Safety Model

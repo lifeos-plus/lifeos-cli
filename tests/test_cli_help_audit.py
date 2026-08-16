@@ -4,6 +4,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from lifeos_cli.cli import build_parser
 from lifeos_cli.cli_support.help_audit import (
     build_machine_readable_reference,
@@ -11,6 +13,7 @@ from lifeos_cli.cli_support.help_audit import (
     filter_help_invocations,
     filter_reference_commands,
     lint_help_summary_conventions,
+    render_command_tree,
     render_help_audit_report,
     render_machine_readable_reference,
     run_help_audit,
@@ -146,6 +149,53 @@ def test_built_parser_passes_summary_convention_lint() -> None:
     reference = build_machine_readable_reference(build_parser())
 
     assert lint_help_summary_conventions(reference) == []
+
+
+def test_render_command_tree_produces_indented_tree_with_leaf_arguments() -> None:
+    reference = {
+        "commands": [
+            {
+                "path": ["area", "list"],
+                "summary": "List areas",
+                "arguments": [
+                    {
+                        "name": "--limit",
+                        "kind": "option",
+                        "required": False,
+                        "nargs": None,
+                    }
+                ],
+            },
+            {"path": ["area"], "summary": "Manage life areas", "arguments": []},
+            {
+                "path": ["note", "add"],
+                "summary": "Add a note",
+                "arguments": [
+                    {
+                        "name": "content",
+                        "kind": "positional",
+                        "required": False,
+                        "nargs": "?",
+                    }
+                ],
+            },
+        ]
+    }
+
+    rendered = render_command_tree(reference)
+
+    assert "area  —  Manage life areas" in rendered
+    assert "  list  —  List areas" in rendered
+    assert "      args: --limit" in rendered
+    assert "content [nargs=?]" in rendered
+
+
+def test_committed_cli_tree_is_current(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LIFEOS_LANGUAGE", "en")
+    reference = build_machine_readable_reference(build_parser())
+    expected_path = Path(__file__).resolve().parents[1] / "docs" / "cli-tree.md"
+
+    assert expected_path.read_text(encoding="utf-8") == render_command_tree(reference)
 
 
 def test_machine_readable_reference_renders_valid_json_with_metadata() -> None:

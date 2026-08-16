@@ -20,6 +20,7 @@ from lifeos_cli.cli_support.help_audit import (
     filter_help_invocations,
     filter_reference_commands,
     lint_help_summary_conventions,
+    render_command_tree,
     render_help_audit_report,
     render_machine_readable_reference,
     run_help_audit,
@@ -33,9 +34,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--format",
-        choices=("markdown", "json"),
+        choices=("markdown", "json", "tree"),
         default="markdown",
-        help="Output format: markdown audit report or JSON command reference.",
+        help="Output format: markdown audit report, JSON command reference, or plain-text tree.",
     )
     parser.add_argument(
         "--output",
@@ -88,7 +89,16 @@ def main() -> int:
         print("All command summaries follow the summary conventions.")
         return 0
 
-    if args.format == "json":
+    if args.format == "tree":
+        reference = build_machine_readable_reference(build_parser())
+        if path_prefix:
+            reference = filter_reference_commands(
+                reference,
+                path_prefix=path_prefix,
+            )
+        content = render_command_tree(reference)
+        exit_code = 0
+    elif args.format == "json":
         reference = build_machine_readable_reference(build_parser())
         if path_prefix:
             reference = filter_reference_commands(

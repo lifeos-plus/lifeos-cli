@@ -324,7 +324,7 @@ def test_config_show_json_masks_secrets_by_default(
     monkeypatch.setattr(
         "lifeos_cli.cli_support.system.config_handlers.get_database_settings",
         lambda: DatabaseSettings(
-            database_url="postgresql://user:super-secret@localhost/lifeos",
+            database_url="postgresql://user:super-secret@localhost/lifeos",  # pragma: allowlist secret  # noqa: E501
             database_schema="main",
             database_echo=False,
             config_file=config_file,
@@ -359,7 +359,7 @@ def test_config_show_json_show_secrets_emits_full_url(
     monkeypatch.setattr(
         "lifeos_cli.cli_support.system.config_handlers.get_database_settings",
         lambda: DatabaseSettings(
-            database_url="postgresql://user:super-secret@localhost/lifeos",
+            database_url="postgresql://user:super-secret@localhost/lifeos",  # pragma: allowlist secret  # noqa: E501
             database_schema=None,
             database_echo=True,
             config_file=config_file,
