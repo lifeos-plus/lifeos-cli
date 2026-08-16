@@ -13,13 +13,11 @@ from lifeos_cli.cli_support.help_utils import (
 from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
-    add_identifier_list_argument,
     add_limit_offset_arguments,
 )
 from lifeos_cli.cli_support.resources.area.handlers import (
     AREA_SUMMARY_COLUMNS,
     handle_area_add_async,
-    handle_area_batch_delete_async,
     handle_area_delete_async,
     handle_area_list_async,
     handle_area_show_async,
@@ -55,7 +53,6 @@ def build_area_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                 _(
                     "resources.area.parser.use_areas_to_group_visions_and_other_higher_level_planning_objects"
                 ),
-                _("resources.area.parser.see_lifeos_area_batch_help_for_bulk_delete_operations"),
             ),
         ),
     )
@@ -220,41 +217,18 @@ def build_area_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
         help_content=HelpContent(
             summary=_("resources.area.parser.delete_area"),
             description=_("resources.area.parser.delete_area_description"),
-            examples=("lifeos area delete 11111111-1111-1111-1111-111111111111",),
+            examples=(
+                "lifeos area delete 11111111-1111-1111-1111-111111111111",
+                "lifeos area delete <area-id-1> <area-id-2>",
+            ),
+            notes=(_("common.messages.delete_accepts_one_or_more_identifiers"),),
         ),
     )
     delete_parser.add_argument(
-        "area_id", type=UUID, help=_("resources.area.parser.area_identifier")
+        "area_ids",
+        type=UUID,
+        nargs="+",
+        metavar="area-id",
+        help=_("common.parser.noun_identifiers_to_delete").format(noun="Area"),
     )
     delete_parser.set_defaults(handler=make_sync_handler(handle_area_delete_async))
-
-    batch_parser = add_documented_help_parser(
-        area_subparsers,
-        "batch",
-        help_content=HelpContent(
-            summary=_("resources.area.parser.run_batch_area_operations"),
-            description=_("resources.area.parser.delete_multiple_areas_in_one_command"),
-            examples=(
-                "lifeos area batch delete --help",
-                "lifeos area batch delete --ids <area-id-1> <area-id-2>",
-            ),
-            notes=(_("common.messages.this_namespace_currently_exposes_only_delete_workflow"),),
-        ),
-    )
-    batch_subparsers = batch_parser.add_subparsers(
-        dest="area_batch_command",
-        title=_("common.messages.batch_actions"),
-        metavar=_("common.messages.batch_action"),
-    )
-
-    batch_delete_parser = add_documented_parser(
-        batch_subparsers,
-        "delete",
-        help_content=HelpContent(
-            summary=_("resources.area.parser.delete_multiple_areas"),
-            description=_("resources.area.parser.delete_multiple_areas_by_identifier"),
-            examples=("lifeos area batch delete --ids <area-id-1> <area-id-2>",),
-        ),
-    )
-    add_identifier_list_argument(batch_delete_parser, dest="area_ids", noun="area")
-    batch_delete_parser.set_defaults(handler=make_sync_handler(handle_area_batch_delete_async))

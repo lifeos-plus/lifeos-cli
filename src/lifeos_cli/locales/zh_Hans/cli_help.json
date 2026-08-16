@@ -21,7 +21,7 @@
       "updates": "使用 `--scope single|all_future|all` 更新重复序列。"
     },
     "relations": {
-      "repeatTagOrPersonAttach": "重复使用同一个 `--tag-id` 或 `--person-id` 参数，即可在一条命令中附加多个 `tag` 或 `people`。"
+      "repeatTagOrPersonAttach": "重复使用同一个 `--tag-id` 或 `--person-id` 参数，即可在一条命令中附加多个 `tag` 或 `person`。"
     }
   }
 }

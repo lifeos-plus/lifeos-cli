@@ -202,7 +202,7 @@ def _summary_payload(
 ) -> dict[str, Any] | None:
     payload = to_jsonable(summary)
     if not isinstance(payload, dict):
-        return payload
+        return None
     for key in ("total_positive", "total_negative", "net_amount"):
         if key in payload:
             payload[key] = _asset_decimal_str(

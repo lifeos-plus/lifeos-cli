@@ -224,7 +224,7 @@ def test_import_bundle_applies_base_rows_before_relations(
         data_ops.import_bundle(
             cast(AsyncSession, object()),
             bundle_rows={
-                "people": [{"id": "11111111-1111-1111-1111-111111111111"}],
+                "person": [{"id": "11111111-1111-1111-1111-111111111111"}],
                 "tag": [{"id": "22222222-2222-2222-2222-222222222222"}],
             },
             replace_existing=True,
@@ -236,10 +236,10 @@ def test_import_bundle_applies_base_rows_before_relations(
 
     assert report.created_count == 2
     assert report.updated_count == 0
-    assert report.imported_resources == ("people", "tag")
+    assert report.imported_resources == ("person", "tag")
     assert call_order[0] == ("truncate", "-")
     assert max(base_positions) < min(sync_positions)
-    assert call_order[-1] == ("hooks", "people,tag")
+    assert call_order[-1] == ("hooks", "person,tag")
 
 
 def test_truncate_supported_data_uses_backend_replace_strategy(
@@ -297,6 +297,21 @@ def test_read_bundle_rejects_legacy_schema_version(tmp_path: Path) -> None:
         ),
     ):
         data_ops.read_bundle(bundle_path)
+
+
+def test_read_bundle_maps_legacy_person_entry_name(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "legacy-person-bundle.zip"
+    with ZipFile(bundle_path, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", '{"schema_version": 3}\n')
+        archive.writestr(
+            "people.jsonl",
+            '{"id":"11111111-1111-1111-1111-111111111111"}\n',
+        )
+
+    payload = data_ops.read_bundle(bundle_path)
+
+    assert payload.resources["person"] == [{"id": "11111111-1111-1111-1111-111111111111"}]
+    assert "people" not in payload.resources
 
 
 def test_validate_upsert_key_rejects_unsupported_resources_and_fields() -> None:

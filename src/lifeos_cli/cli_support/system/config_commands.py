@@ -10,9 +10,10 @@ from lifeos_cli.cli_support.help_utils import (
     add_documented_help_parser,
     add_documented_parser,
 )
+from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.system.config_handlers import (
-    handle_config_set,
     handle_config_show,
+    handle_config_update,
 )
 from lifeos_cli.i18n import cli_message as _
 
@@ -32,18 +33,18 @@ def build_config_parser(subparsers: argparse._SubParsersAction[argparse.Argument
             examples=(
                 "lifeos config show",
                 "lifeos config show --show-secrets",
-                "lifeos config set preferences.timezone America/Toronto",
-                "lifeos config set preferences.theme night",
+                "lifeos config update preferences.timezone America/Toronto",
+                "lifeos config update preferences.theme night",
             ),
             notes=(
                 _(
                     "system.config_commands.use_show_to_inspect_effective_values_after_config_file_and_env_resolution"
                 ),
                 _(
-                    "system.config_commands.use_set_to_persist_supported_keys_without_re_running_full_init_flow"
+                    "system.config_commands.use_update_to_persist_supported_keys_without_re_running_full_init_flow"
                 ),
                 _(
-                    "system.config_commands.use_set_to_persist_supported_keys_into_local_config_file"
+                    "system.config_commands.use_update_to_persist_supported_keys_into_local_config_file"
                 ),
                 _(
                     "system.config_commands.environment_variables_still_override_config_file_values_at_runtime"
@@ -80,7 +81,7 @@ def build_config_parser(subparsers: argparse._SubParsersAction[argparse.Argument
                     "system.config_commands.preferences_are_resolved_from_preferences_toml_table_and_optional_lifeos_overrides"
                 ),
                 _(
-                    "system.config_commands.use_config_set_to_persist_one_supported_key_after_reviewing_current_values"
+                    "system.config_commands.use_config_update_to_persist_one_supported_key_after_reviewing_current_values"
                 ),
                 _(
                     "system.config_commands.agents_should_use_effective_language_for_human_authored_payload_data_unless_human"
@@ -93,24 +94,25 @@ def build_config_parser(subparsers: argparse._SubParsersAction[argparse.Argument
         action="store_true",
         help=_("system.config_commands.print_sensitive_values_such_as_database_passwords_in_full"),
     )
+    add_json_output_argument(show_parser)
     show_parser.set_defaults(handler=handle_config_show)
 
-    set_parser = add_documented_parser(
+    update_parser = add_documented_parser(
         config_subparsers,
-        "set",
+        "update",
         help_content=HelpContent(
             summary=_("system.config_commands.persist_one_config_value"),
             description=_(
                 "system.config_commands.write_one_supported_config_key_to_local_config_file"
             ),
             examples=(
-                "lifeos config set preferences.timezone America/Toronto",
-                "lifeos config set database.echo true",
-                "lifeos config set database.url "
+                "lifeos config update preferences.timezone America/Toronto",
+                "lifeos config update database.echo true",
+                "lifeos config update database.url "
                 "sqlite+aiosqlite:///$HOME/.lifeos/work.db "
                 "--show-secrets",
-                "lifeos config set preferences.vision_experience_rate_per_hour 120",
-                "lifeos config set preferences.theme night",
+                "lifeos config update preferences.vision_experience_rate_per_hour 120",
+                "lifeos config update preferences.theme night",
             ),
             notes=(
                 _(
@@ -131,15 +133,17 @@ def build_config_parser(subparsers: argparse._SubParsersAction[argparse.Argument
             ),
         ),
     )
-    set_parser.add_argument("key", help=_("system.config_commands.supported_config_key_to_update"))
-    set_parser.add_argument(
+    update_parser.add_argument(
+        "key", help=_("system.config_commands.supported_config_key_to_update")
+    )
+    update_parser.add_argument(
         "value", help=_("system.config_commands.new_value_to_persist_for_selected_key")
     )
-    set_parser.add_argument(
+    update_parser.add_argument(
         "--show-secrets",
         action="store_true",
         help=_(
             "system.config_commands.print_sensitive_values_such_as_database_passwords_in_full_after_writing"
         ),
     )
-    set_parser.set_defaults(handler=handle_config_set)
+    update_parser.set_defaults(handler=handle_config_update)

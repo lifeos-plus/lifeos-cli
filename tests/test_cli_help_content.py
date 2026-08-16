@@ -394,6 +394,18 @@ def test_cli_data_help_explains_machine_workflow_boundaries(capsys) -> None:
         "Use resource-specific delete commands when you want narrower human-guided changes."
         in captured.out
     )
+    assert "use `lifeos <resource> delete` instead" in captured.out
+
+
+def test_resource_batch_delete_help_points_to_data_batch_delete(capsys) -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["area", "delete", "--help"])
+
+    captured = capsys.readouterr()
+
+    assert "lifeos data batch-delete" in captured.out
 
 
 def test_cli_vision_experience_help_explains_manual_vs_synced_updates(capsys) -> None:
@@ -439,7 +451,7 @@ def test_cli_init_and_config_help_explain_bootstrap_boundary(capsys) -> None:
 
     captured = capsys.readouterr()
 
-    assert "Use `config set` for supported follow-up edits" in captured.out
+    assert "Use `config update` for supported follow-up edits" in captured.out
 
     with pytest.raises(SystemExit):
         parser.parse_args(["config", "--help"])
@@ -447,7 +459,7 @@ def test_cli_init_and_config_help_explain_bootstrap_boundary(capsys) -> None:
     captured = capsys.readouterr()
 
     assert "Use `show` to inspect effective values" in captured.out
-    expected = "Use `set` to persist supported keys without re-running the full init flow."
+    expected = "Use `update` to persist supported keys without re-running the full init flow."
     assert expected in captured.out
 
     with pytest.raises(SystemExit):
@@ -455,11 +467,13 @@ def test_cli_init_and_config_help_explain_bootstrap_boundary(capsys) -> None:
 
     captured = capsys.readouterr()
 
-    expected = "Use `config set` to persist one supported key after reviewing the current values."
+    expected = (
+        "Use `config update` to persist one supported key after reviewing the current values."
+    )
     assert expected in captured.out
 
     with pytest.raises(SystemExit):
-        parser.parse_args(["config", "set", "--help"])
+        parser.parse_args(["config", "update", "--help"])
 
     captured = capsys.readouterr()
 
@@ -588,11 +602,11 @@ def test_cli_planning_show_help_documents_window_semantics(capsys) -> None:
     assert "--at" in captured.out and "--start" in captured.out
 
 
-def test_cli_people_help_describes_human_and_agent_subject_modeling(capsys) -> None:
+def test_cli_person_help_describes_human_and_agent_subject_modeling(capsys) -> None:
     parser = build_parser()
 
     with pytest.raises(SystemExit):
-        parser.parse_args(["people", "--help"])
+        parser.parse_args(["person", "--help"])
 
     captured = capsys.readouterr()
 
@@ -911,7 +925,7 @@ def test_cli_help_shows_repeated_relation_flag_examples(
             "lifeos area update 11111111-1111-1111-1111-111111111111 --clear-description",
         ),
         (
-            ["people", "update", "--help"],
+            ["person", "update", "--help"],
             "--clear-nicknames --clear-tags",
         ),
         (
@@ -952,7 +966,7 @@ def test_cli_help_shows_clear_and_scope_examples(
         ),
         (
             ["tag", "update", "--help"],
-            "--clear-description --clear-people",
+            "--clear-description --clear-person",
         ),
         (
             ["task", "update", "--help"],
@@ -983,32 +997,32 @@ def test_cli_help_shows_update_clear_examples(
     ("argv", "expected"),
     [
         (
-            ["area", "batch", "delete", "--help"],
-            "lifeos area batch delete --ids <area-id-1> <area-id-2>",
+            ["area", "delete", "--help"],
+            "lifeos area delete <area-id-1> <area-id-2>",
         ),
         (
-            ["people", "batch", "delete", "--help"],
-            "lifeos people batch delete --ids <person-id-1> <person-id-2>",
+            ["person", "delete", "--help"],
+            "lifeos person delete <person-id-1> <person-id-2>",
         ),
         (
-            ["event", "batch", "delete", "--help"],
-            "lifeos event batch delete --ids <event-id-1> <event-id-2>",
+            ["event", "delete", "--help"],
+            "lifeos event delete <event-id-1> <event-id-2>",
         ),
         (
-            ["task", "batch", "delete", "--help"],
-            "lifeos task batch delete --ids <task-id-1> <task-id-2>",
+            ["task", "delete", "--help"],
+            "lifeos task delete <task-id-1> <task-id-2>",
         ),
         (
-            ["tag", "batch", "delete", "--help"],
-            "lifeos tag batch delete --ids <tag-id-1> <tag-id-2>",
+            ["tag", "delete", "--help"],
+            "lifeos tag delete <tag-id-1> <tag-id-2>",
         ),
         (
-            ["vision", "batch", "delete", "--help"],
-            "lifeos vision batch delete --ids <vision-id-1> <vision-id-2>",
+            ["vision", "delete", "--help"],
+            "lifeos vision delete <vision-id-1> <vision-id-2>",
         ),
         (
-            ["timelog", "batch", "delete", "--help"],
-            "lifeos timelog batch delete --ids <timelog-id-1> <timelog-id-2>",
+            ["timelog", "delete", "--help"],
+            "lifeos timelog delete <timelog-id-1> <timelog-id-2>",
         ),
     ],
 )
@@ -1068,8 +1082,8 @@ def test_cli_batch_action_ids_help_matches_action_semantics(
             "lifeos config show --show-secrets",
         ),
         (
-            ["config", "set", "--help"],
-            "lifeos config set database.url "
+            ["config", "update", "--help"],
+            "lifeos config update database.url "
             "sqlite+aiosqlite:///$HOME/.lifeos/work.db "
             "--show-secrets",
         ),

@@ -238,14 +238,14 @@ async def batch_update_timelogs(
             area_id=payload.area.area_id,
             clear_area=payload.area.area_id is None,
         )
-    elif payload.update_type == "people":
-        if payload.people is None:
+    elif payload.update_type == "person":
+        if payload.person is None:
             raise HTTPException(status_code=400, detail="Person update payload is required")
-        if payload.people.mode == "add":
-            result = await timelog_services.batch_add_timelog_people(
+        if payload.person.mode == "add":
+            result = await timelog_services.batch_add_timelog_person(
                 session,
                 timelog_ids=payload.timelog_ids,
-                person_ids=payload.people.person_ids,
+                person_ids=payload.person.person_ids,
             )
             return {
                 "updated_count": result.updated_count,
@@ -254,8 +254,8 @@ async def batch_update_timelogs(
                 "errors": list(result.errors),
             }
         changes = TimelogUpdateInput(
-            person_ids=payload.people.person_ids,
-            clear_people=payload.people.mode == "clear",
+            person_ids=payload.person.person_ids,
+            clear_person=payload.person.mode == "clear",
         )
     else:
         raise HTTPException(
@@ -315,7 +315,7 @@ async def update_timelog(
                 task_id=payload.task_id,
                 clear_task="task_id" in fields and payload.task_id is None,
                 person_ids=payload.person_ids,
-                clear_people="person_ids" in payload.model_fields_set and payload.person_ids == [],
+                clear_person="person_ids" in payload.model_fields_set and payload.person_ids == [],
             ),
         )
     except LookupError as exc:

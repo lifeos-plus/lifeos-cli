@@ -128,7 +128,7 @@ class TagView:
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
-    people: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
+    person: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -152,7 +152,7 @@ class TaskView:
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
-    people: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
+    person: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -170,7 +170,7 @@ class VisionView:
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
-    people: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
+    person: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
     tasks: tuple[TaskSummaryView, ...] = field(default_factory=tuple)
 
 
@@ -200,7 +200,7 @@ class EventView:
     updated_at: datetime
     deleted_at: datetime | None
     tags: tuple[TagSummaryView, ...] = field(default_factory=tuple)
-    people: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
+    person: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -240,7 +240,7 @@ class TimelogView:
     linked_notes_count: int
     task: TaskSummaryView | None = None
     tags: tuple[TagSummaryView, ...] = field(default_factory=tuple)
-    people: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
+    person: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -253,7 +253,7 @@ class TimelogTemplateView:
     area_name: str | None
     area_color: str | None
     person_ids: tuple[UUID, ...]
-    people: tuple[PersonSummaryView, ...]
+    person: tuple[PersonSummaryView, ...]
     default_duration_minutes: int | None
     position: int
     usage_count: int
@@ -273,7 +273,7 @@ class NoteView:
     updated_at: datetime
     deleted_at: datetime | None
     tags: tuple[TagSummaryView, ...] = field(default_factory=tuple)
-    people: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
+    person: tuple[PersonSummaryView, ...] = field(default_factory=tuple)
     tasks: tuple[TaskSummaryView, ...] = field(default_factory=tuple)
     visions: tuple[VisionSummaryView, ...] = field(default_factory=tuple)
     events: tuple[EventSummaryView, ...] = field(default_factory=tuple)
@@ -380,8 +380,8 @@ def build_person_view(person: Person, *, tags: Sequence[Tag] = ()) -> PersonView
     )
 
 
-def build_tag_view(tag: Tag, *, people: Sequence[Person] = ()) -> TagView:
-    """Build one tag view from a tag model and related people."""
+def build_tag_view(tag: Tag, *, person_records: Sequence[Person] = ()) -> TagView:
+    """Build one tag view from a tag model and related person."""
     return TagView(
         id=tag.id,
         name=tag.name,
@@ -392,12 +392,12 @@ def build_tag_view(tag: Tag, *, people: Sequence[Person] = ()) -> TagView:
         created_at=tag.created_at,
         updated_at=tag.updated_at,
         deleted_at=tag.deleted_at,
-        people=tuple(build_person_summary(person) for person in people),
+        person=tuple(build_person_summary(person) for person in person_records),
     )
 
 
-def build_task_view(task: Task, *, people: Sequence[Person] = ()) -> TaskView:
-    """Build one task view from a task model and related people."""
+def build_task_view(task: Task, *, person_records: Sequence[Person] = ()) -> TaskView:
+    """Build one task view from a task model and related person."""
     return TaskView(
         id=task.id,
         vision_id=task.vision_id,
@@ -416,14 +416,14 @@ def build_task_view(task: Task, *, people: Sequence[Person] = ()) -> TaskView:
         created_at=task.created_at,
         updated_at=task.updated_at,
         deleted_at=task.deleted_at,
-        people=tuple(build_person_summary(person) for person in people),
+        person=tuple(build_person_summary(person) for person in person_records),
     )
 
 
 def build_vision_view(
     vision: Vision,
     *,
-    people: Sequence[Person] = (),
+    person_records: Sequence[Person] = (),
     tasks: Sequence[Task] = (),
     task_summary_details: TaskSummaryDetails | None = None,
 ) -> VisionView:
@@ -440,7 +440,7 @@ def build_vision_view(
         created_at=vision.created_at,
         updated_at=vision.updated_at,
         deleted_at=vision.deleted_at,
-        people=tuple(build_person_summary(person) for person in people),
+        person=tuple(build_person_summary(person) for person in person_records),
         tasks=tuple(build_task_summary_with_details(task, task_summary_details) for task in tasks),
     )
 
@@ -449,7 +449,7 @@ def build_event_view(
     event: Event,
     *,
     tags: Sequence[Tag] = (),
-    people: Sequence[Person] = (),
+    person_records: Sequence[Person] = (),
 ) -> EventView:
     """Build one event view from an event model and related records."""
     return EventView(
@@ -475,7 +475,7 @@ def build_event_view(
         updated_at=event.updated_at,
         deleted_at=event.deleted_at,
         tags=tuple(build_tag_summary(tag) for tag in tags),
-        people=tuple(build_person_summary(person) for person in people),
+        person=tuple(build_person_summary(person) for person in person_records),
     )
 
 
@@ -483,7 +483,7 @@ def build_timelog_view(
     timelog: Timelog,
     *,
     tags: Sequence[Tag] = (),
-    people: Sequence[Person] = (),
+    person_records: Sequence[Person] = (),
     linked_notes_count: int = 0,
     task_summary_details: TaskSummaryDetails | None = None,
 ) -> TimelogView:
@@ -509,25 +509,25 @@ def build_timelog_view(
             else None
         ),
         tags=tuple(build_tag_summary(tag) for tag in tags),
-        people=tuple(build_person_summary(person) for person in people),
+        person=tuple(build_person_summary(person) for person in person_records),
     )
 
 
 def build_timelog_template_view(
     template: TimelogTemplate,
     *,
-    people: Sequence[Person] = (),
+    person_records: Sequence[Person] = (),
 ) -> TimelogTemplateView:
-    """Build one timelog quick template view from a model and linked people."""
-    person_summaries = tuple(build_person_summary(person) for person in people)
+    """Build one timelog quick template view from a model and linked person."""
+    person_summaries = tuple(build_person_summary(person) for person in person_records)
     return TimelogTemplateView(
         id=template.id,
         title=template.title,
         area_id=template.area_id,
         area_name=template.area.name if template.area else None,
         area_color=template.area.color if template.area else None,
-        person_ids=tuple(person.id for person in people),
-        people=person_summaries,
+        person_ids=tuple(person.id for person in person_records),
+        person=person_summaries,
         default_duration_minutes=template.default_duration_minutes,
         position=template.position,
         usage_count=template.usage_count,
@@ -542,7 +542,7 @@ def build_note_view(
     note: Note,
     *,
     tags: Sequence[Tag] = (),
-    people: Sequence[Person] = (),
+    person_records: Sequence[Person] = (),
     tasks: Sequence[Task] = (),
     visions: Sequence[Vision] = (),
     events: Sequence[Event] = (),
@@ -558,7 +558,7 @@ def build_note_view(
         updated_at=note.updated_at,
         deleted_at=note.deleted_at,
         tags=tuple(build_tag_summary(tag) for tag in tags),
-        people=tuple(build_person_summary(person) for person in people),
+        person=tuple(build_person_summary(person) for person in person_records),
         tasks=tuple(build_task_summary_with_details(task, task_summary_details) for task in tasks),
         visions=tuple(build_vision_summary(vision) for vision in visions),
         events=tuple(build_event_summary(event) for event in events),

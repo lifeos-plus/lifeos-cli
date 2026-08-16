@@ -83,12 +83,12 @@ def test_cli_parser_supports_init_preference_flags() -> None:
     assert args.vision_experience_rate_per_hour == 120
 
 
-def test_cli_parser_supports_config_set_command() -> None:
+def test_cli_parser_supports_config_update_command() -> None:
     parser = build_parser()
-    args = parser.parse_args(["config", "set", "preferences.timezone", "America/Toronto"])
+    args = parser.parse_args(["config", "update", "preferences.timezone", "America/Toronto"])
 
     assert args.resource == "config"
-    assert args.config_command == "set"
+    assert args.config_command == "update"
     assert args.key == "preferences.timezone"
     assert args.value == "America/Toronto"
 
@@ -156,12 +156,13 @@ def test_cli_parser_supports_finance_commands() -> None:
     parser = build_parser()
 
     tree_args = parser.parse_args(
-        ["finance", "tree-add", "Personal Finance", "--primary-currency", "USD", "--default"]
+        ["finance", "tree", "add", "Personal Finance", "--primary-currency", "USD", "--default"]
     )
     node_args = parser.parse_args(
         [
             "finance",
-            "node-add",
+            "node",
+            "add",
             "11111111-1111-1111-1111-111111111111",
             "Checking",
             "--parent-id",
@@ -171,7 +172,8 @@ def test_cli_parser_supports_finance_commands() -> None:
     snapshot_args = parser.parse_args(
         [
             "finance",
-            "snapshot-add",
+            "snapshot",
+            "add",
             "11111111-1111-1111-1111-111111111111",
             "--rate-snapshot-id",
             "33333333-3333-3333-3333-333333333333",
@@ -182,22 +184,23 @@ def test_cli_parser_supports_finance_commands() -> None:
     rate_snapshot_args = parser.parse_args(
         [
             "finance",
-            "rate-snapshot-add",
+            "rate-snapshot",
+            "add",
             "--rate",
             "EUR:1.1:USD",
         ]
     )
 
     assert tree_args.resource == "finance"
-    assert tree_args.finance_command == "tree-add"
+    assert tree_args.finance_tree_command == "add"
     assert tree_args.primary_currency == "USD"
     assert tree_args.default is True
-    assert node_args.finance_command == "node-add"
+    assert node_args.finance_node_command == "add"
     assert str(node_args.parent_id) == "22222222-2222-2222-2222-222222222222"
-    assert snapshot_args.finance_command == "snapshot-add"
+    assert snapshot_args.finance_snapshot_command == "add"
     assert snapshot_args.entries[0].amount == Decimal("100")
     assert str(snapshot_args.rate_snapshot_id) == "33333333-3333-3333-3333-333333333333"
-    assert rate_snapshot_args.finance_command == "rate-snapshot-add"
+    assert rate_snapshot_args.finance_rate_snapshot_command == "add"
     assert rate_snapshot_args.rates[0].base_currency == "EUR"
     assert rate_snapshot_args.rates[0].quote_currency == "USD"
     assert rate_snapshot_args.rates[0].rate == Decimal("1.1")
@@ -392,12 +395,12 @@ def test_cli_parser_supports_event_update_scope_flags() -> None:
     assert args.instance_start.isoformat() == "2026-04-10T09:00:00"
 
 
-def test_cli_parser_supports_people_add_command() -> None:
+def test_cli_parser_supports_person_add_command() -> None:
     parser = build_parser()
-    args = parser.parse_args(["people", "add", "Alice", "--nickname", "ally"])
+    args = parser.parse_args(["person", "add", "Alice", "--nickname", "ally"])
 
-    assert args.resource == "people"
-    assert args.people_command == "add"
+    assert args.resource == "person"
+    assert args.person_command == "add"
     assert args.name == "Alice"
     assert args.nickname == ["ally"]
 
@@ -551,19 +554,19 @@ def test_cli_parser_supports_schedule_list_explicit_date_range_command() -> None
     assert args.hide_overdue_unfinished is False
 
 
-def test_cli_parser_supports_people_update_clear_location_command() -> None:
+def test_cli_parser_supports_person_update_clear_location_command() -> None:
     parser = build_parser()
     args = parser.parse_args(
         [
-            "people",
+            "person",
             "update",
             "11111111-1111-1111-1111-111111111111",
             "--clear-location",
         ]
     )
 
-    assert args.resource == "people"
-    assert args.people_command == "update"
+    assert args.resource == "person"
+    assert args.person_command == "update"
     assert args.clear_location is True
 
 
@@ -682,6 +685,36 @@ def test_cli_parser_supports_timelog_search_advanced_filters() -> None:
     assert args.window_end.isoformat() == "2026-06-17T15:59:59.999000+00:00"
     assert args.limit == 500
     assert args.count is True
+
+
+def test_cli_parser_requires_query_for_timelog_search() -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["timelog", "search", "--date", "2026-04-10"])
+
+    assert exc_info.value.code == 2
+
+    args = parser.parse_args(["timelog", "search", "--query", "deep work"])
+    assert args.timelog_command == "search"
+    assert args.query == "deep work"
+
+
+def test_cli_parser_keeps_query_optional_for_timelog_list() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["timelog", "list", "--date", "2026-04-10"])
+
+    assert args.timelog_command == "list"
+    assert args.query is None
+
+
+def test_cli_parser_supports_clear_advanced_recurrence_flag() -> None:
+    parser = build_parser()
+    event_uuid = "11111111-1111-1111-1111-111111111111"
+
+    args = parser.parse_args(["event", "update", event_uuid, "--clear-advanced-recurrence"])
+    assert args.clear_recurrence_rule is True
 
 
 def test_cli_parser_supports_task_list_person_filter() -> None:
@@ -877,20 +910,20 @@ def test_cli_parser_supports_vision_update_clear_area_command() -> None:
     assert args.clear_area is True
 
 
-def test_cli_parser_supports_vision_update_clear_people_command() -> None:
+def test_cli_parser_supports_vision_update_clear_person_command() -> None:
     parser = build_parser()
     args = parser.parse_args(
         [
             "vision",
             "update",
             "11111111-1111-1111-1111-111111111111",
-            "--clear-people",
+            "--clear-person",
         ]
     )
 
     assert args.resource == "vision"
     assert args.vision_command == "update"
-    assert args.clear_people is True
+    assert args.clear_person is True
 
 
 def test_cli_parser_supports_vision_experience_commands() -> None:
@@ -963,22 +996,19 @@ def test_cli_parser_supports_tag_list_person_filter() -> None:
     assert str(args.person_id) == "11111111-1111-1111-1111-111111111111"
 
 
-def test_cli_parser_supports_task_batch_delete_command() -> None:
+def test_cli_parser_supports_task_delete_multiple_identifiers() -> None:
     parser = build_parser()
     args = parser.parse_args(
         [
             "task",
-            "batch",
             "delete",
-            "--ids",
             "11111111-1111-1111-1111-111111111111",
             "22222222-2222-2222-2222-222222222222",
         ]
     )
 
     assert args.resource == "task"
-    assert args.task_command == "batch"
-    assert args.task_batch_command == "delete"
+    assert args.task_command == "delete"
     assert len(args.task_ids) == 2
 
 
@@ -999,20 +1029,20 @@ def test_cli_parser_supports_task_update_clear_parent_command() -> None:
     assert args.clear_parent is True
 
 
-def test_cli_parser_supports_task_update_clear_people_command() -> None:
+def test_cli_parser_supports_task_update_clear_person_command() -> None:
     parser = build_parser()
     args = parser.parse_args(
         [
             "task",
             "update",
             "11111111-1111-1111-1111-111111111111",
-            "--clear-people",
+            "--clear-person",
         ]
     )
 
     assert args.resource == "task"
     assert args.task_command == "update"
-    assert args.clear_people is True
+    assert args.clear_person is True
 
 
 def test_cli_parser_supports_habit_add_command() -> None:
@@ -1196,20 +1226,20 @@ def test_cli_parser_supports_habit_action_log_command() -> None:
     assert args.status == "done"
 
 
-def test_cli_parser_supports_event_update_clear_people_command() -> None:
+def test_cli_parser_supports_event_update_clear_person_command() -> None:
     parser = build_parser()
     args = parser.parse_args(
         [
             "event",
             "update",
             "11111111-1111-1111-1111-111111111111",
-            "--clear-people",
+            "--clear-person",
         ]
     )
 
     assert args.resource == "event"
     assert args.event_command == "update"
-    assert args.clear_people is True
+    assert args.clear_person is True
 
 
 def test_cli_parser_supports_timelog_update_clear_notes_command() -> None:
@@ -1262,105 +1292,15 @@ def test_cli_parser_supports_timelog_batch_update_command() -> None:
     ("argv",),
     [
         (["note", "delete", "11111111-1111-1111-1111-111111111111", "--hard"],),
-        (
-            [
-                "note",
-                "batch",
-                "delete",
-                "--ids",
-                "11111111-1111-1111-1111-111111111111",
-                "--hard",
-            ],
-        ),
         (["area", "delete", "11111111-1111-1111-1111-111111111111", "--hard"],),
-        (
-            [
-                "area",
-                "batch",
-                "delete",
-                "--ids",
-                "11111111-1111-1111-1111-111111111111",
-                "--hard",
-            ],
-        ),
         (["tag", "delete", "11111111-1111-1111-1111-111111111111", "--hard"],),
-        (
-            [
-                "tag",
-                "batch",
-                "delete",
-                "--ids",
-                "11111111-1111-1111-1111-111111111111",
-                "--hard",
-            ],
-        ),
-        (["people", "delete", "11111111-1111-1111-1111-111111111111", "--hard"],),
-        (
-            [
-                "people",
-                "batch",
-                "delete",
-                "--ids",
-                "11111111-1111-1111-1111-111111111111",
-                "--hard",
-            ],
-        ),
+        (["person", "delete", "11111111-1111-1111-1111-111111111111", "--hard"],),
         (["vision", "delete", "11111111-1111-1111-1111-111111111111", "--hard"],),
-        (
-            [
-                "vision",
-                "batch",
-                "delete",
-                "--ids",
-                "11111111-1111-1111-1111-111111111111",
-                "--hard",
-            ],
-        ),
         (["task", "delete", "11111111-1111-1111-1111-111111111111", "--hard"],),
-        (
-            [
-                "task",
-                "batch",
-                "delete",
-                "--ids",
-                "11111111-1111-1111-1111-111111111111",
-                "--hard",
-            ],
-        ),
         (["habit", "delete", "11111111-1111-1111-1111-111111111111", "--hard"],),
-        (
-            [
-                "habit",
-                "batch",
-                "delete",
-                "--ids",
-                "11111111-1111-1111-1111-111111111111",
-                "--hard",
-            ],
-        ),
         (["habit-action", "delete", "11111111-1111-1111-1111-111111111111", "--hard"],),
         (["event", "delete", "11111111-1111-1111-1111-111111111111", "--hard"],),
-        (
-            [
-                "event",
-                "batch",
-                "delete",
-                "--ids",
-                "11111111-1111-1111-1111-111111111111",
-                "--hard",
-            ],
-        ),
         (["timelog", "delete", "11111111-1111-1111-1111-111111111111", "--hard"],),
-        (
-            [
-                "timelog",
-                "batch",
-                "delete",
-                "--ids",
-                "11111111-1111-1111-1111-111111111111",
-                "--hard",
-            ],
-        ),
     ],
 )
 def test_cli_parser_rejects_hard_delete_flags(argv: list[str]) -> None:

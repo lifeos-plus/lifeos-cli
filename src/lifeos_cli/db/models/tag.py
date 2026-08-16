@@ -9,7 +9,7 @@ from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrim
 
 
 class Tag(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
-    """Tag that can later be linked to notes, people, tasks, or visions."""
+    """Tag that can later be linked to notes, person, tasks, or visions."""
 
     __tablename__ = "tags"
     __table_args__ = (

@@ -258,3 +258,87 @@ def render_machine_readable_reference(
 ) -> str:
     """Render a machine-readable command reference as JSON text."""
     return json.dumps(reference, ensure_ascii=False, indent=indent) + "\n"
+
+
+def lint_help_summary_conventions(reference: dict[str, Any]) -> list[str]:
+    """Return command-summary convention violations for every parser node.
+
+    Summaries are the short command names shown in subcommand listings. The
+    repository convention is an imperative phrase without a trailing period
+    (for example ``List areas``, never ``List areas.``).
+    """
+    violations: list[str] = []
+    for command in reference["commands"]:
+        path = "/".join(command["path"])
+        summary = command.get("summary") or ""
+        if not summary.strip():
+            violations.append(f"{path}: summary is empty")
+        elif summary.rstrip().endswith((".", "。")):
+            violations.append(f"{path}: summary ends with a period")
+    return violations
+
+
+def _render_command_arguments(arguments: Sequence[dict[str, Any]]) -> str:
+    """Render one command's structured arguments as a compact reference line."""
+    parts: list[str] = []
+    for argument in arguments:
+        name = argument["name"]
+        if argument["kind"] == "positional":
+            rendered = name
+            if argument["required"]:
+                rendered += " [required]"
+            elif argument["nargs"] in ("*", "?"):
+                rendered += f" [nargs={argument['nargs']}]"
+            parts.append(rendered)
+        else:
+            parts.append(name)
+    return "; ".join(parts)
+
+
+def render_command_tree(reference: dict[str, Any]) -> str:
+    """Render the command tree as a stable plain-text reference.
+
+    The output is deterministic and intentionally free of timestamps or
+    version strings so a committed artifact can be diffed against a
+    fresh regeneration. Hierarchy is drawn with explicit tree connectors
+    (``├──``/``└──``/``│``) instead of whitespace indentation so the shape
+    stays unambiguous regardless of command-name lengths.
+    """
+    commands = sorted(reference["commands"], key=lambda command: command["path"])
+    children_by_path: dict[tuple[str, ...], list[dict[str, Any]]] = {}
+    for command in commands:
+        path = tuple(command["path"])
+        parent = path[:-1]
+        children_by_path.setdefault(parent, []).append(command)
+    lines = [
+        "# LifeOS CLI command tree (complete)",
+        "# shape: lifeos <resource> <action> [arguments] [options]",
+        (
+            "# regenerate: LIFEOS_LANGUAGE=en uv run python scripts/audit_cli_help.py "
+            "--format tree --output docs/cli-tree.md"
+        ),
+        "",
+    ]
+
+    def _render_siblings(
+        prefix: str,
+        siblings: list[dict[str, Any]],
+    ) -> None:
+        for index, command in enumerate(siblings):
+            is_last = index == len(siblings) - 1
+            connector = "└── " if is_last else "├── "
+            path = tuple(command["path"])
+            name = path[-1]
+            summary = command.get("summary") or ""
+            lines.append(f"{prefix}{connector}{name}  —  {summary}")
+            continuation = prefix + ("    " if is_last else "│   ")
+            children = children_by_path.get(path, [])
+            if children:
+                _render_siblings(continuation, children)
+            else:
+                args = _render_command_arguments(command.get("arguments", []))
+                if args:
+                    lines.append(f"{continuation}    args: {args}")
+
+    _render_siblings("", children_by_path.get((), []))
+    return "\n".join(lines) + "\n"

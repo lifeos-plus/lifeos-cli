@@ -10,6 +10,8 @@ from lifeos_cli.cli_support.help_audit import (
     collect_help_invocations,
     filter_help_invocations,
     filter_reference_commands,
+    lint_help_summary_conventions,
+    render_command_tree,
     render_help_audit_report,
     render_machine_readable_reference,
     run_help_audit,
@@ -26,7 +28,7 @@ def test_collect_help_invocations_covers_nested_parser_paths() -> None:
     assert ("note", "batch", "update-content", "--help") in paths
     assert ("timelog", "search", "--help") in paths
     assert ("timelog", "stats", "day", "--help") in paths
-    assert ("config", "set", "--help") in paths
+    assert ("config", "update", "--help") in paths
 
 
 def test_filter_help_invocations_limits_results_to_one_subtree() -> None:
@@ -123,6 +125,69 @@ def test_machine_readable_reference_describes_arguments_and_content() -> None:
     ]
     assert [argument["name"] for argument in search_positional] == ["query"]
     assert search_positional[0]["required"] is True
+
+
+def test_lint_help_summary_conventions_flags_trailing_periods_and_empty_summaries() -> None:
+    reference = {
+        "commands": [
+            {"path": ["area", "list"], "summary": "List areas."},
+            {"path": ["note", "add"], "summary": "Add a note"},
+            {"path": ["config", "show"], "summary": ""},
+        ]
+    }
+
+    violations = lint_help_summary_conventions(reference)
+
+    assert any("area/list" in violation for violation in violations)
+    assert any("config/show" in violation for violation in violations)
+    assert not any("note/add" in violation for violation in violations)
+
+
+def test_built_parser_passes_summary_convention_lint() -> None:
+    reference = build_machine_readable_reference(build_parser())
+
+    assert lint_help_summary_conventions(reference) == []
+
+
+def test_render_command_tree_draws_explicit_connectors_and_leaf_arguments() -> None:
+    reference = {
+        "commands": [
+            {
+                "path": ["area", "list"],
+                "summary": "List areas",
+                "arguments": [
+                    {
+                        "name": "--limit",
+                        "kind": "option",
+                        "required": False,
+                        "nargs": None,
+                    }
+                ],
+            },
+            {"path": ["area"], "summary": "Manage life areas", "arguments": []},
+            {"path": ["note"], "summary": "Manage notes", "arguments": []},
+            {
+                "path": ["note", "add"],
+                "summary": "Add a note",
+                "arguments": [
+                    {
+                        "name": "content",
+                        "kind": "positional",
+                        "required": False,
+                        "nargs": "?",
+                    }
+                ],
+            },
+        ]
+    }
+
+    rendered = render_command_tree(reference)
+
+    assert "├── area  —  Manage life areas" in rendered
+    assert "└── note  —  Manage notes" in rendered
+    assert "└── list  —  List areas" in rendered
+    assert "        args: --limit" in rendered
+    assert "content [nargs=?]" in rendered
 
 
 def test_machine_readable_reference_renders_valid_json_with_metadata() -> None:

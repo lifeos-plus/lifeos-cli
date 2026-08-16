@@ -59,6 +59,7 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                 _(
                     "resources.data.parser.use_dry_run_before_applying_large_imports_or_batch_changes"
                 ),
+                _("resources.data.parser.finance_not_yet_covered_by_data_namespace"),
             ),
         ),
     )
@@ -82,7 +83,7 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
             ),
             examples=(
                 "lifeos data export task --format jsonl",
-                "lifeos data export people --format json --output people.json",
+                "lifeos data export person --format json --output person.json",
                 "lifeos data export all --output lifeos-bundle.zip",
             ),
         ),
@@ -128,7 +129,7 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                     "resources.data.parser.use_dry_run_before_applying_large_file_or_full_bundle_restore"
                 ),
                 _(
-                    "resources.data.parser.natural_key_upsert_supported_keys_are_area_name_vision_name_people_name_and_habit_title"
+                    "resources.data.parser.natural_key_upsert_supported_keys_are_area_name_vision_name_person_name_and_habit_title"
                 ),
             ),
         ),
@@ -195,7 +196,7 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
             ),
             examples=(
                 "lifeos data batch-update timelog --file timelog-patch.jsonl --format jsonl",
-                "lifeos data batch-update people --stdin --format json",
+                "lifeos data batch-update person --stdin --format json",
                 "lifeos data batch-update event --file event-patch.jsonl --format jsonl "
                 "--dry-run --error-file event-errors.jsonl",
             ),
@@ -257,6 +258,7 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                 _(
                     "resources.data.parser.use_resource_specific_delete_commands_when_you_want_narrower_human_guided_changes"
                 ),
+                _("common.messages.use_resource_batch_delete_for_inline_id_bulk_workflows"),
             ),
         ),
     )

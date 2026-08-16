@@ -32,6 +32,16 @@ repos:
         entry: uv run python scripts/check_locale_catalog.py
         language: system
         pass_filenames: false
+      - id: help-summary-lint
+        name: help-summary-lint
+        entry: uv run python scripts/audit_cli_help.py --check-summaries
+        language: system
+        pass_filenames: false
+      - id: cli-tree-sync
+        name: cli-tree-sync
+        entry: bash ./scripts/check_cli_tree.sh
+        language: system
+        pass_filenames: false
       - id: dead-code
         name: dead-code
         entry: bash ./scripts/dead_code_check.sh

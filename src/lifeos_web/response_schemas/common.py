@@ -2,16 +2,24 @@
 
 from __future__ import annotations
 
-from typing import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import TypeAliasType
 
 JsonScalar: TypeAlias = str | int | float | bool | None
-JsonValue = TypeAliasType(
-    "JsonValue",
-    JsonScalar | list["JsonValue"] | dict[str, "JsonValue"],
-)
+if TYPE_CHECKING:
+    # mypy cannot model recursion through TypeAliasType (mypy issue #12650),
+    # while pydantic needs a runtime recursive alias on Python 3.11 (PEP 695
+    # `type` statements require Python 3.12). The checker sees the Union form
+    # and the runtime keeps the TypeAliasType form, so both tools get their
+    # native recursive construct without suppressing any diagnostics.
+    JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
+else:
+    JsonValue = TypeAliasType(
+        "JsonValue",
+        JsonScalar | list["JsonValue"] | dict[str, "JsonValue"],
+    )
 JsonObject: TypeAlias = dict[str, JsonValue]
 
 

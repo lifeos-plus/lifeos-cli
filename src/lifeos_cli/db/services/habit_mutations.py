@@ -344,6 +344,41 @@ async def update_habit_action_by_date(
     )
 
 
+async def delete_habit_action(
+    session: AsyncSession,
+    *,
+    action_id: UUID,
+) -> None:
+    """Soft-delete one habit action within the editable window."""
+    action = await get_habit_action_model(session, action_id=action_id)
+    if action is None:
+        raise HabitActionNotFoundError(f"Habit action {action_id} was not found")
+    today = get_operational_date()
+    if action.action_date > today or (today - action.action_date).days > HABIT_EDITABLE_DAYS:
+        raise InvalidHabitOperationError(
+            "Habit action cannot be modified outside the allowed time window"
+        )
+    await _clear_habit_action_note_links(session, action_id=action.id)
+    action.soft_delete()
+    await session.flush()
+
+
+async def batch_delete_habit_actions(
+    session: AsyncSession,
+    *,
+    action_ids: list[UUID],
+) -> BatchDeleteResult:
+    """Soft-delete multiple habit actions."""
+    return await batch_delete_records(
+        identifiers=deduplicate_preserving_order(action_ids),
+        delete_record=lambda action_id: delete_habit_action(session, action_id=action_id),
+        handled_exceptions=(
+            HabitActionNotFoundError,
+            InvalidHabitOperationError,
+        ),
+    )
+
+
 async def _soft_delete_unscheduled_habit_actions(session: AsyncSession, habit: Habit) -> None:
     """Soft-delete materialized action rows that no longer belong to the habit schedule."""
     existing_actions = await _load_active_actions(session, habit)

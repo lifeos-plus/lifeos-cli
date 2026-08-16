@@ -63,9 +63,11 @@ def _note_payload(note: object) -> dict[str, object]:
     tags = payload.get("tags")
     if isinstance(tags, list):
         payload["tags"] = [_note_tag_payload(tag) for tag in tags]
-    people = payload.get("people")
-    payload["people"] = (
-        [_note_person_payload(person) for person in people] if isinstance(people, list) else []
+    person = payload.get("person")
+    payload["person"] = (
+        [_note_person_payload(person_item) for person_item in person]
+        if isinstance(person, list)
+        else []
     )
     tasks = payload.get("tasks")
     if isinstance(tasks, list):
@@ -135,7 +137,7 @@ async def list_notes(
     )
 
 
-@router.get("/stats/persons", response_model=NotePersonStatsResponse)
+@router.get("/stats/person", response_model=NotePersonStatsResponse)
 async def get_note_person_usage_stats(session: SessionDep) -> dict[str, object]:
     """Return active-note usage counts grouped by associated person."""
     person_stats = await note_services.count_note_usage_by_person(session)
@@ -149,7 +151,7 @@ async def get_note_person_usage_stats(session: SessionDep) -> dict[str, object]:
             }
             for row in person_stats
         ],
-        "total_persons": len(person_stats),
+        "total_person": len(person_stats),
     }
 
 
@@ -190,7 +192,7 @@ async def update_note(
             tag_ids=payload.tag_ids,
             clear_tags="tag_ids" in fields and payload.tag_ids == [],
             person_ids=payload.person_ids,
-            clear_people="person_ids" in fields and payload.person_ids == [],
+            clear_person="person_ids" in fields and payload.person_ids == [],
             task_ids=[payload.task_id] if payload.task_id is not None else None,
             clear_tasks="task_id" in fields and payload.task_id is None,
             timelog_ids=payload.timelog_ids,

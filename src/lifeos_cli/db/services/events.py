@@ -24,7 +24,7 @@ from lifeos_cli.db.models.tag_association import tag_associations
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.services.batching import BatchDeleteResult, batch_delete_records
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
-from lifeos_cli.db.services.entity_people import load_people_for_entities, sync_entity_people
+from lifeos_cli.db.services.entity_person import load_person_for_entities, sync_entity_person
 from lifeos_cli.db.services.entity_tags import load_tags_for_entities, sync_entity_tags
 from lifeos_cli.db.services.event_support import (
     EventAreaReferenceNotFoundError as EventAreaReferenceNotFoundError,
@@ -93,12 +93,12 @@ async def _build_event_views(session: AsyncSession, events: list[Event]) -> list
         return []
     event_ids = [event.id for event in events]
     tags_map = await load_tags_for_entities(session, entity_ids=event_ids, entity_type="event")
-    people_map = await load_people_for_entities(session, entity_ids=event_ids, entity_type="event")
+    person_map = await load_person_for_entities(session, entity_ids=event_ids, entity_type="event")
     return [
         build_event_view(
             event,
             tags=tags_map.get(event.id, ()),
-            people=people_map.get(event.id, ()),
+            person_records=person_map.get(event.id, ()),
         )
         for event in events
     ]
@@ -249,7 +249,7 @@ async def _apply_event_links(
             desired_tag_ids=tag_ids,
         )
     if person_ids is not None:
-        await sync_entity_people(
+        await sync_entity_person(
             session,
             entity_id=event.id,
             entity_type="event",
@@ -414,7 +414,7 @@ async def _apply_event_association_updates(
     changes: EventUpdateInput,
 ) -> None:
     next_tag_ids = [] if changes.clear_tags else changes.tag_ids
-    next_person_ids = [] if changes.clear_people else changes.person_ids
+    next_person_ids = [] if changes.clear_person else changes.person_ids
     await _apply_event_links(
         session,
         event=event,
@@ -458,13 +458,13 @@ async def _resolve_derived_event_association_ids(
         entity_ids=[source_event.id],
         entity_type="event",
     )
-    existing_people_map = await load_people_for_entities(
+    existing_person_map = await load_person_for_entities(
         session,
         entity_ids=[source_event.id],
         entity_type="event",
     )
     existing_tag_ids = [tag.id for tag in existing_tag_map.get(source_event.id, ())]
-    existing_person_ids = [person.id for person in existing_people_map.get(source_event.id, ())]
+    existing_person_ids = [person.id for person in existing_person_map.get(source_event.id, ())]
     return (
         _resolve_link_ids(
             explicit_ids=changes.tag_ids,
@@ -473,7 +473,7 @@ async def _resolve_derived_event_association_ids(
         ),
         _resolve_link_ids(
             explicit_ids=changes.person_ids,
-            clear_flag=changes.clear_people,
+            clear_flag=changes.clear_person,
             existing_ids=existing_person_ids,
         ),
     )

@@ -32,7 +32,7 @@ class TimelogResponse(ResponseModel):
     linked_notes_count: int
     task: TaskSummaryResponse | None
     tags: list[TagCompactResponse]
-    people: list[PersonNameResponse]
+    person: list[PersonNameResponse]
     area_summary: AreaSummaryResponse | None = None
 
 
@@ -73,7 +73,7 @@ class TimelogTemplateResponse(ResponseModel):
     area_name: str | None
     area_color: str | None
     person_ids: list[str]
-    people: list[PersonSummaryResponse]
+    person: list[PersonSummaryResponse]
     default_duration_minutes: int | None
     position: int
     usage_count: int

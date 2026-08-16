@@ -724,7 +724,7 @@ def test_main_task_move_preserves_parent_when_parent_flag_is_omitted(
     assert "Moved task 55555555-5555-5555-5555-555555555555" in captured.out
 
 
-def test_main_task_batch_delete_prints_summary(
+def test_main_task_delete_multiple_prints_summary(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -749,9 +749,7 @@ def test_main_task_batch_delete_prints_summary(
     exit_code = cli.main(
         [
             "task",
-            "batch",
             "delete",
-            "--ids",
             "11111111-1111-1111-1111-111111111111",
             "22222222-2222-2222-2222-222222222222",
         ]
@@ -788,12 +786,12 @@ def test_main_task_update_can_clear_parent(
     assert "Updated task 55555555-5555-5555-5555-555555555555" in captured.out
 
 
-def test_main_task_update_can_clear_people(
+def test_main_task_update_can_clear_person(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     async def fake_update_task(_session: object, **kwargs: object) -> object:
-        assert kwargs["clear_people"] is True
+        assert kwargs["clear_person"] is True
         assert kwargs["person_ids"] is None
         return make_record(id=UUID("55555555-5555-5555-5555-555555555555"))
 
@@ -805,7 +803,7 @@ def test_main_task_update_can_clear_people(
             "task",
             "update",
             "55555555-5555-5555-5555-555555555555",
-            "--clear-people",
+            "--clear-person",
         ]
     )
     captured = capsys.readouterr()

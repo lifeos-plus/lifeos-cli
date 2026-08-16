@@ -7,7 +7,6 @@ from uuid import UUID
 
 from lifeos_cli.cli_support.help_utils import (
     HelpContent,
-    add_documented_help_parser,
     add_documented_parser,
 )
 from lifeos_cli.cli_support.json_output import add_json_output_argument
@@ -17,11 +16,11 @@ from lifeos_cli.cli_support.output_utils import (
     format_summary_column_list,
 )
 from lifeos_cli.cli_support.parser_common import (
+    add_batch_namespace,
     add_limit_offset_arguments,
 )
 from lifeos_cli.cli_support.resources.note.handlers import (
     handle_note_add_async,
-    handle_note_batch_delete_async,
     handle_note_batch_update_content_async,
     handle_note_delete_async,
     handle_note_list_async,
@@ -93,7 +92,7 @@ def build_note_add_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_associate_one_or_more_people"),
+        help=_("common.messages.repeat_to_associate_one_or_more_person"),
     )
     add_parser.add_argument(
         "--task-id",
@@ -328,7 +327,7 @@ def build_note_update_parser(
             ),
             notes=(
                 _(
-                    "resources.note.parser_actions.repeat_same_relation_flag_to_replace_multiple_linked_tags_people_tasks_visions"
+                    "resources.note.parser_actions.repeat_same_relation_flag_to_replace_multiple_linked_tags_person_tasks_visions"
                 ),
                 _(
                     "resources.note.parser_actions.use_relation_flags_without_content_when_only_links_need_to_change"
@@ -359,10 +358,10 @@ def build_note_update_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     update_parser.add_argument(
-        "--clear-people", action="store_true", help=_("common.messages.remove_all_people")
+        "--clear-person", action="store_true", help=_("common.messages.remove_all_person")
     )
     update_parser.add_argument(
         "--task-id",
@@ -452,11 +451,19 @@ def build_note_delete_parser(
         help_content=HelpContent(
             summary=_("resources.note.parser_actions.delete_note"),
             description=_("resources.note.parser_actions.delete_note_by_identifier"),
-            examples=("lifeos note delete 11111111-1111-1111-1111-111111111111",),
+            examples=(
+                "lifeos note delete 11111111-1111-1111-1111-111111111111",
+                "lifeos note delete <note-id-1> <note-id-2>",
+            ),
+            notes=(_("common.messages.delete_accepts_one_or_more_identifiers"),),
         ),
     )
     delete_parser.add_argument(
-        "note_id", type=UUID, help=_("resources.note.parser_actions.note_identifier")
+        "note_ids",
+        type=UUID,
+        nargs="+",
+        metavar="note-id",
+        help=_("common.parser.noun_identifiers_to_delete").format(noun="Note"),
     )
     delete_parser.set_defaults(handler=make_sync_handler(handle_note_delete_async))
 
@@ -464,35 +471,20 @@ def build_note_delete_parser(
 def build_note_batch_parser(
     note_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    batch_parser = add_documented_help_parser(
+    batch_subparsers = add_batch_namespace(
         note_subparsers,
-        "batch",
-        help_content=HelpContent(
-            summary=_("resources.note.parser_actions.run_batch_note_operations"),
-            description=_(
-                "resources.note.parser_actions.run_note_operations_that_target_multiple_records_in_one_command"
-            ),
-            examples=(
-                "lifeos note batch update-content --help",
-                "lifeos note batch delete --help",
-            ),
-            notes=(
-                _(
-                    "resources.note.parser_actions.use_update_content_for_bulk_find_replace_across_active_note_content"
-                ),
-                _(
-                    "resources.note.parser_actions.use_delete_to_remove_multiple_notes_by_identifier"
-                ),
-                _(
-                    "resources.note.parser_actions.batch_commands_currently_accept_note_ids_directly"
-                ),
-            ),
-        ),
-    )
-    batch_subparsers = batch_parser.add_subparsers(
         dest="note_batch_command",
-        title=_("resources.note.parser_actions.operations"),
-        metavar=_("resources.note.parser_actions.operation"),
+        batch_summary=_("resources.note.parser_actions.run_batch_note_operations"),
+        batch_description=_(
+            "resources.note.parser_actions.run_note_operations_that_target_multiple_records_in_one_command"
+        ),
+        batch_examples=("lifeos note batch update-content --help",),
+        batch_notes=(
+            _(
+                "resources.note.parser_actions.use_update_content_for_bulk_find_replace_across_active_note_content"
+            ),
+            _("resources.note.parser_actions.batch_commands_currently_accept_note_ids_directly"),
+        ),
     )
 
     batch_update_parser = add_documented_parser(
@@ -555,38 +547,3 @@ def build_note_batch_parser(
     batch_update_parser.set_defaults(
         handler=make_sync_handler(handle_note_batch_update_content_async)
     )
-
-    batch_delete_parser = add_documented_parser(
-        batch_subparsers,
-        "delete",
-        help_content=HelpContent(
-            summary=_("resources.note.parser_actions.delete_multiple_notes"),
-            description=(
-                _("resources.note.parser_actions.delete_multiple_notes_in_one_command")
-                + "\n\n"
-                + _(
-                    "resources.note.parser_actions.this_command_mirrors_lifeos_note_delete_but_works_across_many_note_ids"
-                )
-            ),
-            examples=(
-                "lifeos note batch delete --ids "
-                "11111111-1111-1111-1111-111111111111 "
-                "22222222-2222-2222-2222-222222222222",
-            ),
-            notes=(
-                _(
-                    "resources.note.parser_actions.failed_note_ids_are_printed_to_stderr_while_successful_deletes_stay_on"
-                ),
-            ),
-        ),
-    )
-    batch_delete_parser.add_argument(
-        "--ids",
-        dest="note_ids",
-        metavar="note-id",
-        nargs="+",
-        required=True,
-        type=UUID,
-        help=_("resources.note.parser_actions.one_or_more_note_identifiers_to_delete"),
-    )
-    batch_delete_parser.set_defaults(handler=make_sync_handler(handle_note_batch_delete_async))

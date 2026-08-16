@@ -45,7 +45,7 @@ TASK_BASIC_FIELDS = (
     "planning_cycle_type",
     "planning_cycle_days",
     "planning_cycle_start_date",
-    "people",
+    "person",
     "notes_count",
     "timelogs_count",
 )
@@ -92,7 +92,7 @@ def _task_tree_payload(
         "timelogs_count": timelogs_count_by_task.get(task.id, 0),
         "created_at": task.created_at.isoformat(),
         "updated_at": task.updated_at.isoformat(),
-        "people": to_jsonable(task.people),
+        "person": to_jsonable(task.person),
         "subtasks": [
             _task_tree_payload(
                 subtask,

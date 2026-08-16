@@ -194,7 +194,7 @@ async def handle_note_update_async(args: argparse.Namespace) -> int:
     """Update note content."""
     conflicts = (
         (args.clear_tags and args.tag_ids is not None, "--tag-id", "--clear-tags"),
-        (args.clear_people and args.person_ids is not None, "--person-id", "--clear-people"),
+        (args.clear_person and args.person_ids is not None, "--person-id", "--clear-person"),
         (args.clear_tasks and args.task_ids is not None, "--task-id", "--clear-tasks"),
         (args.clear_visions and args.vision_ids is not None, "--vision-id", "--clear-visions"),
         (args.clear_events and args.event_ids is not None, "--event-id", "--clear-events"),
@@ -215,7 +215,7 @@ async def handle_note_update_async(args: argparse.Namespace) -> int:
                 args.tag_ids is None
                 and not args.clear_tags
                 and args.person_ids is None
-                and not args.clear_people
+                and not args.clear_person
                 and args.task_ids is None
                 and not args.clear_tasks
                 and args.vision_ids is None
@@ -240,7 +240,7 @@ async def handle_note_update_async(args: argparse.Namespace) -> int:
                     tag_ids=args.tag_ids,
                     clear_tags=args.clear_tags,
                     person_ids=args.person_ids,
-                    clear_people=args.clear_people,
+                    clear_person=args.clear_person,
                     task_ids=args.task_ids,
                     clear_tasks=args.clear_tasks,
                     vision_ids=args.vision_ids,
@@ -260,12 +260,24 @@ async def handle_note_update_async(args: argparse.Namespace) -> int:
 
 async def handle_note_delete_async(args: argparse.Namespace) -> int:
     """Delete a note."""
+    if len(args.note_ids) > 1:
+        async with db_session.session_scope() as session:
+            result = await note_services.batch_delete_notes(
+                session,
+                note_ids=args.note_ids,
+            )
+        return print_batch_result(
+            success_label="Deleted notes",
+            success_count=result.deleted_count,
+            failed_label="Failed note IDs",
+            result=result,
+        )
     try:
         async with db_session.session_scope() as session:
-            await note_services.delete_note(session, note_id=args.note_id)
+            await note_services.delete_note(session, note_id=args.note_ids[0])
     except note_services.NoteNotFoundError as exc:
         return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted note {args.note_id}")
+    print(f"Soft-deleted note {args.note_ids[0]}")
     return 0
 
 
@@ -292,19 +304,3 @@ async def handle_note_batch_update_content_async(args: argparse.Namespace) -> in
     for error in result.errors:
         print(f"Error: {error}", file=sys.stderr)
     return 1 if result.failed_ids else 0
-
-
-async def handle_note_batch_delete_async(args: argparse.Namespace) -> int:
-    """Delete multiple notes in one command."""
-    async with db_session.session_scope() as session:
-        result = await note_services.batch_delete_notes(
-            session,
-            note_ids=list(args.note_ids),
-        )
-
-    return print_batch_result(
-        success_label="Deleted notes",
-        success_count=result.deleted_count,
-        failed_label="Failed note IDs",
-        result=result,
-    )

@@ -7,12 +7,13 @@ from uuid import UUID
 
 from lifeos_cli.cli_support.help_utils import (
     HelpContent,
-    add_documented_help_parser,
     add_documented_parser,
 )
-from lifeos_cli.cli_support.parser_common import add_identifier_list_argument
+from lifeos_cli.cli_support.parser_common import (
+    add_batch_namespace,
+    add_identifier_list_argument,
+)
 from lifeos_cli.cli_support.resources.timelog.handlers import (
-    handle_timelog_batch_delete_async,
     handle_timelog_batch_update_async,
 )
 from lifeos_cli.cli_support.runtime_utils import make_sync_handler
@@ -23,32 +24,19 @@ def build_timelog_batch_parser(
     timelog_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
     """Build the timelog batch command tree."""
-    batch_parser = add_documented_help_parser(
+    batch_subparsers = add_batch_namespace(
         timelog_subparsers,
-        "batch",
-        help_content=HelpContent(
-            summary=_("resources.timelog.parser_batch.run_batch_timelog_operations"),
-            description=_(
-                "resources.timelog.parser_batch.run_bulk_update_and_delete_operations_for_timelogs"
-            ),
-            examples=(
-                "lifeos timelog batch update --help",
-                "lifeos timelog batch delete --help",
-            ),
-            notes=(
-                _(
-                    "resources.timelog.parser_batch.use_update_to_edit_mutable_fields_across_active_timelogs"
-                ),
-                _(
-                    "resources.timelog.parser_batch.use_delete_to_remove_multiple_timelogs_in_one_command"
-                ),
+        dest="timelog_batch_command",
+        batch_summary=_("resources.timelog.parser_batch.run_batch_timelog_operations"),
+        batch_description=_(
+            "resources.timelog.parser_batch.run_bulk_update_operations_for_timelogs"
+        ),
+        batch_examples=("lifeos timelog batch update --help",),
+        batch_notes=(
+            _(
+                "resources.timelog.parser_batch.use_update_to_edit_mutable_fields_across_active_timelogs"
             ),
         ),
-    )
-    batch_subparsers = batch_parser.add_subparsers(
-        dest="timelog_batch_command",
-        title=_("common.messages.batch_actions"),
-        metavar=_("common.messages.batch_action_hyphenated_metavar"),
     )
 
     batch_update_parser = add_documented_parser(
@@ -120,23 +108,11 @@ def build_timelog_batch_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     batch_update_parser.add_argument(
-        "--clear-people",
+        "--clear-person",
         action="store_true",
-        help=_("common.messages.remove_all_people"),
+        help=_("common.messages.remove_all_person"),
     )
     batch_update_parser.set_defaults(handler=make_sync_handler(handle_timelog_batch_update_async))
-
-    batch_delete_parser = add_documented_parser(
-        batch_subparsers,
-        "delete",
-        help_content=HelpContent(
-            summary=_("resources.timelog.parser_batch.delete_multiple_timelogs"),
-            description=_("resources.timelog.parser_batch.delete_multiple_timelogs_by_identifier"),
-            examples=("lifeos timelog batch delete --ids <timelog-id-1> <timelog-id-2>",),
-        ),
-    )
-    add_identifier_list_argument(batch_delete_parser, dest="timelog_ids", noun="timelog")
-    batch_delete_parser.set_defaults(handler=make_sync_handler(handle_timelog_batch_delete_async))

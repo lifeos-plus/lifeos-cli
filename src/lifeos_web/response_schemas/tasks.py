@@ -25,7 +25,7 @@ class TaskResponse(ResponseModel):
     created_at: str | None = None
     updated_at: str | None = None
     deleted_at: str | None = None
-    people: list[PersonNameResponse] | None = None
+    person: list[PersonNameResponse] | None = None
 
 
 class TaskTreeResponse(TaskResponse):

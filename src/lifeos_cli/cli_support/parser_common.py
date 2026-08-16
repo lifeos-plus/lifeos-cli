@@ -5,6 +5,10 @@ from __future__ import annotations
 import argparse
 from uuid import UUID
 
+from lifeos_cli.cli_support.help_utils import (
+    HelpContent,
+    add_documented_help_parser,
+)
 from lifeos_cli.cli_support.time_args import parse_date_value
 from lifeos_cli.i18n import cli_message as _
 
@@ -86,4 +90,31 @@ def add_start_end_date_arguments(
         dest="end_date",
         type=parse_date_value,
         help=end_date_help,
+    )
+
+
+def add_batch_namespace(
+    resource_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    *,
+    dest: str,
+    batch_summary: str,
+    batch_description: str,
+    batch_examples: tuple[str, ...],
+    batch_notes: tuple[str, ...] = (),
+) -> argparse._SubParsersAction[argparse.ArgumentParser]:
+    """Create the standard ``batch`` command group and return its subparsers."""
+    batch_parser = add_documented_help_parser(
+        resource_subparsers,
+        "batch",
+        help_content=HelpContent(
+            summary=batch_summary,
+            description=batch_description,
+            examples=batch_examples,
+            notes=batch_notes,
+        ),
+    )
+    return batch_parser.add_subparsers(
+        dest=dest,
+        title=_("common.messages.batch_actions"),
+        metavar=_("common.messages.action"),
     )

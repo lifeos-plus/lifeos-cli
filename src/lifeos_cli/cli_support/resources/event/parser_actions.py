@@ -8,7 +8,6 @@ from uuid import UUID
 
 from lifeos_cli.cli_support.help_utils import (
     HelpContent,
-    add_documented_help_parser,
     add_documented_parser,
     help_message,
 )
@@ -16,14 +15,12 @@ from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
     add_date_range_arguments,
-    add_identifier_list_argument,
     add_limit_offset_arguments,
     add_start_end_date_arguments,
 )
 from lifeos_cli.cli_support.resources.event.handlers import (
     EVENT_SUMMARY_COLUMNS,
     handle_event_add_async,
-    handle_event_batch_delete_async,
     handle_event_delete_async,
     handle_event_list_async,
     handle_event_show_async,
@@ -217,7 +214,7 @@ def build_event_add_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_attach_one_or_more_people"),
+        help=_("common.messages.repeat_to_attach_one_or_more_person"),
     )
     add_parser.set_defaults(handler=make_sync_handler(handle_event_add_async))
 
@@ -370,7 +367,7 @@ def build_event_update_parser(
                 "lifeos event update 11111111-1111-1111-1111-111111111111 "
                 "--clear-task --clear-area",
                 "lifeos event update 11111111-1111-1111-1111-111111111111 "
-                "--clear-people --clear-tags",
+                "--clear-person --clear-tags",
             ),
             notes=(
                 _(
@@ -381,6 +378,9 @@ def build_event_update_parser(
                 help_message("notes.datetime.configuredTimezone"),
                 help_message("notes.recurringScope.updates"),
                 help_message("notes.recurringScope.instanceStartRequired"),
+                _(
+                    "resources.event.parser_actions.distinction_between_clear_advanced_recurrence_and_clear_recurrence"
+                ),
                 _(
                     "resources.event.parser_actions.use_repeated_person_id_to_keep_human_only_agent_only_and_shared"
                 ),
@@ -490,7 +490,8 @@ def build_event_update_parser(
         help=_("resources.event.parser_actions.updated_recurrence_weekday_ordinal"),
     )
     update_parser.add_argument(
-        "--clear-recurrence-rule",
+        "--clear-advanced-recurrence",
+        dest="clear_recurrence_rule",
         action="store_true",
         help=_("resources.event.parser_actions.remove_advanced_recurrence_rule_details"),
     )
@@ -530,10 +531,10 @@ def build_event_update_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     update_parser.add_argument(
-        "--clear-people", action="store_true", help=_("common.messages.remove_all_people")
+        "--clear-person", action="store_true", help=_("common.messages.remove_all_person")
     )
     update_parser.set_defaults(handler=make_sync_handler(handle_event_update_async))
 
@@ -550,6 +551,7 @@ def build_event_delete_parser(
             description=_("resources.event.parser_actions.delete_one_event"),
             examples=(
                 "lifeos event delete 11111111-1111-1111-1111-111111111111",
+                "lifeos event delete <event-id-1> <event-id-2>",
                 "lifeos event delete 11111111-1111-1111-1111-111111111111 "
                 "--scope single --instance-start 2026-04-10T09:00:00",
                 "lifeos event delete 11111111-1111-1111-1111-111111111111 "
@@ -559,11 +561,16 @@ def build_event_delete_parser(
                 help_message("notes.recurringScope.deletes"),
                 help_message("notes.recurringScope.instanceStartRequired"),
                 help_message("notes.datetime.configuredTimezone"),
+                _("common.messages.delete_accepts_one_or_more_identifiers"),
             ),
         ),
     )
     delete_parser.add_argument(
-        "event_id", type=UUID, help=_("resources.event.parser_actions.event_identifier")
+        "event_ids",
+        type=UUID,
+        nargs="+",
+        metavar="event-id",
+        help=_("common.parser.noun_identifiers_to_delete").format(noun="Event"),
     )
     delete_parser.add_argument(
         "--scope",
@@ -580,38 +587,3 @@ def build_event_delete_parser(
         ),
     )
     delete_parser.set_defaults(handler=make_sync_handler(handle_event_delete_async))
-
-
-def build_event_batch_parser(
-    event_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> None:
-    """Build the event batch command tree."""
-    batch_parser = add_documented_help_parser(
-        event_subparsers,
-        "batch",
-        help_content=HelpContent(
-            summary=_("resources.event.parser_actions.run_batch_event_operations"),
-            description=_("resources.event.parser_actions.delete_multiple_events_in_one_command"),
-            examples=(
-                "lifeos event batch delete --help",
-                "lifeos event batch delete --ids <event-id-1> <event-id-2>",
-            ),
-            notes=(_("common.messages.this_namespace_currently_exposes_only_delete_workflow"),),
-        ),
-    )
-    batch_subparsers = batch_parser.add_subparsers(
-        dest="event_batch_command",
-        title=_("common.messages.batch_actions"),
-        metavar=_("common.messages.batch_action_hyphenated_metavar"),
-    )
-    batch_delete_parser = add_documented_parser(
-        batch_subparsers,
-        "delete",
-        help_content=HelpContent(
-            summary=_("resources.event.parser_actions.delete_multiple_events"),
-            description=_("resources.event.parser_actions.delete_multiple_events_by_identifier"),
-            examples=("lifeos event batch delete --ids <event-id-1> <event-id-2>",),
-        ),
-    )
-    add_identifier_list_argument(batch_delete_parser, dest="event_ids", noun="event")
-    batch_delete_parser.set_defaults(handler=make_sync_handler(handle_event_batch_delete_async))

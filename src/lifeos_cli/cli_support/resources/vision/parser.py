@@ -11,7 +11,6 @@ from lifeos_cli.cli_support.help_utils import (
 from lifeos_cli.cli_support.resources.vision.parser_actions import (
     build_vision_add_experience_parser,
     build_vision_add_parser,
-    build_vision_batch_parser,
     build_vision_delete_parser,
     build_vision_harvest_parser,
     build_vision_list_parser,
@@ -48,9 +47,6 @@ def build_vision_parser(subparsers: argparse._SubParsersAction[argparse.Argument
             notes=(
                 _("common.messages.use_list_as_primary_query_entrypoint_for_this_resource"),
                 _("resources.vision.parser.visions_are_intended_to_group_related_task_trees"),
-                _(
-                    "resources.vision.parser.see_lifeos_vision_batch_help_for_bulk_delete_operations"
-                ),
             ),
         ),
     )
@@ -70,4 +66,3 @@ def build_vision_parser(subparsers: argparse._SubParsersAction[argparse.Argument
     build_vision_sync_experience_parser(vision_subparsers)
     build_vision_harvest_parser(vision_subparsers)
     build_vision_delete_parser(vision_subparsers)
-    build_vision_batch_parser(vision_subparsers)

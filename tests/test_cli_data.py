@@ -414,7 +414,7 @@ def test_main_data_batch_update_records_lookup_failures_without_crashing(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     session = FakeAsyncSession()
-    patch_path = tmp_path / "people-patch.jsonl"
+    patch_path = tmp_path / "person-patch.jsonl"
     patch_path.write_text(
         '{"id":"11111111-1111-1111-1111-111111111111","tag_ids":["22222222-2222-2222-2222-222222222222"]}\n',
         encoding="utf-8",
@@ -455,7 +455,7 @@ def test_main_data_batch_update_records_lookup_failures_without_crashing(
         [
             "data",
             "batch-update",
-            "people",
+            "person",
             "--file",
             str(patch_path),
             "--format",
@@ -465,7 +465,7 @@ def test_main_data_batch_update_records_lookup_failures_without_crashing(
     captured = capsys.readouterr()
 
     assert exit_code == 1
-    assert "Resource: people" in captured.out
+    assert "Resource: person" in captured.out
     assert "Failed rows: 1" in captured.out
     assert session.rolled_back is True
 

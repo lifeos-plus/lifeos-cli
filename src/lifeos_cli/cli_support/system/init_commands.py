@@ -47,7 +47,7 @@ def build_init_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                     "system.init_commands.preference_values_are_also_stored_in_config_file_under_preferences"
                 ),
                 _(
-                    "system.init_commands.use_config_set_for_supported_follow_up_edits_when_you_do_not"
+                    "system.init_commands.use_config_update_for_supported_follow_up_edits_when_you_do_not"
                 ),
                 _(
                     "system.init_commands.interactive_init_confirms_language_preference_because_agents_should_use_it_for_human"

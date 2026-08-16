@@ -1,4 +1,4 @@
-"""Async CRUD helpers for people."""
+"""Async CRUD helpers for person."""
 
 from __future__ import annotations
 
@@ -38,18 +38,20 @@ async def _build_person_view(session: AsyncSession, person: Person) -> PersonVie
     return build_person_view(person, tags=tags_map.get(person.id, ()))
 
 
-async def _build_people_views(
+async def _build_person_views(
     session: AsyncSession,
-    people: list[Person],
+    person_records: list[Person],
 ) -> list[PersonView]:
-    if not people:
+    if not person_records:
         return []
     tags_map = await load_tags_for_entities(
         session,
-        entity_ids=[person.id for person in people],
+        entity_ids=[person.id for person in person_records],
         entity_type="person",
     )
-    return [build_person_view(person, tags=tags_map.get(person.id, ())) for person in people]
+    return [
+        build_person_view(person, tags=tags_map.get(person.id, ())) for person in person_records
+    ]
 
 
 async def create_person(
@@ -103,7 +105,7 @@ async def get_person(
     )
 
 
-async def list_people(
+async def list_person(
     session: AsyncSession,
     *,
     search: str | None = None,
@@ -130,8 +132,8 @@ async def list_people(
             & (tag_associations.c.entity_type == "person"),
         ).where(tag_associations.c.tag_id == tag_id)
     stmt = stmt.order_by(Person.created_at.desc(), Person.id.desc()).offset(offset).limit(limit)
-    people = list((await session.execute(stmt)).scalars())
-    return await _build_people_views(session, people)
+    person_records = list((await session.execute(stmt)).scalars())
+    return await _build_person_views(session, person_records)
 
 
 async def update_person(
@@ -224,7 +226,7 @@ async def delete_person(
     )
 
 
-async def batch_delete_people(
+async def batch_delete_person(
     session: AsyncSession,
     *,
     person_ids: list[UUID],

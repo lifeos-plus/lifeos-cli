@@ -15,7 +15,7 @@ from lifeos_cli.db.base import utc_now
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.models.timelog_template import TimelogTemplate
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
-from lifeos_cli.db.services.entity_people import load_people_for_entities, sync_entity_people
+from lifeos_cli.db.services.entity_person import load_person_for_entities, sync_entity_person
 from lifeos_cli.db.services.model_utils import (
     ensure_optional_reference_exists,
 )
@@ -182,7 +182,7 @@ async def _build_template_views(
     if not templates:
         return []
     template_ids = [template.id for template in templates]
-    people_map = await load_people_for_entities(
+    person_map = await load_person_for_entities(
         session,
         entity_ids=template_ids,
         entity_type="timelog_template",
@@ -190,7 +190,7 @@ async def _build_template_views(
     return [
         build_timelog_template_view(
             template,
-            people=people_map.get(template.id, ()),
+            person_records=person_map.get(template.id, ()),
         )
         for template in templates
     ]
@@ -283,7 +283,7 @@ async def create_template(
     session.add(template)
     await session.flush()
     if payload.person_ids is not None:
-        await sync_entity_people(
+        await sync_entity_person(
             session,
             entity_id=template.id,
             entity_type="timelog_template",
@@ -344,7 +344,7 @@ async def update_template(
         template.last_used_at = changes.last_used_at
 
     if changes.person_ids_provided:
-        await sync_entity_people(
+        await sync_entity_person(
             session,
             entity_id=template.id,
             entity_type="timelog_template",

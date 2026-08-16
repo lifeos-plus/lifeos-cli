@@ -27,6 +27,40 @@ from lifeos_cli.db.services import (
 from tests.support import create_sqlite_session_factory, sqlite_session_factory
 
 
+def test_batch_delete_habit_actions_reports_window_errors_per_record(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inside_window = UUID("11111111-1111-1111-1111-111111111111")
+    outside_window = UUID("22222222-2222-2222-2222-222222222222")
+
+    async def fake_delete_habit_action(
+        _session: object,
+        *,
+        action_id: UUID,
+    ) -> None:
+        if action_id == outside_window:
+            raise habit_support.InvalidHabitOperationError(
+                "Habit action cannot be modified outside the allowed time window"
+            )
+
+    monkeypatch.setattr(
+        habit_mutations,
+        "delete_habit_action",
+        fake_delete_habit_action,
+    )
+
+    result = asyncio.run(
+        habit_mutations.batch_delete_habit_actions(
+            cast(Any, object()),
+            action_ids=[inside_window, outside_window],
+        )
+    )
+
+    assert result.deleted_count == 1
+    assert result.failed_ids == (outside_window,)
+    assert "outside the allowed time window" in result.errors[0]
+
+
 async def _identity_task_view(_: object, task: object) -> object:
     return task
 
@@ -405,7 +439,7 @@ def test_update_task_can_clear_optional_fields_without_committing(
     session.commit.assert_not_called()
 
 
-def test_update_task_can_clear_people_without_committing(
+def test_update_task_can_clear_person_without_committing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     task = SimpleNamespace(
@@ -449,28 +483,28 @@ def test_update_task_can_clear_people_without_committing(
         assert parent_task_id is None
         assert child_task_id == task.id
 
-    async def fake_sync_people(_: object, **kwargs: object) -> None:
+    async def fake_sync_person(_: object, **kwargs: object) -> None:
         assert kwargs["entity_type"] == "task"
         assert kwargs["desired_person_ids"] == []
 
     monkeypatch.setattr(task_mutations, "load_model_by_id", fake_load_task)
     monkeypatch.setattr(task_mutations, "validate_parent_task", fake_validate_parent_task)
-    monkeypatch.setattr(task_mutations, "sync_entity_people", fake_sync_people)
+    monkeypatch.setattr(task_mutations, "sync_entity_person", fake_sync_person)
     monkeypatch.setattr(
         task_mutations,
         "_build_task_view",
-        AsyncMock(return_value=SimpleNamespace(**task.__dict__, people=())),
+        AsyncMock(return_value=SimpleNamespace(**task.__dict__, person=())),
     )
 
     updated_task = asyncio.run(
         task_mutations.update_task(
             cast(Any, session),
             task_id=UUID("99999999-9999-9999-9999-999999999999"),
-            clear_people=True,
+            clear_person=True,
         )
     )
 
-    assert updated_task.people == ()
+    assert updated_task.person == ()
     session.flush.assert_awaited_once()
     session.refresh.assert_awaited_once_with(task)
     session.commit.assert_not_called()
@@ -780,7 +814,7 @@ def test_get_task_with_subtasks_builds_tree(monkeypatch: pytest.MonkeyPatch) -> 
     )
     monkeypatch.setattr(
         task_queries,
-        "load_people_for_entities",
+        "load_person_for_entities",
         AsyncMock(return_value={root_task.id: [], child_task.id: []}),
     )
 

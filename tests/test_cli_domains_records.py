@@ -12,7 +12,7 @@ from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import (
     areas,
     events,
-    people,
+    person,
     tags,
     visions,
 )
@@ -74,7 +74,7 @@ def test_main_summary_list_commands_print_headers(
             )
         ]
 
-    async def fake_list_people(_session: object, **_kwargs: object) -> list[object]:
+    async def fake_list_person(_session: object, **_kwargs: object) -> list[object]:
         return [
             make_record(
                 id=UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
@@ -123,7 +123,7 @@ def test_main_summary_list_commands_print_headers(
 
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
     monkeypatch.setattr(areas, "list_areas", fake_list_areas)
-    monkeypatch.setattr(people, "list_people", fake_list_people)
+    monkeypatch.setattr(person, "list_person", fake_list_person)
     monkeypatch.setattr(visions, "list_visions", fake_list_visions)
     monkeypatch.setattr(tags, "list_tags", fake_list_tags)
     monkeypatch.setattr(events, "list_events", fake_list_events)
@@ -134,7 +134,7 @@ def test_main_summary_list_commands_print_headers(
         "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\tactive\t10\tHealth",
     ]
 
-    assert cli.main(["people", "list"]) == 0
+    assert cli.main(["person", "list"]) == 0
     assert capsys.readouterr().out.splitlines() == [
         "person_id\tstatus\tname\tlocation\ttags",
         "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb\tactive\tAlice\tToronto\tfamily,friend",
@@ -312,12 +312,12 @@ def test_main_tag_add_creates_tag(
     assert "Created tag 22222222-2222-2222-2222-222222222222" in captured.out
 
 
-def test_main_tag_update_can_clear_people(
+def test_main_tag_update_can_clear_person(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     async def fake_update_tag(_session: object, **kwargs: object) -> object:
-        assert kwargs["clear_people"] is True
+        assert kwargs["clear_person"] is True
         assert kwargs["person_ids"] is None
         return make_record(id=UUID("22222222-2222-2222-2222-222222222222"))
 
@@ -329,7 +329,7 @@ def test_main_tag_update_can_clear_people(
             "tag",
             "update",
             "22222222-2222-2222-2222-222222222222",
-            "--clear-people",
+            "--clear-person",
         ]
     )
     captured = capsys.readouterr()
@@ -338,7 +338,7 @@ def test_main_tag_update_can_clear_people(
     assert "Updated tag 22222222-2222-2222-2222-222222222222" in captured.out
 
 
-def test_main_people_show_prints_tags(
+def test_main_person_show_prints_tags(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -361,9 +361,9 @@ def test_main_people_show_prints_tags(
         )
 
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
-    monkeypatch.setattr(people, "get_person", fake_get_person)
+    monkeypatch.setattr(person, "get_person", fake_get_person)
 
-    exit_code = cli.main(["people", "show", "33333333-3333-3333-3333-333333333333"])
+    exit_code = cli.main(["person", "show", "33333333-3333-3333-3333-333333333333"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -458,7 +458,7 @@ def test_main_event_delete_passes_scope_fields(
     assert "Soft-deleted event 56565656-5656-5656-5656-565656565656" in captured.out
 
 
-def test_main_people_update_can_clear_location(
+def test_main_person_update_can_clear_location(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -468,11 +468,11 @@ def test_main_people_update_can_clear_location(
         return make_record(id=UUID("33333333-3333-3333-3333-333333333333"))
 
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
-    monkeypatch.setattr(people, "update_person", fake_update_person)
+    monkeypatch.setattr(person, "update_person", fake_update_person)
 
     exit_code = cli.main(
         [
-            "people",
+            "person",
             "update",
             "33333333-3333-3333-3333-333333333333",
             "--clear-location",
@@ -594,7 +594,7 @@ def test_main_vision_read_model_commands_print_results(
             experience_points=0,
             experience_rate_per_hour=60,
             area_id=None,
-            people=[],
+            person=[],
             tasks=[
                 make_record(
                     id=UUID("55555555-5555-5555-5555-555555555555"),
@@ -639,36 +639,38 @@ def test_main_vision_read_model_commands_print_results(
     assert "completion_percentage: 1.00" in captured.out
 
 
-def test_main_people_batch_delete_reports_missing_ids(
+def test_main_person_delete_multiple_reports_missing_ids(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    async def fake_batch_delete_people(
+    async def fake_batch_delete_person(
         _session: object,
         *,
         person_ids: list[UUID],
     ) -> object:
-        assert person_ids == [UUID("33333333-3333-3333-3333-333333333333")]
+        assert person_ids == [
+            UUID("33333333-3333-3333-3333-333333333333"),
+            UUID("44444444-4444-4444-4444-444444444444"),
+        ]
         return make_record(
-            deleted_count=0,
+            deleted_count=1,
             failed_ids=(UUID("33333333-3333-3333-3333-333333333333"),),
             errors=("Person 33333333-3333-3333-3333-333333333333 was not found",),
         )
 
     monkeypatch.setattr(db_session, "session_scope", make_session_scope())
-    monkeypatch.setattr(people, "batch_delete_people", fake_batch_delete_people)
+    monkeypatch.setattr(person, "batch_delete_person", fake_batch_delete_person)
 
     exit_code = cli.main(
         [
-            "people",
-            "batch",
+            "person",
             "delete",
-            "--ids",
             "33333333-3333-3333-3333-333333333333",
+            "44444444-4444-4444-4444-444444444444",
         ]
     )
     captured = capsys.readouterr()
 
     assert exit_code == 1
-    assert "Deleted people: 0" in captured.out
+    assert "Deleted people: 1" in captured.out
     assert "Failed person IDs" in captured.err

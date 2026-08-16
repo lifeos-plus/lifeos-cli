@@ -21,19 +21,19 @@ from lifeos_cli.db.models.association import (
 )
 from lifeos_cli.db.models.person import Person
 from lifeos_cli.db.services.entity_associations import (
-    load_people_for_sources,
+    load_person_for_sources,
     set_association_links,
 )
 
 
-async def sync_entity_people(
+async def sync_entity_person(
     session: AsyncSession,
     *,
     entity_id: UUID,
     entity_type: str,
     desired_person_ids: list[UUID],
 ) -> None:
-    """Replace an entity's linked people with the provided identifiers.
+    """Replace an entity's linked person with the provided identifiers.
 
     All existing person-targeted associations for the entity are removed so
     links written with a non-canonical link type cannot survive a replace.
@@ -56,14 +56,14 @@ async def sync_entity_people(
     )
 
 
-async def load_people_for_entities(
+async def load_person_for_entities(
     session: AsyncSession,
     *,
     entity_ids: list[UUID],
     entity_type: str,
 ) -> dict[UUID, list[Person]]:
     """Return people grouped by entity identifier."""
-    return await load_people_for_sources(
+    return await load_person_for_sources(
         session,
         source_model=entity_type,
         source_ids=entity_ids,

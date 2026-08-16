@@ -24,7 +24,7 @@ def _format_tag_summary(tag: TagView) -> str:
 
 
 def _format_tag_detail(tag: TagView) -> str:
-    people_names = ", ".join(person.name for person in tag.people) if tag.people else "-"
+    person_names = ", ".join(person.name for person in tag.person) if tag.person else "-"
     return "\n".join(
         (
             f"id: {tag.id}",
@@ -33,7 +33,7 @@ def _format_tag_detail(tag: TagView) -> str:
             f"category: {tag.category}",
             f"description: {tag.description or '-'}",
             f"color: {tag.color or '-'}",
-            f"people: {people_names}",
+            f"person: {person_names}",
             f"created_at: {format_timestamp(tag.created_at)}",
             f"updated_at: {format_timestamp(tag.updated_at)}",
             f"deleted_at: {format_timestamp(tag.deleted_at)}",
@@ -112,7 +112,7 @@ async def handle_tag_update_async(args: argparse.Namespace) -> int:
                 "--clear-description",
             ),
             (args.clear_color and args.color is not None, "--color", "--clear-color"),
-            (args.clear_people and args.person_ids is not None, "--person-id", "--clear-people"),
+            (args.clear_person and args.person_ids is not None, "--person-id", "--clear-person"),
         )
     )
     if conflict_error is not None:
@@ -130,7 +130,7 @@ async def handle_tag_update_async(args: argparse.Namespace) -> int:
                 color=args.color,
                 clear_color=args.clear_color,
                 person_ids=args.person_ids,
-                clear_people=args.clear_people,
+                clear_person=args.clear_person,
             )
         except (
             tag_services.TagNotFoundError,
@@ -145,24 +145,20 @@ async def handle_tag_update_async(args: argparse.Namespace) -> int:
 
 async def handle_tag_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
+        if len(args.tag_ids) > 1:
+            result = await tag_services.batch_delete_tags(
+                session,
+                tag_ids=args.tag_ids,
+            )
+            return print_batch_result(
+                success_label="Deleted tags",
+                success_count=result.deleted_count,
+                failed_label="Failed tag IDs",
+                result=result,
+            )
         try:
-            await tag_services.delete_tag(session, tag_id=args.tag_id)
+            await tag_services.delete_tag(session, tag_id=args.tag_ids[0])
         except tag_services.TagNotFoundError as exc:
             return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted tag {args.tag_id}")
+    print(f"Soft-deleted tag {args.tag_ids[0]}")
     return 0
-
-
-async def handle_tag_batch_delete_async(args: argparse.Namespace) -> int:
-    """Delete multiple tags in one command."""
-    async with db_session.session_scope() as session:
-        result = await tag_services.batch_delete_tags(
-            session,
-            tag_ids=list(args.tag_ids),
-        )
-    return print_batch_result(
-        success_label="Deleted tags",
-        success_count=result.deleted_count,
-        failed_label="Failed tag IDs",
-        result=result,
-    )

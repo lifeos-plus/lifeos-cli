@@ -518,6 +518,13 @@ def test_validate_web_preferences_reject_invalid_values() -> None:
             raise AssertionError("invalid Web preference should fail validation")
 
 
+def test_validate_navigation_visible_modules_normalizes_legacy_person_key() -> None:
+    assert validate_navigation_visible_modules(["persons", "notes"]) == (
+        "person",
+        "notes",
+    )
+
+
 def test_detect_default_language_uses_environment() -> None:
     assert detect_default_language({"LANG": "zh_Hans.UTF-8"}) == "zh-Hans"
 
@@ -727,7 +734,7 @@ def test_set_runtime_config_value_rejects_backend_switch_between_postgresql_and_
         assert "Switching between PostgreSQL and SQLite" in str(exc)
         assert "lifeos init --database-url" in str(exc)
     else:
-        raise AssertionError("cross-backend config set should fail")
+        raise AssertionError("cross-backend config update should fail")
 
     content = config_path.read_text(encoding="utf-8")
     assert 'url = "postgresql+psycopg://localhost/lifeos"' in content

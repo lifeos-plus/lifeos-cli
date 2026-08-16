@@ -17,7 +17,7 @@ from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.person import Person
 from lifeos_cli.db.models.tag import Tag
 from lifeos_cli.db.models.tag_association import tag_associations
-from lifeos_cli.db.services import entity_people, entity_tags
+from lifeos_cli.db.services import entity_person, entity_tags
 from lifeos_cli.db.services.integrity_audit import (
     IntegrityAuditReport,
     audit_referential_integrity,
@@ -79,7 +79,7 @@ def test_audit_preserves_soft_deleted_endpoint_links() -> None:
                 note = Note(content="Restorable link")
                 session.add_all([person, note])
                 await session.flush()
-                await entity_people.sync_entity_people(
+                await entity_person.sync_entity_person(
                     session,
                     entity_id=note.id,
                     entity_type="note",
@@ -192,7 +192,7 @@ def test_audit_reports_clean_for_valid_links() -> None:
                 tag = Tag(name="review", entity_type="note")
                 session.add_all([person, note, tag])
                 await session.flush()
-                await entity_people.sync_entity_people(
+                await entity_person.sync_entity_person(
                     session,
                     entity_id=note.id,
                     entity_type="note",

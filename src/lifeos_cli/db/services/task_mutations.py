@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.services.batching import BatchDeleteResult, batch_delete_records
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
-from lifeos_cli.db.services.entity_people import sync_entity_people
+from lifeos_cli.db.services.entity_person import sync_entity_person
 from lifeos_cli.db.services.model_utils import load_model_by_id
 from lifeos_cli.db.services.read_models import TaskView
 from lifeos_cli.db.services.task_effort import recompute_subtree_totals, recompute_totals_upwards
@@ -87,7 +87,7 @@ async def create_task(
     session.add(task)
     await session.flush()
     if person_ids is not None:
-        await sync_entity_people(
+        await sync_entity_person(
             session, entity_id=task.id, entity_type="task", desired_person_ids=person_ids
         )
     await session.refresh(task)
@@ -230,7 +230,7 @@ async def update_task(
     planning_cycle_start_date: date | None = None,
     clear_planning_cycle: bool = False,
     person_ids: list[UUID] | None = None,
-    clear_people: bool = False,
+    clear_person: bool = False,
 ) -> TaskView:
     """Update a task."""
     task = await load_model_by_id(
@@ -306,12 +306,12 @@ async def update_task(
         task.estimated_effort = None
     elif estimated_effort is not None:
         task.estimated_effort = estimated_effort
-    if clear_people:
-        await sync_entity_people(
+    if clear_person:
+        await sync_entity_person(
             session, entity_id=task.id, entity_type="task", desired_person_ids=[]
         )
     elif person_ids is not None:
-        await sync_entity_people(
+        await sync_entity_person(
             session, entity_id=task.id, entity_type="task", desired_person_ids=person_ids
         )
     task.planning_cycle_type = normalized_cycle_type

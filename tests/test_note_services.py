@@ -16,7 +16,7 @@ from lifeos_cli.db.models.habit_action import HabitAction
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
-from lifeos_cli.db.services import habit_actions, notes, people, tags
+from lifeos_cli.db.services import habit_actions, notes, person, tags
 from tests.support import sqlite_session_factory
 
 
@@ -248,24 +248,24 @@ def test_count_note_usage_by_person_counts_active_notes() -> None:
     async def run() -> None:
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
-                person = await people.create_person(session, name="Alice")
+                created_person = await person.create_person(session, name="Alice")
                 active_note = await notes.create_note(
                     session,
                     content="Active note",
-                    person_ids=[person.id],
+                    person_ids=[created_person.id],
                 )
                 deleted_note = await notes.create_note(
                     session,
                     content="Deleted note",
-                    person_ids=[person.id],
+                    person_ids=[created_person.id],
                 )
                 await notes.delete_note(session, note_id=deleted_note.id)
 
                 stats = await notes.count_note_usage_by_person(session)
 
-                assert active_note.people[0].id == person.id
+                assert active_note.person[0].id == created_person.id
                 assert [(row.id, row.name, row.display_name, row.usage_count) for row in stats] == [
-                    (person.id, "Alice", "Alice", 1),
+                    (created_person.id, "Alice", "Alice", 1),
                 ]
 
     asyncio.run(run())

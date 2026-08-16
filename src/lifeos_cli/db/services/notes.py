@@ -26,7 +26,7 @@ from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
 from lifeos_cli.db.services.entity_associations import (
     load_events_for_sources,
     load_habit_actions_for_sources,
-    load_people_for_sources,
+    load_person_for_sources,
     load_task_lists_for_sources,
     load_task_summary_details,
     load_timelogs_for_sources,
@@ -223,7 +223,7 @@ async def _build_note_views(
         return []
     note_ids = [note.id for note in note_records]
     tags_map = await load_tags_for_entities(session, entity_ids=note_ids, entity_type="note")
-    people_map = await load_people_for_sources(
+    person_map = await load_person_for_sources(
         session,
         source_model="note",
         source_ids=note_ids,
@@ -267,7 +267,7 @@ async def _build_note_views(
         build_note_view(
             note,
             tags=tags_map.get(note.id, ()),
-            people=people_map.get(note.id, ()),
+            person_records=person_map.get(note.id, ()),
             tasks=task_map.get(note.id, ()),
             visions=vision_map.get(note.id, ()),
             events=event_map.get(note.id, ()),
@@ -482,7 +482,7 @@ async def update_note(
     tag_ids: list[UUID] | None = None,
     clear_tags: bool = False,
     person_ids: list[UUID] | None = None,
-    clear_people: bool = False,
+    clear_person: bool = False,
     task_ids: list[UUID] | None = None,
     clear_tasks: bool = False,
     vision_ids: list[UUID] | None = None,
@@ -503,7 +503,7 @@ async def update_note(
         and tag_ids is None
         and not clear_tags
         and person_ids is None
-        and not clear_people
+        and not clear_person
         and task_ids is None
         and not clear_tasks
         and vision_ids is None
@@ -528,7 +528,7 @@ async def update_note(
             entity_type="note",
             desired_tag_ids=tag_ids,
         )
-    if clear_people:
+    if clear_person:
         await set_association_links(
             session,
             source_model="note",

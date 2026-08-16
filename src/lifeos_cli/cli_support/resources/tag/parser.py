@@ -13,13 +13,11 @@ from lifeos_cli.cli_support.help_utils import (
 from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.output_utils import format_summary_column_list
 from lifeos_cli.cli_support.parser_common import (
-    add_identifier_list_argument,
     add_limit_offset_arguments,
 )
 from lifeos_cli.cli_support.resources.tag.handlers import (
     TAG_SUMMARY_COLUMNS,
     handle_tag_add_async,
-    handle_tag_batch_delete_async,
     handle_tag_delete_async,
     handle_tag_list_async,
     handle_tag_show_async,
@@ -38,7 +36,7 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
             summary=_("resources.tag.parser.manage_tags"),
             description=(
                 _(
-                    "resources.tag.parser.create_and_maintain_tags_for_notes_people_visions_tasks_and_areas"
+                    "resources.tag.parser.create_and_maintain_tags_for_notes_person_visions_tasks_and_areas"
                 )
                 + "\n\n"
                 + _(
@@ -53,7 +51,6 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
             notes=(
                 _("common.messages.use_list_as_primary_query_entrypoint_for_this_resource"),
                 _("resources.tag.parser.a_tag_is_scoped_by_name_entity_type_and_category"),
-                _("resources.tag.parser.see_lifeos_tag_batch_help_for_bulk_delete_operations"),
             ),
         ),
     )
@@ -88,7 +85,7 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
             ),
             notes=(
                 _(
-                    "common.messages.repeat_same_person_id_flag_to_associate_multiple_people_in_one_command"
+                    "common.messages.repeat_same_person_id_flag_to_associate_multiple_person_in_one_command"
                 ),
             ),
         ),
@@ -110,7 +107,7 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_associate_one_or_more_people"),
+        help=_("common.messages.repeat_to_associate_one_or_more_person"),
     )
     add_parser.set_defaults(handler=make_sync_handler(handle_tag_add_async))
 
@@ -181,14 +178,14 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
                 "--person-id 11111111-1111-1111-1111-111111111111 "
                 "--person-id 22222222-2222-2222-2222-222222222222",
                 "lifeos tag update 11111111-1111-1111-1111-111111111111 "
-                "--clear-description --clear-people",
+                "--clear-description --clear-person",
                 "lifeos tag update 11111111-1111-1111-1111-111111111111 --clear-color",
             ),
             notes=(
                 _(
-                    "resources.tag.parser.use_clear_description_clear_color_or_clear_people_to_remove_optional_values"
+                    "resources.tag.parser.use_clear_description_clear_color_or_clear_person_to_remove_optional_values"
                 ),
-                _("common.messages.repeat_same_person_id_flag_to_replace_multiple_linked_people"),
+                _("common.messages.repeat_same_person_id_flag_to_replace_multiple_linked_person"),
             ),
         ),
     )
@@ -216,10 +213,10 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     update_parser.add_argument(
-        "--clear-people", action="store_true", help=_("common.messages.remove_all_people")
+        "--clear-person", action="store_true", help=_("common.messages.remove_all_person")
     )
     update_parser.set_defaults(handler=make_sync_handler(handle_tag_update_async))
 
@@ -229,39 +226,18 @@ def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
         help_content=HelpContent(
             summary=_("resources.tag.parser.delete_tag"),
             description=_("resources.tag.parser.delete_tag_description"),
-            examples=("lifeos tag delete 11111111-1111-1111-1111-111111111111",),
-        ),
-    )
-    delete_parser.add_argument("tag_id", type=UUID, help=_("resources.tag.parser.tag_identifier"))
-    delete_parser.set_defaults(handler=make_sync_handler(handle_tag_delete_async))
-
-    batch_parser = add_documented_help_parser(
-        tag_subparsers,
-        "batch",
-        help_content=HelpContent(
-            summary=_("resources.tag.parser.run_batch_tag_operations"),
-            description=_("resources.tag.parser.delete_multiple_tags_in_one_command"),
             examples=(
-                "lifeos tag batch delete --help",
-                "lifeos tag batch delete --ids <tag-id-1> <tag-id-2>",
+                "lifeos tag delete 11111111-1111-1111-1111-111111111111",
+                "lifeos tag delete <tag-id-1> <tag-id-2>",
             ),
-            notes=(_("common.messages.this_namespace_currently_exposes_only_delete_workflow"),),
+            notes=(_("common.messages.delete_accepts_one_or_more_identifiers"),),
         ),
     )
-    batch_subparsers = batch_parser.add_subparsers(
-        dest="tag_batch_command",
-        title=_("common.messages.batch_actions"),
-        metavar=_("common.messages.batch_action"),
+    delete_parser.add_argument(
+        "tag_ids",
+        type=UUID,
+        nargs="+",
+        metavar="tag-id",
+        help=_("common.parser.noun_identifiers_to_delete").format(noun="Tag"),
     )
-
-    batch_delete_parser = add_documented_parser(
-        batch_subparsers,
-        "delete",
-        help_content=HelpContent(
-            summary=_("resources.tag.parser.delete_multiple_tags"),
-            description=_("resources.tag.parser.delete_multiple_tags_by_identifier"),
-            examples=("lifeos tag batch delete --ids <tag-id-1> <tag-id-2>",),
-        ),
-    )
-    add_identifier_list_argument(batch_delete_parser, dest="tag_ids", noun="tag")
-    batch_delete_parser.set_defaults(handler=make_sync_handler(handle_tag_batch_delete_async))
+    delete_parser.set_defaults(handler=make_sync_handler(handle_tag_delete_async))

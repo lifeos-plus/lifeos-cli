@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from functools import partial
 from importlib.metadata import PackageNotFoundError, metadata
 from typing import cast
@@ -21,7 +21,7 @@ from lifeos_cli.cli_support.resources.finance.parser import build_finance_parser
 from lifeos_cli.cli_support.resources.habit.parser import build_habit_parser
 from lifeos_cli.cli_support.resources.habit_action.parser import build_habit_action_parser
 from lifeos_cli.cli_support.resources.note.parser import build_note_parser
-from lifeos_cli.cli_support.resources.people.parser import build_people_parser
+from lifeos_cli.cli_support.resources.person.parser import build_person_parser
 from lifeos_cli.cli_support.resources.planning.parser import build_planning_parser
 from lifeos_cli.cli_support.resources.schedule.parser import build_schedule_parser
 from lifeos_cli.cli_support.resources.tag.parser import build_tag_parser
@@ -42,6 +42,32 @@ CLI_BRAND_FONT = "ansi_shadow"
 PROJECT_REPOSITORY_URL_FALLBACK = "https://github.com/lifeos-plus/lifeos-cli"
 PROJECT_ISSUES_URL_FALLBACK = "https://github.com/lifeos-plus/lifeos-cli/issues"
 HELP_FLAGS = frozenset({"-h", "--help"})
+
+ResourceBuilder = Callable[
+    ["argparse._SubParsersAction[argparse.ArgumentParser]"],
+    None,
+]
+
+RESOURCE_BUILDERS: tuple[tuple[str, ResourceBuilder], ...] = (
+    ("init", build_init_parser),
+    ("config", build_config_parser),
+    ("db", build_db_parser),
+    ("web", build_web_parser),
+    ("data", build_data_parser),
+    ("area", build_area_parser),
+    ("event", build_event_parser),
+    ("finance", build_finance_parser),
+    ("schedule", build_schedule_parser),
+    ("tag", build_tag_parser),
+    ("person", build_person_parser),
+    ("vision", build_vision_parser),
+    ("task", build_task_parser),
+    ("planning", build_planning_parser),
+    ("timelog", build_timelog_parser),
+    ("habit", build_habit_parser),
+    ("habit-action", build_habit_action_parser),
+    ("note", build_note_parser),
+)
 
 
 class TopLevelArgumentParser(argparse.ArgumentParser):
@@ -205,24 +231,8 @@ def build_parser() -> argparse.ArgumentParser:
         metavar=_("app.parser.resource"),
         parser_class=argparse.ArgumentParser,
     )
-    build_init_parser(subparsers)
-    build_config_parser(subparsers)
-    build_db_parser(subparsers)
-    build_web_parser(subparsers)
-    build_data_parser(subparsers)
-    build_area_parser(subparsers)
-    build_event_parser(subparsers)
-    build_finance_parser(subparsers)
-    build_schedule_parser(subparsers)
-    build_tag_parser(subparsers)
-    build_people_parser(subparsers)
-    build_vision_parser(subparsers)
-    build_task_parser(subparsers)
-    build_planning_parser(subparsers)
-    build_timelog_parser(subparsers)
-    build_habit_parser(subparsers)
-    build_habit_action_parser(subparsers)
-    build_note_parser(subparsers)
+    for _resource, builder in RESOURCE_BUILDERS:
+        builder(subparsers)
     return parser
 
 

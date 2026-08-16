@@ -11,11 +11,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lifeos_cli.db.services import people as people_services
+from lifeos_cli.db.services import person as person_services
 from lifeos_cli.db.services import person_activity_queries
 from lifeos_cli.db.services.read_models import PersonView, TagSummaryView
 from lifeos_web.deps import get_db_session
-from lifeos_web.response_schemas.persons import (
+from lifeos_web.response_schemas.person import (
     AnniversaryListMeta,
     AnniversaryResponse,
     PersonActivityMeta,
@@ -26,7 +26,7 @@ from lifeos_web.response_schemas.persons import (
 from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import ListResponse, Pagination
 
-router = APIRouter(prefix="/persons", tags=["persons"])
+router = APIRouter(prefix="/person", tags=["person"])
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
 
 
@@ -103,7 +103,7 @@ def _activity_payload(item: person_activity_queries.PersonActivity) -> dict[str,
 
 
 @router.get("/", response_model=ListResponse[PersonResponse, PersonListMeta])
-async def list_persons(
+async def list_person(
     session: SessionDep,
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=500)] = 100,
@@ -111,16 +111,16 @@ async def list_persons(
     tag_id: UUID | None = None,
     tag_filter: str | None = None,
 ) -> ListResponse:
-    """List people for frontend person selectors and pages."""
+    """List person for frontend person selectors and pages."""
     del tag_filter
-    people = await people_services.list_people(
+    person_records = await person_services.list_person(
         session,
         search=search,
         tag_id=tag_id,
         limit=size,
         offset=(page - 1) * size,
     )
-    items = [_person_payload(person) for person in people]
+    items = [_person_payload(person) for person in person_records]
     return ListResponse(
         items=items,
         pagination=Pagination(page=page, size=size, total=len(items), pages=1 if items else 0),
@@ -129,7 +129,7 @@ async def list_persons(
 
 
 @router.get("/search-by-tag", response_model=ListResponse[PersonResponse, PersonListMeta])
-async def search_persons_by_tag(
+async def search_person_by_tag(
     session: SessionDep,
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=500)] = 50,
@@ -146,7 +146,7 @@ async def search_persons_by_tag(
 @router.get("/{person_id}", response_model=PersonResponse)
 async def get_person(person_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load one person."""
-    person = await people_services.get_person(session, person_id=person_id)
+    person = await person_services.get_person(session, person_id=person_id)
     if person is None:
         raise HTTPException(status_code=404, detail=f"Person {person_id} was not found")
     return _person_payload(person)
@@ -156,7 +156,7 @@ async def get_person(person_id: UUID, session: SessionDep) -> dict[str, object]:
 async def create_person(payload: PersonCreate, session: SessionDep) -> dict[str, object]:
     """Create a person."""
     try:
-        person = await people_services.create_person(
+        person = await person_services.create_person(
             session,
             name=payload.name,
             description=payload.description,
@@ -179,7 +179,7 @@ async def update_person(
     """Update a person."""
     provided_fields = payload.model_fields_set
     try:
-        person = await people_services.update_person(
+        person = await person_services.update_person(
             session,
             person_id=person_id,
             name=payload.name,
@@ -204,7 +204,7 @@ async def update_person(
 @router.delete("/{person_id}", status_code=204)
 async def delete_person(person_id: UUID, session: SessionDep) -> None:
     """Soft-delete a person."""
-    await soft_delete(people_services.delete_person, session=session, person_id=person_id)
+    await soft_delete(person_services.delete_person, session=session, person_id=person_id)
 
 
 @router.get(
@@ -221,7 +221,7 @@ async def list_person_activities(
     type: str | None = None,
 ) -> ListResponse:
     """Return person-linked activity timeline data."""
-    person = await people_services.get_person(session, person_id=person_id)
+    person = await person_services.get_person(session, person_id=person_id)
     if person is None:
         raise HTTPException(status_code=404, detail=f"Person {person_id} was not found")
     activity_filter = activity_type or type
@@ -264,7 +264,7 @@ async def list_person_anniversaries(
     session: SessionDep,
 ) -> ListResponse:
     """Return empty anniversaries until LifeOS has an anniversary model."""
-    person = await people_services.get_person(session, person_id=person_id)
+    person = await person_services.get_person(session, person_id=person_id)
     if person is None:
         raise HTTPException(status_code=404, detail=f"Person {person_id} was not found")
     return ListResponse(

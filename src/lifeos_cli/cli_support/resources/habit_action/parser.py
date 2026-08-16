@@ -19,6 +19,7 @@ from lifeos_cli.cli_support.parser_common import (
 )
 from lifeos_cli.cli_support.resources.habit_action.handlers import (
     HABIT_ACTION_SUMMARY_COLUMNS,
+    handle_habit_action_delete_async,
     handle_habit_action_list_async,
     handle_habit_action_log_async,
     handle_habit_action_show_async,
@@ -235,3 +236,32 @@ def build_habit_action_parser(
         help=_("resources.habit_action.parser.clear_optional_notes_field"),
     )
     log_parser.set_defaults(handler=make_sync_handler(handle_habit_action_log_async))
+
+    delete_parser = add_documented_parser(
+        action_subparsers,
+        "delete",
+        help_content=HelpContent(
+            summary=_("resources.habit_action.parser.delete_habit_action"),
+            description=_(
+                "resources.habit_action.parser.soft_delete_habit_action_within_editable_window"
+            ),
+            examples=(
+                "lifeos habit-action delete 11111111-1111-1111-1111-111111111111",
+                "lifeos habit-action delete <habit-action-id-1> <habit-action-id-2>",
+            ),
+            notes=(
+                _(
+                    "resources.habit_action.parser.this_command_follows_same_editable_window_rules_as_update"
+                ),
+                _("common.messages.delete_accepts_one_or_more_identifiers"),
+            ),
+        ),
+    )
+    delete_parser.add_argument(
+        "action_ids",
+        type=UUID,
+        nargs="+",
+        metavar="habit-action-id",
+        help=_("common.parser.noun_identifiers_to_delete").format(noun="Habit action"),
+    )
+    delete_parser.set_defaults(handler=make_sync_handler(handle_habit_action_delete_async))

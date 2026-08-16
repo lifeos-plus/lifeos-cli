@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
+from pathlib import Path
 from uuid import UUID
 
 import pytest
@@ -10,8 +11,17 @@ import pytest
 from lifeos_cli import cli
 from lifeos_cli.application.serialization import to_jsonable
 from lifeos_cli.cli_support.json_output import print_json_payload
+from lifeos_cli.config import DatabaseSettings, PreferencesSettings
 from lifeos_cli.db import session as db_session
-from lifeos_cli.db.services import areas, notes, timelogs, visions
+from lifeos_cli.db.services import (
+    areas,
+    notes,
+    planning_lifecycle,
+    schedules,
+    tasks,
+    timelogs,
+    visions,
+)
 from tests.support import make_record, make_session_scope, utc_datetime
 
 
@@ -124,7 +134,7 @@ def test_note_search_json_preserves_full_content(
                 updated_at=utc_datetime(2026, 4, 10),
                 deleted_at=None,
                 tags=(),
-                people=(),
+                person=(),
                 tasks=(),
                 visions=(),
                 events=(),
@@ -214,3 +224,162 @@ def test_json_output_preserves_unicode_and_decimal_values(
 
 def test_to_jsonable_serializes_datetime_with_utc_suffix() -> None:
     assert to_jsonable(utc_datetime(2026, 4, 10, 12, 0)) == "2026-04-10T12:00:00Z"
+
+
+def test_schedule_show_json_emits_structured_day(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async def fake_reconcile(_session: object, **_kwargs: object) -> None:
+        return None
+
+    async def fake_get_day(_session: object, **_kwargs: object) -> object:
+        return make_record(
+            local_date=date(2026, 4, 10),
+            tasks=(),
+            habit_actions=(),
+            events=(),
+        )
+
+    monkeypatch.setattr(db_session, "session_scope", make_session_scope())
+    monkeypatch.setattr(
+        planning_lifecycle,
+        "reconcile_planning_habit_action_lifecycle",
+        fake_reconcile,
+    )
+    monkeypatch.setattr(schedules, "get_schedule_for_date", fake_get_day)
+
+    exit_code = cli.main(["schedule", "show", "--date", "2026-04-10", "--json"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["local_date"] == "2026-04-10"
+    assert payload["tasks"] == []
+
+
+def test_schedule_list_json_emits_structured_days(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async def fake_reconcile(_session: object, **_kwargs: object) -> None:
+        return None
+
+    async def fake_get_day(_session: object, **_kwargs: object) -> object:
+        return make_record(
+            local_date=date(2026, 4, 10),
+            tasks=(),
+            habit_actions=(),
+            events=(),
+        )
+
+    monkeypatch.setattr(db_session, "session_scope", make_session_scope())
+    monkeypatch.setattr(
+        planning_lifecycle,
+        "reconcile_planning_habit_action_lifecycle",
+        fake_reconcile,
+    )
+    monkeypatch.setattr(schedules, "get_schedule_for_date", fake_get_day)
+
+    exit_code = cli.main(["schedule", "list", "--date", "2026-04-10", "--json"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert len(payload) == 1
+    assert payload[0]["local_date"] == "2026-04-10"
+
+
+def test_planning_show_json_emits_structured_view(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async def fake_get_view(_session: object, **_kwargs: object) -> object:
+        return make_record(
+            cycle_type="week",
+            period_start=date(2026, 4, 13),
+            period_end=date(2026, 4, 19),
+            total_tasks=0,
+            roots=(),
+            context_root_ids=(),
+        )
+
+    monkeypatch.setattr(db_session, "session_scope", make_session_scope())
+    monkeypatch.setattr(tasks, "get_planning_view", fake_get_view)
+
+    exit_code = cli.main(
+        ["planning", "show", "--cycle-type", "week", "--at", "2026-04-15", "--json"]
+    )
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["cycle_type"] == "week"
+    assert payload["period_start"] == "2026-04-13"
+    assert payload["total_tasks"] == 0
+
+
+def test_config_show_json_masks_secrets_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_file = Path("/tmp/lifeos-config.toml")
+    monkeypatch.setattr(
+        "lifeos_cli.cli_support.system.config_handlers.get_database_settings",
+        lambda: DatabaseSettings(
+            database_url="postgresql://user:super-secret@localhost/lifeos",  # pragma: allowlist secret  # noqa: E501
+            database_schema="main",
+            database_echo=False,
+            config_file=config_file,
+        ),
+    )
+    monkeypatch.setattr(
+        "lifeos_cli.cli_support.system.config_handlers.get_preferences_settings",
+        lambda: PreferencesSettings(
+            timezone="Asia/Shanghai",
+            language="zh-Hans",
+            day_starts_at="04:00",
+            week_starts_on="monday",
+            vision_experience_rate_per_hour=1,
+            config_file=config_file,
+        ),
+    )
+
+    exit_code = cli.main(["config", "show", "--json"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["database_schema"] == "main"
+    assert "super-secret" not in payload["database_url"]
+    assert payload["preferences"]["timezone"] == "Asia/Shanghai"
+
+
+def test_config_show_json_show_secrets_emits_full_url(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_file = Path("/tmp/lifeos-config.toml")
+    monkeypatch.setattr(
+        "lifeos_cli.cli_support.system.config_handlers.get_database_settings",
+        lambda: DatabaseSettings(
+            database_url="postgresql://user:super-secret@localhost/lifeos",  # pragma: allowlist secret  # noqa: E501
+            database_schema=None,
+            database_echo=True,
+            config_file=config_file,
+        ),
+    )
+    monkeypatch.setattr(
+        "lifeos_cli.cli_support.system.config_handlers.get_preferences_settings",
+        lambda: PreferencesSettings(
+            timezone="Asia/Shanghai",
+            language="en",
+            day_starts_at="04:00",
+            week_starts_on="monday",
+            vision_experience_rate_per_hour=1,
+            config_file=config_file,
+        ),
+    )
+
+    exit_code = cli.main(["config", "show", "--json", "--show-secrets"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert "super-secret" in payload["database_url"]
+    assert "database_schema" not in payload

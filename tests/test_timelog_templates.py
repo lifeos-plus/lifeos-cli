@@ -12,7 +12,7 @@ from lifeos_cli.db.services import timelog_templates
 from tests.support import sqlite_session_factory
 
 
-def test_create_template_hydrates_area_and_people() -> None:
+def test_create_template_hydrates_area_and_person() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
@@ -36,7 +36,7 @@ def test_create_template_hydrates_area_and_people() -> None:
                 assert template.area_name == "Work"
                 assert template.area_color == "#123456"
                 assert template.person_ids == (person.id,)
-                assert [summary.name for summary in template.people] == ["Alice"]
+                assert [summary.name for summary in template.person] == ["Alice"]
                 assert template.default_duration_minutes == 90
                 assert template.position == 0
 
@@ -123,7 +123,7 @@ def test_update_template_can_clear_optional_fields() -> None:
                 assert updated.area_id is None
                 assert updated.area_name is None
                 assert updated.person_ids == ()
-                assert updated.people == ()
+                assert updated.person == ()
                 assert updated.default_duration_minutes is None
 
     asyncio.run(scenario())

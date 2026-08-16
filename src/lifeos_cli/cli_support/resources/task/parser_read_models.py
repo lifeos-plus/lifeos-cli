@@ -144,6 +144,7 @@ def build_task_with_subtasks_parser(
                 _(
                     "resources.task.parser_read_models.use_hierarchy_when_you_need_full_active_tree_for_entire_vision"
                 ),
+                _("resources.task.parser_read_models.with_subtasks_related_views_note"),
             ),
         ),
     )
@@ -173,6 +174,7 @@ def build_task_hierarchy_parser(
                 _(
                     "resources.task.parser_read_models.use_with_subtasks_when_you_want_to_inspect_only_one_branch_of"
                 ),
+                _("resources.task.parser_read_models.hierarchy_related_views_note"),
             ),
         ),
     )

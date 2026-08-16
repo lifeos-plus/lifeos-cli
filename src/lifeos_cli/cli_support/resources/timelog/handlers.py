@@ -76,7 +76,7 @@ def _format_timelog_summary(timelog: TimelogView, *, include_counts: bool = Fals
 
 def _format_timelog_detail(timelog: TimelogView) -> str:
     tag_names = ", ".join(tag.name for tag in timelog.tags) if timelog.tags else "-"
-    people_names = ", ".join(person.name for person in timelog.people) if timelog.people else "-"
+    person_names = ", ".join(person.name for person in timelog.person) if timelog.person else "-"
     return "\n".join(
         (
             f"id: {timelog.id}",
@@ -91,7 +91,7 @@ def _format_timelog_detail(timelog: TimelogView) -> str:
             f"task_id: {timelog.task_id or '-'}",
             f"linked_notes_count: {timelog.linked_notes_count}",
             f"tags: {tag_names}",
-            f"people: {people_names}",
+            f"person: {person_names}",
             f"created_at: {format_timestamp(timelog.created_at)}",
             f"updated_at: {format_timestamp(timelog.updated_at)}",
             f"deleted_at: {format_timestamp(timelog.deleted_at)}",
@@ -388,7 +388,7 @@ async def handle_timelog_update_async(args: argparse.Namespace) -> int:
         (args.clear_area and args.area_id is not None, "--area-id", "--clear-area"),
         (args.clear_task and args.task_id is not None, "--task-id", "--clear-task"),
         (args.clear_tags and args.tag_ids is not None, "--tag-id", "--clear-tags"),
-        (args.clear_people and args.person_ids is not None, "--person-id", "--clear-people"),
+        (args.clear_person and args.person_ids is not None, "--person-id", "--clear-person"),
     )
     conflict_error = cli_handler_utils.validate_mutually_exclusive_pairs(conflicts)
     if conflict_error is not None:
@@ -416,7 +416,7 @@ async def handle_timelog_update_async(args: argparse.Namespace) -> int:
                     tag_ids=args.tag_ids,
                     clear_tags=args.clear_tags,
                     person_ids=args.person_ids,
-                    clear_people=args.clear_people,
+                    clear_person=args.clear_person,
                 ),
             )
         except (
@@ -433,11 +433,22 @@ async def handle_timelog_update_async(args: argparse.Namespace) -> int:
 
 async def handle_timelog_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
+        if len(args.timelog_ids) > 1:
+            result = await timelog_services.batch_delete_timelogs(
+                session,
+                timelog_ids=args.timelog_ids,
+            )
+            return print_batch_result(
+                success_label="Deleted timelogs",
+                success_count=result.deleted_count,
+                failed_label="Failed timelog IDs",
+                result=result,
+            )
         try:
-            await timelog_services.delete_timelog(session, timelog_id=args.timelog_id)
+            await timelog_services.delete_timelog(session, timelog_id=args.timelog_ids[0])
         except timelog_services.TimelogNotFoundError as exc:
             return cli_handler_utils.print_cli_error(exc)
-    print(f"Soft-deleted timelog {args.timelog_id}")
+    print(f"Soft-deleted timelog {args.timelog_ids[0]}")
     return 0
 
 
@@ -452,7 +463,7 @@ async def handle_timelog_batch_update_async(args: argparse.Namespace) -> int:
         (args.clear_area and args.area_id is not None, "--area-id", "--clear-area"),
         (args.clear_task and args.task_id is not None, "--task-id", "--clear-task"),
         (args.clear_tags and args.tag_ids is not None, "--tag-id", "--clear-tags"),
-        (args.clear_people and args.person_ids is not None, "--person-id", "--clear-people"),
+        (args.clear_person and args.person_ids is not None, "--person-id", "--clear-person"),
     )
     conflict_error = cli_handler_utils.validate_mutually_exclusive_pairs(conflicts)
     if conflict_error is not None:
@@ -471,7 +482,7 @@ async def handle_timelog_batch_update_async(args: argparse.Namespace) -> int:
             args.tag_ids is not None,
             args.clear_tags,
             args.person_ids is not None,
-            args.clear_people,
+            args.clear_person,
         )
     ):
         print("At least one batch update option is required.", file=sys.stderr)
@@ -494,7 +505,7 @@ async def handle_timelog_batch_update_async(args: argparse.Namespace) -> int:
                         tag_ids=args.tag_ids,
                         clear_tags=args.clear_tags,
                         person_ids=args.person_ids,
-                        clear_people=args.clear_people,
+                        clear_person=args.clear_person,
                     ),
                 ),
             )
@@ -508,20 +519,6 @@ async def handle_timelog_batch_update_async(args: argparse.Namespace) -> int:
     for error in result.errors:
         print(f"Error: {error}", file=sys.stderr)
     return 1 if result.failed_ids else 0
-
-
-async def handle_timelog_batch_delete_async(args: argparse.Namespace) -> int:
-    async with db_session.session_scope() as session:
-        result = await timelog_services.batch_delete_timelogs(
-            session,
-            timelog_ids=list(args.timelog_ids),
-        )
-    return print_batch_result(
-        success_label="Deleted timelogs",
-        success_count=result.deleted_count,
-        failed_label="Failed timelog IDs",
-        result=result,
-    )
 
 
 async def handle_timelog_stats_day_async(args: argparse.Namespace) -> int:

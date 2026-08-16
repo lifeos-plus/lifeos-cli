@@ -9,6 +9,7 @@ from lifeos_cli.cli_support.help_utils import (
     add_documented_help_parser,
     add_documented_parser,
 )
+from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.parser_common import add_limit_offset_arguments
 from lifeos_cli.cli_support.resources.planning.handlers import handle_planning_show_async
 from lifeos_cli.cli_support.runtime_utils import make_sync_handler
@@ -73,6 +74,7 @@ def build_planning_show_parser(
         help=_("resources.planning.show.vision_help"),
     )
     add_limit_offset_arguments(show_parser)
+    add_json_output_argument(show_parser)
     show_parser.set_defaults(handler=make_sync_handler(handle_planning_show_async))
 
 

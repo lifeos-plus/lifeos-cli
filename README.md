@@ -46,14 +46,14 @@ The implemented system covers the main quantified-self loop from planning to evi
 | Daily schedule | `schedule` day and range views that aggregate planned events, planning-cycle tasks, and habit actions, including overdue unfinished task and habit-action roll-forward behavior. |
 | Routines | `habit` records with daily/weekly/monthly/yearly cadence, weekday/weekend controls, task links, stats, and on-demand `habit-action` materialization. |
 | Time reality | `timelog` records with date and datetime entry modes, quick batch entry, list/search filters, relationship links, batch update/delete, templates, and area-based stats. |
-| Notes and reflection | `note` records with inline/stdin/file capture, search, full-content display, bulk content replacement, soft delete, and associations to tasks, visions, events, people, timelogs, and tags. |
-| Relationships | `people` records with relationship metadata, birthday/anniversary dates, tags, related activities, anniversaries, and links from events, notes, and timelogs. |
+| Notes and reflection | `note` records with inline/stdin/file capture, search, full-content display, bulk content replacement, soft delete, and associations to tasks, visions, events, person, timelogs, and tags. |
+| Relationships | `person` records with relationship metadata, birthday/anniversary dates, tags, related activities, anniversaries, and links from events, notes, and timelogs. |
 | Taxonomy | `tag` records with category/entity-type metadata and association counts across supported resources. |
 | Finance | Assets, reusable finance trees, nodes, instant and period snapshots, exchange-rate snapshots, default tree bootstrapping, and balance-sheet/cashflow style data modeling. |
 | Data portability | Canonical JSON/JSONL export/import, full bundle backup/restore, dry-run validation, row-level errors, natural-key upsert imports, and machine-oriented batch update/delete. |
 | Configuration | Persistent database and preference configuration, including timezone, language, day boundary, week boundary, theme, and default vision experience rate. |
-| Local Web API | FastAPI routers for health, tasks, visions, habits, notes, timelogs, timelog templates, people, areas, finance, planned events, stats, tags, and preferences. |
-| Web UI | A first-party Vite/React workspace in `lifeos-plus/lifeos-web` for visions, habits, planning, timelog, finance, insights/stats, schedule/calendar, notes, people, and settings. |
+| Local Web API | FastAPI routers for health, tasks, visions, habits, notes, timelogs, timelog templates, person, areas, finance, planned events, stats, tags, and preferences. |
+| Web UI | A first-party Vite/React workspace in `lifeos-plus/lifeos-web` for visions, habits, planning, timelog, finance, insights/stats, schedule/calendar, notes, person, and settings. |
 
 ## Interfaces
 
@@ -116,10 +116,10 @@ Inspect and adjust runtime preferences:
 
 ```bash
 lifeos config show
-lifeos config set preferences.timezone America/Toronto
-lifeos config set preferences.language zh-Hans
-lifeos config set preferences.day_starts_at 04:00
-lifeos config set preferences.week_starts_on monday
+lifeos config update preferences.timezone America/Toronto
+lifeos config update preferences.language zh-Hans
+lifeos config update preferences.day_starts_at 04:00
+lifeos config update preferences.week_starts_on monday
 ```
 
 ## Common CLI Workflows

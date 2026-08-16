@@ -68,7 +68,7 @@ def test_cli_top_level_help_supports_zh_hans_argparse_scaffolding(
     assert "repo: https://github.com/lifeos-plus/lifeos-cli" in captured.out
     assert "uv tool install --upgrade lifeos-cli" in captured.out
     assert "area" in captured.out and "管理 `area`" in captured.out
-    assert "people" in captured.out and "管理 `people` 和关系" in captured.out
+    assert "person" in captured.out and "管理 `person` 和关系" in captured.out
     assert "timelog" in captured.out and "管理 `timelog`" in captured.out
     assert "欢迎通过 https://github.com/lifeos-plus/lifeos-cli 提交问题报告和建议。" in captured.out
 
@@ -295,7 +295,7 @@ def test_cli_zh_hans_help_keeps_internal_entity_terms_in_english(
     parser = build_parser()
 
     cases = [
-        (["people", "--help"], ["`people`", "`person`"]),
+        (["person", "--help"], ["`person`", "`person`"]),
         (["timelog", "--help"], ["`timelog`", "`area`", "`task`"]),
         (["schedule", "--help"], ["`schedule`", "`task`", "`habit-action`", "`event`"]),
     ]
@@ -348,13 +348,13 @@ def test_cli_planning_show_help_supports_zh_hans_locale(
                 "清除描述",
                 "清除结束时间",
                 "清除关联的 `task`",
-                "移除所有 `people`",
+                "移除所有 `person`",
             ],
             [
                 "清晰的描述",
                 "明确结束时间",
                 "明确链接 `task`",
-                "撤走所有 `people`",
+                "撤走所有 `person`",
             ],
         ),
         (
@@ -363,7 +363,6 @@ def test_cli_planning_show_help_supports_zh_hans_locale(
                 "显示 `vision` 的 `task` 层级",
                 "使用 planning-cycle 字段表示更大的时间范围。"
                 "当 `task` 还需要具体的时间块时，请使用 `event`。",
-                "批量删除操作请查看 `lifeos task batch --help`。",
             ],
             [
                 "`vision``task`",
@@ -389,7 +388,7 @@ def test_cli_planning_show_help_supports_zh_hans_locale(
                 "可选备注",
                 "重复附加一个或多个 `tag`",
                 "重复使用同一个 `--tag-id` 或 `--person-id` 参数，即可在一条命令中"
-                "附加多个 `tag` 或 `people`。",
+                "附加多个 `tag` 或 `person`。",
             ],
             [
                 "可选 `note`",

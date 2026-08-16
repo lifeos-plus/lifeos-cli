@@ -64,7 +64,7 @@ def build_task_add_parser(
                     "resources.task.parser_write.use_lifeos_event_add_task_id_task_id_if_task_also_needs"
                 ),
                 _(
-                    "common.messages.repeat_same_person_id_flag_to_associate_multiple_people_in_one_command"
+                    "common.messages.repeat_same_person_id_flag_to_associate_multiple_person_in_one_command"
                 ),
                 _(
                     "resources.task.parser_write.when_agent_creates_tasks_on_behalf_of_human_use_person_id_to"
@@ -102,7 +102,7 @@ def build_task_add_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_associate_one_or_more_people"),
+        help=_("common.messages.repeat_to_associate_one_or_more_person"),
     )
     add_parser.add_argument(
         "--estimated-effort",
@@ -216,10 +216,10 @@ def build_task_update_parser(
         type=UUID,
         action="append",
         default=None,
-        help=_("common.messages.repeat_to_replace_people_with_one_or_more_identifiers"),
+        help=_("common.messages.repeat_to_replace_person_with_one_or_more_identifiers"),
     )
     update_parser.add_argument(
-        "--clear-people", action="store_true", help=_("common.messages.remove_all_people")
+        "--clear-person", action="store_true", help=_("common.messages.remove_all_person")
     )
     update_parser.add_argument(
         "--estimated-effort",
@@ -266,8 +266,18 @@ def build_task_delete_parser(
         help_content=HelpContent(
             summary=_("resources.task.parser_write.delete_task"),
             description=_("resources.task.parser_write.delete_task_description"),
-            examples=("lifeos task delete 11111111-1111-1111-1111-111111111111",),
+            examples=(
+                "lifeos task delete 11111111-1111-1111-1111-111111111111",
+                "lifeos task delete <task-id-1> <task-id-2>",
+            ),
+            notes=(_("common.messages.delete_accepts_one_or_more_identifiers"),),
         ),
     )
-    delete_parser.add_argument("task_id", type=UUID, help=_("common.messages.task_identifier"))
+    delete_parser.add_argument(
+        "task_ids",
+        type=UUID,
+        nargs="+",
+        metavar="task-id",
+        help=_("common.parser.noun_identifiers_to_delete").format(noun="Task"),
+    )
     delete_parser.set_defaults(handler=make_sync_handler(handle_task_delete_async))

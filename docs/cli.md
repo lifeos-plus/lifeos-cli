@@ -21,6 +21,13 @@ The public command tree prefers:
 - `list` as the main query entrypoint for structured resources
 - grouped namespaces such as `batch` for multi-record writes
 
+Single-object versus multi-object rules: `delete` accepts one or more
+identifiers (`lifeos area delete <id>...`) because deletion only needs
+identity; `show` and `update` stay single-record because they carry or
+return record-specific values. Multi-record mutations use the `batch`
+namespaces and `data batch-*` commands, whose help cross-references the
+single-object forms.
+
 ## Documentation Model
 
 To avoid duplicate maintenance, the documentation boundary is:
@@ -49,6 +56,10 @@ The current CLI output stays intentionally simple and scriptable.
 - commands that support `--count` emit `{"items": [...], "total_count": N}` when `--count --json` are combined
 - timestamps render as explicit UTC ISO strings (for example `2026-04-10T12:00:00Z`), UUIDs render as strings, and Decimal amounts render as strings so precision is preserved
 - JSON payloads expose the full underlying record fields; for example note content is not truncated or whitespace-normalized the way text summaries are
+
+Aggregated read commands (`schedule show/list`, `planning show`) and `config show`
+also accept `--json`; `config show --json` keeps database passwords masked unless
+`--show-secrets` is passed.
 
 The `--json` shape follows the Web API serialization conventions where the two surfaces overlap, so callers that already consume the API can reuse their field handling.
 
@@ -100,12 +111,18 @@ Time-oriented behavior follows these rules:
 
 The current command tree is organized around a few stable families:
 
-- planning resources such as `area`, `vision`, `task`, `planning`, `note`, `people`, and `tag`
+- planning resources such as `area`, `vision`, `task`, `planning`, `note`, `person`, and `tag`
 - scheduling and tracking resources such as `event`, `schedule`, `timelog`, `habit`, and `habit-action`
 - financial reality resources such as `finance`
 - system, Web, and portability commands such as `init`, `config`, `db`, `web`, and `data`
 
-`data import --mode upsert --key <field>` supports idempotent natural-key sync for `area.name`, `vision.name`, `people.name`, and `habit.title`: each row is matched against existing active records, updated when one match exists, and inserted otherwise (a fresh id is generated when the row has none). Ambiguous keys and missing key values are reported as row-level failures.
+`finance` uses nested namespaces (`finance asset`, `finance tree`, `finance node`,
+`finance snapshot`, and `finance rate-snapshot`), each with the standard
+`add`/`list`/`show`/`update`/`delete` actions. Command names follow the singular
+`person` convention and the nested finance namespaces are the only supported
+command shape.
+
+`data import --mode upsert --key <field>` supports idempotent natural-key sync for `area.name`, `vision.name`, `person.name`, and `habit.title`: each row is matched against existing active records, updated when one match exists, and inserted otherwise (a fresh id is generated when the row has none). Ambiguous keys and missing key values are reported as row-level failures.
 
 Use `lifeos <resource> --help` to enter one family and then follow the resource-level help into the action or namespace you need.
 
@@ -132,6 +149,16 @@ uv run python scripts/audit_cli_help.py --format json --path-prefix "task list"
 
 The JSON reference is locale-aware, includes the package version, and describes every command node with its summary, description, usage, examples, notes, and structured arguments (name, kind, metavar, choices, required, nargs, default). It is intended for agents and tooling that need the full command grammar in one fetch instead of walking `--help` one level at a time.
 
+The same script renders a plain-text command tree that is committed as
+[docs/cli-tree.md](cli-tree.md) and kept current by a pre-commit check:
+
+```bash
+LIFEOS_LANGUAGE=en uv run python scripts/audit_cli_help.py --format tree --output docs/cli-tree.md
+```
+
+Regenerate the file whenever a command, argument, or summary changes; the
+`cli-tree-sync` pre-commit hook fails when the artifact drifts.
+
 Localized help should be reviewed through the same command surface by setting the runtime language preference or `LIFEOS_LANGUAGE`.
 
 ## Safety Model
@@ -139,7 +166,7 @@ Localized help should be reviewed through the same command surface by setting th
 The public CLI is intentionally conservative.
 
 - public `delete` commands only soft-delete records
-- public `batch delete` commands also only soft-delete records
+- public `delete` commands accept one or more identifiers and only soft-delete records
 - hard delete stays outside the public CLI
 
 This boundary should remain stable as more resources are added.

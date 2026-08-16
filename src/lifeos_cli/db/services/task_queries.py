@@ -22,7 +22,7 @@ from lifeos_cli.db.models.person import Person
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.models.vision import Vision
-from lifeos_cli.db.services.entity_people import load_people_for_entities
+from lifeos_cli.db.services.entity_person import load_person_for_entities
 from lifeos_cli.db.services.model_utils import load_view_by_id
 from lifeos_cli.db.services.read_models import (
     PersonSummaryView,
@@ -75,7 +75,7 @@ class TaskWithSubtasks:
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
-    people: tuple[PersonSummaryView, ...]
+    person: tuple[PersonSummaryView, ...]
     subtasks: tuple[TaskWithSubtasks, ...]
     completion_percentage: float
     depth: int
@@ -107,7 +107,7 @@ MAX_PLANNING_CONTEXT_PARENT_FETCHES = 100
 def _build_task_tree(
     tasks: list[Task],
     *,
-    people_map: dict[UUID, list[Person]],
+    person_map: dict[UUID, list[Person]],
     max_depth: int | None = None,
 ) -> tuple[TaskWithSubtasks, ...]:
     """Build a task tree from a flat task list."""
@@ -150,7 +150,7 @@ def _build_task_tree(
             created_at=task.created_at,
             updated_at=task.updated_at,
             deleted_at=task.deleted_at,
-            people=tuple(build_person_summary(person) for person in people_map.get(task.id, [])),
+            person=tuple(build_person_summary(person) for person in person_map.get(task.id, [])),
             subtasks=subtasks,
             completion_percentage=completion_ratio(task, subtasks),
             depth=depth,
@@ -283,23 +283,23 @@ def _apply_task_display_order(stmt: Any) -> Any:
 
 
 async def _build_task_view(session: AsyncSession, task: Task) -> TaskView:
-    people_map = await load_people_for_entities(
+    person_map = await load_person_for_entities(
         session,
         entity_ids=[task.id],
         entity_type="task",
     )
-    return build_task_view(task, people=people_map.get(task.id, ()))
+    return build_task_view(task, person_records=person_map.get(task.id, ()))
 
 
 async def _build_task_views(session: AsyncSession, tasks: list[Task]) -> list[TaskView]:
     if not tasks:
         return []
-    people_map = await load_people_for_entities(
+    person_map = await load_person_for_entities(
         session,
         entity_ids=[task.id for task in tasks],
         entity_type="task",
     )
-    return [build_task_view(task, people=people_map.get(task.id, ())) for task in tasks]
+    return [build_task_view(task, person_records=person_map.get(task.id, ())) for task in tasks]
 
 
 async def load_task_relation_counts(
@@ -506,7 +506,7 @@ async def get_planning_view(
     context_parents = await _load_planning_context_parents(session, tasks, vision_in=vision_in)
     roots = _build_task_tree(
         [*tasks, *context_parents],
-        people_map={},
+        person_map={},
         max_depth=max_depth,
     )
     return PlanningView(
@@ -530,13 +530,13 @@ async def get_vision_task_hierarchy(
         select(Task).where(Task.vision_id == vision_id, Task.deleted_at.is_(None))
     )
     tasks = list((await session.execute(stmt)).scalars())
-    people_map = await load_people_for_entities(
+    person_map = await load_person_for_entities(
         session,
         entity_ids=[task.id for task in tasks],
         entity_type="task",
     )
     return TaskHierarchy(
-        vision_id=vision_id, root_tasks=_build_task_tree(tasks, people_map=people_map)
+        vision_id=vision_id, root_tasks=_build_task_tree(tasks, person_map=person_map)
     )
 
 
@@ -549,12 +549,12 @@ async def get_task_with_subtasks(
     tasks = await load_task_subtree(session, root_task_id=task_id)
     if not tasks:
         return None
-    people_map = await load_people_for_entities(
+    person_map = await load_person_for_entities(
         session,
         entity_ids=[task.id for task in tasks],
         entity_type="task",
     )
-    task_tree = _build_task_tree(tasks, people_map=people_map)
+    task_tree = _build_task_tree(tasks, person_map=person_map)
     return task_tree[0] if task_tree else None
 
 

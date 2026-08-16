@@ -11,7 +11,7 @@ import pytest
 
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.models.vision import Vision
-from lifeos_cli.db.services import areas, people, tags, visions
+from lifeos_cli.db.services import areas, person, tags, visions
 from tests.support import sqlite_session_factory
 
 
@@ -34,7 +34,7 @@ async def _build_fake_vision_view(
         experience_points=getattr(vision, "experience_points", 0),
         experience_rate_per_hour=getattr(vision, "experience_rate_per_hour", None),
         area_id=getattr(vision, "area_id", None),
-        people=tuple(getattr(vision, "people", ())),
+        person=tuple(getattr(vision, "person", ())),
         tasks=tuple(tasks or ()),
     )
 
@@ -52,11 +52,11 @@ def test_create_person_flushes_without_committing(monkeypatch: pytest.MonkeyPatc
         pass
 
     session.add = fake_add
-    monkeypatch.setattr(people, "_build_person_view", _identity_view)
+    monkeypatch.setattr(person, "_build_person_view", _identity_view)
 
-    person = asyncio.run(people.create_person(cast(Any, session), name="Alice"))
+    created_person = asyncio.run(person.create_person(cast(Any, session), name="Alice"))
 
-    assert person.name == "Alice"
+    assert created_person.name == "Alice"
     session.flush.assert_awaited_once()
     session.commit.assert_not_called()
 
@@ -249,7 +249,7 @@ def test_update_tag_can_clear_optional_fields(monkeypatch: pytest.MonkeyPatch) -
     session.commit.assert_not_called()
 
 
-def test_update_tag_can_clear_people(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_update_tag_can_clear_person(monkeypatch: pytest.MonkeyPatch) -> None:
     tag = SimpleNamespace(
         id=UUID("22222222-2222-2222-2222-222222222222"),
         name="urgent",
@@ -275,33 +275,33 @@ def test_update_tag_can_clear_people(monkeypatch: pytest.MonkeyPatch) -> None:
         assert model_id == UUID("22222222-2222-2222-2222-222222222222")
         return tag
 
-    async def fake_sync_people(_: object, **kwargs: object) -> None:
+    async def fake_sync_person(_: object, **kwargs: object) -> None:
         assert kwargs["entity_type"] == "tag"
         assert kwargs["desired_person_ids"] == []
 
     monkeypatch.setattr(tags, "load_model_by_id", fake_load_tag)
-    monkeypatch.setattr(tags, "sync_entity_people", fake_sync_people)
+    monkeypatch.setattr(tags, "sync_entity_person", fake_sync_person)
     monkeypatch.setattr(
         tags,
         "_build_tag_view",
-        AsyncMock(return_value=SimpleNamespace(**tag.__dict__, people=())),
+        AsyncMock(return_value=SimpleNamespace(**tag.__dict__, person=())),
     )
 
     updated_tag = asyncio.run(
         tags.update_tag(
             cast(Any, session),
             tag_id=UUID("22222222-2222-2222-2222-222222222222"),
-            clear_people=True,
+            clear_person=True,
         )
     )
 
-    assert updated_tag.people == ()
+    assert updated_tag.person == ()
     session.flush.assert_awaited_once()
     session.commit.assert_not_called()
 
 
 def test_update_person_can_clear_optional_fields(monkeypatch: pytest.MonkeyPatch) -> None:
-    person = SimpleNamespace(
+    record = SimpleNamespace(
         id=UUID("33333333-3333-3333-3333-333333333333"),
         name="Alice",
         description="Friend",
@@ -322,9 +322,9 @@ def test_update_person_can_clear_optional_fields(monkeypatch: pytest.MonkeyPatch
         model_cls: object,
         model_id: UUID,
     ) -> object:
-        assert model_cls is people.Person
+        assert model_cls is person.Person
         assert model_id == UUID("33333333-3333-3333-3333-333333333333")
-        return person
+        return record
 
     async def fake_sync_entity_tags(
         _: object,
@@ -337,12 +337,12 @@ def test_update_person_can_clear_optional_fields(monkeypatch: pytest.MonkeyPatch
         assert entity_type == "person"
         assert desired_tag_ids == []
 
-    monkeypatch.setattr(people, "load_model_by_id", fake_load_person)
-    monkeypatch.setattr(people, "_build_person_view", _identity_view)
-    monkeypatch.setattr(people, "sync_entity_tags", fake_sync_entity_tags)
+    monkeypatch.setattr(person, "load_model_by_id", fake_load_person)
+    monkeypatch.setattr(person, "_build_person_view", _identity_view)
+    monkeypatch.setattr(person, "sync_entity_tags", fake_sync_entity_tags)
 
     updated_person = asyncio.run(
-        people.update_person(
+        person.update_person(
             cast(Any, session),
             person_id=UUID("33333333-3333-3333-3333-333333333333"),
             clear_description=True,
@@ -364,7 +364,7 @@ def test_update_person_can_clear_optional_fields(monkeypatch: pytest.MonkeyPatch
 def test_update_person_skips_duplicate_check_when_name_is_unchanged(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    person = SimpleNamespace(
+    record = SimpleNamespace(
         id=UUID("33333333-3333-3333-3333-333333333333"),
         name="Alice",
         description=None,
@@ -380,15 +380,15 @@ def test_update_person_skips_duplicate_check_when_name_is_unchanged(
         model_cls: object,
         model_id: UUID,
     ) -> object:
-        assert model_cls is people.Person
+        assert model_cls is person.Person
         assert model_id == UUID("33333333-3333-3333-3333-333333333333")
-        return person
+        return record
 
-    monkeypatch.setattr(people, "load_model_by_id", fake_load_person)
-    monkeypatch.setattr(people, "_build_person_view", _identity_view)
+    monkeypatch.setattr(person, "load_model_by_id", fake_load_person)
+    monkeypatch.setattr(person, "_build_person_view", _identity_view)
 
     updated_person = asyncio.run(
-        people.update_person(
+        person.update_person(
             cast(Any, session),
             person_id=UUID("33333333-3333-3333-3333-333333333333"),
             name="Alice",
@@ -630,7 +630,7 @@ def test_get_vision_stats_summarizes_tasks(monkeypatch: pytest.MonkeyPatch) -> N
     assert stats.total_actual_effort == 55
 
 
-def test_create_vision_syncs_people_without_committing(
+def test_create_vision_syncs_person_without_committing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     session = SimpleNamespace(
@@ -647,13 +647,13 @@ def test_create_vision_syncs_people_without_committing(
     async def fake_ensure_area_exists(_: object, __: UUID | None) -> None:
         return None
 
-    async def fake_sync_people(_: object, **kwargs: object) -> None:
+    async def fake_sync_person(_: object, **kwargs: object) -> None:
         assert kwargs["entity_type"] == "vision"
         assert kwargs["desired_person_ids"] == [UUID("11111111-1111-1111-1111-111111111111")]
 
     session.add = fake_add
     monkeypatch.setattr(visions, "_ensure_area_exists", fake_ensure_area_exists)
-    monkeypatch.setattr(visions, "sync_entity_people", fake_sync_people)
+    monkeypatch.setattr(visions, "sync_entity_person", fake_sync_person)
     monkeypatch.setattr(
         visions,
         "_build_vision_view",
@@ -667,7 +667,7 @@ def test_create_vision_syncs_people_without_committing(
                 experience_points=getattr(vision, "experience_points", 0),
                 experience_rate_per_hour=getattr(vision, "experience_rate_per_hour", None),
                 area_id=getattr(vision, "area_id", None),
-                people=(SimpleNamespace(name="Alice"),),
+                person=(SimpleNamespace(name="Alice"),),
                 tasks=tuple(tasks or ()),
             )
         ),
@@ -681,7 +681,7 @@ def test_create_vision_syncs_people_without_committing(
         )
     )
 
-    assert len(vision.people) == 1
+    assert len(vision.person) == 1
     session.flush.assert_awaited_once()
     session.commit.assert_not_called()
 

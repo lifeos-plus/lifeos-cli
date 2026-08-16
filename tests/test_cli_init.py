@@ -398,7 +398,7 @@ def test_main_config_show_masks_database_password(
     clear_config_cache()
 
 
-def test_main_config_set_updates_preference_value(
+def test_main_config_update_updates_preference_value(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -428,7 +428,7 @@ def test_main_config_set_updates_preference_value(
     clear_config_cache()
     monkeypatch.setenv("LIFEOS_CONFIG_FILE", str(config_path))
 
-    exit_code = cli.main(["config", "set", "preferences.timezone", "America/Toronto"])
+    exit_code = cli.main(["config", "update", "preferences.timezone", "America/Toronto"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -441,7 +441,7 @@ def test_main_config_set_updates_preference_value(
     clear_config_cache()
 
 
-def test_main_config_set_rejects_deployment_scoped_database_schema(
+def test_main_config_update_rejects_deployment_scoped_database_schema(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -461,7 +461,7 @@ def test_main_config_set_rejects_deployment_scoped_database_schema(
     clear_config_cache()
     monkeypatch.setenv("LIFEOS_CONFIG_FILE", str(config_path))
 
-    exit_code = cli.main(["config", "set", "database.schema", "lifeos_dev"])
+    exit_code = cli.main(["config", "update", "database.schema", "lifeos_dev"])
     captured = capsys.readouterr()
 
     assert exit_code == 1
@@ -471,7 +471,7 @@ def test_main_config_set_rejects_deployment_scoped_database_schema(
     clear_config_cache()
 
 
-def test_main_config_set_updates_database_echo_strictly(
+def test_main_config_update_updates_database_echo_strictly(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -499,7 +499,7 @@ def test_main_config_set_updates_database_echo_strictly(
     clear_config_cache()
     monkeypatch.setenv("LIFEOS_CONFIG_FILE", str(config_path))
 
-    exit_code = cli.main(["config", "set", "database.echo", "true"])
+    exit_code = cli.main(["config", "update", "database.echo", "true"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -509,7 +509,7 @@ def test_main_config_set_updates_database_echo_strictly(
     clear_config_cache()
 
 
-def test_main_config_set_rejects_unknown_key(
+def test_main_config_update_rejects_unknown_key(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -518,7 +518,7 @@ def test_main_config_set_rejects_unknown_key(
     clear_config_cache()
     monkeypatch.setenv("LIFEOS_CONFIG_FILE", str(config_path))
 
-    exit_code = cli.main(["config", "set", "preferences.unknown", "value"])
+    exit_code = cli.main(["config", "update", "preferences.unknown", "value"])
     captured = capsys.readouterr()
 
     assert exit_code == 1
@@ -527,7 +527,7 @@ def test_main_config_set_rejects_unknown_key(
     clear_config_cache()
 
 
-def test_main_config_set_ignores_runtime_env_overrides_when_persisting(
+def test_main_config_update_ignores_runtime_env_overrides_when_persisting(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -555,7 +555,7 @@ def test_main_config_set_ignores_runtime_env_overrides_when_persisting(
     monkeypatch.setenv("LIFEOS_CONFIG_FILE", str(config_path))
     monkeypatch.setenv("LIFEOS_TIMEZONE", "UTC")
 
-    exit_code = cli.main(["config", "set", "preferences.language", "en-CA"])
+    exit_code = cli.main(["config", "update", "preferences.language", "en-CA"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -566,7 +566,7 @@ def test_main_config_set_ignores_runtime_env_overrides_when_persisting(
     clear_config_cache()
 
 
-def test_main_config_set_updates_theme(
+def test_main_config_update_updates_theme(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -593,7 +593,7 @@ def test_main_config_set_updates_theme(
     clear_config_cache()
     monkeypatch.setenv("LIFEOS_CONFIG_FILE", str(config_path))
 
-    exit_code = cli.main(["config", "set", "preferences.theme", "night"])
+    exit_code = cli.main(["config", "update", "preferences.theme", "night"])
     captured = capsys.readouterr()
 
     assert exit_code == 0

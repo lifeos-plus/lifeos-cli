@@ -78,16 +78,14 @@ def test_real_cli_note_workflow(integration_context: IntegrationContext) -> None
     assert_ok(delete_result)
     assert f"Soft-deleted note {first_note_id}" in delete_result.stdout
 
-    batch_delete_result = run_lifeos(
+    delete_second_result = run_lifeos(
         integration_context,
         "note",
-        "batch",
         "delete",
-        "--ids",
         second_note_id,
     )
-    assert_ok(batch_delete_result)
-    assert "Deleted notes: 1" in batch_delete_result.stdout
+    assert_ok(delete_second_result)
+    assert f"Soft-deleted note {second_note_id}" in delete_second_result.stdout
 
     deleted_list_result = run_lifeos(integration_context, "note", "list")
     assert_ok(deleted_list_result)
@@ -117,7 +115,7 @@ def test_real_cli_note_associations_and_timelog_counts(
 ) -> None:
     init_context(integration_context)
 
-    person_result = run_lifeos(integration_context, "people", "add", "Alice")
+    person_result = run_lifeos(integration_context, "person", "add", "Alice")
     assert_ok(person_result)
     person_id = extract_created_id(person_result.stdout)
 
@@ -168,7 +166,7 @@ def test_real_cli_note_associations_and_timelog_counts(
 
     note_show_result = run_lifeos(integration_context, "note", "show", note_id)
     assert_ok(note_show_result)
-    assert "people: Alice" in note_show_result.stdout
+    assert "person: Alice" in note_show_result.stdout
     assert f"tasks: {task_id} | Investigate note associations" in note_show_result.stdout
     assert f"timelogs: {timelog_id} | Implementation session" in note_show_result.stdout
 
