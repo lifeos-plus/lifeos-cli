@@ -21,6 +21,13 @@ The public command tree prefers:
 - `list` as the main query entrypoint for structured resources
 - grouped namespaces such as `batch` for multi-record writes
 
+Single-object versus multi-object rules: `delete` accepts one or more
+identifiers (`lifeos area delete <id>...`) because deletion only needs
+identity; `show` and `update` stay single-record because they carry or
+return record-specific values. Multi-record mutations use the `batch`
+namespaces and `data batch-*` commands, whose help cross-references the
+single-object forms.
+
 ## Documentation Model
 
 To avoid duplicate maintenance, the documentation boundary is:
