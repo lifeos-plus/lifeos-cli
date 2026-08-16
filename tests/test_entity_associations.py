@@ -181,9 +181,7 @@ def test_sync_entity_person_replaces_links() -> None:
                     entity_ids=[note.id],
                     entity_type="note",
                 )
-                assert [
-                    record.id for record in loaded_person_map[note.id]
-                ] == [second_person.id]
+                assert [record.id for record in loaded_person_map[note.id]] == [second_person.id]
 
     asyncio.run(scenario())
 
