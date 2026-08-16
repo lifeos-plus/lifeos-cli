@@ -7,6 +7,7 @@ from datetime import date
 
 from lifeos_cli.application.time_preferences import get_operational_date
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
+from lifeos_cli.cli_support.json_output import print_json_payload
 from lifeos_cli.cli_support.output_utils import format_summary_header, format_timestamp
 from lifeos_cli.cli_support.time_args import (
     DateArgumentError,
@@ -101,6 +102,9 @@ async def handle_schedule_show_async(args: argparse.Namespace) -> int:
             target_date=target_date,
             hide_overdue_unfinished=args.hide_overdue_unfinished,
         )
+    if args.json:
+        print_json_payload(day)
+        return 0
     print(_format_schedule_day(day))
     return 0
 
@@ -154,5 +158,8 @@ async def handle_schedule_list_async(args: argparse.Namespace) -> int:
                 end_date=date_selection.end_date,
                 hide_overdue_unfinished=args.hide_overdue_unfinished,
             )
+    if args.json:
+        print_json_payload(days)
+        return 0
     print("\n\n".join(_format_schedule_day(day) for day in days))
     return 0

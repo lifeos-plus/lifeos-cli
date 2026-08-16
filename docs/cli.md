@@ -50,6 +50,10 @@ The current CLI output stays intentionally simple and scriptable.
 - timestamps render as explicit UTC ISO strings (for example `2026-04-10T12:00:00Z`), UUIDs render as strings, and Decimal amounts render as strings so precision is preserved
 - JSON payloads expose the full underlying record fields; for example note content is not truncated or whitespace-normalized the way text summaries are
 
+Aggregated read commands (`schedule show/list`, `planning show`) and `config show`
+also accept `--json`; `config show --json` keeps database passwords masked unless
+`--show-secrets` is passed.
+
 The `--json` shape follows the Web API serialization conventions where the two surfaces overlap, so callers that already consume the API can reuse their field handling.
 
 ## Installation and Initialization

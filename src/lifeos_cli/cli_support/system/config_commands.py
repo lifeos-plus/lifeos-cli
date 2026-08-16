@@ -10,6 +10,7 @@ from lifeos_cli.cli_support.help_utils import (
     add_documented_help_parser,
     add_documented_parser,
 )
+from lifeos_cli.cli_support.json_output import add_json_output_argument
 from lifeos_cli.cli_support.system.config_handlers import (
     handle_config_set,
     handle_config_show,
@@ -93,6 +94,7 @@ def build_config_parser(subparsers: argparse._SubParsersAction[argparse.Argument
         action="store_true",
         help=_("system.config_commands.print_sensitive_values_such_as_database_passwords_in_full"),
     )
+    add_json_output_argument(show_parser)
     show_parser.set_defaults(handler=handle_config_show)
 
     set_parser = add_documented_parser(

@@ -6,6 +6,7 @@ import argparse
 from uuid import UUID
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
+from lifeos_cli.cli_support.json_output import print_json_payload
 from lifeos_cli.config import ConfigurationError
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import tasks as task_services
@@ -83,5 +84,8 @@ async def handle_planning_show_async(args: argparse.Namespace) -> int:
             )
         except (ConfigurationError, ValueError) as exc:
             return cli_handler_utils.print_cli_error(exc)
+    if args.json:
+        print_json_payload(view)
+        return 0
     print(_format_planning_view(view))
     return 0

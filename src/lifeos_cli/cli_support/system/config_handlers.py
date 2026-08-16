@@ -16,6 +16,7 @@ from lifeos_cli.application.configuration import (
 )
 from lifeos_cli.application.database import run_configured_database_subcommand_in_subprocess
 from lifeos_cli.cli_support import init_prompts
+from lifeos_cli.cli_support.json_output import print_json_payload
 from lifeos_cli.cli_support.runtime_utils import format_config_summary
 from lifeos_cli.config import (
     get_database_settings,
@@ -92,6 +93,9 @@ def handle_init(args: argparse.Namespace) -> int:
 
 def handle_config_show(args: argparse.Namespace) -> int:
     """Show the effective runtime configuration."""
+    if args.json:
+        print_json_payload(_config_json_payload(show_secrets=args.show_secrets))
+        return 0
     print(
         format_config_summary(
             get_database_settings(),
@@ -100,6 +104,28 @@ def handle_config_show(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def _config_json_payload(*, show_secrets: bool) -> dict[str, object]:
+    """Render the effective configuration as a JSON-safe payload."""
+    database_settings = get_database_settings()
+    preferences_settings = get_preferences_settings()
+    payload: dict[str, object] = {
+        "config_file": str(database_settings.config_file),
+        "database_url": database_settings.render_database_url(show_secrets=show_secrets),
+        "database_echo": database_settings.database_echo,
+        "preferences": {
+            "timezone": preferences_settings.timezone,
+            "language": preferences_settings.language,
+            "day_starts_at": preferences_settings.day_starts_at,
+            "week_starts_on": preferences_settings.week_starts_on,
+            "vision_experience_rate_per_hour": preferences_settings.vision_experience_rate_per_hour,
+            "theme": preferences_settings.theme,
+        },
+    }
+    if database_settings.database_schema is not None:
+        payload["database_schema"] = database_settings.database_schema
+    return payload
 
 
 def handle_config_set(args: argparse.Namespace) -> int:
