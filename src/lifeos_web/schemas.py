@@ -64,6 +64,7 @@ class TaskStatusUpdate(BaseModel):
     """Payload for updating just a task status."""
 
     status: str
+    apply_to_subtasks: bool = False
 
 
 class TaskReorderItem(BaseModel):

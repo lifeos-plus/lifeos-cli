@@ -357,6 +357,7 @@ async def update_task_status(
             session,
             task_id=task_id,
             status=payload.status,
+            apply_to_subtasks=payload.apply_to_subtasks,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

@@ -166,3 +166,48 @@ def test_tag_business_error_maps_to_400(http_client) -> None:
 
     assert response.status_code == 400
     assert "not-a-real-entity" in response.json()["detail"]
+
+
+def test_task_status_cascade_applies_done_to_open_subtasks(http_client) -> None:
+    vision_response = http_client.post(
+        "/api/v1/visions/",
+        json={"name": "Cascade vision"},
+    )
+    assert vision_response.status_code == 200
+    vision_id = vision_response.json()["id"]
+
+    parent_response = http_client.post(
+        "/api/v1/tasks/",
+        json={"vision_id": vision_id, "content": "Cascade parent"},
+    )
+    assert parent_response.status_code == 200
+    parent_id = parent_response.json()["id"]
+
+    child_response = http_client.post(
+        "/api/v1/tasks/",
+        json={
+            "vision_id": vision_id,
+            "content": "Cascade child",
+            "parent_task_id": parent_id,
+        },
+    )
+    assert child_response.status_code == 200
+    child_id = child_response.json()["id"]
+
+    blocked_response = http_client.patch(
+        f"/api/v1/tasks/{parent_id}/status",
+        json={"status": "done"},
+    )
+    assert blocked_response.status_code == 400
+    assert "cannot be completed" in blocked_response.json()["detail"]
+
+    cascaded_response = http_client.patch(
+        f"/api/v1/tasks/{parent_id}/status",
+        json={"status": "done", "apply_to_subtasks": True},
+    )
+    assert cascaded_response.status_code == 200
+    assert cascaded_response.json()["status"] == "done"
+
+    child_detail_response = http_client.get(f"/api/v1/tasks/{child_id}")
+    assert child_detail_response.status_code == 200
+    assert child_detail_response.json()["status"] == "done"

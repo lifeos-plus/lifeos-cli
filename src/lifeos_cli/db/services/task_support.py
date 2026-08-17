@@ -197,11 +197,46 @@ async def _load_ancestor_parent_ids(
     }
 
 
+async def apply_status_to_open_subtasks(
+    session: AsyncSession,
+    *,
+    parent_task_id: UUID,
+    status: str,
+) -> None:
+    """Recursively apply a terminal status to open descendants within one session.
+
+    Children already in a closed state (``done``, ``cancelled``, or ``paused``)
+    are left untouched, matching ``TASK_STATUSES_ALLOWED_FOR_PARENT_COMPLETION``.
+    The change is intentionally not committed here; the caller owns the
+    transaction boundary so the whole cascade stays atomic.
+    """
+    children = list(
+        (
+            await session.execute(
+                select(Task).where(
+                    Task.parent_task_id == parent_task_id,
+                    Task.deleted_at.is_(None),
+                )
+            )
+        ).scalars()
+    )
+    for child in children:
+        if child.status in TASK_STATUSES_ALLOWED_FOR_PARENT_COMPLETION:
+            continue
+        await apply_status_to_open_subtasks(
+            session,
+            parent_task_id=child.id,
+            status=status,
+        )
+        child.status = status
+
+
 async def validate_task_status_change(
     session: AsyncSession,
     *,
     task: Task,
     new_status: str,
+    apply_to_subtasks: bool = False,
 ) -> str:
     """Validate status transitions that depend on task hierarchy state."""
     normalized_status = validate_task_status(new_status)
@@ -220,8 +255,14 @@ async def validate_task_status_change(
     if child_statuses and any(
         status not in TASK_STATUSES_ALLOWED_FOR_PARENT_COMPLETION for status in child_statuses
     ):
-        raise TaskCannotBeCompletedError(
-            "Task cannot be completed until all direct subtasks are done, cancelled, or paused"
+        if not apply_to_subtasks:
+            raise TaskCannotBeCompletedError(
+                "Task cannot be completed until all direct subtasks are done, cancelled, or paused"
+            )
+        await apply_status_to_open_subtasks(
+            session,
+            parent_task_id=task.id,
+            status=normalized_status,
         )
     return normalized_status
 
