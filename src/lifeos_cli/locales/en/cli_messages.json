@@ -711,7 +711,7 @@
         "updated_planning_cycle_fields_still_describe_enclosing_timebox_not_specific_scheduled_timestamp": "Updated planning-cycle fields still describe the enclosing timebox, not a specific scheduled timestamp.",
         "updated_planning_cycle_type_year_month_week_or_day": "Updated planning cycle type: 7years, year, month, week, or day",
         "updated_priority": "Updated priority",
-        "apply_to_subtasks": "Recursively apply the new status to open direct subtasks (currently effective when marking a parent task done)",
+        "apply_to_subtasks": "Also apply the new status to unfinished direct subtasks (currently only applies when marking a task done)",
         "updated_start_date_of_enclosing_planning_cycle_window_in_yyyy_mm_dd": "Updated start date of the enclosing planning cycle window in YYYY-MM-DD format",
         "updated_task_content": "Updated task content",
         "updated_task_status": "Updated task status",
