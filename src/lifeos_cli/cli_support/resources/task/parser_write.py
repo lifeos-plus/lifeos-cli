@@ -205,6 +205,11 @@ def build_task_update_parser(
         "--status", help=_("resources.task.parser_write.updated_task_status")
     )
     update_parser.add_argument(
+        "--apply-to-subtasks",
+        action="store_true",
+        help=_("resources.task.parser_write.apply_to_subtasks"),
+    )
+    update_parser.add_argument(
         "--priority", type=int, help=_("resources.task.parser_write.updated_priority")
     )
     update_parser.add_argument(

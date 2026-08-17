@@ -812,6 +812,51 @@ def test_main_task_update_can_clear_person(
     assert "Updated task 55555555-5555-5555-5555-555555555555" in captured.out
 
 
+def test_main_task_update_passes_apply_to_subtasks_flag(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async def fake_update_task(_session: object, **kwargs: object) -> object:
+        assert kwargs["status"] == "done"
+        assert kwargs["apply_to_subtasks"] is True
+        return make_record(id=UUID("55555555-5555-5555-5555-555555555555"))
+
+    monkeypatch.setattr(db_session, "session_scope", make_session_scope())
+    monkeypatch.setattr(tasks, "update_task", fake_update_task)
+
+    exit_code = cli.main(
+        [
+            "task",
+            "update",
+            "55555555-5555-5555-5555-555555555555",
+            "--status",
+            "done",
+            "--apply-to-subtasks",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Updated task 55555555-5555-5555-5555-555555555555" in captured.out
+
+
+def test_main_task_update_requires_status_with_apply_to_subtasks(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    exit_code = cli.main(
+        [
+            "task",
+            "update",
+            "55555555-5555-5555-5555-555555555555",
+            "--apply-to-subtasks",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "--apply-to-subtasks requires --status" in captured.err
+
+
 def test_main_task_update_rejects_conflicting_clear_planning_cycle_flags(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

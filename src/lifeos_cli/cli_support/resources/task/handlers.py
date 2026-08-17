@@ -317,6 +317,10 @@ async def handle_task_update_async(args: argparse.Namespace) -> int:
     conflict_error = cli_handler_utils.validate_mutually_exclusive_pairs(conflicting_flags)
     if conflict_error is not None:
         return conflict_error
+    if args.apply_to_subtasks and args.status is None:
+        return cli_handler_utils.print_cli_error(
+            ValueError("--apply-to-subtasks requires --status")
+        )
     async with db_session.session_scope() as session:
         try:
             task = await task_services.update_task(
@@ -328,6 +332,7 @@ async def handle_task_update_async(args: argparse.Namespace) -> int:
                 parent_task_id=args.parent_task_id,
                 clear_parent=args.clear_parent,
                 status=args.status,
+                apply_to_subtasks=args.apply_to_subtasks,
                 priority=args.priority,
                 display_order=args.display_order,
                 person_ids=args.person_ids,

@@ -190,7 +190,7 @@
 │   ├── stats  —  Show task statistics
 │   │       args: task_id [required]
 │   ├── update  —  Update a task
-│   │       args: task_id [required]; --content; --description; --clear-description; --parent-task-id; --clear-parent; --status; --priority; --display-order; --person-id; --clear-person; --estimated-effort; --clear-estimated-effort; --planning-cycle-type; --planning-cycle-days; --planning-cycle-start-date; --clear-planning-cycle
+│   │       args: task_id [required]; --content; --description; --clear-description; --parent-task-id; --clear-parent; --status; --apply-to-subtasks; --priority; --display-order; --person-id; --clear-person; --estimated-effort; --clear-estimated-effort; --planning-cycle-type; --planning-cycle-days; --planning-cycle-start-date; --clear-planning-cycle
 │   └── with-subtasks  —  Show a task subtree
 │           args: task_id [required]
 ├── timelog  —  Manage actual time records
