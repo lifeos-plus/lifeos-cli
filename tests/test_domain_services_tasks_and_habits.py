@@ -717,6 +717,102 @@ def test_validate_task_status_change_accepts_closed_children() -> None:
     assert status == "done"
 
 
+def test_validate_task_status_change_cascades_done_to_open_subtasks() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                vision = Vision(name="Work")
+                session.add(vision)
+                await session.flush()
+
+                parent = Task(vision_id=vision.id, content="Parent")
+                session.add(parent)
+                await session.flush()
+
+                open_child = Task(
+                    vision_id=vision.id,
+                    content="Open child",
+                    parent_task_id=parent.id,
+                    status="in_progress",
+                )
+                session.add(open_child)
+                await session.flush()
+
+                open_grandchild = Task(
+                    vision_id=vision.id,
+                    content="Open grandchild",
+                    parent_task_id=open_child.id,
+                )
+                cancelled_child = Task(
+                    vision_id=vision.id,
+                    content="Cancelled child",
+                    parent_task_id=parent.id,
+                    status="cancelled",
+                )
+                paused_child = Task(
+                    vision_id=vision.id,
+                    content="Paused child",
+                    parent_task_id=parent.id,
+                    status="paused",
+                )
+                session.add_all([open_grandchild, cancelled_child, paused_child])
+                await session.flush()
+
+                updated = await task_mutations.update_task(
+                    session,
+                    task_id=parent.id,
+                    status="done",
+                    apply_to_subtasks=True,
+                )
+
+                assert updated.status == "done"
+                await session.refresh(open_child)
+                await session.refresh(open_grandchild)
+                await session.refresh(cancelled_child)
+                await session.refresh(paused_child)
+                assert open_child.status == "done"
+                assert open_grandchild.status == "done"
+                assert cancelled_child.status == "cancelled"
+                assert paused_child.status == "paused"
+
+    asyncio.run(scenario())
+
+
+def test_update_task_done_still_rejects_open_subtasks_without_cascade() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                vision = Vision(name="Work")
+                session.add(vision)
+                await session.flush()
+
+                parent = Task(vision_id=vision.id, content="Parent")
+                session.add(parent)
+                await session.flush()
+
+                open_child = Task(
+                    vision_id=vision.id,
+                    content="Open child",
+                    parent_task_id=parent.id,
+                )
+                session.add(open_child)
+                await session.flush()
+
+                with pytest.raises(task_support.TaskCannotBeCompletedError):
+                    await task_mutations.update_task(
+                        session,
+                        task_id=parent.id,
+                        status="done",
+                    )
+
+                await session.refresh(parent)
+                await session.refresh(open_child)
+                assert parent.status == "todo"
+                assert open_child.status == "todo"
+
+    asyncio.run(scenario())
+
+
 def test_delete_task_soft_deletes_subtree_without_committing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

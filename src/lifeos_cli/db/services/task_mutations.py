@@ -221,6 +221,7 @@ async def update_task(
     parent_task_id: UUID | None = None,
     clear_parent: bool = False,
     status: str | None = None,
+    apply_to_subtasks: bool = False,
     priority: int | None = None,
     display_order: int | None = None,
     estimated_effort: int | None = None,
@@ -297,7 +298,12 @@ async def update_task(
     elif parent_task_id is not None:
         task.parent_task_id = parent_task_id
     if status is not None:
-        task.status = await validate_task_status_change(session, task=task, new_status=status)
+        task.status = await validate_task_status_change(
+            session,
+            task=task,
+            new_status=status,
+            apply_to_subtasks=apply_to_subtasks,
+        )
     if priority is not None:
         task.priority = priority
     if display_order is not None:
