@@ -197,7 +197,7 @@ async def _load_ancestor_parent_ids(
     }
 
 
-async def apply_status_to_open_subtasks(
+async def _apply_status_to_open_subtasks(
     session: AsyncSession,
     *,
     parent_task_id: UUID,
@@ -223,7 +223,7 @@ async def apply_status_to_open_subtasks(
     for child in children:
         if child.status in TASK_STATUSES_ALLOWED_FOR_PARENT_COMPLETION:
             continue
-        await apply_status_to_open_subtasks(
+        await _apply_status_to_open_subtasks(
             session,
             parent_task_id=child.id,
             status=status,
@@ -238,7 +238,14 @@ async def validate_task_status_change(
     new_status: str,
     apply_to_subtasks: bool = False,
 ) -> str:
-    """Validate status transitions that depend on task hierarchy state."""
+    """Validate status transitions that depend on task hierarchy state.
+
+    Marking a task done is rejected while any direct subtask is still open
+    (``todo`` / ``in_progress``). When ``apply_to_subtasks`` is set, the
+    open descendants are updated to the target status recursively in the same
+    transaction first, leaving ``done`` / ``cancelled`` / ``paused`` children
+    untouched.
+    """
     normalized_status = validate_task_status(new_status)
     if normalized_status == task.status:
         return normalized_status
@@ -259,7 +266,7 @@ async def validate_task_status_change(
             raise TaskCannotBeCompletedError(
                 "Task cannot be completed until all direct subtasks are done, cancelled, or paused"
             )
-        await apply_status_to_open_subtasks(
+        await _apply_status_to_open_subtasks(
             session,
             parent_task_id=task.id,
             status=normalized_status,
