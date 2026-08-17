@@ -711,6 +711,7 @@
         "updated_planning_cycle_fields_still_describe_enclosing_timebox_not_specific_scheduled_timestamp": "更新后的 planning-cycle 字段仍描述所属时间窗口，而不是具体的计划时间戳。",
         "updated_planning_cycle_type_year_month_week_or_day": "更新后的 planning-cycle 类型：7years、year、month、week 或 day",
         "updated_priority": "更新优先级",
+        "apply_to_subtasks": "将新状态递归应用到未闭合的直接子 `task`（当前在将父 `task` 标记为 done 时生效）",
         "updated_start_date_of_enclosing_planning_cycle_window_in_yyyy_mm_dd": "更新所属 planning-cycle 窗口的开始日期（YYYY-MM-DD）",
         "updated_task_content": "更新了 `task` 内容",
         "updated_task_status": "更新了 `task` 状态",
