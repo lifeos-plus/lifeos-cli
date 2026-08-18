@@ -91,7 +91,7 @@ Static-analysis governance:
 
 ## Git and PR Workflow
 
-- Branch from the latest `main`.
+- Create a new worktree based on the latest `main`.
 - Use `git fetch` and `git merge --ff-only` to sync from `main`.
 - Do not push directly to protected branches.
 - Create or link a tracking issue for substantive development work.
