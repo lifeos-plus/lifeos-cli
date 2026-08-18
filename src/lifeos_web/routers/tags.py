@@ -30,7 +30,7 @@ from lifeos_web.schemas import (
     TagCreate,
     TagUpdate,
 )
-from lifeos_web.serialization import to_jsonable, to_jsonable_dict
+from lifeos_web.serialization import to_jsonable_dict
 
 router = APIRouter(prefix="/tags", tags=["tags"])
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
@@ -95,6 +95,7 @@ async def list_tags(
             category=category,
             limit=size,
             offset=offset,
+            include_person=False,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -173,6 +174,7 @@ async def rename_tag_category(
             entity_type=normalized_entity_type,
             category=category,
             new_category=next_category,
+            include_person=False,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -190,6 +192,7 @@ async def bulk_update_tag_categories(
             session,
             tag_ids=payload.ids,
             category=payload.category,
+            include_person=False,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -197,7 +200,7 @@ async def bulk_update_tag_categories(
         "updated_count": len(updated_tags),
         "failed_ids": [str(tag_id) for tag_id in failed_ids],
         "errors": errors,
-        "updated_tags": [to_jsonable(tag) for tag in updated_tags],
+        "updated_tags": [_tag_payload(tag, fields="full") for tag in updated_tags],
     }
 
 
@@ -212,25 +215,26 @@ async def create_tag(payload: TagCreate, session: SessionDep) -> dict[str, objec
             category=payload.category,
             description=payload.description,
             color=payload.color,
+            include_person=False,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return to_jsonable_dict(tag)
+    return _tag_payload(tag, fields="full")
 
 
 @router.get("/{tag_id}", response_model=TagResponse)
 async def get_tag(tag_id: UUID, session: SessionDep) -> dict[str, object]:
     """Return one LifeOS tag."""
-    tag = await tag_services.get_tag(session, tag_id=tag_id)
+    tag = await tag_services.get_tag(session, tag_id=tag_id, include_person=False)
     if tag is None:
         raise HTTPException(status_code=404, detail=f"Tag {tag_id} was not found")
-    return to_jsonable_dict(tag)
+    return _tag_payload(tag, fields="full")
 
 
 @router.get("/{tag_id}/usage", response_model=TagUsageResponse)
 async def get_tag_usage(tag_id: UUID, session: SessionDep) -> dict[str, object]:
     """Return active tagged-record count for one tag."""
-    tag = await tag_services.get_tag(session, tag_id=tag_id)
+    tag = await tag_services.get_tag(session, tag_id=tag_id, include_person=False)
     if tag is None:
         raise HTTPException(status_code=404, detail=f"Tag {tag_id} was not found")
     usage_count = await tag_services.count_tag_usage(session, tag_id=tag_id)
@@ -263,12 +267,13 @@ async def update_tag(
             clear_description="description" in fields and payload.description is None,
             color=payload.color,
             clear_color="color" in fields and payload.color is None,
+            include_person=False,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return to_jsonable_dict(tag)
+    return _tag_payload(tag, fields="full")
 
 
 @router.delete("/{tag_id}", status_code=204)

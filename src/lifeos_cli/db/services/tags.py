@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from functools import partial
 from typing import Any
 from uuid import UUID
 
@@ -85,6 +87,7 @@ async def create_tag(
     description: str | None = None,
     color: str | None = None,
     person_ids: list[UUID] | None = None,
+    include_person: bool = True,
 ) -> TagView:
     """Create a new tag."""
     normalized_name = normalize_tag_name(name)
@@ -116,22 +119,37 @@ async def create_tag(
             session, entity_id=tag.id, entity_type="tag", desired_person_ids=person_ids
         )
     await session.refresh(tag)
-    return await _build_tag_view(session, tag)
+    return await _build_tag_view(session, tag, include_person=include_person)
 
 
-async def _build_tag_view(session: AsyncSession, tag: Tag) -> TagView:
-    person_map = await load_person_for_entities(session, entity_ids=[tag.id], entity_type="tag")
-    return build_tag_view(tag, person_records=person_map.get(tag.id, ()))
+async def _build_tag_view(
+    session: AsyncSession,
+    tag: Tag,
+    *,
+    include_person: bool = True,
+) -> TagView:
+    person_records: Sequence[Person] = ()
+    if include_person:
+        person_map = await load_person_for_entities(session, entity_ids=[tag.id], entity_type="tag")
+        person_records = person_map.get(tag.id, ())
+    return build_tag_view(tag, person_records=person_records)
 
 
-async def _build_tag_views(session: AsyncSession, tags: list[Tag]) -> list[TagView]:
+async def _build_tag_views(
+    session: AsyncSession,
+    tags: list[Tag],
+    *,
+    include_person: bool = True,
+) -> list[TagView]:
     if not tags:
         return []
-    person_map = await load_person_for_entities(
-        session,
-        entity_ids=[tag.id for tag in tags],
-        entity_type="tag",
-    )
+    person_map = {}
+    if include_person:
+        person_map = await load_person_for_entities(
+            session,
+            entity_ids=[tag.id for tag in tags],
+            entity_type="tag",
+        )
     return [build_tag_view(tag, person_records=person_map.get(tag.id, ())) for tag in tags]
 
 
@@ -139,13 +157,14 @@ async def get_tag(
     session: AsyncSession,
     *,
     tag_id: UUID,
+    include_person: bool = True,
 ) -> TagView | None:
     """Load a tag by identifier."""
     return await load_view_by_id(
         session,
         model_cls=Tag,
         model_id=tag_id,
-        view_builder=_build_tag_view,
+        view_builder=partial(_build_tag_view, include_person=include_person),
     )
 
 
@@ -157,6 +176,7 @@ async def list_tags(
     person_id: UUID | None = None,
     limit: int = 100,
     offset: int = 0,
+    include_person: bool = True,
 ) -> list[TagView]:
     """List tags with optional filters."""
     stmt = select(Tag)
@@ -174,7 +194,7 @@ async def list_tags(
         ).where(Association.target_id == person_id)
     stmt = stmt.order_by(Tag.name.asc(), Tag.id.asc()).offset(offset).limit(limit)
     tags = list((await session.execute(stmt)).scalars())
-    return await _build_tag_views(session, tags)
+    return await _build_tag_views(session, tags, include_person=include_person)
 
 
 async def list_tag_categories(
@@ -206,6 +226,7 @@ async def update_tag(
     clear_color: bool = False,
     person_ids: list[UUID] | None = None,
     clear_person: bool = False,
+    include_person: bool = True,
 ) -> TagView:
     """Update a tag."""
     tag = await load_model_by_id(
@@ -252,7 +273,7 @@ async def update_tag(
         )
     await session.flush()
     await session.refresh(tag)
-    return await _build_tag_view(session, tag)
+    return await _build_tag_view(session, tag, include_person=include_person)
 
 
 async def rename_tag_category(
@@ -261,6 +282,7 @@ async def rename_tag_category(
     entity_type: str,
     category: str,
     new_category: str,
+    include_person: bool = True,
 ) -> list[TagView]:
     """Move all active tags in one category to another category."""
     normalized_entity_type = validate_tag_entity_type(entity_type)
@@ -297,7 +319,7 @@ async def rename_tag_category(
     for tag in tags:
         tag.category = normalized_new_category
     await session.flush()
-    return await _build_tag_views(session, tags)
+    return await _build_tag_views(session, tags, include_person=include_person)
 
 
 async def bulk_update_tag_categories(
@@ -305,6 +327,7 @@ async def bulk_update_tag_categories(
     *,
     tag_ids: list[UUID],
     category: str,
+    include_person: bool = True,
 ) -> tuple[list[TagView], list[UUID], list[str]]:
     """Move selected active tags to another category with per-tag errors."""
     normalized_category = normalize_tag_category(category)
@@ -339,7 +362,11 @@ async def bulk_update_tag_categories(
         updated.append(tag)
 
     await session.flush()
-    return await _build_tag_views(session, updated), failed_ids, errors
+    return (
+        await _build_tag_views(session, updated, include_person=include_person),
+        failed_ids,
+        errors,
+    )
 
 
 async def count_tag_usage_by_entity_type(

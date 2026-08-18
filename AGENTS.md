@@ -10,11 +10,11 @@ The following rules apply to coding agent collaboration in this repository. Thes
 ## 2. Collaboration Workflow
 
 - Follow the Git, Issue, and PR workflow defined in [CONTRIBUTING.md](CONTRIBUTING.md).
+- Create a new worktree based on the latest `main` for development work: first `git fetch origin` and fast-forward local `main` to `origin/main`, then create the worktree from `main`.
 - Use `gh` CLI for all issue and PR operations. Do not edit through the web UI.
 - Never use the Codex GitHub connector or any connector-backed GitHub mutation workflow. At any time, issue and PR operations must go through `gh` CLI only.
 - If GitHub permissions, authentication, policy, or environment constraints block a required `gh` operation, stop and ask the human collaborator to perform or authorize the needed step. Do not switch to the Codex GitHub connector as a fallback.
-- Create a tracking issue for non-trivial development tasks that do not already have one; very small changes do not require a new issue.
-- Link the relevant issue in the PR description with `Closes #xx` or `Related #xx` as appropriate.
+- Create a tracking issue only for substantive development work that does not already have one, and link it in the PR description with `Closes #xx` or `Related #xx`. Trivial or mechanical changes — dependency bumps, CI/workflow tweaks, documentation fixes, small refactors, or other low-risk adjustments — do not require an issue; opening one for every small change adds noise. When in doubt, a PR alone is sufficient.
 - Keep issue and PR status synchronized when work scope changes.
 - Begin every issue and PR description with a `TL;DR` section that states the intent and expected outcome in plain language, so human readers can grasp the point at a glance before reading the full description.
 
