@@ -227,6 +227,47 @@ def test_tag_create_list_detail_update_and_delete(http_client) -> None:
     assert delete_response.status_code == 204
 
 
+def test_habit_action_list_and_update(http_client) -> None:
+    habit_response = http_client.post(
+        "/api/v1/habits/",
+        json={
+            "title": "HTTP integration habit",
+            "start_date": "2026-08-01",
+            "duration_days": 30,
+            "cadence_frequency": "daily",
+            "target_per_cycle": 1,
+        },
+    )
+    assert habit_response.status_code == 200
+    habit_id = habit_response.json()["id"]
+
+    actions_response = http_client.get(
+        f"/api/v1/habits/{habit_id}/actions",
+        params={"start_date": "2026-08-10", "end_date": "2026-08-12"},
+    )
+    assert actions_response.status_code == 200
+    actions = actions_response.json()["items"]
+    assert actions
+    action = actions[0]
+    assert set(action) == {"id", "habit_id", "action_date", "status", "notes", "linked_notes_count"}
+    assert action["habit_id"] == habit_id
+
+    update_response = http_client.patch(
+        f"/api/v1/habits/{habit_id}/actions/{action['id']}",
+        json={"status": "done"},
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["status"] == "done"
+    assert set(update_response.json()) == {
+        "id",
+        "habit_id",
+        "action_date",
+        "status",
+        "notes",
+        "linked_notes_count",
+    }
+
+
 def test_task_status_cascade_applies_done_to_open_subtasks(http_client) -> None:
     vision_response = http_client.post(
         "/api/v1/visions/",
