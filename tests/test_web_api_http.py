@@ -168,6 +168,65 @@ def test_tag_business_error_maps_to_400(http_client) -> None:
     assert "not-a-real-entity" in response.json()["detail"]
 
 
+def test_tag_create_list_detail_update_and_delete(http_client) -> None:
+    create_response = http_client.post(
+        "/api/v1/tags/",
+        json={
+            "name": "HTTP integration tag",
+            "entity_type": "note",
+            "category": "topic",
+            "description": "Created over HTTP",
+        },
+    )
+    assert create_response.status_code == 200
+    tag = create_response.json()
+    tag_id = tag["id"]
+    assert tag["name"] == "http integration tag"
+    assert tag["category"] == "topic"
+    assert "person" not in tag
+
+    list_response = http_client.get(
+        "/api/v1/tags/",
+        params={"page": 1, "size": 100},
+    )
+    assert list_response.status_code == 200
+    assert any(item["id"] == tag_id for item in list_response.json()["items"])
+
+    detail_response = http_client.get(f"/api/v1/tags/{tag_id}")
+    assert detail_response.status_code == 200
+    assert detail_response.json()["id"] == tag_id
+    assert "person" not in detail_response.json()
+
+    update_response = http_client.patch(
+        f"/api/v1/tags/{tag_id}",
+        json={"color": "#123456"},
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["color"] == "#123456"
+
+    second_response = http_client.post(
+        "/api/v1/tags/",
+        json={"name": "HTTP batch tag", "entity_type": "note"},
+    )
+    assert second_response.status_code == 200
+    second_tag_id = second_response.json()["id"]
+
+    batch_response = http_client.patch(
+        "/api/v1/tags/batch-update",
+        json={"ids": [tag_id, second_tag_id], "category": "work"},
+    )
+    assert batch_response.status_code == 200
+    assert batch_response.json()["updated_count"] == 2
+    assert all("person" not in item for item in batch_response.json()["updated_tags"])
+    assert {item["category"] for item in batch_response.json()["updated_tags"]} == {"work"}
+
+    missing_response = http_client.get(f"/api/v1/tags/{uuid.uuid4()}")
+    assert missing_response.status_code == 404
+
+    delete_response = http_client.delete(f"/api/v1/tags/{tag_id}")
+    assert delete_response.status_code == 204
+
+
 def test_task_status_cascade_applies_done_to_open_subtasks(http_client) -> None:
     vision_response = http_client.post(
         "/api/v1/visions/",
