@@ -15,7 +15,7 @@ from lifeos_cli.db.services import areas, person, tags, visions
 from tests.support import sqlite_session_factory
 
 
-async def _identity_view(_: object, record: object) -> object:
+async def _identity_view(_: object, record: object, **kwargs: object) -> object:
     return record
 
 

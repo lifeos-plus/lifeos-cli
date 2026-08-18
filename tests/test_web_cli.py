@@ -2381,6 +2381,7 @@ def test_web_tag_create_maps_to_lifeos_tag_service(
         "category": "general",
         "description": None,
         "color": None,
+        "include_person": False,
     }
     assert response["id"] == "11111111-1111-1111-1111-111111111111"
     assert response["name"] == "project"
@@ -2512,6 +2513,7 @@ def test_web_tag_category_rename_maps_to_lifeos_tag_service(
         "entity_type": "person",
         "category": "relationship",
         "new_category": "close_circle",
+        "include_person": False,
     }
     assert response["value"] == "close_circle"
     assert response["entity_type"] == "person"
@@ -2543,9 +2545,11 @@ def test_web_tag_bulk_category_update_returns_updated_tags(
         *,
         tag_ids: list[UUID],
         category: str,
+        include_person: bool,
     ) -> tuple[list[TagView], list[UUID], list[str]]:
         assert tag_ids == [tag_id, missing_id]
         assert category == "relationship"
+        assert include_person is False
         return [updated_tag], [missing_id], [f"Tag {missing_id} was not found"]
 
     monkeypatch.setattr(
@@ -2586,8 +2590,14 @@ def test_web_tag_usage_endpoint_returns_tagged_record_count(
         person=(),
     )
 
-    async def fake_get_tag(_session: object, *, tag_id: UUID) -> TagView | None:
+    async def fake_get_tag(
+        _session: object,
+        *,
+        tag_id: UUID,
+        include_person: bool,
+    ) -> TagView | None:
         assert tag_id == UUID("11111111-1111-1111-1111-111111111111")
+        assert include_person is False
         return tag
 
     async def fake_count_tag_usage(_session: object, *, tag_id: UUID) -> int:
