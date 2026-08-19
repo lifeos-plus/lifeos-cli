@@ -14,13 +14,16 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from lifeos_web.deps import LIFEOS_SESSION_STATE_KEY
 from lifeos_web.routers import (
     areas,
+    body_measurements,
     finance,
     habits,
     health,
+    menstrual,
     notes,
     person,
     planned_events,
     preferences,
+    sleep,
     stats,
     tags,
     tasks,
@@ -116,6 +119,10 @@ def create_app(*, static_dir: Path | None = None) -> FastAPI:
     app.include_router(tasks.router, prefix=API_PREFIX)
     app.include_router(visions.router, prefix=API_PREFIX)
     app.include_router(habits.router, prefix=API_PREFIX)
+    app.include_router(menstrual.router, prefix=API_PREFIX)
+    app.include_router(menstrual.factor_router, prefix=API_PREFIX)
+    app.include_router(body_measurements.router, prefix=API_PREFIX)
+    app.include_router(sleep.router, prefix=API_PREFIX)
     app.include_router(notes.router, prefix=API_PREFIX)
     app.include_router(timelogs.router, prefix=API_PREFIX)
     app.include_router(timelog_templates.router, prefix=API_PREFIX)

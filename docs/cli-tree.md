@@ -13,6 +13,17 @@
 │   │       args: area_id [required]; --json
 │   └── update  —  Update an area
 │           args: area_id [required]; --name; --description; --clear-description; --color; --icon; --clear-icon; --active; --display-order
+├── body  —  Manage body weight and composition measurements
+│   ├── add  —  Add a body measurement
+│   │       args: --weight; --unit; --measured-at; --body-fat; --visceral-fat; --fat-mass; --muscle-percentage; --muscle-mass; --body-water; --protein; --bone-mass; --skeletal-muscle; --notes
+│   ├── delete  —  Delete body measurements
+│   │       args: measurement_ids [required]
+│   ├── list  —  List body measurements
+│   │       args: --date; --start-date; --end-date; --limit; --offset; --json
+│   ├── show  —  Show a body measurement
+│   │       args: measurement_id [required]; --json
+│   └── update  —  Update a body measurement
+│           args: measurement_id [required]; --weight; --unit; --measured-at; --body-fat; --visceral-fat; --fat-mass; --muscle-percentage; --muscle-mass; --body-water; --protein; --bone-mass; --skeletal-muscle; --notes; --clear-body-fat; --clear-visceral-fat; --clear-fat-mass; --clear-muscle-percentage; --clear-muscle-mass; --clear-body-water; --clear-protein; --clear-bone-mass; --clear-skeletal-muscle; --clear-notes
 ├── config  —  Inspect runtime configuration
 │   ├── show  —  Show effective configuration
 │   │       args: --show-secrets; --json
@@ -126,6 +137,24 @@
 │           args: action_id [required]; --status; --notes; --clear-notes
 ├── init  —  Initialize local configuration
 │       args: --database-url; --schema; --echo; --timezone; --language; --day-starts-at; --week-starts-on; --vision-experience-rate-per-hour; --non-interactive; --skip-ping; --skip-migrate
+├── menstrual  —  Manage menstrual cycle records
+│   ├── add  —  Add a menstrual day
+│   │       args: --date; --in-period; --not-in-period; --flow; --symptom; --factor; --personality-behavior; --protection-used; --spotting; --notes
+│   ├── delete  —  Delete menstrual days
+│   │       args: day_ids [required]
+│   ├── list  —  List menstrual days
+│   │       args: --date; --start-date; --end-date; --limit; --offset; --json
+│   ├── show  —  Show a menstrual day
+│   │       args: day_id [required]; --json
+│   └── update  —  Update a menstrual day
+│           args: day_id [required]; --date; --in-period; --not-in-period; --flow; --symptom; --factor; --personality-behavior; --protection-used; --spotting; --notes; --clear-flow; --clear-symptoms; --clear-notes; --clear-factors
+├── menstrual-factor  —  Manage custom menstrual factors
+│   ├── add  —  Add a menstrual factor
+│   │       args: --name
+│   ├── delete  —  Delete menstrual factors
+│   │       args: factor_ids [required]
+│   └── list  —  List menstrual factors
+│           args: --limit; --offset; --json
 ├── note  —  Capture and manage notes
 │   ├── add  —  Create a note
 │   │       args: content [nargs=?]; --stdin; --file; --tag-id; --person-id; --task-id; --vision-id; --event-id; --timelog-id; --habit-action-id
@@ -161,6 +190,19 @@
 │   │       args: --date; --start-date; --end-date; --hide-overdue-unfinished; --json
 │   └── show  —  Show one schedule day
 │           args: --date; --hide-overdue-unfinished; --json
+├── sleep  —  Manage sleep segments and daily summaries
+│   ├── add  —  Add a sleep segment
+│   │       args: --start-time; --end-time
+│   ├── delete  —  Delete sleep segments
+│   │       args: segment_ids [required]
+│   ├── list  —  List sleep segments
+│   │       args: --date; --start-date; --end-date; --limit; --offset; --json
+│   ├── show  —  Show a sleep segment
+│   │       args: segment_id [required]; --json
+│   ├── summary  —  Show sleep daily summary
+│   │       args: --date; --start-date; --end-date; --json
+│   └── update  —  Update a sleep segment
+│           args: segment_id [required]; --start-time; --end-time
 ├── tag  —  Manage tags
 │   ├── add  —  Create a tag
 │   │       args: name [required]; --entity-type; --category; --description; --color; --person-id

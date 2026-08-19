@@ -25,6 +25,7 @@ from lifeos_cli.config import (
     normalize_database_schema,
     parse_boolean_value,
     resolve_config_path,
+    validate_body_height_cm,
     validate_calendar_first_day_of_week,
     validate_calendar_seven_year_anchor_date,
     validate_calendar_system,
@@ -39,6 +40,7 @@ from lifeos_cli.config import (
     validate_todos_default_inbox_vision,
     validate_vision_experience_rate_per_hour,
     validate_week_starts_on,
+    validate_weight_unit,
     write_database_settings,
 )
 
@@ -90,6 +92,8 @@ SUPPORTED_CONFIG_KEYS = (
     "preferences.tasks_default_planning_preset",
     "preferences.timelog_auto_set_task_planning",
     "preferences.todos_default_inbox_vision",
+    "preferences.weight_unit",
+    "preferences.body_height_cm",
 )
 
 
@@ -374,6 +378,16 @@ def set_runtime_config_value(
         preferences_settings = replace(
             preferences_settings,
             todos_default_inbox_vision=validate_todos_default_inbox_vision(value),
+        )
+    elif normalized_key == "preferences.weight_unit":
+        preferences_settings = replace(
+            preferences_settings,
+            weight_unit=validate_weight_unit(value),
+        )
+    elif normalized_key == "preferences.body_height_cm":
+        preferences_settings = replace(
+            preferences_settings,
+            body_height_cm=validate_body_height_cm(value),
         )
 
     written_path = write_database_settings(

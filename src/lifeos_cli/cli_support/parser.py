@@ -15,15 +15,21 @@ from sqlalchemy.exc import SQLAlchemyError
 from lifeos_cli.application.package_metadata import get_installed_package_version
 from lifeos_cli.cli_support.help_utils import CompactSubcommandHelpFormatter, build_epilog
 from lifeos_cli.cli_support.resources.area.parser import build_area_parser
+from lifeos_cli.cli_support.resources.body.parser import build_body_parser
 from lifeos_cli.cli_support.resources.data.parser import build_data_parser
 from lifeos_cli.cli_support.resources.event.parser import build_event_parser
 from lifeos_cli.cli_support.resources.finance.parser import build_finance_parser
 from lifeos_cli.cli_support.resources.habit.parser import build_habit_parser
 from lifeos_cli.cli_support.resources.habit_action.parser import build_habit_action_parser
+from lifeos_cli.cli_support.resources.menstrual.parser import build_menstrual_parser
+from lifeos_cli.cli_support.resources.menstrual_factor.parser import (
+    build_menstrual_factor_parser,
+)
 from lifeos_cli.cli_support.resources.note.parser import build_note_parser
 from lifeos_cli.cli_support.resources.person.parser import build_person_parser
 from lifeos_cli.cli_support.resources.planning.parser import build_planning_parser
 from lifeos_cli.cli_support.resources.schedule.parser import build_schedule_parser
+from lifeos_cli.cli_support.resources.sleep.parser import build_sleep_parser
 from lifeos_cli.cli_support.resources.tag.parser import build_tag_parser
 from lifeos_cli.cli_support.resources.task.parser import build_task_parser
 from lifeos_cli.cli_support.resources.timelog.parser import build_timelog_parser
@@ -55,6 +61,7 @@ RESOURCE_BUILDERS: tuple[tuple[str, ResourceBuilder], ...] = (
     ("web", build_web_parser),
     ("data", build_data_parser),
     ("area", build_area_parser),
+    ("body", build_body_parser),
     ("event", build_event_parser),
     ("finance", build_finance_parser),
     ("schedule", build_schedule_parser),
@@ -66,7 +73,10 @@ RESOURCE_BUILDERS: tuple[tuple[str, ResourceBuilder], ...] = (
     ("timelog", build_timelog_parser),
     ("habit", build_habit_parser),
     ("habit-action", build_habit_action_parser),
+    ("menstrual", build_menstrual_parser),
+    ("menstrual-factor", build_menstrual_factor_parser),
     ("note", build_note_parser),
+    ("sleep", build_sleep_parser),
 )
 
 

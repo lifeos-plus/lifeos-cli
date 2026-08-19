@@ -47,6 +47,7 @@ DEFAULT_NAVIGATION_VISIBLE_MODULES = (
     "person",
     "settings",
 )
+DEFAULT_WEIGHT_UNIT = "kg"
 DEFAULT_NOTES_CARD_MIN_COLLAPSED_LINES = 5
 DEFAULT_NOTES_EXPORT_PLANNING_INCLUDE_CYCLE_NOTES = False
 DEFAULT_NOTES_EXPORT_PLANNING_INCLUDE_TASK_NOTES = True
@@ -54,6 +55,8 @@ DEFAULT_PLANNING_SHOW_HABIT_ACTIONS = True
 DEFAULT_TASKS_DEFAULT_PLANNING_PRESET = "none"
 DEFAULT_TIMELOG_AUTO_SET_TASK_PLANNING = False
 DEFAULT_TODOS_DEFAULT_INBOX_VISION = None
+DEFAULT_BODY_HEIGHT_CM: float | None = None
+SUPPORTED_WEIGHT_UNITS = ("kg", "jin", "lb")
 MAX_VISION_EXPERIENCE_RATE_PER_HOUR = 3600
 SUPPORTED_THEMES = (
     "system",
@@ -430,6 +433,40 @@ def validate_todos_default_inbox_vision(value: str | None) -> str | None:
     return normalized.lower()
 
 
+def validate_weight_unit(value: str) -> str:
+    """Validate the preferred display unit for body weight."""
+    normalized = value.strip().lower()
+    if normalized not in SUPPORTED_WEIGHT_UNITS:
+        supported = ", ".join(SUPPORTED_WEIGHT_UNITS)
+        raise ConfigurationError(f"Preference `weight_unit` must be one of: {supported}.")
+    return normalized
+
+
+def validate_body_height_cm(value: object) -> float | None:
+    """Validate the optional body height used to derive BMI."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        normalized = value.strip()
+        if not normalized:
+            return None
+        try:
+            height = float(normalized)
+        except ValueError as exc:
+            raise ConfigurationError(
+                "Preference `body_height_cm` must be a number in centimeters when set."
+            ) from exc
+    elif isinstance(value, (int, float)):
+        height = float(value)
+    else:
+        raise ConfigurationError(
+            "Preference `body_height_cm` must be a number in centimeters when set."
+        )
+    if height < 50 or height > 300:
+        raise ConfigurationError("Preference `body_height_cm` must be between 50 and 300.")
+    return round(height, 1)
+
+
 def _parse_bool(value: str) -> bool:
     normalized = value.strip().lower()
     return normalized in {"1", "true", "yes", "on"}
@@ -696,6 +733,8 @@ class PreferencesSettings:
     tasks_default_planning_preset: str = DEFAULT_TASKS_DEFAULT_PLANNING_PRESET
     timelog_auto_set_task_planning: bool = DEFAULT_TIMELOG_AUTO_SET_TASK_PLANNING
     todos_default_inbox_vision: str | None = DEFAULT_TODOS_DEFAULT_INBOX_VISION
+    weight_unit: str = DEFAULT_WEIGHT_UNIT
+    body_height_cm: float | None = DEFAULT_BODY_HEIGHT_CM
 
     @classmethod
     def from_env(
@@ -741,6 +780,8 @@ class PreferencesSettings:
             "timelog_auto_set_task_planning"
         )
         file_todos_default_inbox_vision = preference_values.get("todos_default_inbox_vision")
+        file_weight_unit = preference_values.get("weight_unit")
+        file_body_height_cm = preference_values.get("body_height_cm")
 
         timezone_value = source.get("LIFEOS_TIMEZONE") if include_overrides else None
         if timezone_value is None and isinstance(file_timezone, str):
@@ -860,6 +901,12 @@ class PreferencesSettings:
             todos_default_inbox_vision_value
         )
 
+        weight_unit_value = (
+            file_weight_unit if isinstance(file_weight_unit, str) else DEFAULT_WEIGHT_UNIT
+        )
+        weight_unit = validate_weight_unit(weight_unit_value)
+        body_height_cm = validate_body_height_cm(file_body_height_cm)
+
         return cls(
             timezone=timezone_value,
             language=language_value,
@@ -879,6 +926,8 @@ class PreferencesSettings:
             tasks_default_planning_preset=tasks_default_planning_preset,
             timelog_auto_set_task_planning=timelog_auto_set_task_planning,
             todos_default_inbox_vision=todos_default_inbox_vision,
+            weight_unit=weight_unit,
+            body_height_cm=body_height_cm,
         )
 
 

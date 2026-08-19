@@ -890,6 +890,137 @@
         "visions_usually_represent_medium_or_long_running_themes_that_will_own_multiple": "`vision` 通常代表具有多重 `task` 的中长期主题。",
         "when_vision_has_tasks_tasks_section_prints_header_row_followed_by_tab": "当该 `vision` 存在 task 时，`tasks` 分段会先输出一行表头，随后按制表符分隔输出列：{columns}。"
       }
+    },
+    "menstrual": {
+      "parser": {
+        "manage_menstrual_cycle_records": "管理生理周期记录",
+        "create_inspect_update_and_delete_daily_menstrual_cycle_records": "创建、查看、更新和删除每日生理周期记录。",
+        "one_record_per_local_date_with_period_symptoms_factors_and_notes": "每个本地日期一条记录，可记录经期状态、月经量、症状、自定义因素、点滴出血和备注。",
+        "use_list_as_primary_query_entrypoint_for_menstrual_days": "使用 `list` 作为生理周期日记录的主要查询入口。",
+        "use_menstrual_factor_resource_to_manage_custom_factors": "使用 `menstrual-factor` 资源管理自定义因素。"
+      },
+      "parser_actions": {
+        "add_menstrual_day": "添加生理周期日记录",
+        "create_one_daily_menstrual_cycle_record": "创建一条每日生理周期记录。",
+        "log_date": "本地日历日期，格式为 YYYY-MM-DD",
+        "mark_day_as_in_period": "将该日标记为处于经期",
+        "mark_day_as_not_in_period": "将该日标记为不处于经期",
+        "optional_flow_amount_low_medium_or_high": "可选月经量：low、medium 或 high（仅可与 `--in-period` 同时使用）",
+        "repeat_to_add_one_daily_symptom": "重复添加一个每日症状；已知编码为 `hot_flash`、`headache`、`bladder_incontinence` 和 `constipation`，也可使用自由文本",
+        "repeat_to_attach_one_custom_factor_by_name": "重复按名称关联一个自定义因素",
+        "personality_behavior_yes_or_no": "性格行为：yes 或 no",
+        "protection_used_yes_or_no": "保护措施：used 或 unused",
+        "spotting_yes_or_no": "点滴出血：yes 或 no",
+        "optional_notes": "可选备注",
+        "flow_amount_requires_in_period": "`--flow` 仅可与 `--in-period` 同时使用。",
+        "known_symptom_codes_are_hot_flash_headache_bladder_incontinence_and_constipation": "已知症状编码为 `hot_flash`、`headache`、`bladder_incontinence` 和 `constipation`；其它值按原样存储。",
+        "missing_factors_are_created_automatically": "尚不存在的因素名称会自动创建。",
+        "list_menstrual_days": "列出生理周期日记录",
+        "list_menstrual_days_with_optional_date_range": "列出带可选本地日期范围的生理周期日记录。",
+        "show_menstrual_day": "查看生理周期日记录",
+        "show_one_menstrual_day_with_full_metadata": "查看一条包含完整元数据的生理周期日记录。",
+        "menstrual_day_identifier": "生理周期日记录标识符",
+        "update_menstrual_day": "更新生理周期日记录",
+        "update_mutable_menstrual_day_fields": "更新可变的生理周期日记录字段。",
+        "clear_flow_amount": "清除月经量",
+        "clear_symptoms": "清除全部症状",
+        "clear_notes": "清除备注",
+        "clear_factors": "清除全部已关联因素",
+        "delete_menstrual_days": "删除生理周期日记录",
+        "soft_delete_one_or_more_menstrual_day_records": "软删除一条或多条生理周期日记录。"
+      }
+    },
+    "menstrual_factor": {
+      "parser": {
+        "manage_custom_menstrual_factors": "管理自定义生理周期因素",
+        "create_list_and_delete_user_defined_factors": "创建、列出和删除用户自定义的生理周期因素。",
+        "factors_are_lightweight_dictionary_entries_attached_to_menstrual_days": "因素是轻量字典条目，可关联到生理周期日记录。",
+        "use_menstrual_add_factor_flag_to_attach_factors_to_daily_records": "使用 `lifeos menstrual add --factor <name>` 将因素关联到每日记录。"
+      },
+      "parser_actions": {
+        "add_menstrual_factor": "添加生理周期因素",
+        "create_one_custom_menstrual_factor": "创建一个自定义生理周期因素。",
+        "factor_name": "因素名称",
+        "list_menstrual_factors": "列出生理周期因素",
+        "list_custom_menstrual_factors": "列出自定义生理周期因素。",
+        "delete_menstrual_factors": "删除生理周期因素",
+        "soft_delete_one_or_more_custom_factors": "软删除一个或多个自定义生理周期因素。"
+      }
+    },
+    "body": {
+      "parser": {
+        "manage_body_weight_and_composition_measurements": "管理体重与身体成分测量",
+        "create_inspect_update_and_delete_body_measurements": "创建、查看、更新和删除体重与身体成分测量记录。",
+        "weights_are_stored_in_kg_and_displayed_in_the_preferred_unit": "体重统一以公斤（kg）存储，并按偏好单位展示。",
+        "use_body_fat_as_primary_composition_field_and_treat_other_values_as_optional": "以体脂率作为主要身体成分字段，其余数值为可选。",
+        "bmi_is_derived_from_weight_and_preferred_height": "BMI 由体重与偏好身高（`preferences.body_height_cm`）推导。",
+        "measured_at_is_user_owned_and_independent_of_record_created_at": "`measured_at` 为用户自有的测量时间，独立于记录的 `created_at` 时间戳。"
+      },
+      "parser_actions": {
+        "add_body_measurement": "添加体重测量",
+        "create_one_body_measurement_with_user_owned_measured_at": "创建一条带用户自有测量时间的体重/身体成分记录。",
+        "weight_value_in_input_unit": "按输入单位表示的体重值",
+        "input_weight_unit_kg_jin_or_lb": "输入体重单位：kg、jin 或 lb",
+        "weights_are_stored_in_kg_regardless_of_input_unit": "无论输入单位如何，体重都以 kg 存储。",
+        "default_unit_is_the_preferred_weight_unit": "默认单位为配置的 `preferences.weight_unit`。",
+        "measured_at_defaults_to_now": "测量时间；省略时默认为当前时间",
+        "optional_body_fat_percentage": "可选体脂率",
+        "optional_visceral_fat": "可选内脏脂肪",
+        "optional_fat_mass_kg": "可选脂肪量（kg）",
+        "optional_muscle_percentage": "可选肌肉率",
+        "optional_muscle_mass_kg": "可选肌肉量（kg）",
+        "optional_body_water_kg": "可选体水分量（kg）",
+        "optional_protein_kg": "可选蛋白量（kg）",
+        "optional_bone_mass_kg": "可选骨量（kg）",
+        "optional_skeletal_muscle_kg": "可选骨骼肌量（kg）",
+        "optional_notes": "可选备注",
+        "list_body_measurements": "列出体重测量",
+        "list_body_measurements_with_optional_date_range": "列出带可选测量时间本地日期范围的体重测量记录。",
+        "show_body_measurement": "查看体重测量",
+        "show_one_body_measurement_with_derived_bmi": "查看一条体重测量记录，并在配置身高时展示推导的 BMI。",
+        "body_measurement_identifier": "体重测量标识符",
+        "update_body_measurement": "更新体重测量",
+        "update_mutable_body_measurement_fields": "更新可变的体重测量字段。",
+        "clear_body_fat": "清除体脂率",
+        "clear_visceral_fat": "清除内脏脂肪",
+        "clear_fat_mass": "清除脂肪量",
+        "clear_muscle_percentage": "清除肌肉率",
+        "clear_muscle_mass": "清除肌肉量",
+        "clear_body_water": "清除体水分量",
+        "clear_protein": "清除蛋白量",
+        "clear_bone_mass": "清除骨量",
+        "clear_skeletal_muscle": "清除骨骼肌量",
+        "clear_notes": "清除备注",
+        "delete_body_measurements": "删除体重测量",
+        "soft_delete_one_or_more_body_measurements": "软删除一条或多条体重测量记录。"
+      }
+    },
+    "sleep": {
+      "parser": {
+        "manage_sleep_segments_and_daily_summaries": "管理睡眠分段与按日汇总",
+        "create_inspect_update_and_delete_sleep_segments": "创建、查看、更新和删除睡眠分段。",
+        "segments_are_attributed_to_their_local_operational_start_date": "每个分段归属到其开始时间的本地运营日期。",
+        "use_summary_for_daily_totals": "使用 `summary` 查看按需计算的每日汇总。",
+        "a_local_day_can_contain_multiple_sleep_segments": "一个本地日可以包含多段睡眠。"
+      },
+      "parser_actions": {
+        "add_sleep_segment": "添加睡眠分段",
+        "create_one_sleep_segment_with_start_and_end_times": "创建带开始与结束时间的睡眠分段。",
+        "segment_belongs_to_local_operational_date_of_its_start_time": "分段归属到其开始时间的本地运营日期（遵循时区与 `day_starts_at`）。",
+        "end_time": "结束时间",
+        "list_sleep_segments": "列出睡眠分段",
+        "list_sleep_segments_by_attribution_date": "按归属日期列出睡眠分段。",
+        "show_sleep_segment": "查看睡眠分段",
+        "show_one_sleep_segment": "查看一条睡眠分段。",
+        "sleep_segment_identifier": "睡眠分段标识符",
+        "update_sleep_segment": "更新睡眠分段",
+        "update_sleep_segment_times_and_recompute_duration": "更新睡眠分段时间，并重新计算时长与归属日期。",
+        "delete_sleep_segments": "删除睡眠分段",
+        "soft_delete_one_or_more_sleep_segments": "软删除一条或多条睡眠分段。",
+        "show_sleep_daily_summary": "查看睡眠按日汇总",
+        "show_daily_sleep_summaries_for_one_or_more_dates": "查看一个或多个本地日期的睡眠按日汇总。",
+        "total_duration_minutes_plus_segment_count_per_day": "每行报告每日总时长（分钟）、分段数、最早开始与最晚结束。"
+      }
     }
   },
   "system": {
