@@ -41,6 +41,7 @@ DEFAULT_NAVIGATION_VISIBLE_MODULES = (
     "planning",
     "timelog",
     "finance",
+    "health",
     "insights",
     "calendar",
     "notes",
