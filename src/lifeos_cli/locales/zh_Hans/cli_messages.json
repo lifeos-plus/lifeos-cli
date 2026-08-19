@@ -908,7 +908,6 @@
         "optional_flow_amount_low_medium_or_high": "可选月经量：low、medium 或 high（仅可与 `--in-period` 同时使用）",
         "repeat_to_add_one_daily_symptom": "重复添加一个每日症状；已知编码为 `hot_flash`、`headache`、`bladder_incontinence` 和 `constipation`，也可使用自由文本",
         "repeat_to_attach_one_custom_factor_by_name": "重复按名称关联一个自定义因素",
-        "personality_behavior_yes_or_no": "性格行为：yes 或 no",
         "protection_used_yes_or_no": "保护措施：used 或 unused",
         "spotting_yes_or_no": "点滴出血：yes 或 no",
         "optional_notes": "可选备注",
@@ -927,7 +926,8 @@
         "clear_notes": "清除备注",
         "clear_factors": "清除全部已关联因素",
         "delete_menstrual_days": "删除生理周期日记录",
-        "soft_delete_one_or_more_menstrual_day_records": "软删除一条或多条生理周期日记录。"
+        "soft_delete_one_or_more_menstrual_day_records": "软删除一条或多条生理周期日记录。",
+        "mood_changes_yes_or_no": "情绪变化：yes 或 no"
       }
     },
     "menstrual_factor": {
@@ -947,7 +947,34 @@
         "soft_delete_one_or_more_custom_factors": "软删除一个或多个自定义生理周期因素。"
       }
     },
-    "body": {
+    "sleep": {
+      "parser": {
+        "manage_sleep_segments_and_daily_summaries": "管理睡眠分段与按日汇总",
+        "create_inspect_update_and_delete_sleep_segments": "创建、查看、更新和删除睡眠分段。",
+        "segments_are_attributed_to_their_local_operational_start_date": "每个分段归属到其开始时间的本地运营日期。",
+        "use_summary_for_daily_totals": "使用 `summary` 查看按需计算的每日汇总。",
+        "a_local_day_can_contain_multiple_sleep_segments": "一个本地日可以包含多段睡眠。"
+      },
+      "parser_actions": {
+        "add_sleep_segment": "添加睡眠分段",
+        "create_one_sleep_segment_with_start_and_end_times": "创建带开始与结束时间的睡眠分段。",
+        "segment_belongs_to_local_operational_date_of_its_start_time": "分段归属到其开始时间的本地运营日期（遵循时区与 `day_starts_at`）。",
+        "end_time": "结束时间",
+        "list_sleep_segments": "列出睡眠分段",
+        "list_sleep_segments_by_attribution_date": "按归属日期列出睡眠分段。",
+        "show_sleep_segment": "查看睡眠分段",
+        "show_one_sleep_segment": "查看一条睡眠分段。",
+        "sleep_segment_identifier": "睡眠分段标识符",
+        "update_sleep_segment": "更新睡眠分段",
+        "update_sleep_segment_times_and_recompute_duration": "更新睡眠分段时间，并重新计算时长与归属日期。",
+        "delete_sleep_segments": "删除睡眠分段",
+        "soft_delete_one_or_more_sleep_segments": "软删除一条或多条睡眠分段。",
+        "show_sleep_daily_summary": "查看睡眠按日汇总",
+        "show_daily_sleep_summaries_for_one_or_more_dates": "查看一个或多个本地日期的睡眠按日汇总。",
+        "total_duration_minutes_plus_segment_count_per_day": "每行报告每日总时长（分钟）、分段数、最早开始与最晚结束。"
+      }
+    },
+    "body_measurement": {
       "parser": {
         "manage_body_weight_and_composition_measurements": "管理体重与身体成分测量",
         "create_inspect_update_and_delete_body_measurements": "创建、查看、更新和删除体重与身体成分测量记录。",
@@ -993,33 +1020,6 @@
         "clear_notes": "清除备注",
         "delete_body_measurements": "删除体重测量",
         "soft_delete_one_or_more_body_measurements": "软删除一条或多条体重测量记录。"
-      }
-    },
-    "sleep": {
-      "parser": {
-        "manage_sleep_segments_and_daily_summaries": "管理睡眠分段与按日汇总",
-        "create_inspect_update_and_delete_sleep_segments": "创建、查看、更新和删除睡眠分段。",
-        "segments_are_attributed_to_their_local_operational_start_date": "每个分段归属到其开始时间的本地运营日期。",
-        "use_summary_for_daily_totals": "使用 `summary` 查看按需计算的每日汇总。",
-        "a_local_day_can_contain_multiple_sleep_segments": "一个本地日可以包含多段睡眠。"
-      },
-      "parser_actions": {
-        "add_sleep_segment": "添加睡眠分段",
-        "create_one_sleep_segment_with_start_and_end_times": "创建带开始与结束时间的睡眠分段。",
-        "segment_belongs_to_local_operational_date_of_its_start_time": "分段归属到其开始时间的本地运营日期（遵循时区与 `day_starts_at`）。",
-        "end_time": "结束时间",
-        "list_sleep_segments": "列出睡眠分段",
-        "list_sleep_segments_by_attribution_date": "按归属日期列出睡眠分段。",
-        "show_sleep_segment": "查看睡眠分段",
-        "show_one_sleep_segment": "查看一条睡眠分段。",
-        "sleep_segment_identifier": "睡眠分段标识符",
-        "update_sleep_segment": "更新睡眠分段",
-        "update_sleep_segment_times_and_recompute_duration": "更新睡眠分段时间，并重新计算时长与归属日期。",
-        "delete_sleep_segments": "删除睡眠分段",
-        "soft_delete_one_or_more_sleep_segments": "软删除一条或多条睡眠分段。",
-        "show_sleep_daily_summary": "查看睡眠按日汇总",
-        "show_daily_sleep_summaries_for_one_or_more_dates": "查看一个或多个本地日期的睡眠按日汇总。",
-        "total_duration_minutes_plus_segment_count_per_day": "每行报告每日总时长（分钟）、分段数、最早开始与最晚结束。"
       }
     }
   },

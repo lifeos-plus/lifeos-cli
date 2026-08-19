@@ -261,7 +261,7 @@ async def create_menstrual_day(
     in_period: bool = False,
     flow_amount: str | None = None,
     symptoms: list[str] | None = None,
-    personality_behavior: bool | None = None,
+    mood_changes: bool | None = None,
     protection_used: bool | None = None,
     spotting: bool | None = None,
     factor_names: list[str] | None = None,
@@ -278,7 +278,7 @@ async def create_menstrual_day(
         in_period=in_period,
         flow_amount=normalized_flow,
         symptoms=normalized_symptoms,
-        personality_behavior=personality_behavior,
+        mood_changes=mood_changes,
         protection_used=protection_used,
         spotting=spotting,
         notes=normalized_notes,
@@ -297,7 +297,7 @@ async def update_menstrual_day(
     in_period: bool | None = None,
     flow_amount: str | None = None,
     symptoms: list[str] | None = None,
-    personality_behavior: bool | None = None,
+    mood_changes: bool | None = None,
     protection_used: bool | None = None,
     spotting: bool | None = None,
     factor_names: list[str] | None = None,
@@ -328,8 +328,8 @@ async def update_menstrual_day(
     elif symptoms is not None:
         day.symptoms = validate_symptoms(symptoms)
 
-    if personality_behavior is not None:
-        day.personality_behavior = personality_behavior
+    if mood_changes is not None:
+        day.mood_changes = mood_changes
     if protection_used is not None:
         day.protection_used = protection_used
     if spotting is not None:

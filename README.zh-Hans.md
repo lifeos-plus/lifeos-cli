@@ -50,7 +50,7 @@ English: [README.md](README.md)
 | Relationships | `person` 支持关系元数据、生日/纪念日、tags、相关活动、anniversaries，以及来自 events、notes、timelogs 的链接。 |
 | Taxonomy | `tag` 支持 category/entity-type 元数据，以及跨资源 association counts。 |
 | Finance | 支持 assets、可复用 finance trees、nodes、instant/period snapshots、exchange-rate snapshots、default tree bootstrap，以及资产负债表/现金流风格的数据建模。 |
-| Health data | `menstrual` 每日生理周期记录与自定义因素、`body` 体重/身体成分测量（统一 kg 存储、偏好单位展示），以及 `sleep` 睡眠分段与按需每日汇总。 |
+| Health data | `menstrual` 每日生理周期记录与自定义因素、`body-measurement` 体重/身体成分测量（统一 kg 存储、偏好单位展示），以及 `sleep` 睡眠分段与按需每日汇总。 |
 | Data portability | 支持规范 JSON/JSONL export/import、完整 bundle backup/restore、dry-run validation、row-level errors、自然键 upsert import 和面向机器的 batch update/delete。 |
 | Configuration | 持久化 database 与 preference 配置，包括 timezone、language、day boundary、week boundary、theme 和默认 vision experience rate。 |
 | Local Web API | FastAPI routers 覆盖 health、tasks、visions、habits、notes、timelogs、timelog templates、person、areas、finance、planned events、stats、tags、preferences、menstrual days、menstrual factors、body measurements 和 sleep segments。 |

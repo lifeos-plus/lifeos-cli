@@ -908,7 +908,6 @@
         "optional_flow_amount_low_medium_or_high": "Optional flow amount: low, medium, or high (only with `--in-period`)",
         "repeat_to_add_one_daily_symptom": "Repeat to add one daily symptom; known codes are `hot_flash`, `headache`, `bladder_incontinence`, and `constipation`, or use free-form text",
         "repeat_to_attach_one_custom_factor_by_name": "Repeat to attach one custom factor by name",
-        "personality_behavior_yes_or_no": "Personality behavior: yes or no",
         "protection_used_yes_or_no": "Protection used: yes or no",
         "spotting_yes_or_no": "Spotting: yes or no",
         "optional_notes": "Optional notes",
@@ -927,7 +926,8 @@
         "clear_notes": "Clear notes",
         "clear_factors": "Clear all attached factors",
         "delete_menstrual_days": "Delete menstrual days",
-        "soft_delete_one_or_more_menstrual_day_records": "Soft-delete one or more menstrual day records."
+        "soft_delete_one_or_more_menstrual_day_records": "Soft-delete one or more menstrual day records.",
+        "mood_changes_yes_or_no": "Mood changes: yes or no"
       }
     },
     "menstrual_factor": {
@@ -947,7 +947,34 @@
         "soft_delete_one_or_more_custom_factors": "Soft-delete one or more custom menstrual factors."
       }
     },
-    "body": {
+    "sleep": {
+      "parser": {
+        "manage_sleep_segments_and_daily_summaries": "Manage sleep segments and daily summaries",
+        "create_inspect_update_and_delete_sleep_segments": "Create, inspect, update, and delete sleep segments.",
+        "segments_are_attributed_to_their_local_operational_start_date": "Each segment is attributed to the local operational date of its start time.",
+        "use_summary_for_daily_totals": "Use `summary` for on-demand daily totals.",
+        "a_local_day_can_contain_multiple_sleep_segments": "A local day can contain multiple sleep segments."
+      },
+      "parser_actions": {
+        "add_sleep_segment": "Add a sleep segment",
+        "create_one_sleep_segment_with_start_and_end_times": "Create one sleep segment with start and end times.",
+        "segment_belongs_to_local_operational_date_of_its_start_time": "The segment belongs to the local operational date of its start time (timezone and `day_starts_at` aware).",
+        "end_time": "End time",
+        "list_sleep_segments": "List sleep segments",
+        "list_sleep_segments_by_attribution_date": "List sleep segments by attribution date.",
+        "show_sleep_segment": "Show a sleep segment",
+        "show_one_sleep_segment": "Show one sleep segment.",
+        "sleep_segment_identifier": "Sleep segment identifier",
+        "update_sleep_segment": "Update a sleep segment",
+        "update_sleep_segment_times_and_recompute_duration": "Update sleep segment times and recompute duration and attribution.",
+        "delete_sleep_segments": "Delete sleep segments",
+        "soft_delete_one_or_more_sleep_segments": "Soft-delete one or more sleep segments.",
+        "show_sleep_daily_summary": "Show sleep daily summary",
+        "show_daily_sleep_summaries_for_one_or_more_dates": "Show daily sleep summaries for one or more local dates.",
+        "total_duration_minutes_plus_segment_count_per_day": "Each row reports total duration minutes, segment count, first start, and last end per day."
+      }
+    },
+    "body_measurement": {
       "parser": {
         "manage_body_weight_and_composition_measurements": "Manage body weight and composition measurements",
         "create_inspect_update_and_delete_body_measurements": "Create, inspect, update, and delete body weight and composition measurements.",
@@ -993,33 +1020,6 @@
         "clear_notes": "Clear notes",
         "delete_body_measurements": "Delete body measurements",
         "soft_delete_one_or_more_body_measurements": "Soft-delete one or more body measurements."
-      }
-    },
-    "sleep": {
-      "parser": {
-        "manage_sleep_segments_and_daily_summaries": "Manage sleep segments and daily summaries",
-        "create_inspect_update_and_delete_sleep_segments": "Create, inspect, update, and delete sleep segments.",
-        "segments_are_attributed_to_their_local_operational_start_date": "Each segment is attributed to the local operational date of its start time.",
-        "use_summary_for_daily_totals": "Use `summary` for on-demand daily totals.",
-        "a_local_day_can_contain_multiple_sleep_segments": "A local day can contain multiple sleep segments."
-      },
-      "parser_actions": {
-        "add_sleep_segment": "Add a sleep segment",
-        "create_one_sleep_segment_with_start_and_end_times": "Create one sleep segment with start and end times.",
-        "segment_belongs_to_local_operational_date_of_its_start_time": "The segment belongs to the local operational date of its start time (timezone and `day_starts_at` aware).",
-        "end_time": "End time",
-        "list_sleep_segments": "List sleep segments",
-        "list_sleep_segments_by_attribution_date": "List sleep segments by attribution date.",
-        "show_sleep_segment": "Show a sleep segment",
-        "show_one_sleep_segment": "Show one sleep segment.",
-        "sleep_segment_identifier": "Sleep segment identifier",
-        "update_sleep_segment": "Update a sleep segment",
-        "update_sleep_segment_times_and_recompute_duration": "Update sleep segment times and recompute duration and attribution.",
-        "delete_sleep_segments": "Delete sleep segments",
-        "soft_delete_one_or_more_sleep_segments": "Soft-delete one or more sleep segments.",
-        "show_sleep_daily_summary": "Show sleep daily summary",
-        "show_daily_sleep_summaries_for_one_or_more_dates": "Show daily sleep summaries for one or more local dates.",
-        "total_duration_minutes_plus_segment_count_per_day": "Each row reports total duration minutes, segment count, first start, and last end per day."
       }
     }
   },

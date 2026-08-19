@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from lifeos_cli.application.package_metadata import get_installed_package_version
 from lifeos_cli.cli_support.help_utils import CompactSubcommandHelpFormatter, build_epilog
 from lifeos_cli.cli_support.resources.area.parser import build_area_parser
-from lifeos_cli.cli_support.resources.body.parser import build_body_parser
+from lifeos_cli.cli_support.resources.body_measurement.parser import build_body_measurement_parser
 from lifeos_cli.cli_support.resources.data.parser import build_data_parser
 from lifeos_cli.cli_support.resources.event.parser import build_event_parser
 from lifeos_cli.cli_support.resources.finance.parser import build_finance_parser
@@ -61,7 +61,7 @@ RESOURCE_BUILDERS: tuple[tuple[str, ResourceBuilder], ...] = (
     ("web", build_web_parser),
     ("data", build_data_parser),
     ("area", build_area_parser),
-    ("body", build_body_parser),
+    ("body-measurement", build_body_measurement_parser),
     ("event", build_event_parser),
     ("finance", build_finance_parser),
     ("schedule", build_schedule_parser),

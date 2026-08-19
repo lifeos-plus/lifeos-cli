@@ -21,7 +21,7 @@ class MenstrualDayResponse(ResponseModel):
     flow_amount: str | None
     symptoms: list[str]
     factors: list[MenstrualFactorResponse]
-    personality_behavior: bool | None
+    mood_changes: bool | None
     protection_used: bool | None
     spotting: bool | None
     notes: str | None

@@ -130,7 +130,7 @@ def _clear_fields(args: argparse.Namespace) -> frozenset[str]:
     return frozenset(cleared)
 
 
-async def handle_body_add_async(args: argparse.Namespace) -> int:
+async def handle_body_measurement_add_async(args: argparse.Namespace) -> int:
     """Create one body measurement record."""
     measured_at = args.measured_at or utc_now()
     metric_values = _metric_values(args)
@@ -161,7 +161,7 @@ async def handle_body_add_async(args: argparse.Namespace) -> int:
     return 0
 
 
-async def handle_body_list_async(args: argparse.Namespace) -> int:
+async def handle_body_measurement_list_async(args: argparse.Namespace) -> int:
     """List body measurements."""
     try:
         start_date, end_date = _resolve_date_range(args)
@@ -193,7 +193,7 @@ async def handle_body_list_async(args: argparse.Namespace) -> int:
     return 0
 
 
-async def handle_body_show_async(args: argparse.Namespace) -> int:
+async def handle_body_measurement_show_async(args: argparse.Namespace) -> int:
     """Show one body measurement with derived BMI."""
     async with db_session.session_scope() as session:
         measurement = await body_services.get_body_measurement(
@@ -229,7 +229,7 @@ async def handle_body_show_async(args: argparse.Namespace) -> int:
     return 0
 
 
-async def handle_body_update_async(args: argparse.Namespace) -> int:
+async def handle_body_measurement_update_async(args: argparse.Namespace) -> int:
     """Update one body measurement record."""
     metric_values = _metric_values(args)
     payload = body_services.BodyMeasurementUpdate(
@@ -264,7 +264,7 @@ async def handle_body_update_async(args: argparse.Namespace) -> int:
     return 0
 
 
-async def handle_body_delete_async(args: argparse.Namespace) -> int:
+async def handle_body_measurement_delete_async(args: argparse.Namespace) -> int:
     """Soft-delete one or more body measurements."""
     failed_ids: list[object] = []
     errors: list[str] = []

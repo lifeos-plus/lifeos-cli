@@ -13,7 +13,7 @@
 │   │       args: area_id [required]; --json
 │   └── update  —  Update an area
 │           args: area_id [required]; --name; --description; --clear-description; --color; --icon; --clear-icon; --active; --display-order
-├── body  —  Manage body weight and composition measurements
+├── body-measurement  —  Manage body weight and composition measurements
 │   ├── add  —  Add a body measurement
 │   │       args: --weight; --unit; --measured-at; --body-fat; --visceral-fat; --fat-mass; --muscle-percentage; --muscle-mass; --body-water; --protein; --bone-mass; --skeletal-muscle; --notes
 │   ├── delete  —  Delete body measurements
@@ -139,7 +139,7 @@
 │       args: --database-url; --schema; --echo; --timezone; --language; --day-starts-at; --week-starts-on; --vision-experience-rate-per-hour; --non-interactive; --skip-ping; --skip-migrate
 ├── menstrual  —  Manage menstrual cycle records
 │   ├── add  —  Add a menstrual day
-│   │       args: --date; --in-period; --not-in-period; --flow; --symptom; --factor; --personality-behavior; --protection-used; --spotting; --notes
+│   │       args: --date; --in-period; --not-in-period; --flow; --symptom; --factor; --mood-changes; --protection-used; --spotting; --notes
 │   ├── delete  —  Delete menstrual days
 │   │       args: day_ids [required]
 │   ├── list  —  List menstrual days
@@ -147,7 +147,7 @@
 │   ├── show  —  Show a menstrual day
 │   │       args: day_id [required]; --json
 │   └── update  —  Update a menstrual day
-│           args: day_id [required]; --date; --in-period; --not-in-period; --flow; --symptom; --factor; --personality-behavior; --protection-used; --spotting; --notes; --clear-flow; --clear-symptoms; --clear-notes; --clear-factors
+│           args: day_id [required]; --date; --in-period; --not-in-period; --flow; --symptom; --factor; --mood-changes; --protection-used; --spotting; --notes; --clear-flow; --clear-symptoms; --clear-notes; --clear-factors
 ├── menstrual-factor  —  Manage custom menstrual factors
 │   ├── add  —  Add a menstrual factor
 │   │       args: --name

@@ -24,11 +24,11 @@ def test_main_note_without_action_prints_resource_help(capsys) -> None:
     [
         ("area", ("lifeos area add --help", "lifeos area list --help", "lifeos area batch --help")),
         (
-            "body",
+            "body-measurement",
             (
-                "lifeos body add --help",
-                "lifeos body list --help",
-                "lifeos body show --help",
+                "lifeos body-measurement add --help",
+                "lifeos body-measurement list --help",
+                "lifeos body-measurement show --help",
             ),
         ),
         (

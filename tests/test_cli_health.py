@@ -40,8 +40,8 @@ def test_health_commands_are_part_of_machine_reference() -> None:
     reference = build_machine_readable_reference(cli.build_parser())
     paths = {tuple(command["path"]) for command in reference["commands"]}
 
-    assert ("body", "add") in paths
-    assert ("body", "show") in paths
+    assert ("body-measurement", "add") in paths
+    assert ("body-measurement", "show") in paths
     assert ("menstrual", "add") in paths
     assert ("menstrual", "list") in paths
     assert ("menstrual-factor", "add") in paths
@@ -113,7 +113,7 @@ def test_body_add_passes_input_unit_to_service(
 
     exit_code = cli.main(
         [
-            "body",
+            "body-measurement",
             "add",
             "--weight",
             "127",
@@ -235,7 +235,7 @@ def test_health_sqlite_workflow_round_trip(
     assert (
         cli.main(
             [
-                "body",
+                "body-measurement",
                 "add",
                 "--weight",
                 "127",
@@ -272,7 +272,7 @@ def test_health_sqlite_workflow_round_trip(
     assert menstrual_day_id in list_output.out
     assert "travel" in list_output.out
 
-    body_list = cli.main(["body", "list", "--json"])
+    body_list = cli.main(["body-measurement", "list", "--json"])
     body_output = capsys.readouterr()
     assert body_list == 0
     assert '"weight_kg": 63.5' in body_output.out

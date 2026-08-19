@@ -49,7 +49,7 @@ def _create_menstrual_tables(schema_name: str | None) -> None:
         sa.Column("in_period", sa.Boolean(), nullable=False),
         sa.Column("flow_amount", sa.String(length=16), nullable=True),
         sa.Column("symptoms", sa.JSON(), nullable=True),
-        sa.Column("personality_behavior", sa.Boolean(), nullable=True),
+        sa.Column("mood_changes", sa.Boolean(), nullable=True),
         sa.Column("protection_used", sa.Boolean(), nullable=True),
         sa.Column("spotting", sa.Boolean(), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),

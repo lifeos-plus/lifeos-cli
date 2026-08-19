@@ -372,7 +372,7 @@ class MenstrualDayCreate(BaseModel):
     in_period: bool = False
     flow_amount: str | None = None
     symptoms: list[str] | None = None
-    personality_behavior: bool | None = None
+    mood_changes: bool | None = None
     protection_used: bool | None = None
     spotting: bool | None = None
     factor_names: list[str] | None = None
@@ -386,7 +386,7 @@ class MenstrualDayUpdate(BaseModel):
     in_period: bool | None = None
     flow_amount: str | None = None
     symptoms: list[str] | None = None
-    personality_behavior: bool | None = None
+    mood_changes: bool | None = None
     protection_used: bool | None = None
     spotting: bool | None = None
     factor_names: list[str] | None = None

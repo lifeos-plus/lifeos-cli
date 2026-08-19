@@ -63,9 +63,9 @@ def _add_shared_menstrual_field_arguments(parser: argparse.ArgumentParser) -> No
         help=_("resources.menstrual.parser_actions.repeat_to_attach_one_custom_factor_by_name"),
     )
     parser.add_argument(
-        "--personality-behavior",
+        "--mood-changes",
         choices=("yes", "no"),
-        help=_("resources.menstrual.parser_actions.personality_behavior_yes_or_no"),
+        help=_("resources.menstrual.parser_actions.mood_changes_yes_or_no"),
     )
     parser.add_argument(
         "--protection-used",

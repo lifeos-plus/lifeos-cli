@@ -50,7 +50,7 @@ The implemented system covers the main quantified-self loop from planning to evi
 | Relationships | `person` records with relationship metadata, birthday/anniversary dates, tags, related activities, anniversaries, and links from events, notes, and timelogs. |
 | Taxonomy | `tag` records with category/entity-type metadata and association counts across supported resources. |
 | Finance | Assets, reusable finance trees, nodes, instant and period snapshots, exchange-rate snapshots, default tree bootstrapping, and balance-sheet/cashflow style data modeling. |
-| Health data | `menstrual` daily cycle records with custom factors, `body` weight/composition measurements with unified kg storage and preferred display units, and `sleep` segments with on-demand daily summaries. |
+| Health data | `menstrual` daily cycle records with custom factors, `body-measurement` weight/composition measurements with unified kg storage and preferred display units, and `sleep` segments with on-demand daily summaries. |
 | Data portability | Canonical JSON/JSONL export/import, full bundle backup/restore, dry-run validation, row-level errors, natural-key upsert imports, and machine-oriented batch update/delete. |
 | Configuration | Persistent database and preference configuration, including timezone, language, day boundary, week boundary, theme, and default vision experience rate. |
 | Local Web API | FastAPI routers for health, tasks, visions, habits, notes, timelogs, timelog templates, person, areas, finance, planned events, stats, tags, preferences, menstrual days, menstrual factors, body measurements, and sleep segments. |

@@ -37,7 +37,7 @@ def _menstrual_day_payload(day: MenstrualDay) -> dict[str, Any]:
         "flow_amount": day.flow_amount,
         "symptoms": day.symptoms or [],
         "factors": [factor.name for factor in day.factors],
-        "personality_behavior": day.personality_behavior,
+        "mood_changes": day.mood_changes,
         "protection_used": day.protection_used,
         "spotting": day.spotting,
         "notes": day.notes,
@@ -83,7 +83,7 @@ async def handle_menstrual_add_async(args: argparse.Namespace) -> int:
                 in_period=args.in_period,
                 flow_amount=args.flow,
                 symptoms=args.symptoms,
-                personality_behavior=_resolve_tristate(args.personality_behavior),
+                mood_changes=_resolve_tristate(args.mood_changes),
                 protection_used=_resolve_tristate(args.protection_used),
                 spotting=_resolve_tristate(args.spotting),
                 factor_names=args.factor_names,
@@ -143,10 +143,7 @@ async def handle_menstrual_show_async(args: argparse.Namespace) -> int:
     print(f"flow_amount: {day.flow_amount or '-'}")
     print(f"symptoms: {','.join(day.symptoms or []) or '-'}")
     print(f"factors: {','.join(factor.name for factor in day.factors) or '-'}")
-    print(
-        f"personality_behavior: "
-        f"{day.personality_behavior if day.personality_behavior is not None else '-'}"
-    )
+    print(f"mood_changes: {day.mood_changes if day.mood_changes is not None else '-'}")
     print(f"protection_used: {day.protection_used if day.protection_used is not None else '-'}")
     print(f"spotting: {day.spotting if day.spotting is not None else '-'}")
     print(f"notes: {day.notes or '-'}")
@@ -166,7 +163,7 @@ async def handle_menstrual_update_async(args: argparse.Namespace) -> int:
                 in_period=args.in_period,
                 flow_amount=args.flow,
                 symptoms=args.symptoms,
-                personality_behavior=_resolve_tristate(args.personality_behavior),
+                mood_changes=_resolve_tristate(args.mood_changes),
                 protection_used=_resolve_tristate(args.protection_used),
                 spotting=_resolve_tristate(args.spotting),
                 factor_names=args.factor_names,
