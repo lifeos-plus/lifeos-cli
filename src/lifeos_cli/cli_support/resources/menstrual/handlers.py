@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date
 from typing import Any
 
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
@@ -55,18 +54,6 @@ def _format_menstrual_day_summary(day: MenstrualDay) -> str:
     )
 
 
-def _resolve_date_range(args: argparse.Namespace) -> tuple[date | None, date | None]:
-    try:
-        resolved = resolve_date_selection_arguments(
-            date_values=args.date_values,
-            start_date=args.start_date,
-            end_date=args.end_date,
-        )
-    except DateArgumentError as exc:
-        raise DateArgumentError(str(exc)) from exc
-    return resolved.start_date, resolved.end_date
-
-
 def _resolve_tristate(value: str | None) -> bool | None:
     if value is None:
         return None
@@ -102,14 +89,19 @@ async def handle_menstrual_add_async(args: argparse.Namespace) -> int:
 async def handle_menstrual_list_async(args: argparse.Namespace) -> int:
     """List menstrual day records."""
     try:
-        start_date, end_date = _resolve_date_range(args)
+        resolved = resolve_date_selection_arguments(
+            date_values=args.date_values,
+            start_date=args.start_date,
+            end_date=args.end_date,
+        )
     except DateArgumentError as exc:
         return cli_handler_utils.print_cli_error(exc)
     async with db_session.session_scope() as session:
         days = await menstrual_services.list_menstrual_days(
             session,
-            start_date=start_date,
-            end_date=end_date,
+            dates=resolved.date_values or None,
+            start_date=resolved.start_date,
+            end_date=resolved.end_date,
             limit=args.limit,
             offset=args.offset,
         )

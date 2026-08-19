@@ -88,6 +88,7 @@ async def get_sleep_segment(
 async def list_sleep_segments(
     session: AsyncSession,
     *,
+    dates: tuple[date, ...] | None = None,
     sleep_date: date | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
@@ -102,6 +103,8 @@ async def list_sleep_segments(
         .limit(limit)
         .offset(offset)
     )
+    if dates:
+        stmt = stmt.where(SleepSegment.sleep_date.in_(dates))
     if sleep_date is not None:
         stmt = stmt.where(SleepSegment.sleep_date == sleep_date)
     if start_date is not None:
@@ -114,12 +117,15 @@ async def list_sleep_segments(
 async def count_sleep_segments(
     session: AsyncSession,
     *,
+    dates: tuple[date, ...] | None = None,
     sleep_date: date | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
 ) -> int:
     """Count active sleep segments for pagination metadata."""
     stmt = select(func.count(SleepSegment.id)).where(SleepSegment.deleted_at.is_(None))
+    if dates:
+        stmt = stmt.where(SleepSegment.sleep_date.in_(dates))
     if sleep_date is not None:
         stmt = stmt.where(SleepSegment.sleep_date == sleep_date)
     if start_date is not None:
@@ -178,6 +184,7 @@ class SleepDailySummary:
 async def get_sleep_daily_summaries(
     session: AsyncSession,
     *,
+    dates: tuple[date, ...] | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
 ) -> list[SleepDailySummary]:
@@ -194,6 +201,8 @@ async def get_sleep_daily_summaries(
         .group_by(SleepSegment.sleep_date)
         .order_by(SleepSegment.sleep_date.desc())
     )
+    if dates:
+        stmt = stmt.where(SleepSegment.sleep_date.in_(dates))
     if start_date is not None:
         stmt = stmt.where(SleepSegment.sleep_date >= start_date)
     if end_date is not None:

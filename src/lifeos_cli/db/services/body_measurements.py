@@ -7,7 +7,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.time_preferences import (
@@ -62,11 +62,14 @@ def to_kg(value: Decimal | float | int, unit: str) -> Decimal:
         decimal_value = Decimal(str(value))
     except (TypeError, ValueError) as exc:
         raise BodyMeasurementValidationError("Weight must be a number.") from exc
-    if decimal_value <= 0 or decimal_value > MAX_WEIGHT_KG * 4:
+    if decimal_value <= 0:
+        raise BodyMeasurementValidationError("Weight must be positive.")
+    converted = (decimal_value * WEIGHT_UNIT_FACTORS[normalized_unit]).quantize(Decimal("0.01"))
+    if converted > MAX_WEIGHT_KG:
         raise BodyMeasurementValidationError(
-            "Weight must be positive and within a plausible range."
+            f"Weight must be at most {MAX_WEIGHT_KG} kg after unit conversion."
         )
-    return (decimal_value * WEIGHT_UNIT_FACTORS[normalized_unit]).quantize(Decimal("0.01"))
+    return converted
 
 
 def from_kg(weight_kg: Decimal | float | int, unit: str) -> Decimal:
@@ -228,6 +231,7 @@ async def get_body_measurement(
 async def list_body_measurements(
     session: AsyncSession,
     *,
+    dates: tuple[date, ...] | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
     limit: int = 50,
@@ -241,7 +245,23 @@ async def list_body_measurements(
         .limit(limit)
         .offset(offset)
     )
-    if start_date is not None and end_date is not None:
+    if dates:
+        windows = [
+            get_utc_half_open_window_for_local_date_range(target_date, target_date)
+            for target_date in dates
+        ]
+        stmt = stmt.where(
+            or_(
+                *(
+                    and_(
+                        BodyMeasurement.measured_at >= window_start,
+                        BodyMeasurement.measured_at < window_end,
+                    )
+                    for window_start, window_end in windows
+                )
+            )
+        )
+    elif start_date is not None and end_date is not None:
         window_start, window_end = get_utc_half_open_window_for_local_date_range(
             start_date=start_date,
             end_date=end_date,
@@ -256,12 +276,29 @@ async def list_body_measurements(
 async def count_body_measurements(
     session: AsyncSession,
     *,
+    dates: tuple[date, ...] | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
 ) -> int:
     """Count active body measurements for pagination metadata."""
     stmt = select(func.count(BodyMeasurement.id)).where(BodyMeasurement.deleted_at.is_(None))
-    if start_date is not None and end_date is not None:
+    if dates:
+        windows = [
+            get_utc_half_open_window_for_local_date_range(target_date, target_date)
+            for target_date in dates
+        ]
+        stmt = stmt.where(
+            or_(
+                *(
+                    and_(
+                        BodyMeasurement.measured_at >= window_start,
+                        BodyMeasurement.measured_at < window_end,
+                    )
+                    for window_start, window_end in windows
+                )
+            )
+        )
+    elif start_date is not None and end_date is not None:
         window_start, window_end = get_utc_half_open_window_for_local_date_range(
             start_date=start_date,
             end_date=end_date,

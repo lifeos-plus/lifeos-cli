@@ -272,13 +272,29 @@ def test_health_sqlite_workflow_round_trip(
     assert menstrual_day_id in list_output.out
     assert "travel" in list_output.out
 
+    menstrual_date_list = cli.main(["menstrual", "list", "--date", "2026-08-19"])
+    date_list_output = capsys.readouterr()
+    assert menstrual_date_list == 0
+    assert menstrual_day_id in date_list_output.out
+
     body_list = cli.main(["body-measurement", "list", "--json"])
     body_output = capsys.readouterr()
     assert body_list == 0
     assert '"weight_kg": 63.5' in body_output.out
+
+    body_date_list = cli.main(["body-measurement", "list", "--date", "2026-08-19", "--json"])
+    body_date_output = capsys.readouterr()
+    assert body_date_list == 0
+    assert '"weight_kg": 63.5' in body_date_output.out
 
     sleep_summary = cli.main(["sleep", "summary", "--date", "2026-08-18"])
     summary_output = capsys.readouterr()
     assert sleep_summary == 0
     assert "2026-08-18" in summary_output.out
     assert "480" in summary_output.out
+
+    sleep_date_list = cli.main(["sleep", "list", "--date", "2026-08-18"])
+    sleep_list_output = capsys.readouterr()
+    assert sleep_date_list == 0
+    assert "2026-08-18" in sleep_list_output.out
+    assert "480" in sleep_list_output.out

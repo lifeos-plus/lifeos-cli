@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date
 from typing import Any
 
 from lifeos_cli.application.time_preferences import to_storage_timezone
@@ -77,21 +76,6 @@ def _format_summary_row(summary: sleep_services.SleepDailySummary) -> str:
     )
 
 
-def _resolve_date_selection(
-    args: argparse.Namespace,
-) -> tuple[date | None, date | None, date | None]:
-    try:
-        resolved = resolve_date_selection_arguments(
-            date_values=args.date_values,
-            start_date=args.start_date,
-            end_date=args.end_date,
-        )
-    except DateArgumentError as exc:
-        raise DateArgumentError(str(exc)) from exc
-    sleep_date = resolved.date_values[0] if len(resolved.date_values) == 1 else None
-    return sleep_date, resolved.start_date, resolved.end_date
-
-
 async def handle_sleep_add_async(args: argparse.Namespace) -> int:
     """Create one sleep segment."""
     try:
@@ -110,15 +94,20 @@ async def handle_sleep_add_async(args: argparse.Namespace) -> int:
 async def handle_sleep_list_async(args: argparse.Namespace) -> int:
     """List sleep segments."""
     try:
-        sleep_date, start_date, end_date = _resolve_date_selection(args)
+        resolved = resolve_date_selection_arguments(
+            date_values=args.date_values,
+            start_date=args.start_date,
+            end_date=args.end_date,
+        )
     except DateArgumentError as exc:
         return cli_handler_utils.print_cli_error(exc)
     async with db_session.session_scope() as session:
         segments = await sleep_services.list_sleep_segments(
             session,
-            sleep_date=sleep_date,
-            start_date=start_date,
-            end_date=end_date,
+            dates=resolved.date_values or None,
+            sleep_date=resolved.date_values[0] if len(resolved.date_values) == 1 else None,
+            start_date=resolved.start_date,
+            end_date=resolved.end_date,
             limit=args.limit,
             offset=args.offset,
         )
@@ -203,14 +192,19 @@ async def handle_sleep_delete_async(args: argparse.Namespace) -> int:
 async def handle_sleep_summary_async(args: argparse.Namespace) -> int:
     """Show daily sleep summaries."""
     try:
-        _, start_date, end_date = _resolve_date_selection(args)
+        resolved = resolve_date_selection_arguments(
+            date_values=args.date_values,
+            start_date=args.start_date,
+            end_date=args.end_date,
+        )
     except DateArgumentError as exc:
         return cli_handler_utils.print_cli_error(exc)
     async with db_session.session_scope() as session:
         summaries = await sleep_services.get_sleep_daily_summaries(
             session,
-            start_date=start_date,
-            end_date=end_date,
+            dates=resolved.date_values or None,
+            start_date=resolved.start_date,
+            end_date=resolved.end_date,
         )
     if args.json:
         print_json_items([_summary_payload(summary) for summary in summaries])

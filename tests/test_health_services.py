@@ -93,6 +93,8 @@ def test_body_measurement_unit_conversion_and_update() -> None:
     assert body_services.from_kg(Decimal("70.00"), "jin") == Decimal("140.00")
     assert body_services.compute_bmi(70, 175) == Decimal("22.9")
     assert body_services.compute_bmi(70, None) is None
+    with pytest.raises(body_services.BodyMeasurementValidationError):
+        body_services.to_kg(2000, "kg")
 
     async def scenario() -> None:
         async with sqlite_session_factory() as factory:
@@ -136,6 +138,92 @@ def test_body_measurement_unit_conversion_and_update() -> None:
                     )
                     is None
                 )
+
+    asyncio.run(scenario())
+
+
+def test_menstrual_flow_cleared_when_period_ends_and_date_filter_applies() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as factory:
+            async with factory() as session:
+                day = await menstrual_services.create_menstrual_day(
+                    session,
+                    log_date=date(2026, 8, 19),
+                    in_period=True,
+                    flow_amount="medium",
+                )
+                updated = await menstrual_services.update_menstrual_day(
+                    session,
+                    day_id=day.id,
+                    in_period=False,
+                )
+                assert updated.in_period is False
+                assert updated.flow_amount is None
+
+                await menstrual_services.create_menstrual_day(
+                    session,
+                    log_date=date(2026, 8, 20),
+                )
+                listed = await menstrual_services.list_menstrual_days(
+                    session,
+                    dates=(date(2026, 8, 19),),
+                )
+                assert [item.id for item in listed] == [day.id]
+                assert (
+                    await menstrual_services.count_menstrual_days(
+                        session,
+                        dates=(date(2026, 8, 19),),
+                    )
+                    == 1
+                )
+
+    asyncio.run(scenario())
+
+
+def test_body_and_sleep_lists_filter_by_dates() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as factory:
+            async with factory() as session:
+                first = await body_services.create_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 19, 8),
+                        weight=63.5,
+                    ),
+                )
+                await body_services.create_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 20, 8),
+                        weight=64,
+                    ),
+                )
+                body_listed = await body_services.list_body_measurements(
+                    session,
+                    dates=(date(2026, 8, 19),),
+                )
+                assert [item.id for item in body_listed] == [first.id]
+
+                sleep_first = await sleep_services.create_sleep_segment(
+                    session,
+                    start_at=_utc(2026, 8, 18, 22),
+                    end_at=_utc(2026, 8, 19, 6),
+                )
+                await sleep_services.create_sleep_segment(
+                    session,
+                    start_at=_utc(2026, 8, 20, 22),
+                    end_at=_utc(2026, 8, 21, 6),
+                )
+                sleep_listed = await sleep_services.list_sleep_segments(
+                    session,
+                    dates=(date(2026, 8, 18),),
+                )
+                assert [item.id for item in sleep_listed] == [sleep_first.id]
+                summaries = await sleep_services.get_sleep_daily_summaries(
+                    session,
+                    dates=(date(2026, 8, 20),),
+                )
+                assert [item.sleep_date for item in summaries] == [date(2026, 8, 20)]
 
     asyncio.run(scenario())
 

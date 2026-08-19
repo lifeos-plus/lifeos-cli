@@ -218,6 +218,7 @@ async def get_menstrual_day(
 async def list_menstrual_days(
     session: AsyncSession,
     *,
+    dates: tuple[date, ...] | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
     limit: int = 50,
@@ -232,6 +233,8 @@ async def list_menstrual_days(
         .limit(limit)
         .offset(offset)
     )
+    if dates:
+        stmt = stmt.where(MenstrualDay.log_date.in_(dates))
     if start_date is not None:
         stmt = stmt.where(MenstrualDay.log_date >= start_date)
     if end_date is not None:
@@ -242,11 +245,14 @@ async def list_menstrual_days(
 async def count_menstrual_days(
     session: AsyncSession,
     *,
+    dates: tuple[date, ...] | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
 ) -> int:
     """Count active menstrual day records for pagination metadata."""
     stmt = select(func.count(MenstrualDay.id)).where(MenstrualDay.deleted_at.is_(None))
+    if dates:
+        stmt = stmt.where(MenstrualDay.log_date.in_(dates))
     if start_date is not None:
         stmt = stmt.where(MenstrualDay.log_date >= start_date)
     if end_date is not None:
@@ -317,6 +323,8 @@ async def update_menstrual_day(
         day.log_date = log_date
     if in_period is not None and in_period != day.in_period:
         day.in_period = in_period
+        if not in_period:
+            day.flow_amount = None
 
     if clear_flow:
         day.flow_amount = None

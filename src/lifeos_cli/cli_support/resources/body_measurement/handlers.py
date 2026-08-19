@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date
 from typing import Any
 
 from lifeos_cli.application.time_preferences import to_storage_timezone
@@ -28,14 +27,6 @@ BODY_SUMMARY_COLUMNS = (
     "visceral_fat",
     "notes",
 )
-
-
-def _compute_bmi_payload(
-    measurement: BodyMeasurement,
-    height_cm: float | None,
-) -> float | None:
-    bmi = body_services.compute_bmi(measurement.weight_kg, height_cm)
-    return float(bmi) if bmi is not None else None
 
 
 _METRIC_ARG_FIELDS = {
@@ -65,6 +56,7 @@ def _measurement_payload(
     display_unit: str,
 ) -> dict[str, Any]:
     height_cm = body_services.get_preferences_settings().body_height_cm
+    bmi = body_services.compute_bmi(measurement.weight_kg, height_cm)
     payload: dict[str, Any] = {
         "id": str(measurement.id),
         "measured_at": format_timestamp(measurement.measured_at),
@@ -73,7 +65,7 @@ def _measurement_payload(
         "weight_display": (
             f"{body_services.from_kg(measurement.weight_kg, display_unit)} {display_unit}"
         ),
-        "bmi": _compute_bmi_payload(measurement, height_cm),
+        "bmi": float(bmi) if bmi is not None else None,
         "notes": measurement.notes,
         "created_at": format_timestamp(measurement.created_at),
         "updated_at": format_timestamp(measurement.updated_at),
@@ -98,18 +90,6 @@ def _format_body_summary(
         f"{visceral if visceral is not None else '-'}\t"
         f"{measurement.notes or '-'}"
     )
-
-
-def _resolve_date_range(args: argparse.Namespace) -> tuple[date | None, date | None]:
-    try:
-        resolved = resolve_date_selection_arguments(
-            date_values=args.date_values,
-            start_date=args.start_date,
-            end_date=args.end_date,
-        )
-    except DateArgumentError as exc:
-        raise DateArgumentError(str(exc)) from exc
-    return resolved.start_date, resolved.end_date
 
 
 def _metric_values(args: argparse.Namespace) -> dict[str, float]:
@@ -164,14 +144,19 @@ async def handle_body_measurement_add_async(args: argparse.Namespace) -> int:
 async def handle_body_measurement_list_async(args: argparse.Namespace) -> int:
     """List body measurements."""
     try:
-        start_date, end_date = _resolve_date_range(args)
+        resolved = resolve_date_selection_arguments(
+            date_values=args.date_values,
+            start_date=args.start_date,
+            end_date=args.end_date,
+        )
     except DateArgumentError as exc:
         return cli_handler_utils.print_cli_error(exc)
     async with db_session.session_scope() as session:
         measurements = await body_services.list_body_measurements(
             session,
-            start_date=start_date,
-            end_date=end_date,
+            dates=resolved.date_values or None,
+            start_date=resolved.start_date,
+            end_date=resolved.end_date,
             limit=args.limit,
             offset=args.offset,
         )
