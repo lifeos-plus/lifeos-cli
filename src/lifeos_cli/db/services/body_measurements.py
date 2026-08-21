@@ -231,9 +231,7 @@ async def get_body_measurement(
 def _require_paired_range(start_date: date | None, end_date: date | None) -> None:
     """Reject partial local-date ranges, which cannot be mapped to a UTC window."""
     if (start_date is None) != (end_date is None):
-        raise BodyMeasurementValidationError(
-            "start_date and end_date must be provided together."
-        )
+        raise BodyMeasurementValidationError("start_date and end_date must be provided together.")
 
 
 def _local_date_window(start_date: date, end_date: date) -> tuple[datetime, datetime]:
@@ -267,10 +265,7 @@ async def list_body_measurements(
         .offset(offset)
     )
     if dates:
-        windows = [
-            _local_date_window(target_date, target_date)
-            for target_date in dates
-        ]
+        windows = [_local_date_window(target_date, target_date) for target_date in dates]
         stmt = stmt.where(
             or_(
                 *(
@@ -303,10 +298,7 @@ async def count_body_measurements(
     _require_paired_range(start_date, end_date)
     stmt = select(func.count(BodyMeasurement.id)).where(BodyMeasurement.deleted_at.is_(None))
     if dates:
-        windows = [
-            _local_date_window(target_date, target_date)
-            for target_date in dates
-        ]
+        windows = [_local_date_window(target_date, target_date) for target_date in dates]
         stmt = stmt.where(
             or_(
                 *(
