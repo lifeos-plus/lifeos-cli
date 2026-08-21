@@ -92,6 +92,32 @@ def _format_body_summary(
     )
 
 
+def _format_body_measurement_detail(
+    measurement: BodyMeasurement,
+    *,
+    display_unit: str,
+    height_cm: float | None,
+) -> str:
+    """Render one body measurement as a human-readable detail block."""
+    lines = [
+        f"body_measurement_id: {measurement.id}",
+        f"measured_at: {format_timestamp(measurement.measured_at)}",
+        (
+            f"weight: {body_services.from_kg(measurement.weight_kg, display_unit)} "
+            f"{display_unit} ({float(measurement.weight_kg)} kg)"
+        ),
+    ]
+    for metric_field in _METRIC_ARG_FIELDS.values():
+        value = getattr(measurement, metric_field)
+        lines.append(f"{metric_field}: {float(value) if value is not None else '-'}")
+    bmi = body_services.compute_bmi(measurement.weight_kg, height_cm)
+    lines.append(f"bmi: {float(bmi) if bmi is not None else '-'}")
+    lines.append(f"notes: {measurement.notes or '-'}")
+    lines.append(f"created_at: {format_timestamp(measurement.created_at)}")
+    lines.append(f"updated_at: {format_timestamp(measurement.updated_at)}")
+    return "\n".join(lines)
+
+
 def _metric_values(args: argparse.Namespace) -> dict[str, float]:
     return {
         field: float(getattr(args, arg))
@@ -194,23 +220,13 @@ async def handle_body_measurement_show_async(args: argparse.Namespace) -> int:
     if args.json:
         print_json_payload(_measurement_payload(measurement, display_unit=display_unit))
         return 0
-    print(f"body_measurement_id: {measurement.id}")
-    print(f"measured_at: {format_timestamp(measurement.measured_at)}")
     print(
-        f"weight: {body_services.from_kg(measurement.weight_kg, display_unit)} {display_unit} "
-        f"({float(measurement.weight_kg)} kg)"
+        _format_body_measurement_detail(
+            measurement,
+            display_unit=display_unit,
+            height_cm=body_services.get_preferences_settings().body_height_cm,
+        )
     )
-    for metric_field in _METRIC_ARG_FIELDS.values():
-        value = getattr(measurement, metric_field)
-        print(f"{metric_field}: {float(value) if value is not None else '-'}")
-    bmi = body_services.compute_bmi(
-        measurement.weight_kg,
-        body_services.get_preferences_settings().body_height_cm,
-    )
-    print(f"bmi: {float(bmi) if bmi is not None else '-'}")
-    print(f"notes: {measurement.notes or '-'}")
-    print(f"created_at: {format_timestamp(measurement.created_at)}")
-    print(f"updated_at: {format_timestamp(measurement.updated_at)}")
     return 0
 
 

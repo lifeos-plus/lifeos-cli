@@ -55,6 +55,21 @@ def _format_segment_summary(segment: SleepSegment) -> str:
     )
 
 
+def _format_sleep_segment_detail(segment: SleepSegment) -> str:
+    """Render one sleep segment as a human-readable detail block."""
+    return "\n".join(
+        (
+            f"sleep_segment_id: {segment.id}",
+            f"sleep_date: {segment.sleep_date.isoformat()}",
+            f"start_at: {format_timestamp(segment.start_at)}",
+            f"end_at: {format_timestamp(segment.end_at)}",
+            f"duration_minutes: {segment.duration_minutes}",
+            f"created_at: {format_timestamp(segment.created_at)}",
+            f"updated_at: {format_timestamp(segment.updated_at)}",
+        )
+    )
+
+
 def _summary_payload(summary: sleep_services.SleepDailySummary) -> dict[str, Any]:
     return {
         "sleep_date": summary.sleep_date.isoformat(),
@@ -138,13 +153,7 @@ async def handle_sleep_show_async(args: argparse.Namespace) -> int:
     if args.json:
         print_json_payload(_segment_payload(segment))
         return 0
-    print(f"sleep_segment_id: {segment.id}")
-    print(f"sleep_date: {segment.sleep_date.isoformat()}")
-    print(f"start_at: {format_timestamp(segment.start_at)}")
-    print(f"end_at: {format_timestamp(segment.end_at)}")
-    print(f"duration_minutes: {segment.duration_minutes}")
-    print(f"created_at: {format_timestamp(segment.created_at)}")
-    print(f"updated_at: {format_timestamp(segment.updated_at)}")
+    print(_format_sleep_segment_detail(segment))
     return 0
 
 

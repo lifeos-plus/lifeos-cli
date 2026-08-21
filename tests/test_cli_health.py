@@ -4,20 +4,28 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from datetime import date
+from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
 
 from lifeos_cli import cli
 from lifeos_cli.cli_support.help_audit import build_machine_readable_reference
+from lifeos_cli.cli_support.resources.body_measurement import handlers as body_handlers
+from lifeos_cli.cli_support.resources.menstrual import handlers as menstrual_handlers
+from lifeos_cli.cli_support.resources.sleep import handlers as sleep_handlers
 from lifeos_cli.config import clear_config_cache
 from lifeos_cli.db import session as db_session
+from lifeos_cli.db.models.body_measurement import BodyMeasurement
+from lifeos_cli.db.models.menstrual import MenstrualDay
+from lifeos_cli.db.models.sleep_segment import SleepSegment
 from lifeos_cli.db.services import body_measurements as body_services
 from lifeos_cli.db.services import menstrual as menstrual_services
 from lifeos_cli.db.services import sleep as sleep_services
-from tests.support import make_record, make_session_scope
+from tests.support import make_record, make_session_scope, utc_datetime
 
 DAY_UUID = UUID("11111111-1111-1111-1111-111111111111")
 MEASUREMENT_UUID = UUID("22222222-2222-2222-2222-222222222222")
@@ -47,6 +55,92 @@ def test_health_commands_are_part_of_machine_reference() -> None:
     assert ("menstrual-factor", "add") in paths
     assert ("sleep", "add") in paths
     assert ("sleep", "summary") in paths
+
+
+def test_body_measurement_detail_formatter() -> None:
+    measurement = cast(
+        BodyMeasurement,
+        make_record(
+            id=MEASUREMENT_UUID,
+            measured_at=utc_datetime(2026, 8, 19, 8),
+            weight_kg=Decimal("63.50"),
+            body_fat_percentage=Decimal("22.50"),
+            visceral_fat=None,
+            fat_mass_kg=None,
+            muscle_percentage=None,
+            muscle_mass_kg=None,
+            body_water_kg=None,
+            protein_kg=None,
+            bone_mass_kg=None,
+            skeletal_muscle_kg=None,
+            notes="morning",
+            created_at=utc_datetime(2026, 8, 19, 7),
+            updated_at=utc_datetime(2026, 8, 19, 7),
+        ),
+    )
+    detail = body_handlers._format_body_measurement_detail(
+        measurement,
+        display_unit="jin",
+        height_cm=170,
+    )
+    assert f"body_measurement_id: {MEASUREMENT_UUID}" in detail
+    assert "weight: 127.00 jin (63.5 kg)" in detail
+    assert "body_fat_percentage: 22.5" in detail
+    assert "visceral_fat: -" in detail
+    assert "bmi: 22.0" in detail
+    assert "notes: morning" in detail
+
+
+def test_menstrual_day_detail_formatter() -> None:
+    day = cast(
+        MenstrualDay,
+        make_record(
+            id=DAY_UUID,
+            log_date=date(2026, 8, 19),
+            in_period=True,
+            flow_amount="medium",
+            symptoms=["headache", "hot_flash"],
+            factors=[make_record(name="travel"), make_record(name="stress")],
+            mood_changes=True,
+            protection_used=None,
+            spotting=False,
+            notes="evening",
+            created_at=utc_datetime(2026, 8, 19, 12),
+            updated_at=utc_datetime(2026, 8, 19, 12),
+        ),
+    )
+    detail = menstrual_handlers._format_menstrual_day_detail(day)
+    assert f"menstrual_day_id: {DAY_UUID}" in detail
+    assert "log_date: 2026-08-19" in detail
+    assert "in_period: yes" in detail
+    assert "flow_amount: medium" in detail
+    assert "symptoms: headache,hot_flash" in detail
+    assert "factors: travel,stress" in detail
+    assert "mood_changes: True" in detail
+    assert "protection_used: -" in detail
+    assert "spotting: False" in detail
+    assert "notes: evening" in detail
+
+
+def test_sleep_segment_detail_formatter() -> None:
+    segment = cast(
+        SleepSegment,
+        make_record(
+            id=SEGMENT_UUID,
+            sleep_date=date(2026, 8, 18),
+            start_at=utc_datetime(2026, 8, 18, 22, 30),
+            end_at=utc_datetime(2026, 8, 19, 6, 30),
+            duration_minutes=480,
+            created_at=utc_datetime(2026, 8, 19, 8),
+            updated_at=utc_datetime(2026, 8, 19, 8),
+        ),
+    )
+    detail = sleep_handlers._format_sleep_segment_detail(segment)
+    assert f"sleep_segment_id: {SEGMENT_UUID}" in detail
+    assert "sleep_date: 2026-08-18" in detail
+    assert "start_at: " in detail
+    assert "end_at: " in detail
+    assert "duration_minutes: 480" in detail
 
 
 def test_menstrual_add_prints_confirmation_and_passes_args(

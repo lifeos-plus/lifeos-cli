@@ -54,6 +54,28 @@ def _format_menstrual_day_summary(day: MenstrualDay) -> str:
     )
 
 
+def _format_menstrual_day_detail(day: MenstrualDay) -> str:
+    """Render one menstrual day record as a human-readable detail block."""
+    symptoms = ",".join(day.symptoms or []) or "-"
+    factors = ",".join(factor.name for factor in day.factors) or "-"
+    return "\n".join(
+        (
+            f"menstrual_day_id: {day.id}",
+            f"log_date: {day.log_date.isoformat()}",
+            f"in_period: {'yes' if day.in_period else 'no'}",
+            f"flow_amount: {day.flow_amount or '-'}",
+            f"symptoms: {symptoms}",
+            f"factors: {factors}",
+            f"mood_changes: {day.mood_changes if day.mood_changes is not None else '-'}",
+            f"protection_used: {day.protection_used if day.protection_used is not None else '-'}",
+            f"spotting: {day.spotting if day.spotting is not None else '-'}",
+            f"notes: {day.notes or '-'}",
+            f"created_at: {format_timestamp(day.created_at)}",
+            f"updated_at: {format_timestamp(day.updated_at)}",
+        )
+    )
+
+
 def _resolve_tristate(value: str | None) -> bool | None:
     if value is None:
         return None
@@ -129,18 +151,7 @@ async def handle_menstrual_show_async(args: argparse.Namespace) -> int:
     if args.json:
         print_json_payload(_menstrual_day_payload(day))
         return 0
-    print(f"menstrual_day_id: {day.id}")
-    print(f"log_date: {day.log_date.isoformat()}")
-    print(f"in_period: {'yes' if day.in_period else 'no'}")
-    print(f"flow_amount: {day.flow_amount or '-'}")
-    print(f"symptoms: {','.join(day.symptoms or []) or '-'}")
-    print(f"factors: {','.join(factor.name for factor in day.factors) or '-'}")
-    print(f"mood_changes: {day.mood_changes if day.mood_changes is not None else '-'}")
-    print(f"protection_used: {day.protection_used if day.protection_used is not None else '-'}")
-    print(f"spotting: {day.spotting if day.spotting is not None else '-'}")
-    print(f"notes: {day.notes or '-'}")
-    print(f"created_at: {format_timestamp(day.created_at)}")
-    print(f"updated_at: {format_timestamp(day.updated_at)}")
+    print(_format_menstrual_day_detail(day))
     return 0
 
 
