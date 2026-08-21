@@ -63,6 +63,7 @@ _keep(
     list_planned_events,
     list_raw_planned_events,
     list_planned_events_by_task,
+    list_sleep_summaries,
     get_planned_event,
     create_planned_event,
     update_planned_event,

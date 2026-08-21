@@ -5,6 +5,7 @@ from .aggregated_timelog_stats_groupby_area import (
 )
 from .area import Area
 from .association import Association
+from .body_measurement import BodyMeasurement
 from .daily_timelog_stats_groupby_area import (
     DailyTimelogStatsGroupByArea,
 )
@@ -20,8 +21,10 @@ from .finance import (
 )
 from .habit import Habit
 from .habit_action import HabitAction
+from .menstrual import MenstrualDay, MenstrualFactor
 from .note import Note
 from .person import Person
+from .sleep_segment import SleepSegment
 from .tag import Tag
 from .task import Task
 from .timelog import Timelog
@@ -32,6 +35,7 @@ __all__ = [
     "AggregatedTimelogStatsGroupByArea",
     "Association",
     "Area",
+    "BodyMeasurement",
     "DailyTimelogStatsGroupByArea",
     "Event",
     "EventOccurrenceException",
@@ -41,8 +45,11 @@ __all__ = [
     "FinanceTreeNode",
     "Habit",
     "HabitAction",
+    "MenstrualDay",
+    "MenstrualFactor",
     "Note",
     "Person",
+    "SleepSegment",
     "Tag",
     "Task",
     "Timelog",

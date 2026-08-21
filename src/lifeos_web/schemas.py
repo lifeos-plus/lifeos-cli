@@ -357,3 +357,92 @@ class HealthResponse(BaseModel):
 
     status: str
     timestamp: datetime
+
+
+class MenstrualFactorCreate(BaseModel):
+    """Payload for creating a custom menstrual factor."""
+
+    name: str
+
+
+class MenstrualDayCreate(BaseModel):
+    """Payload for creating a daily menstrual cycle record."""
+
+    log_date: date
+    in_period: bool = False
+    flow_amount: str | None = None
+    symptoms: list[str] | None = None
+    mood_changes: bool | None = None
+    protection_used: bool | None = None
+    spotting: bool | None = None
+    factor_names: list[str] | None = None
+    notes: str | None = None
+
+
+class MenstrualDayUpdate(BaseModel):
+    """Payload for updating a daily menstrual cycle record."""
+
+    log_date: date | None = None
+    in_period: bool | None = None
+    flow_amount: str | None = None
+    symptoms: list[str] | None = None
+    mood_changes: bool | None = None
+    protection_used: bool | None = None
+    spotting: bool | None = None
+    factor_names: list[str] | None = None
+    notes: str | None = None
+    clear_flow: bool = False
+    clear_symptoms: bool = False
+    clear_notes: bool = False
+    clear_factors: bool = False
+
+
+class BodyMeasurementCreate(BaseModel):
+    """Payload for creating a body weight/composition measurement."""
+
+    measured_at: datetime
+    weight: float
+    unit: str = "kg"
+    body_fat_percentage: float | None = None
+    visceral_fat: float | None = None
+    fat_mass_kg: float | None = None
+    muscle_percentage: float | None = None
+    muscle_mass_kg: float | None = None
+    body_water_kg: float | None = None
+    protein_kg: float | None = None
+    bone_mass_kg: float | None = None
+    skeletal_muscle_kg: float | None = None
+    notes: str | None = None
+
+
+class BodyMeasurementUpdate(BaseModel):
+    """Payload for updating a body weight/composition measurement."""
+
+    measured_at: datetime | None = None
+    weight: float | None = None
+    unit: str = "kg"
+    body_fat_percentage: float | None = None
+    visceral_fat: float | None = None
+    fat_mass_kg: float | None = None
+    muscle_percentage: float | None = None
+    muscle_mass_kg: float | None = None
+    body_water_kg: float | None = None
+    protein_kg: float | None = None
+    bone_mass_kg: float | None = None
+    skeletal_muscle_kg: float | None = None
+    notes: str | None = None
+    clear_fields: list[str] | None = None
+
+
+class SleepSegmentCreate(BaseModel):
+    """Payload for creating a sleep segment."""
+
+    start_at: datetime
+    end_at: datetime
+
+
+class SleepSegmentUpdate(BaseModel):
+    """Payload for updating a sleep segment."""
+
+    start_at: datetime | None = None
+    end_at: datetime | None = None

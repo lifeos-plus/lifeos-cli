@@ -42,7 +42,7 @@ Rules that keep this architecture stable:
 
 Core entities (see `src/lifeos_cli/db/models`):
 
-- `vision`, `task`, `event` (+ `event_occurrence_exception`), `habit`, `habit_action`, `timelog`, `timelog_template`, `note`, `person`, `tag`, `area`, and `finance` models (assets, trees, snapshots, rate snapshots).
+- `vision`, `task`, `event` (+ `event_occurrence_exception`), `habit`, `habit_action`, `timelog`, `timelog_template`, `note`, `person`, `tag`, `area`, `finance` models (assets, trees, snapshots, rate snapshots), and health models (`menstrual_day` + `menstrual_factor`, `body_measurement`, `sleep_segment`).
 - Aggregated statistics models for timelog insights.
 
 Generic weak associations connect entities across domain boundaries:

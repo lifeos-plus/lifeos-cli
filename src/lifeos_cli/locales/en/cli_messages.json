@@ -890,6 +890,137 @@
         "visions_usually_represent_medium_or_long_running_themes_that_will_own_multiple": "Visions usually represent medium- or long-running themes that will own multiple tasks.",
         "when_vision_has_tasks_tasks_section_prints_header_row_followed_by_tab": "When the vision has tasks, the `tasks` section prints a header row followed by tab-separated columns: {columns}."
       }
+    },
+    "menstrual": {
+      "parser": {
+        "manage_menstrual_cycle_records": "Manage menstrual cycle records",
+        "create_inspect_update_and_delete_daily_menstrual_cycle_records": "Create, inspect, update, and delete daily menstrual cycle records.",
+        "one_record_per_local_date_with_period_symptoms_factors_and_notes": "One record per local date tracks period status, flow, symptoms, custom factors, spotting, and notes.",
+        "use_list_as_primary_query_entrypoint_for_menstrual_days": "Use `list` as the primary query entrypoint for menstrual day records.",
+        "use_menstrual_factor_resource_to_manage_custom_factors": "Use the `menstrual-factor` resource to manage custom factors."
+      },
+      "parser_actions": {
+        "add_menstrual_day": "Add a menstrual day",
+        "create_one_daily_menstrual_cycle_record": "Create one daily menstrual cycle record.",
+        "log_date": "Local calendar date in YYYY-MM-DD format",
+        "mark_day_as_in_period": "Mark the day as in-period",
+        "mark_day_as_not_in_period": "Mark the day as not in-period",
+        "optional_flow_amount_low_medium_or_high": "Optional flow amount: low, medium, or high (only with `--in-period`)",
+        "repeat_to_add_one_daily_symptom": "Repeat to add one daily symptom; known codes are `hot_flash`, `headache`, `bladder_incontinence`, and `constipation`, or use free-form text",
+        "repeat_to_attach_one_custom_factor_by_name": "Repeat to attach one custom factor by name",
+        "protection_used_yes_or_no": "Protection used: yes or no",
+        "spotting_yes_or_no": "Spotting: yes or no",
+        "optional_notes": "Optional notes",
+        "flow_amount_requires_in_period": "`--flow` is only allowed together with `--in-period`.",
+        "known_symptom_codes_are_hot_flash_headache_bladder_incontinence_and_constipation": "Known symptom codes are `hot_flash`, `headache`, `bladder_incontinence`, and `constipation`; other values are stored as-is.",
+        "missing_factors_are_created_automatically": "Factor names that do not exist yet are created automatically.",
+        "list_menstrual_days": "List menstrual days",
+        "list_menstrual_days_with_optional_date_range": "List menstrual day records with an optional local-date range.",
+        "show_menstrual_day": "Show a menstrual day",
+        "show_one_menstrual_day_with_full_metadata": "Show one menstrual day record with full metadata.",
+        "menstrual_day_identifier": "Menstrual day identifier",
+        "update_menstrual_day": "Update a menstrual day",
+        "update_mutable_menstrual_day_fields": "Update mutable menstrual day fields.",
+        "clear_flow_amount": "Clear the flow amount",
+        "clear_symptoms": "Clear all symptoms",
+        "clear_notes": "Clear notes",
+        "clear_factors": "Clear all attached factors",
+        "delete_menstrual_days": "Delete menstrual days",
+        "soft_delete_one_or_more_menstrual_day_records": "Soft-delete one or more menstrual day records.",
+        "mood_changes_yes_or_no": "Mood changes: yes or no"
+      }
+    },
+    "menstrual_factor": {
+      "parser": {
+        "manage_custom_menstrual_factors": "Manage custom menstrual factors",
+        "create_list_and_delete_user_defined_factors": "Create, list, and delete user-defined menstrual factors.",
+        "factors_are_lightweight_dictionary_entries_attached_to_menstrual_days": "Factors are lightweight dictionary entries that can be attached to menstrual day records.",
+        "use_menstrual_add_factor_flag_to_attach_factors_to_daily_records": "Use `lifeos menstrual add --factor <name>` to attach factors to daily records."
+      },
+      "parser_actions": {
+        "add_menstrual_factor": "Add a menstrual factor",
+        "create_one_custom_menstrual_factor": "Create one custom menstrual factor.",
+        "factor_name": "Factor name",
+        "list_menstrual_factors": "List menstrual factors",
+        "list_custom_menstrual_factors": "List custom menstrual factors.",
+        "delete_menstrual_factors": "Delete menstrual factors",
+        "soft_delete_one_or_more_custom_factors": "Soft-delete one or more custom menstrual factors."
+      }
+    },
+    "sleep": {
+      "parser": {
+        "manage_sleep_segments_and_daily_summaries": "Manage sleep segments and daily summaries",
+        "create_inspect_update_and_delete_sleep_segments": "Create, inspect, update, and delete sleep segments.",
+        "segments_are_attributed_to_their_local_operational_start_date": "Each segment is attributed to the local operational date of its start time.",
+        "use_summary_for_daily_totals": "Use `summary` for on-demand daily totals.",
+        "a_local_day_can_contain_multiple_sleep_segments": "A local day can contain multiple sleep segments."
+      },
+      "parser_actions": {
+        "add_sleep_segment": "Add a sleep segment",
+        "create_one_sleep_segment_with_start_and_end_times": "Create one sleep segment with start and end times.",
+        "segment_belongs_to_local_operational_date_of_its_start_time": "The segment belongs to the local operational date of its start time (timezone and `day_starts_at` aware).",
+        "end_time": "End time",
+        "list_sleep_segments": "List sleep segments",
+        "list_sleep_segments_by_attribution_date": "List sleep segments by attribution date.",
+        "show_sleep_segment": "Show a sleep segment",
+        "show_one_sleep_segment": "Show one sleep segment.",
+        "sleep_segment_identifier": "Sleep segment identifier",
+        "update_sleep_segment": "Update a sleep segment",
+        "update_sleep_segment_times_and_recompute_duration": "Update sleep segment times and recompute duration and attribution.",
+        "delete_sleep_segments": "Delete sleep segments",
+        "soft_delete_one_or_more_sleep_segments": "Soft-delete one or more sleep segments.",
+        "show_sleep_daily_summary": "Show sleep daily summary",
+        "show_daily_sleep_summaries_for_one_or_more_dates": "Show daily sleep summaries for one or more local dates.",
+        "total_duration_minutes_plus_segment_count_per_day": "Each row reports total duration minutes, segment count, first start, and last end per day."
+      }
+    },
+    "body_measurement": {
+      "parser": {
+        "manage_body_weight_and_composition_measurements": "Manage body weight and composition measurements",
+        "create_inspect_update_and_delete_body_measurements": "Create, inspect, update, and delete body weight and composition measurements.",
+        "weights_are_stored_in_kg_and_displayed_in_the_preferred_unit": "Weights are stored in kilograms and displayed in the preferred unit.",
+        "use_body_fat_as_primary_composition_field_and_treat_other_values_as_optional": "Use body fat as the primary composition field and treat other values as optional.",
+        "bmi_is_derived_from_weight_and_preferred_height": "BMI is derived from weight and the preferred height (`preferences.body_height_cm`).",
+        "measured_at_is_user_owned_and_independent_of_record_created_at": "`measured_at` is user-owned and independent of the record `created_at` timestamp."
+      },
+      "parser_actions": {
+        "add_body_measurement": "Add a body measurement",
+        "create_one_body_measurement_with_user_owned_measured_at": "Create one body measurement with a user-owned measured time.",
+        "weight_value_in_input_unit": "Weight value in the input unit",
+        "input_weight_unit_kg_jin_or_lb": "Input weight unit: kg, jin, or lb",
+        "weights_are_stored_in_kg_regardless_of_input_unit": "Weights are stored in kg regardless of the input unit.",
+        "default_unit_is_the_preferred_weight_unit": "The default unit is the configured `preferences.weight_unit`.",
+        "measured_at_defaults_to_now": "Measured time; defaults to now when omitted",
+        "optional_body_fat_percentage": "Optional body fat percentage",
+        "optional_visceral_fat": "Optional visceral fat",
+        "optional_fat_mass_kg": "Optional fat mass in kg",
+        "optional_muscle_percentage": "Optional muscle percentage",
+        "optional_muscle_mass_kg": "Optional muscle mass in kg",
+        "optional_body_water_kg": "Optional body water in kg",
+        "optional_protein_kg": "Optional protein in kg",
+        "optional_bone_mass_kg": "Optional bone mass in kg",
+        "optional_skeletal_muscle_kg": "Optional skeletal muscle in kg",
+        "optional_notes": "Optional notes",
+        "list_body_measurements": "List body measurements",
+        "list_body_measurements_with_optional_date_range": "List body measurements with an optional measured-time local-date range.",
+        "show_body_measurement": "Show a body measurement",
+        "show_one_body_measurement_with_derived_bmi": "Show one body measurement with derived BMI when height is configured.",
+        "body_measurement_identifier": "Body measurement identifier",
+        "update_body_measurement": "Update a body measurement",
+        "update_mutable_body_measurement_fields": "Update mutable body measurement fields.",
+        "clear_body_fat": "Clear body fat percentage",
+        "clear_visceral_fat": "Clear visceral fat",
+        "clear_fat_mass": "Clear fat mass",
+        "clear_muscle_percentage": "Clear muscle percentage",
+        "clear_muscle_mass": "Clear muscle mass",
+        "clear_body_water": "Clear body water",
+        "clear_protein": "Clear protein",
+        "clear_bone_mass": "Clear bone mass",
+        "clear_skeletal_muscle": "Clear skeletal muscle",
+        "clear_notes": "Clear notes",
+        "delete_body_measurements": "Delete body measurements",
+        "soft_delete_one_or_more_body_measurements": "Soft-delete one or more body measurements."
+      }
     }
   },
   "system": {

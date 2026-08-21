@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from lifeos_cli.application.configuration import set_runtime_config_value
 from lifeos_cli.config import (
     SUPPORTED_THEMES,
+    SUPPORTED_WEIGHT_UNITS,
     ConfigurationError,
     PreferencesSettings,
     clear_config_cache,
@@ -28,6 +29,7 @@ _VISIBLE_MODULES = [
     "planning",
     "timelog",
     "finance",
+    "health",
     "insights",
     "calendar",
     "notes",
@@ -48,6 +50,8 @@ _CONFIG_KEY_MAP = {
     "notes.export_planning.include_task_notes": (
         "preferences.notes_export_planning_include_task_notes"
     ),
+    "health.weight_unit": "preferences.weight_unit",
+    "health.body_height_cm": "preferences.body_height_cm",
     "planning.show_habit_actions": "preferences.planning_show_habit_actions",
     "system.timezone": "preferences.timezone",
     "system.language": "preferences.language",
@@ -92,6 +96,15 @@ _META: dict[str, dict[str, Any]] = {
         "description": "Visible LifeOS modules in the navigation rail.",
         "module": "navigation",
     },
+    "health.weight_unit": {
+        "allowed_values": list(SUPPORTED_WEIGHT_UNITS),
+        "description": "Preferred unit for displaying body weight.",
+        "module": "health",
+    },
+    "health.body_height_cm": {
+        "description": "Body height in centimeters used to derive BMI.",
+        "module": "health",
+    },
 }
 
 _VALUES: dict[str, Any] = dict(_STATIC_DEFAULTS)
@@ -121,6 +134,10 @@ def _extract_config_preference_value(preferences: PreferencesSettings, key: str)
         return preferences.notes_export_planning_include_cycle_notes
     if key == "notes.export_planning.include_task_notes":
         return preferences.notes_export_planning_include_task_notes
+    if key == "health.weight_unit":
+        return preferences.weight_unit
+    if key == "health.body_height_cm":
+        return preferences.body_height_cm
     if key == "planning.show_habit_actions":
         return preferences.planning_show_habit_actions
     if key == "system.timezone":

@@ -45,7 +45,7 @@ def test_every_web_api_operation_has_an_explicit_success_contract() -> None:
         for method in route.methods or set()
     )
 
-    assert len(inventory) == 120
+    assert len(inventory) == 139
     missing = [
         f"{method} {path} ({status_code})"
         for method, path, status_code, response_model in inventory
@@ -65,7 +65,7 @@ def test_openapi_success_responses_are_concrete_and_204_responses_are_empty() ->
     from lifeos_web.app import create_app
 
     responses = _success_responses(create_app().openapi())
-    assert len(responses) == 120
+    assert len(responses) == 139
 
     failures: list[str] = []
     for method, path, status_code, response in responses:

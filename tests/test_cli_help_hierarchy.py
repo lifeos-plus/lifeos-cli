@@ -24,6 +24,14 @@ def test_main_note_without_action_prints_resource_help(capsys) -> None:
     [
         ("area", ("lifeos area add --help", "lifeos area list --help", "lifeos area batch --help")),
         (
+            "body-measurement",
+            (
+                "lifeos body-measurement add --help",
+                "lifeos body-measurement list --help",
+                "lifeos body-measurement show --help",
+            ),
+        ),
+        (
             "data",
             (
                 "lifeos data export --help",
@@ -48,6 +56,21 @@ def test_main_note_without_action_prints_resource_help(capsys) -> None:
             ),
         ),
         (
+            "menstrual",
+            (
+                "lifeos menstrual add --help",
+                "lifeos menstrual list --help",
+                "lifeos menstrual-factor add --help",
+            ),
+        ),
+        (
+            "menstrual-factor",
+            (
+                "lifeos menstrual-factor add --help",
+                "lifeos menstrual-factor list --help",
+            ),
+        ),
+        (
             "finance",
             (
                 "lifeos finance tree --help",
@@ -66,6 +89,14 @@ def test_main_note_without_action_prints_resource_help(capsys) -> None:
         ),
         ("planning", ("lifeos planning show --help",)),
         ("schedule", ("lifeos schedule show --help", "lifeos schedule list --help")),
+        (
+            "sleep",
+            (
+                "lifeos sleep add --help",
+                "lifeos sleep list --help",
+                "lifeos sleep summary --help",
+            ),
+        ),
         ("tag", ("lifeos tag add --help", "lifeos tag list --help", "lifeos tag batch --help")),
         (
             "task",
