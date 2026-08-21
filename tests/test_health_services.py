@@ -228,6 +228,55 @@ def test_body_and_sleep_lists_filter_by_dates() -> None:
     asyncio.run(scenario())
 
 
+def test_body_measurement_range_filtering_and_paired_guard() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as factory:
+            async with factory() as session:
+                first = await body_services.create_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 19, 8),
+                        weight=63.5,
+                    ),
+                )
+                second = await body_services.create_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 20, 8),
+                        weight=64,
+                    ),
+                )
+
+                ranged = await body_services.list_body_measurements(
+                    session,
+                    start_date=date(2026, 8, 20),
+                    end_date=date(2026, 8, 20),
+                )
+                assert [item.id for item in ranged] == [second.id]
+
+                # Discrete dates combined with a range use AND semantics.
+                combined = await body_services.list_body_measurements(
+                    session,
+                    dates=(date(2026, 8, 19),),
+                    start_date=date(2026, 8, 19),
+                    end_date=date(2026, 8, 20),
+                )
+                assert [item.id for item in combined] == [first.id]
+
+                with pytest.raises(body_services.BodyMeasurementValidationError):
+                    await body_services.list_body_measurements(
+                        session,
+                        start_date=date(2026, 8, 19),
+                    )
+                with pytest.raises(body_services.BodyMeasurementValidationError):
+                    await body_services.count_body_measurements(
+                        session,
+                        end_date=date(2026, 8, 19),
+                    )
+
+    asyncio.run(scenario())
+
+
 def test_sleep_segment_attribution_summary_and_update() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as factory:

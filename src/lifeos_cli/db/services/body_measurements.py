@@ -228,6 +228,22 @@ async def get_body_measurement(
     return await _get_measurement_model(session, measurement_id)
 
 
+def _require_paired_range(start_date: date | None, end_date: date | None) -> None:
+    """Reject partial local-date ranges, which cannot be mapped to a UTC window."""
+    if (start_date is None) != (end_date is None):
+        raise BodyMeasurementValidationError(
+            "start_date and end_date must be provided together."
+        )
+
+
+def _local_date_window(start_date: date, end_date: date) -> tuple[datetime, datetime]:
+    """Return the half-open UTC window covering the inclusive local-date range."""
+    return get_utc_half_open_window_for_local_date_range(
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
 async def list_body_measurements(
     session: AsyncSession,
     *,
@@ -237,7 +253,12 @@ async def list_body_measurements(
     limit: int = 50,
     offset: int = 0,
 ) -> list[BodyMeasurement]:
-    """List active body measurements with optional local-date range filtering."""
+    """List active body measurements with optional local-date range filtering.
+
+    Discrete ``dates`` and an explicit ``start_date``/``end_date`` range are
+    combined with AND semantics, mirroring the menstrual and sleep services.
+    """
+    _require_paired_range(start_date, end_date)
     stmt = (
         select(BodyMeasurement)
         .where(BodyMeasurement.deleted_at.is_(None))
@@ -247,7 +268,7 @@ async def list_body_measurements(
     )
     if dates:
         windows = [
-            get_utc_half_open_window_for_local_date_range(target_date, target_date)
+            _local_date_window(target_date, target_date)
             for target_date in dates
         ]
         stmt = stmt.where(
@@ -261,11 +282,9 @@ async def list_body_measurements(
                 )
             )
         )
-    elif start_date is not None and end_date is not None:
-        window_start, window_end = get_utc_half_open_window_for_local_date_range(
-            start_date=start_date,
-            end_date=end_date,
-        )
+    if start_date is not None:
+        assert end_date is not None  # enforced by _require_paired_range
+        window_start, window_end = _local_date_window(start_date, end_date)
         stmt = stmt.where(
             BodyMeasurement.measured_at >= window_start,
             BodyMeasurement.measured_at < window_end,
@@ -281,10 +300,11 @@ async def count_body_measurements(
     end_date: date | None = None,
 ) -> int:
     """Count active body measurements for pagination metadata."""
+    _require_paired_range(start_date, end_date)
     stmt = select(func.count(BodyMeasurement.id)).where(BodyMeasurement.deleted_at.is_(None))
     if dates:
         windows = [
-            get_utc_half_open_window_for_local_date_range(target_date, target_date)
+            _local_date_window(target_date, target_date)
             for target_date in dates
         ]
         stmt = stmt.where(
@@ -298,11 +318,9 @@ async def count_body_measurements(
                 )
             )
         )
-    elif start_date is not None and end_date is not None:
-        window_start, window_end = get_utc_half_open_window_for_local_date_range(
-            start_date=start_date,
-            end_date=end_date,
-        )
+    if start_date is not None:
+        assert end_date is not None  # enforced by _require_paired_range
+        window_start, window_end = _local_date_window(start_date, end_date)
         stmt = stmt.where(
             BodyMeasurement.measured_at >= window_start,
             BodyMeasurement.measured_at < window_end,
