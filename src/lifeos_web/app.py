@@ -147,6 +147,7 @@ class RequestBodySizeLimitMiddleware:
                 pass
 
         received = 0
+        response_started = False
 
         async def limited_receive() -> Message:
             nonlocal received
@@ -157,10 +158,17 @@ class RequestBodySizeLimitMiddleware:
                     raise _BodyTooLarge
             return message
 
+        async def wrapped_send(message: Message) -> None:
+            nonlocal response_started
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+
         try:
-            await self.app(scope, limited_receive, send)
+            await self.app(scope, limited_receive, wrapped_send)
         except _BodyTooLarge:
-            await self._reject(scope, receive, send)
+            if not response_started:
+                await self._reject(scope, receive, send)
 
     @staticmethod
     async def _reject(scope: Scope, receive: Receive, send: Send) -> None:
@@ -190,9 +198,16 @@ class RateLimitMiddleware:
         key = client[0] if client else "unknown"
         now = time.monotonic()
         async with self._lock:
-            hits = self._hits.setdefault(key, deque())
+            hits = self._hits.get(key)
+            if hits is None:
+                hits = self._hits[key] = deque()
             while hits and hits[0] <= now - self._window_seconds:
                 hits.popleft()
+            if not hits:
+                # Drop empty buckets so long-running servers do not retain a
+                # per-client entry for every address that ever connected.
+                del self._hits[key]
+                hits = self._hits[key] = deque()
             if len(hits) >= self.limit_per_minute:
                 response = PlainTextResponse("Rate limit exceeded", status_code=429)
                 await response(scope, receive, send)
