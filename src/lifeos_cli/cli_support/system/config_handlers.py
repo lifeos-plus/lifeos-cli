@@ -43,7 +43,7 @@ def handle_init(args: argparse.Namespace) -> int:
         is_interactive=sys.stdin.isatty(),
         prompts=InitializationPrompts(
             prompt_database_url=partial(
-                init_prompts.prompt_validated_text,
+                init_prompts.prompt_validated_secret_text,
                 "Database URL",
                 validator=validate_database_url,
             ),

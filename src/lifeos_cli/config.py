@@ -156,6 +156,17 @@ def _normalize_sqlite_database_url(parsed: URL) -> str:
     return parsed.set(database=str(database_path)).render_as_string(hide_password=False)
 
 
+def _restrict_database_file_permissions(database_path: Path) -> None:
+    """Create the SQLite file when missing and restrict it to the owning user."""
+    try:
+        fd = os.open(database_path, os.O_CREAT | os.O_WRONLY, 0o600)
+        os.close(fd)
+        os.chmod(database_path, 0o600)
+    except OSError:
+        # Permissions are best-effort on filesystems without POSIX modes.
+        pass
+
+
 def ensure_database_url_storage_ready(database_url: str) -> None:
     """Create local storage prerequisites for file-backed database URLs."""
     _, parsed = _parse_database_url(database_url)
@@ -163,6 +174,7 @@ def ensure_database_url_storage_ready(database_url: str) -> None:
     if database_path is None:
         return
     database_path.parent.mkdir(parents=True, exist_ok=True)
+    _restrict_database_file_permissions(database_path)
 
 
 def normalize_database_schema(

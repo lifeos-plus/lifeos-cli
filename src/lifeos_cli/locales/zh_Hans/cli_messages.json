@@ -1095,6 +1095,7 @@
       "environment_variables_still_override_config_file_values_at_runtime": "环境变量仍然会在运行时覆盖配置文件值。",
       "initialize_local_configuration": "初始化本地配置",
       "interactive_init_confirms_language_preference_because_agents_should_use_it_for_human": "交互式 `init` 会确认语言偏好，因为代理应将其用于面向人类的 payload 数据。",
+      "interactive_database_url_input_is_hidden": "交互式数据库 URL 输入会隐藏回显；脚本化场景请使用 `LIFEOS_DATABASE_URL` 环境变量。",
       "local_day_boundary_in_hh_mm_used_for_future_time_based_grouping": "HH:MM 中的当地日边界，用于未来基于时间的分组逻辑",
       "database_connection_url_to_persist_in_config_file": "要写入配置文件的 SQLAlchemy 数据库 URL",
       "optional_schema_name_for_schema_capable_backends": "供 PostgreSQL 等支持 schema 的后端使用的可选 schema 名称",

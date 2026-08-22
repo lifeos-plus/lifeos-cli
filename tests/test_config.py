@@ -18,6 +18,7 @@ from lifeos_cli.config import (
     default_sqlite_database_url,
     detect_default_language,
     ensure_database_driver_available,
+    ensure_database_url_storage_ready,
     parse_boolean_value,
     resolve_config_path,
     validate_calendar_first_day_of_week,
@@ -47,6 +48,31 @@ def test_database_settings_defaults_use_config_path_and_no_database_url(tmp_path
     assert settings.database_schema == "lifeos"
     assert settings.database_echo is False
     assert settings.config_file == config_path
+
+
+def test_ensure_database_url_storage_ready_restricts_sqlite_file_permissions(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "nested" / "lifeos.db"
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+
+    ensure_database_url_storage_ready(database_url)
+
+    assert database_path.exists()
+    assert database_path.stat().st_mode & 0o777 == 0o600
+
+
+def test_ensure_database_url_storage_ready_tightens_existing_sqlite_file_permissions(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "lifeos.db"
+    database_path.write_bytes(b"")
+    database_path.chmod(0o644)
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+
+    ensure_database_url_storage_ready(database_url)
+
+    assert database_path.stat().st_mode & 0o777 == 0o600
 
 
 def test_database_settings_honors_env_values(tmp_path: Path) -> None:

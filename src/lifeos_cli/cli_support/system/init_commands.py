@@ -43,6 +43,7 @@ def build_init_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                 _(
                     "system.init_commands.database_credentials_may_be_stored_in_plain_text_in_config_file"
                 ),
+                _("system.init_commands.interactive_database_url_input_is_hidden"),
                 _(
                     "system.init_commands.preference_values_are_also_stored_in_config_file_under_preferences"
                 ),
