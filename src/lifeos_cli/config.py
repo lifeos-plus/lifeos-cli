@@ -167,6 +167,45 @@ def _restrict_database_file_permissions(database_path: Path) -> None:
         pass
 
 
+def _validate_database_file_ownership(database_path: Path) -> None:
+    """Reject SQLite layouts whose resolved target is not owned by the current user.
+
+    ``Path.stat`` follows symlinks, so a link to another user's file is caught
+    while a symlink whose target the current user owns stays usable; the
+    permission helpers then restrict the resolved target.
+    """
+    if not hasattr(os, "getuid"):
+        return
+    try:
+        stat = database_path.stat()
+    except OSError:
+        # Missing or unreadable files are surfaced by the connection path.
+        return
+    if stat.st_uid != os.getuid():
+        raise ConfigurationError(
+            f"SQLite database file {database_path} is not owned by the current user; "
+            "run `lifeos` as the file owner or fix ownership before continuing."
+        )
+
+
+def _restrict_database_directory_permissions(database_path: Path) -> None:
+    """Restrict the database directory to the owning user when possible."""
+    try:
+        os.chmod(database_path.parent, 0o700)
+    except OSError:
+        pass
+
+
+def _restrict_database_sidecar_permissions(database_path: Path) -> None:
+    """Restrict existing SQLite WAL/SHM sidecar files to the owning user."""
+    for sidecar in (Path(f"{database_path}-wal"), Path(f"{database_path}-shm")):
+        try:
+            if sidecar.exists():
+                os.chmod(sidecar, 0o600)
+        except OSError:
+            pass
+
+
 def ensure_database_url_storage_ready(database_url: str) -> None:
     """Create local storage prerequisites for file-backed database URLs."""
     _, parsed = _parse_database_url(database_url)
@@ -174,7 +213,10 @@ def ensure_database_url_storage_ready(database_url: str) -> None:
     if database_path is None:
         return
     database_path.parent.mkdir(parents=True, exist_ok=True)
+    _restrict_database_directory_permissions(database_path)
+    _validate_database_file_ownership(database_path)
     _restrict_database_file_permissions(database_path)
+    _restrict_database_sidecar_permissions(database_path)
 
 
 def normalize_database_schema(

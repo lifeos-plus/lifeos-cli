@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from lifeos_cli.application.configuration import (
     InitializationPrompts,
     InitializationRequest,
@@ -73,6 +75,64 @@ def test_ensure_database_url_storage_ready_tightens_existing_sqlite_file_permiss
     ensure_database_url_storage_ready(database_url)
 
     assert database_path.stat().st_mode & 0o777 == 0o600
+
+
+def test_ensure_database_url_storage_ready_restricts_database_directory_permissions(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "nested" / "lifeos.db"
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+
+    ensure_database_url_storage_ready(database_url)
+
+    assert database_path.parent.stat().st_mode & 0o777 == 0o700
+
+
+def test_ensure_database_url_storage_ready_rejects_foreign_owned_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path = tmp_path / "lifeos.db"
+    database_path.write_bytes(b"")
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+    monkeypatch.setattr("os.getuid", lambda: 99999)
+
+    with pytest.raises(ConfigurationError, match="not owned by the current user"):
+        ensure_database_url_storage_ready(database_url)
+
+
+def test_ensure_database_url_storage_ready_follows_owner_owned_symlink(
+    tmp_path: Path,
+) -> None:
+    target_path = tmp_path / "real-lifeos.db"
+    target_path.write_bytes(b"")
+    target_path.chmod(0o644)
+    link_path = tmp_path / "lifeos-link.db"
+    link_path.symlink_to(target_path)
+    database_url = f"sqlite+aiosqlite:///{link_path}"
+
+    ensure_database_url_storage_ready(database_url)
+
+    assert target_path.stat().st_mode & 0o777 == 0o600
+
+
+def test_ensure_database_url_storage_ready_restricts_existing_sidecar_permissions(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "lifeos.db"
+    database_path.write_bytes(b"")
+    wal_path = tmp_path / "lifeos.db-wal"
+    shm_path = tmp_path / "lifeos.db-shm"
+    wal_path.write_bytes(b"")
+    shm_path.write_bytes(b"")
+    wal_path.chmod(0o644)
+    shm_path.chmod(0o644)
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+
+    ensure_database_url_storage_ready(database_url)
+
+    assert wal_path.stat().st_mode & 0o777 == 0o600
+    assert shm_path.stat().st_mode & 0o777 == 0o600
 
 
 def test_database_settings_honors_env_values(tmp_path: Path) -> None:
