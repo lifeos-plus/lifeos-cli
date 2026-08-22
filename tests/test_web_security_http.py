@@ -108,16 +108,22 @@ def test_rejects_disallowed_origin(prepared_env) -> None:
 
 def test_allows_same_origin_and_allowlisted_origin(prepared_env) -> None:
     same_origin = prepared_env(base_url="http://127.0.0.1")
-    assert same_origin.get(
-        "/healthy",
-        headers={"Origin": "http://127.0.0.1"},
-    ).status_code == 200
+    assert (
+        same_origin.get(
+            "/healthy",
+            headers={"Origin": "http://127.0.0.1"},
+        ).status_code
+        == 200
+    )
 
     dev_origin = prepared_env(base_url="http://127.0.0.1")
-    assert dev_origin.get(
-        "/healthy",
-        headers={"Origin": "http://localhost:5173"},
-    ).status_code == 200
+    assert (
+        dev_origin.get(
+            "/healthy",
+            headers={"Origin": "http://localhost:5173"},
+        ).status_code
+        == 200
+    )
 
 
 def test_rejects_request_body_over_configured_limit(
