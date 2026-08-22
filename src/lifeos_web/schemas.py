@@ -77,7 +77,7 @@ class TaskReorderItem(BaseModel):
 class TaskReorderRequest(BaseModel):
     """Payload for reordering tasks from the Web UI."""
 
-    task_orders: list[TaskReorderItem] = Field(default_factory=list)
+    task_orders: list[TaskReorderItem] = Field(default_factory=list, max_length=500)
 
 
 class NoteCreate(BaseModel):
@@ -138,7 +138,7 @@ class TagCategoryUpdate(BaseModel):
 class TagBulkCategoryUpdate(BaseModel):
     """Payload for moving existing tags to another category."""
 
-    ids: list[UUID] = Field(default_factory=list)
+    ids: list[UUID] = Field(default_factory=list, max_length=500)
     category: str
 
 
@@ -259,13 +259,13 @@ class TimelogBatchPersonUpdate(BaseModel):
     """Person association update payload for timelog batch edits."""
 
     mode: str = "replace"
-    person_ids: list[UUID] = Field(default_factory=list)
+    person_ids: list[UUID] = Field(default_factory=list, max_length=100)
 
 
 class TimelogBatchUpdate(BaseModel):
     """Payload for updating multiple timelogs from the Web UI."""
 
-    timelog_ids: list[UUID]
+    timelog_ids: list[UUID] = Field(..., max_length=500)
     update_type: str
     title: TimelogBatchTitleUpdate | None = None
     task: TimelogBatchTaskUpdate | None = None
@@ -307,13 +307,13 @@ class TimelogTemplateReorderItem(BaseModel):
 class TimelogTemplateReorderRequest(BaseModel):
     """Payload for reordering timelog quick templates."""
 
-    items: list[TimelogTemplateReorderItem] = Field(default_factory=list)
+    items: list[TimelogTemplateReorderItem] = Field(default_factory=list, max_length=500)
 
 
 class TimelogTemplateBulkCreateRequest(BaseModel):
     """Payload for creating multiple timelog quick templates."""
 
-    items: list[TimelogTemplateCreate] = Field(default_factory=list)
+    items: list[TimelogTemplateCreate] = Field(default_factory=list, max_length=100)
 
 
 class PlannedEventCreate(BaseModel):

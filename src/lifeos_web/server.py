@@ -50,6 +50,7 @@ def serve(
     port: int = 8765,
     reload: bool = False,
     static_dir: Path | None = None,
+    docs: bool = False,
 ) -> None:
     """Run the local Web service with uvicorn."""
     try:
@@ -63,10 +64,17 @@ def serve(
 
     warn_if_non_loopback_binding(host)
 
-    if static_dir is not None:
-        from lifeos_web.app import create_app
-
-        uvicorn.run(create_app(static_dir=static_dir), host=host, port=port, reload=reload)
+    if static_dir is None and not docs:
+        uvicorn.run("lifeos_web.app:app", host=host, port=port, reload=reload)
         return
 
-    uvicorn.run("lifeos_web.app:app", host=host, port=port, reload=reload)
+    if static_dir is not None or docs:
+        from lifeos_web.app import create_app
+
+        uvicorn.run(
+            create_app(static_dir=static_dir, docs_enabled=docs),
+            host=host,
+            port=port,
+            reload=reload,
+        )
+        return

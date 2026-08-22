@@ -33,10 +33,14 @@ def http_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     clear_config_cache()
     db_session.clear_session_cache()
     monkeypatch.setenv("LIFEOS_CONFIG_FILE", str(config_path))
+    monkeypatch.setenv("LIFEOS_WEB_RATE_LIMIT_PER_MINUTE", "100000")
 
     assert cli.main(["db", "upgrade"]) == 0
 
-    with TestClient(create_app()) as client:
+    app = create_app(
+        allowed_hosts=["testserver", "127.0.0.1", "localhost", "::1"],
+    )
+    with TestClient(app) as client:
         yield client
 
     clear_config_cache()

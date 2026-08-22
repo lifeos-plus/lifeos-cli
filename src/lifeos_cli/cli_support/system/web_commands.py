@@ -22,6 +22,7 @@ def run_web_serve(args: argparse.Namespace) -> int:
         port=args.port,
         reload=args.reload,
         static_dir=Path(args.static_dir) if args.static_dir else None,
+        docs=args.docs,
     )
     return 0
 
@@ -76,5 +77,10 @@ def build_web_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
     serve_parser.add_argument(
         "--static-dir",
         help=_("system.web_commands.serve_built_frontend_directory"),
+    )
+    serve_parser.add_argument(
+        "--docs",
+        action="store_true",
+        help=_("system.web_commands.enable_swagger_docs"),
     )
     serve_parser.set_defaults(handler=run_web_serve)
