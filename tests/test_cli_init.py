@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import builtins
+import getpass
 from pathlib import Path
 
 import pytest
@@ -231,6 +232,12 @@ def test_main_init_interactive_accepts_default_sqlite_database_url(
 
     monkeypatch.setattr(builtins, "input", fake_input)
 
+    def fake_secret_input(prompt: str) -> str:
+        prompts.append(prompt)
+        return ""
+
+    monkeypatch.setattr(getpass, "getpass", fake_secret_input)
+
     exit_code = cli.main(
         [
             "init",
@@ -241,7 +248,9 @@ def test_main_init_interactive_accepts_default_sqlite_database_url(
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert prompts[0] == f"Database URL [sqlite+aiosqlite:///{database_path}]: "
+    assert prompts[0] == (
+        f"Database URL (hidden input) [default: sqlite+aiosqlite:///{database_path}]: "
+    )
     assert "Database schema:" not in captured.out
     assert all(not prompt.startswith("Database schema") for prompt in prompts)
     assert f'url = "sqlite+aiosqlite:///{database_path}"' in config_path.read_text(encoding="utf-8")

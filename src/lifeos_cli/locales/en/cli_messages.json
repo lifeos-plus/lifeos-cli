@@ -1094,6 +1094,7 @@
       "environment_variables_still_override_config_file_values_at_runtime": "Environment variables still override config file values at runtime.",
       "initialize_local_configuration": "Initialize local configuration",
       "interactive_init_confirms_language_preference_because_agents_should_use_it_for_human": "Interactive init confirms the language preference because agents should use it for human-authored payload data.",
+      "interactive_database_url_input_is_hidden": "Interactive database URL input is hidden; use `LIFEOS_DATABASE_URL` for non-interactive or scripted setups.",
       "local_day_boundary_in_hh_mm_used_for_future_time_based_grouping": "Local day boundary in HH:MM, used for future time-based grouping logic",
       "database_connection_url_to_persist_in_config_file": "SQLAlchemy database URL to persist in the config file",
       "optional_schema_name_for_schema_capable_backends": "Optional schema name for schema-capable backends such as PostgreSQL",

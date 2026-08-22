@@ -40,6 +40,8 @@ The local Web API (`lifeos web serve`) has no authentication and holds access to
 
 The configured database URL can be stored in `~/.lifeos/config.toml`, which keeps any embedded credentials in plaintext on disk. For PostgreSQL deployments, prefer supplying the URL through the `LIFEOS_DATABASE_URL` environment variable instead of writing it into the config file, and restrict read access to the config file (for example `chmod 600`). Runtime status and `lifeos config show` hide database passwords by default; keep `--show-secrets` for explicit, local-only use.
 
+Local SQLite database files are created with owner-only permissions (`0600`), matching the config file policy, so other local users cannot read personal LifeOS data on shared machines. Interactive `lifeos init` prompts for the database URL with hidden input so embedded passwords are not echoed to the terminal; non-interactive or scripted setups should pass `LIFEOS_DATABASE_URL` or `--database-url`.
+
 ## Supported Branches
 
 Security fixes should land on the active `main` branch first.
