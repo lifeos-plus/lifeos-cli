@@ -33,7 +33,7 @@ from lifeos_web.routers import (
 )
 
 API_PREFIX = "/api/v1"
-SPA_FALLBACK_EXCLUDED_SEGMENTS = frozenset({"api", "assets", "health"})
+SPA_FALLBACK_EXCLUDED_SEGMENTS = frozenset({"api", "assets", "healthy"})
 
 
 def _is_spa_fallback_excluded_path(path: str) -> bool:

@@ -55,7 +55,7 @@ def http_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 
 def test_health_endpoint_round_trip(http_client) -> None:
-    response = http_client.get("/health")
+    response = http_client.get("/healthy")
 
     assert response.status_code == 200
     payload = response.json()
