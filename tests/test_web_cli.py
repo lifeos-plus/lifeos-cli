@@ -1014,13 +1014,16 @@ def test_web_static_assets_disable_cache(tmp_path: Path) -> None:
 
     asset_response = asyncio.run(static_files.get_response("assets/app.js", scope))
     spa_response = asyncio.run(static_files.get_response("timelog", scope))
+    health_page_response = asyncio.run(static_files.get_response("health", scope))
 
     assert asset_response.status_code == 200
     assert asset_response.headers["cache-control"] == "no-store"
     assert spa_response.status_code == 200
+    assert health_page_response.status_code == 200
     assert spa_response.headers["cache-control"] == "no-store"
+    assert health_page_response.headers["cache-control"] == "no-store"
 
-    for reserved_path in ("api/v1/missing", "health/missing", "assets/missing"):
+    for reserved_path in ("api/v1/missing", "healthy/missing", "assets/missing"):
         route_error: object | None = None
         try:
             asyncio.run(static_files.get_response(reserved_path, scope))
