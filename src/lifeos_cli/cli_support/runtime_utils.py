@@ -105,5 +105,9 @@ def print_database_runtime_error(exc: BaseException) -> int:
         "migrations.",
         file=sys.stderr,
     )
-    print(f"Original error: {exc}", file=sys.stderr)
+    print(f"Error type: {type(exc).__name__}", file=sys.stderr)
+    print(
+        "Original error details are suppressed to avoid leaking connection details.",
+        file=sys.stderr,
+    )
     return 1

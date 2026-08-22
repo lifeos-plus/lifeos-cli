@@ -36,6 +36,13 @@ Pull request and `main` validation audits the locked Python project with every o
 
 The local Web API (`lifeos web serve`) has no authentication and holds access to the same personal LifeOS data as the CLI. It defaults to binding `127.0.0.1` (loopback) and prints a warning on stderr when started with a non-loopback `--host` such as `0.0.0.0`. Keep the loopback default for personal use; if you must bind beyond loopback, treat it as an intentional exposure and restrict access at the network layer (for example a firewall or an isolated network). Do not rely on the warning as a security boundary.
 
+Additional request-level boundaries apply by default:
+
+- Only loopback Host headers (`localhost`, `127.0.0.1`, `::1`) are accepted; add trusted hostnames with the `LIFEOS_WEB_ALLOWED_HOSTS` environment variable (comma-separated).
+- Requests carrying an `Origin` header must be same-origin or one of the allowlisted Vite development origins; anything else is rejected with `403`.
+- Request bodies are limited to 1 MiB by default (override with `LIFEOS_WEB_MAX_BODY_BYTES`), bulk payloads have explicit item caps, and `/api/` requests are rate limited per client (default 300/minute, override with `LIFEOS_WEB_RATE_LIMIT_PER_MINUTE`).
+- Swagger UI and the OpenAPI schema are disabled by default; enable them explicitly with `lifeos web serve --docs`.
+
 ## Database Credentials
 
 The configured database URL can be stored in `~/.lifeos/config.toml`, which keeps any embedded credentials in plaintext on disk. For PostgreSQL deployments, prefer supplying the URL through the `LIFEOS_DATABASE_URL` environment variable instead of writing it into the config file, and restrict read access to the config file (for example `chmod 600`). Runtime status and `lifeos config show` hide database passwords by default; keep `--show-secrets` for explicit, local-only use.

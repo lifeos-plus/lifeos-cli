@@ -1070,8 +1070,9 @@
     "web_commands": {
       "bind_host": "绑定 host。默认 127.0.0.1；绑定到 loopback 之外会触发警告，因为 Web API 没有认证。",
       "bind_port": "绑定 port。",
-      "enable_uvicorn_reload": "启用 `uvicorn` reload。",
-      "install_optional_web_dependencies": "使用 `lifeos-cli[web]` 安装可选 Web 依赖。如果已配置数据库是 PostgreSQL，请同时安装 `lifeos-cli[web,postgres]`。",
+        "enable_uvicorn_reload": "启用 `uvicorn` reload。",
+        "enable_swagger_docs": "启用 Swagger UI 与 `OpenAPI schema`（`/api/v1/docs`，默认关闭）。",
+        "install_optional_web_dependencies": "使用 `lifeos-cli[web]` 安装可选 Web 依赖。如果已配置数据库是 PostgreSQL，请同时安装 `lifeos-cli[web,postgres]`。",
       "non_loopback_binding_warning": "警告：LifeOS Web 没有认证。绑定到 {host} 会把个人数据暴露到网络中；建议保持 127.0.0.1（loopback）或通过网络层限制访问。",
       "run_local_lifeos_web_service": "基于 `lifeos init` 和 `lifeos config` 配置的数据库运行本地 LifeOS Web 服务。",
       "run_optional_local_web_api": "运行可选的本地 Web API",

@@ -11,7 +11,7 @@ from lifeos_web.app import create_app
 
 def export_openapi(output: Path) -> None:
     """Write a deterministic OpenAPI JSON document to ``output``."""
-    document = create_app().openapi()
+    document = create_app(docs_enabled=True).openapi()
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(document, indent=2, sort_keys=True, ensure_ascii=False) + "\n",

@@ -287,4 +287,4 @@
 │           args: vision_id [required]
 └── web  —  Run the optional local Web API
     └── serve  —  Serve the local Web API, optionally with built frontend assets
-            args: --host; --port; --reload; --static-dir
+            args: --host; --port; --reload; --static-dir; --docs
