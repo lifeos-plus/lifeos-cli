@@ -159,7 +159,8 @@ def _normalize_sqlite_database_url(parsed: URL) -> str:
 def _restrict_database_file_permissions(database_path: Path) -> None:
     """Create the SQLite file when missing and restrict it to the owning user."""
     try:
-        database_path.touch(exist_ok=True)
+        fd = os.open(database_path, os.O_CREAT | os.O_WRONLY, 0o600)
+        os.close(fd)
         os.chmod(database_path, 0o600)
     except OSError:
         # Permissions are best-effort on filesystems without POSIX modes.
