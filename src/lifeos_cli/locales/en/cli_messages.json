@@ -1068,7 +1068,7 @@
       "use_upgrade_when_configured_database_schema_needs_to_catch_up_with_code": "Use `upgrade` when the configured database schema needs to catch up with the code."
     },
     "web_commands": {
-      "bind_host": "Bind host. Defaults to 127.0.0.1; binding beyond loopback triggers a warning because the Web API has no authentication.",
+      "bind_host": "Bind host. Defaults to 127.0.0.1; binding beyond loopback triggers a warning and requests from non-loopback hosts are rejected unless added to LIFEOS_WEB_ALLOWED_HOSTS.",
       "bind_port": "Bind port.",
         "enable_uvicorn_reload": "Enable uvicorn reload.",
         "enable_swagger_docs": "Enable Swagger UI and the OpenAPI schema at /api/v1/docs (disabled by default).",
