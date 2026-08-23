@@ -100,6 +100,8 @@
 │   └── tree  —  Manage finance trees
 │       ├── add  —  Create a finance tree
 │       │       args: name [required]; --primary-currency; --display-order; --default
+│       ├── copy  —  Copy a finance tree
+│       │       args: tree_id [required]; --name
 │       ├── delete  —  Delete a finance tree
 │       │       args: tree_id [required]
 │       ├── ensure-default  —  Ensure a default finance tree exists

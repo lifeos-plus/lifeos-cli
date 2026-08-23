@@ -42,6 +42,7 @@ _keep(
     update_tree,
     delete_tree,
     ensure_default_tree,
+    copy_tree,
     get_finance_tree,
     create_finance_node,
     update_finance_node,

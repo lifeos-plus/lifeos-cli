@@ -4,6 +4,7 @@ import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -1046,5 +1047,101 @@ def test_finance_node_delete_soft_deletes_descendants() -> None:
 
                 assert {node.id for node in remaining}.isdisjoint({bank.id, checking.id})
                 assert next(node for node in remaining if node.id == assets.id).children_count == 0
+
+    asyncio.run(run())
+
+
+def test_finance_tree_copy_duplicates_tree_and_nodes() -> None:
+    async def run() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                tree = await finance.ensure_default_finance_tree(
+                    session,
+                    primary_currency="USD",
+                )
+                source_nodes = await finance.list_finance_nodes(session, tree_id=tree.id)
+                assets = next(node for node in source_nodes if node.name == "Assets")
+                bank = await finance.create_finance_node(
+                    session,
+                    tree_id=tree.id,
+                    parent_id=assets.id,
+                    name="Bank",
+                    currency_code="CNY",
+                    display_order=7,
+                )
+                await finance.create_finance_node(
+                    session,
+                    tree_id=tree.id,
+                    parent_id=bank.id,
+                    name="Checking",
+                )
+
+                copy = await finance.copy_finance_tree(session, tree_id=tree.id)
+                copied_nodes = await finance.list_finance_nodes(session, tree_id=copy.id)
+
+                assert copy.id != tree.id
+                assert copy.name == f"{tree.name} Copy"
+                assert copy.primary_currency == tree.primary_currency
+                assert copy.display_order == tree.display_order
+                assert copy.is_default is False
+                assert {node.name for node in copied_nodes} == {
+                    "Assets",
+                    "Bank",
+                    "Checking",
+                    "Liabilities",
+                }
+                assets_copy = next(node for node in copied_nodes if node.name == "Assets")
+                bank_copy = next(node for node in copied_nodes if node.name == "Bank")
+                checking_copy = next(node for node in copied_nodes if node.name == "Checking")
+                assert assets_copy.parent_id is None
+                assert bank_copy.parent_id == assets_copy.id
+                assert checking_copy.parent_id == bank_copy.id
+                assert bank_copy.currency_code == "CNY"
+                assert bank_copy.display_order == 7
+                assert checking_copy.currency_code == "USD"
+
+                remaining_source = await finance.list_finance_nodes(session, tree_id=tree.id)
+                assert {node.name for node in remaining_source} == {
+                    "Assets",
+                    "Bank",
+                    "Checking",
+                    "Liabilities",
+                }
+
+                second_copy = await finance.copy_finance_tree(session, tree_id=tree.id)
+                assert second_copy.name == f"{tree.name} Copy 2"
+
+    asyncio.run(run())
+
+
+def test_finance_tree_copy_with_custom_name() -> None:
+    async def run() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                tree = await finance.ensure_default_finance_tree(
+                    session,
+                    primary_currency="USD",
+                )
+
+                copy = await finance.copy_finance_tree(
+                    session,
+                    tree_id=tree.id,
+                    name="  Backup Finance  ",
+                )
+
+                assert copy.name == "Backup Finance"
+
+    asyncio.run(run())
+
+
+def test_finance_tree_copy_missing_tree_raises() -> None:
+    async def run() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                with pytest.raises(finance.FinanceTreeNotFoundError):
+                    await finance.copy_finance_tree(
+                        session,
+                        tree_id=UUID("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                    )
 
     asyncio.run(run())
