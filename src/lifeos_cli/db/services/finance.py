@@ -39,6 +39,14 @@ DEFAULT_FINANCE_ASSETS: tuple[tuple[str, str, int], ...] = (
 )
 FINANCE_AMOUNT_QUANT = Decimal("0.00000001")
 FINANCE_RATE_QUANT = Decimal("0.000000000001")
+FINANCE_TREE_COPY_NAME_SUFFIX = " Copy"
+"""Canonical suffix for duplicated finance tree names.
+
+This is the single source of truth for the copy-name rule: an unnamed copy
+defaults to ``<source name> Copy`` and falls back to ``<source name> Copy 2``,
+``Copy 3``, and so on until the name is available. The Web UI mirrors this
+rule in ``lifeos-web/src/features/finance/treeCopy.ts``; keep both aligned.
+"""
 
 
 def _finance_tree_nodes_loader() -> Any:
@@ -572,13 +580,21 @@ async def update_finance_tree(
 async def _unique_tree_copy_name(
     session: AsyncSession,
     *,
-    base_name: str,
+    source_name: str,
+    requested_name: str | None = None,
 ) -> str:
     """Resolve a unique name for a duplicated finance tree.
 
-    Defaults to ``<name> Copy`` and falls back to ``<name> Copy 2``,
-    ``<name> Copy 3``, and so on until the name is available.
+    Uses ``requested_name`` when given; otherwise appends the canonical
+    ``FINANCE_TREE_COPY_NAME_SUFFIX`` to the source name. Falls back to
+    ``<name> Copy 2``, ``<name> Copy 3``, and so on until the name is
+    available.
     """
+    base_name = (
+        validate_tree_name(requested_name)
+        if requested_name is not None
+        else f"{source_name}{FINANCE_TREE_COPY_NAME_SUFFIX}"
+    )
     candidate = base_name
     suffix = 2
     while True:
@@ -607,9 +623,11 @@ async def copy_finance_tree(
     if source is None:
         raise FinanceTreeNotFoundError(f"Finance tree {tree_id} was not found")
 
-    requested_name = validate_tree_name(name) if name is not None else None
-    base_name = requested_name if requested_name is not None else f"{source.name} Copy"
-    copy_name = await _unique_tree_copy_name(session, base_name=base_name)
+    copy_name = await _unique_tree_copy_name(
+        session,
+        source_name=source.name,
+        requested_name=name,
+    )
 
     copy = FinanceTree(
         name=copy_name,
