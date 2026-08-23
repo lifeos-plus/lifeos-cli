@@ -164,4 +164,10 @@ def test_rate_limit_applies_to_api_but_not_health(
     assert client.get("/api/v1/visions/").status_code == 200
     assert client.get("/api/v1/visions/").status_code == 200
     assert client.get("/api/v1/visions/").status_code == 200
-    assert client.get("/api/v1/visions/").status_code == 429
+    limited = client.get("/api/v1/visions/")
+    assert limited.status_code == 429
+    assert limited.json() == {"detail": "Rate limit exceeded"}
+    retry_after = limited.headers.get("Retry-After")
+    assert retry_after is not None
+    assert retry_after.isdigit()
+    assert int(retry_after) >= 1

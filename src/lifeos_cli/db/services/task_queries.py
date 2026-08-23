@@ -102,6 +102,7 @@ class PlanningView:
 
 
 MAX_PLANNING_CONTEXT_PARENT_FETCHES = 100
+MAX_ID_IN_FILTER = 100
 
 
 def _build_task_tree(
@@ -166,6 +167,17 @@ def _split_csv(value: str | None) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _validate_id_in_cap(id_in: str | None) -> None:
+    """Reject oversized id_in filters with a client-facing error message."""
+    if id_in is None:
+        return
+    count = len(_split_csv(id_in))
+    if count > MAX_ID_IN_FILTER:
+        raise ValueError(
+            f"id_in supports at most {MAX_ID_IN_FILTER} ids, got {count}."
+        )
+
+
 def _parse_uuid_csv(value: str | None) -> list[UUID]:
     """Parse comma-separated UUID values."""
     return [UUID(item) for item in _split_csv(value)]
@@ -200,6 +212,7 @@ def _planning_cycle_date_filter_range(
 def _apply_task_filters(
     stmt: Any,
     *,
+    id_in: str | None = None,
     vision_id: UUID | None = None,
     vision_in: str | None = None,
     parent_task_id: UUID | None = None,
@@ -222,6 +235,9 @@ def _apply_task_filters(
     vision_ids = _parse_uuid_csv(vision_in)
     if vision_ids:
         stmt = stmt.where(Task.vision_id.in_(vision_ids))
+    task_ids = _parse_uuid_csv(id_in)
+    if task_ids:
+        stmt = stmt.where(Task.id.in_(task_ids))
     if parent_task_id is None and vision_id is not None:
         stmt = stmt.where(Task.parent_task_id.is_(None))
     elif parent_task_id is not None:
@@ -355,6 +371,7 @@ async def get_task(
 async def list_tasks(
     session: AsyncSession,
     *,
+    id_in: str | None = None,
     vision_id: UUID | None = None,
     vision_in: str | None = None,
     parent_task_id: UUID | None = None,
@@ -370,8 +387,10 @@ async def list_tasks(
     offset: int = 0,
 ) -> list[TaskView]:
     """List tasks with basic filters."""
+    _validate_id_in_cap(id_in)
     stmt = _apply_task_filters(
         select(Task),
+        id_in=id_in,
         vision_id=vision_id,
         vision_in=vision_in,
         parent_task_id=parent_task_id,
@@ -392,6 +411,7 @@ async def list_tasks(
 async def count_tasks(
     session: AsyncSession,
     *,
+    id_in: str | None = None,
     vision_id: UUID | None = None,
     vision_in: str | None = None,
     parent_task_id: UUID | None = None,
@@ -405,8 +425,10 @@ async def count_tasks(
     query: str | None = None,
 ) -> int:
     """Count tasks with the same filters as ``list_tasks``."""
+    _validate_id_in_cap(id_in)
     stmt = _apply_task_filters(
         select(func.count()).select_from(Task),
+        id_in=id_in,
         vision_id=vision_id,
         vision_in=vision_in,
         parent_task_id=parent_task_id,
