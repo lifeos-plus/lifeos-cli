@@ -935,6 +935,7 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
     )
 
     assert captured["list_kwargs"] == {
+        "id_in": None,
         "vision_id": None,
         "vision_in": None,
         "status": None,
@@ -947,6 +948,7 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
         "offset": 50,
     }
     assert captured["count_kwargs"] == {
+        "id_in": None,
         "vision_id": None,
         "vision_in": None,
         "status": None,
