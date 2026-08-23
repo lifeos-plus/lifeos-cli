@@ -173,9 +173,7 @@ def _validate_id_in_cap(id_in: str | None) -> None:
         return
     count = len(_split_csv(id_in))
     if count > MAX_ID_IN_FILTER:
-        raise ValueError(
-            f"id_in supports at most {MAX_ID_IN_FILTER} ids, got {count}."
-        )
+        raise ValueError(f"id_in supports at most {MAX_ID_IN_FILTER} ids, got {count}.")
 
 
 def _parse_uuid_csv(value: str | None) -> list[UUID]:
