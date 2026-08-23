@@ -102,6 +102,94 @@ def test_vision_task_create_list_detail_and_not_found(http_client) -> None:
     assert missing_response.status_code == 404
 
 
+def test_task_list_supports_id_in_batch_filter(http_client) -> None:
+    vision_response = http_client.post(
+        "/api/v1/visions/",
+        json={"name": "Batch filter vision"},
+    )
+    vision_id = vision_response.json()["id"]
+
+    created_ids = []
+    for content in ("Batch task one", "Batch task two"):
+        task_response = http_client.post(
+            "/api/v1/tasks/",
+            json={"vision_id": vision_id, "content": content},
+        )
+        assert task_response.status_code == 200
+        created_ids.append(task_response.json()["id"])
+
+    batch_response = http_client.get(
+        "/api/v1/tasks/",
+        params={"id_in": ",".join(created_ids), "fields": "full"},
+    )
+    assert batch_response.status_code == 200
+    payload = batch_response.json()
+    assert {item["id"] for item in payload["items"]} == set(created_ids)
+    assert payload["meta"]["id_in"] == ",".join(created_ids)
+    assert payload["pagination"]["total"] == len(created_ids)
+
+
+def test_task_list_id_in_composes_with_planning_filters(http_client) -> None:
+    vision_response = http_client.post(
+        "/api/v1/visions/",
+        json={"name": "Planning batch vision"},
+    )
+    vision_id = vision_response.json()["id"]
+    planned_response = http_client.post(
+        "/api/v1/tasks/",
+        json={
+            "vision_id": vision_id,
+            "content": "Planned batch task",
+            "planning_cycle_type": "year",
+            "planning_cycle_days": 366,
+            "planning_cycle_start_date": "2026-07-26",
+        },
+    )
+    assert planned_response.status_code == 200, planned_response.text
+    planned_id = planned_response.json()["id"]
+    unplanned_id = http_client.post(
+        "/api/v1/tasks/",
+        json={"vision_id": vision_id, "content": "Unplanned batch task"},
+    ).json()["id"]
+
+    response = http_client.get(
+        "/api/v1/tasks/",
+        params={
+            "id_in": f"{planned_id},{unplanned_id}",
+            "planning_cycle_type": "year",
+            "planning_cycle_start_date": "2026-07-26",
+        },
+    )
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()["items"]] == [planned_id]
+
+
+def test_task_list_id_in_rejects_malformed_and_oversized_input(http_client) -> None:
+    malformed = http_client.get(
+        "/api/v1/tasks/",
+        params={"id_in": "not-a-uuid"},
+    )
+    assert malformed.status_code == 400
+
+    oversized_ids = ",".join(str(uuid.uuid4()) for _ in range(101))
+    oversized = http_client.get(
+        "/api/v1/tasks/",
+        params={"id_in": oversized_ids},
+    )
+    assert oversized.status_code == 400
+    assert "at most 100" in oversized.json()["detail"]
+
+
+def test_task_list_id_in_returns_empty_for_unknown_ids(http_client) -> None:
+    response = http_client.get(
+        "/api/v1/tasks/",
+        params={"id_in": str(uuid.uuid4())},
+    )
+    assert response.status_code == 200
+    assert response.json()["items"] == []
+    assert response.json()["pagination"]["total"] == 0
+
+
 def test_timelog_create_list_detail_and_not_found(http_client) -> None:
     create_response = http_client.post(
         "/api/v1/timelogs/",

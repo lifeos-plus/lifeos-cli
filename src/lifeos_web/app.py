@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import os
 import time
 from collections import deque
@@ -14,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.responses import PlainTextResponse, Response
+from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from lifeos_web.deps import LIFEOS_SESSION_STATE_KEY
@@ -209,7 +210,15 @@ class RateLimitMiddleware:
                 del self._hits[key]
                 hits = self._hits[key] = deque()
             if len(hits) >= self.limit_per_minute:
-                response = PlainTextResponse("Rate limit exceeded", status_code=429)
+                wait_seconds = max(
+                    1,
+                    math.ceil(hits[0] + self._window_seconds - now),
+                )
+                response = JSONResponse(
+                    {"detail": "Rate limit exceeded"},
+                    status_code=429,
+                    headers={"Retry-After": str(wait_seconds)},
+                )
                 await response(scope, receive, send)
                 return
             hits.append(now)

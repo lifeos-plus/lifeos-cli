@@ -52,6 +52,7 @@ class TaskMoveResponse(TaskResponse):
 
 
 class TaskListMeta(ResponseModel):
+    id_in: str | None
     vision_id: str | None
     vision_in: str | None
     status_filter: str | None

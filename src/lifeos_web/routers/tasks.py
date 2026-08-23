@@ -133,6 +133,7 @@ async def list_tasks(
     session: SessionDep,
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=500)] = 100,
+    id_in: str | None = None,
     vision_id: UUID | None = None,
     vision_in: str | None = None,
     status_filter: str | None = None,
@@ -157,6 +158,7 @@ async def list_tasks(
     try:
         rows = await task_services.list_tasks(
             session,
+            id_in=id_in,
             vision_id=vision_id,
             vision_in=vision_in,
             status=status_filter,
@@ -170,6 +172,7 @@ async def list_tasks(
         )
         total_count = await task_services.count_tasks(
             session,
+            id_in=id_in,
             vision_id=vision_id,
             vision_in=vision_in,
             status=status_filter,
@@ -199,6 +202,7 @@ async def list_tasks(
         size=size,
         total=total_count,
         meta={
+            "id_in": id_in,
             "vision_id": str(vision_id) if vision_id else None,
             "vision_in": vision_in,
             "status_filter": status_filter,
