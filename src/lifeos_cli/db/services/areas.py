@@ -159,7 +159,6 @@ async def update_area(
 
 
 async def delete_area(session: AsyncSession, *, area_id: UUID) -> None:
-    """Soft-delete an area."""
     area = await get_area(session, area_id=area_id)
     if area is None:
         raise AreaNotFoundError(f"Area {area_id} was not found")

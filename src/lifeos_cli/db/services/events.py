@@ -1060,7 +1060,6 @@ async def update_event(
     scope: str = "all",
     instance_start: datetime | None = None,
 ) -> EventView:
-    """Update one event."""
     event = await _get_event_model(session, event_id=event_id)
     if event is None:
         raise EventNotFoundError(f"Event {event_id} was not found")

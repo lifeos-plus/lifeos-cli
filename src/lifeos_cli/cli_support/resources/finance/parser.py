@@ -623,7 +623,6 @@ def _build_rate_snapshot_group(
 def build_finance_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the finance command tree."""
     finance_parser = add_documented_help_parser(
         subparsers,
         "finance",

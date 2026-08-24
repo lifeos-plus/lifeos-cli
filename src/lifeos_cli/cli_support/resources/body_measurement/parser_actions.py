@@ -79,7 +79,6 @@ def _add_shared_body_metric_arguments(parser: argparse.ArgumentParser) -> None:
 def build_body_measurement_add_parser(
     body_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the body add command."""
     add_parser = add_documented_parser(
         body_subparsers,
         "add",
@@ -134,7 +133,6 @@ def build_body_measurement_add_parser(
 def build_body_measurement_list_parser(
     body_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the body list command."""
     list_parser = add_documented_parser(
         body_subparsers,
         "list",
@@ -167,7 +165,6 @@ def build_body_measurement_list_parser(
 def build_body_measurement_show_parser(
     body_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the body show command."""
     show_parser = add_documented_parser(
         body_subparsers,
         "show",
@@ -191,7 +188,6 @@ def build_body_measurement_show_parser(
 def build_body_measurement_update_parser(
     body_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the body update command."""
     update_parser = add_documented_parser(
         body_subparsers,
         "update",
@@ -300,7 +296,6 @@ def build_body_measurement_update_parser(
 def build_body_measurement_delete_parser(
     body_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the body delete command."""
     delete_parser = add_documented_parser(
         body_subparsers,
         "delete",

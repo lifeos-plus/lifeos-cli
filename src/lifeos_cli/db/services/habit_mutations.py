@@ -240,7 +240,6 @@ async def update_habit(
 
 
 async def delete_habit(session: AsyncSession, *, habit_id: UUID) -> None:
-    """Soft-delete a habit."""
     habit = await get_habit(session, habit_id=habit_id)
     if habit is None:
         raise HabitNotFoundError(f"Habit {habit_id} was not found")

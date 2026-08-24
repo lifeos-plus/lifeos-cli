@@ -18,7 +18,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_task_add_parser(
     task_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the task add command."""
     add_parser = add_documented_parser(
         task_subparsers,
         "add",
@@ -130,7 +129,6 @@ def build_task_add_parser(
 def build_task_update_parser(
     task_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the task update command."""
     update_parser = add_documented_parser(
         task_subparsers,
         "update",
@@ -264,7 +262,6 @@ def build_task_update_parser(
 def build_task_delete_parser(
     task_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the task delete command."""
     delete_parser = add_documented_parser(
         task_subparsers,
         "delete",

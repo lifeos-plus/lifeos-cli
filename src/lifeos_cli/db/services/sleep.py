@@ -162,7 +162,6 @@ async def delete_sleep_segment(
     *,
     segment_id: UUID,
 ) -> None:
-    """Soft-delete one sleep segment."""
     segment = await _get_segment_model(session, segment_id)
     if segment is None:
         raise SleepSegmentNotFoundError(f"Sleep segment {segment_id} was not found")

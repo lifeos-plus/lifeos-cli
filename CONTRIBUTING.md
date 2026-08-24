@@ -85,6 +85,7 @@ Static-analysis governance:
 - Keep code, comments, commit messages, and canonical repository docs in English.
 - Localized Markdown companions are allowed when the English source stays canonical, the documents are cross-linked, and the localized copy is updated together with the source.
 - Keep issue and PR collaboration in Simplified Chinese for this repository.
+- Prefer self-documenting code: comments explain *why*, not *what*. Do not add comments that restate the code; remove or converge such comments when you touch the surrounding code. Reserve comments for non-obvious rationale, historical context, and cross-cutting constraints, and keep them as close as possible to the code they explain.
 - Prefer explicit, additive changes over hidden behavioral shifts.
 - Keep Python compatibility declarations, CI matrices, and packaging metadata consistent with each other.
 - Treat release and trusted publishing changes as security-sensitive infrastructure work.

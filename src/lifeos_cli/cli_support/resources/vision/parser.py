@@ -24,7 +24,6 @@ from lifeos_cli.i18n import cli_message as _
 
 
 def build_vision_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    """Build the vision command tree."""
     vision_parser = add_documented_help_parser(
         subparsers,
         "vision",

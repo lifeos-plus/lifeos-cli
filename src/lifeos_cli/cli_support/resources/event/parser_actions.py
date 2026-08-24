@@ -77,7 +77,6 @@ def _parse_recurrence_weekday_ordinal(value: str) -> dict[str, object]:
 def build_event_add_parser(
     event_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the event add command."""
     add_parser = add_documented_parser(
         event_subparsers,
         "add",
@@ -222,7 +221,6 @@ def build_event_add_parser(
 def build_event_list_parser(
     event_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the event list command."""
     list_parser = add_documented_parser(
         event_subparsers,
         "list",
@@ -323,7 +321,6 @@ def build_event_list_parser(
 def build_event_show_parser(
     event_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the event show command."""
     show_parser = add_documented_parser(
         event_subparsers,
         "show",
@@ -346,7 +343,6 @@ def build_event_show_parser(
 def build_event_update_parser(
     event_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the event update command."""
     update_parser = add_documented_parser(
         event_subparsers,
         "update",
@@ -542,7 +538,6 @@ def build_event_update_parser(
 def build_event_delete_parser(
     event_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the event delete command."""
     delete_parser = add_documented_parser(
         event_subparsers,
         "delete",

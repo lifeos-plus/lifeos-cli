@@ -27,7 +27,6 @@ def _format_factor_summary(factor: MenstrualFactor) -> str:
 
 
 async def handle_menstrual_factor_add_async(args: argparse.Namespace) -> int:
-    """Create one custom menstrual factor."""
     try:
         async with db_session.session_scope() as session:
             factor = await menstrual_services.create_menstrual_factor(

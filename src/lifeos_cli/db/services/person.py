@@ -152,7 +152,6 @@ async def update_person(
     tag_ids: list[UUID] | None = None,
     clear_tags: bool = False,
 ) -> PersonView:
-    """Update a person."""
     person = await load_model_by_id(
         session,
         model_cls=Person,
@@ -215,7 +214,6 @@ async def delete_person(
     *,
     person_id: UUID,
 ) -> None:
-    """Soft-delete a person."""
     await soft_delete_model_by_id(
         session,
         model_cls=Person,

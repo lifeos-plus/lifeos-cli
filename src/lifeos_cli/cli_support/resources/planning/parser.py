@@ -21,7 +21,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_planning_show_parser(
     planning_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the planning show command."""
     show_parser = add_documented_parser(
         planning_subparsers,
         "show",
@@ -79,7 +78,6 @@ def build_planning_show_parser(
 
 
 def build_planning_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    """Build the planning command tree."""
     planning_parser = add_documented_help_parser(
         subparsers,
         "planning",

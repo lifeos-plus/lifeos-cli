@@ -10,7 +10,6 @@ from lifeos_cli.i18n import cli_message as _
 
 
 def build_init_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    """Build the init command."""
     init_parser = add_documented_parser(
         subparsers,
         "init",

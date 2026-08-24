@@ -62,7 +62,6 @@ def _parse_habit_monthdays(value: str) -> list[int]:
 def build_habit_add_parser(
     habit_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the habit add command."""
     add_parser = add_documented_parser(
         habit_subparsers,
         "add",
@@ -160,7 +159,6 @@ def build_habit_add_parser(
 def build_habit_list_parser(
     habit_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the habit list command."""
     list_parser = add_documented_parser(
         habit_subparsers,
         "list",
@@ -228,7 +226,6 @@ def build_habit_list_parser(
 def build_habit_show_parser(
     habit_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the habit show command."""
     show_parser = add_documented_parser(
         habit_subparsers,
         "show",
@@ -251,7 +248,6 @@ def build_habit_show_parser(
 def build_habit_update_parser(
     habit_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the habit update command."""
     update_parser = add_documented_parser(
         habit_subparsers,
         "update",
@@ -373,7 +369,6 @@ def build_habit_update_parser(
 def build_habit_delete_parser(
     habit_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the habit delete command."""
     delete_parser = add_documented_parser(
         habit_subparsers,
         "delete",
@@ -400,7 +395,6 @@ def build_habit_delete_parser(
 def build_habit_stats_parser(
     habit_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the habit stats command."""
     stats_parser = add_documented_parser(
         habit_subparsers,
         "stats",
@@ -427,7 +421,6 @@ def build_habit_stats_parser(
 def build_habit_task_associations_parser(
     habit_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the habit task-associations command."""
     associations_parser = add_documented_parser(
         habit_subparsers,
         "task-associations",

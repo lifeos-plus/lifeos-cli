@@ -34,7 +34,6 @@ def run_db_upgrade(_: argparse.Namespace) -> int:
 
 
 def build_db_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    """Build the database command tree."""
     db_parser = add_documented_help_parser(
         subparsers,
         "db",

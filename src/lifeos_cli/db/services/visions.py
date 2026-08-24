@@ -299,7 +299,6 @@ async def list_visions(
     limit: int = 100,
     offset: int = 0,
 ) -> list[VisionView]:
-    """List visions."""
     stmt = select(Vision)
     stmt = stmt.where(Vision.deleted_at.is_(None))
     if status is not None:
@@ -334,7 +333,6 @@ async def update_vision(
     person_ids: list[UUID] | None = None,
     clear_person: bool = False,
 ) -> VisionView:
-    """Update a vision."""
     vision = await load_model_by_id(
         session,
         model_cls=Vision,
@@ -389,7 +387,6 @@ async def delete_vision(
     *,
     vision_id: UUID,
 ) -> None:
-    """Soft-delete a vision."""
     await soft_delete_model_by_id(
         session,
         model_cls=Vision,

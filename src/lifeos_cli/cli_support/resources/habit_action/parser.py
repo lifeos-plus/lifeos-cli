@@ -33,7 +33,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_habit_action_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the habit-action command tree."""
     action_parser = add_documented_help_parser(
         subparsers,
         "habit-action",

@@ -23,7 +23,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_timelog_batch_parser(
     timelog_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the timelog batch command tree."""
     batch_subparsers = add_batch_namespace(
         timelog_subparsers,
         dest="timelog_batch_command",

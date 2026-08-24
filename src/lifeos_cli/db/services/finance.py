@@ -234,7 +234,6 @@ async def list_finance_assets(
     limit: int = 200,
     offset: int = 0,
 ) -> list[FinanceAsset]:
-    """List finance assets."""
     await ensure_default_finance_assets(session)
     stmt = select(FinanceAsset)
     stmt = stmt.where(FinanceAsset.deleted_at.is_(None))
@@ -248,7 +247,6 @@ async def get_finance_asset(
     *,
     asset_id: UUID,
 ) -> FinanceAsset | None:
-    """Load one finance asset."""
     stmt = select(FinanceAsset).where(FinanceAsset.id == asset_id).limit(1)
     stmt = stmt.where(FinanceAsset.deleted_at.is_(None))
     return (await session.execute(stmt)).scalar_one_or_none()
@@ -257,7 +255,6 @@ async def get_finance_asset(
 async def count_finance_assets(
     session: AsyncSession,
 ) -> int:
-    """Count finance assets."""
     await ensure_default_finance_assets(session)
     stmt = select(func.count()).select_from(FinanceAsset)
     stmt = stmt.where(FinanceAsset.deleted_at.is_(None))
@@ -309,7 +306,6 @@ async def update_finance_asset(
     decimal_places: int | None = None,
     display_order: int | None = None,
 ) -> FinanceAsset:
-    """Update a finance asset."""
     asset = (
         await session.execute(
             select(FinanceAsset).where(
@@ -346,7 +342,6 @@ async def update_finance_asset(
 
 
 async def delete_finance_asset(session: AsyncSession, *, asset_id: UUID) -> None:
-    """Soft-delete one finance asset."""
     asset = (
         await session.execute(
             select(FinanceAsset).where(
@@ -441,7 +436,6 @@ async def get_finance_tree(
     *,
     tree_id: UUID,
 ) -> FinanceTree | None:
-    """Load one finance tree."""
     stmt = select(FinanceTree).where(FinanceTree.id == tree_id).limit(1)
     stmt = stmt.where(FinanceTree.deleted_at.is_(None))
     return (await session.execute(stmt)).scalar_one_or_none()
@@ -472,7 +466,6 @@ async def list_finance_trees(
     limit: int = 100,
     offset: int = 0,
 ) -> list[FinanceTree]:
-    """List finance trees."""
     stmt = select(FinanceTree)
     stmt = stmt.where(FinanceTree.deleted_at.is_(None))
     stmt = (
@@ -489,7 +482,6 @@ async def list_finance_trees(
 async def count_finance_trees(
     session: AsyncSession,
 ) -> int:
-    """Count finance trees."""
     stmt = select(func.count()).select_from(FinanceTree)
     stmt = stmt.where(FinanceTree.deleted_at.is_(None))
     return int((await session.execute(stmt)).scalar_one())
@@ -518,7 +510,6 @@ async def create_finance_tree(
     is_default: bool = False,
     metadata: dict[str, Any] | None = None,
 ) -> FinanceTree:
-    """Create a finance tree."""
     resolved_name = validate_tree_name(name)
     await _ensure_tree_name_available(session, name=resolved_name)
     tree = FinanceTree(
@@ -1696,7 +1687,6 @@ async def list_finance_snapshots(
     limit: int = 50,
     offset: int = 0,
 ) -> list[FinanceSnapshot]:
-    """List finance snapshots."""
     stmt = (
         select(FinanceSnapshot)
         .options(_finance_snapshot_tree_loader())
@@ -1839,7 +1829,6 @@ async def count_finance_snapshots(
     *,
     tree_id: UUID | None = None,
 ) -> int:
-    """Count finance snapshots."""
     stmt = (
         select(func.count())
         .select_from(FinanceSnapshot)

@@ -23,7 +23,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_menstrual_factor_add_parser(
     factor_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the menstrual-factor add command."""
     add_parser = add_documented_parser(
         factor_subparsers,
         "add",
@@ -46,7 +45,6 @@ def build_menstrual_factor_add_parser(
 def build_menstrual_factor_list_parser(
     factor_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the menstrual-factor list command."""
     list_parser = add_documented_parser(
         factor_subparsers,
         "list",
@@ -66,7 +64,6 @@ def build_menstrual_factor_list_parser(
 def build_menstrual_factor_delete_parser(
     factor_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the menstrual-factor delete command."""
     delete_parser = add_documented_parser(
         factor_subparsers,
         "delete",

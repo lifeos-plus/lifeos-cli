@@ -26,7 +26,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_task_list_parser(
     task_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the task list command."""
     list_parser = add_documented_parser(
         task_subparsers,
         "list",
@@ -115,7 +114,6 @@ def build_task_list_parser(
 def build_task_show_parser(
     task_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the task show command."""
     show_parser = add_documented_parser(
         task_subparsers,
         "show",
@@ -196,7 +194,6 @@ def build_task_hierarchy_parser(
 def build_task_stats_parser(
     task_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the task stats command."""
     stats_parser = add_documented_parser(
         task_subparsers,
         "stats",

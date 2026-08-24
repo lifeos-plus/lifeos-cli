@@ -189,7 +189,6 @@ def get_cli_brand_banner_width() -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the top-level CLI parser."""
     configure_argparse_translations()
     repository_url, _issues_url = get_project_urls()
     brand_banner = build_cli_brand_banner()

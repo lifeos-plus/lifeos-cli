@@ -58,7 +58,6 @@ def _add_hide_overdue_unfinished_argument(parser: argparse.ArgumentParser) -> No
 def build_schedule_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the schedule command tree."""
     schedule_parser = add_documented_help_parser(
         subparsers,
         "schedule",

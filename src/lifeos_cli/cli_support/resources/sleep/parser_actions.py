@@ -32,7 +32,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_sleep_add_parser(
     sleep_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the sleep add command."""
     add_parser = add_documented_parser(
         sleep_subparsers,
         "add",
@@ -70,7 +69,6 @@ def build_sleep_add_parser(
 def build_sleep_list_parser(
     sleep_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the sleep list command."""
     list_parser = add_documented_parser(
         sleep_subparsers,
         "list",
@@ -101,7 +99,6 @@ def build_sleep_list_parser(
 def build_sleep_show_parser(
     sleep_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the sleep show command."""
     show_parser = add_documented_parser(
         sleep_subparsers,
         "show",
@@ -123,7 +120,6 @@ def build_sleep_show_parser(
 def build_sleep_update_parser(
     sleep_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the sleep update command."""
     update_parser = add_documented_parser(
         sleep_subparsers,
         "update",
@@ -161,7 +157,6 @@ def build_sleep_update_parser(
 def build_sleep_delete_parser(
     sleep_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the sleep delete command."""
     delete_parser = add_documented_parser(
         sleep_subparsers,
         "delete",
@@ -188,7 +183,6 @@ def build_sleep_delete_parser(
 def build_sleep_summary_parser(
     sleep_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the sleep summary command."""
     summary_parser = add_documented_parser(
         sleep_subparsers,
         "summary",

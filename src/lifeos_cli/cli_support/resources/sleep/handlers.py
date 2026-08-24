@@ -92,7 +92,6 @@ def _format_summary_row(summary: sleep_services.SleepDailySummary) -> str:
 
 
 async def handle_sleep_add_async(args: argparse.Namespace) -> int:
-    """Create one sleep segment."""
     try:
         async with db_session.session_scope() as session:
             segment = await sleep_services.create_sleep_segment(
@@ -139,7 +138,6 @@ async def handle_sleep_list_async(args: argparse.Namespace) -> int:
 
 
 async def handle_sleep_show_async(args: argparse.Namespace) -> int:
-    """Show one sleep segment."""
     async with db_session.session_scope() as session:
         segment = await sleep_services.get_sleep_segment(
             session,
@@ -158,7 +156,6 @@ async def handle_sleep_show_async(args: argparse.Namespace) -> int:
 
 
 async def handle_sleep_update_async(args: argparse.Namespace) -> int:
-    """Update one sleep segment."""
     try:
         async with db_session.session_scope() as session:
             segment = await sleep_services.update_sleep_segment(

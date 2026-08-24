@@ -228,7 +228,6 @@ async def update_tag(
     clear_person: bool = False,
     include_person: bool = True,
 ) -> TagView:
-    """Update a tag."""
     tag = await load_model_by_id(
         session,
         model_cls=Tag,
@@ -407,7 +406,6 @@ async def count_tag_usage(session: AsyncSession, *, tag_id: UUID) -> int:
 
 
 async def delete_tag(session: AsyncSession, *, tag_id: UUID) -> None:
-    """Soft-delete a tag."""
     await soft_delete_model_by_id(
         session,
         model_cls=Tag,

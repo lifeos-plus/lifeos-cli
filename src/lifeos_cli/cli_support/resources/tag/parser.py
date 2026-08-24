@@ -28,7 +28,6 @@ from lifeos_cli.i18n import cli_message as _
 
 
 def build_tag_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    """Build the tag command tree."""
     tag_parser = add_documented_help_parser(
         subparsers,
         "tag",

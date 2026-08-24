@@ -33,7 +33,6 @@ def _month_value(value: str) -> date:
 def build_timelog_stats_parser(
     timelog_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the timelog stats command tree."""
     stats_parser = add_documented_help_parser(
         timelog_subparsers,
         "stats",
