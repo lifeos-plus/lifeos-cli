@@ -101,12 +101,9 @@ class MayanCalendarAdapter:
             target += timedelta(days=1)
         return target
 
-    def _is_day_out_of_time(self, target: date) -> bool:
-        return is_mayan_day_out_of_time(target, calendar_system="mayan_13_moon")
-
     def week_range(self, target: date, first_day_of_week: int) -> tuple[date, date]:
         del first_day_of_week
-        if self._is_day_out_of_time(target):
+        if is_mayan_day_out_of_time(target, calendar_system="mayan_13_moon"):
             return target, target
         year_start = self.year_start(target)
         offset = self.day_offset(target)
@@ -117,7 +114,7 @@ class MayanCalendarAdapter:
         )
 
     def month_range(self, target: date) -> tuple[date, date]:
-        if self._is_day_out_of_time(target):
+        if is_mayan_day_out_of_time(target, calendar_system="mayan_13_moon"):
             return target, target
         year_start = self.year_start(target)
         offset = self.day_offset(target)
