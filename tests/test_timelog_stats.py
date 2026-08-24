@@ -172,6 +172,25 @@ def test_range_stats_exclude_mayan_day_out_of_time_singleton() -> None:
 
 
 @pytest.mark.usefixtures("configured_mayan_time_preferences")
+def test_day_stats_keep_mayan_day_out_of_time() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await _seed_area_timelogs(session)
+
+                report = await timelog_stats.get_timelog_stats_groupby_area_for_day(
+                    session,
+                    target_date=date(2026, 7, 25),
+                )
+
+                assert len(report.rows) == 1
+                assert report.rows[0].minutes == 1500
+                assert report.rows[0].timelog_count == 2
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.usefixtures("configured_mayan_time_preferences")
 def test_range_stats_keep_mayan_day_out_of_time_in_wider_range() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:

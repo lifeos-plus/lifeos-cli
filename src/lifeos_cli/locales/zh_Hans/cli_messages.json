@@ -804,7 +804,7 @@
         "calendar_month_in_yyyy_mm_format": "YYYY-MM 格式的日历月份",
         "calendar_year_for_example_2026": "日历年，例如 2026",
         "local_operational_date_in_yyyy_mm_dd_format": "当地运营日期（YYYY-MM-DD 格式）",
-        "mayan_day_out_of_time_excluded_from_week_and_month": "在玛雅 13 月亮历下，无时间日（7 月 25 日）不计入周、月汇总，仅保留在 day、year 与显式 range 视图中。",
+        "mayan_day_out_of_time_excluded_from_week_and_month": "在玛雅 13 月亮历下，无时间日（7 月 25 日）不计入周、月汇总；day、year 视图仍包含该日，覆盖该日及更多日期的 range 查询也仍会包含。",
         "query_timelog_stats_grouped_by_area": "查询按 `area` 分组的 `timelog` 统计。",
         "query_timelog_stats_grouped_by_area_summary": "查询按 `area` 分组的 `timelog` 统计",
         "rebuild_every_local_date_touched_by_active_timelogs_with_linked_areas": "重建活动 `timelog` 所涉及的每个本地日期以及链接的 `area`",
