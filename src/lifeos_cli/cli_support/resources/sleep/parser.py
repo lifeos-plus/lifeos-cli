@@ -22,7 +22,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_sleep_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the sleep command tree."""
     sleep_parser = add_documented_help_parser(
         subparsers,
         "sleep",

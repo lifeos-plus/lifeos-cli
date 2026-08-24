@@ -17,7 +17,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_task_move_parser(
     task_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the task move command."""
     move_parser = add_documented_parser(
         task_subparsers,
         "move",
@@ -78,7 +77,6 @@ def build_task_move_parser(
 def build_task_reorder_parser(
     task_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the task reorder command."""
     reorder_parser = add_documented_parser(
         task_subparsers,
         "reorder",

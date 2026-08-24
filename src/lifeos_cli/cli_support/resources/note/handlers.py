@@ -52,7 +52,6 @@ def resolve_note_content(args: argparse.Namespace) -> str:
 
 
 async def handle_note_add_async(args: argparse.Namespace) -> int:
-    """Create a new note."""
     content = resolve_note_content(args)
     try:
         async with db_session.session_scope() as session:
@@ -259,7 +258,6 @@ async def handle_note_update_async(args: argparse.Namespace) -> int:
 
 
 async def handle_note_delete_async(args: argparse.Namespace) -> int:
-    """Delete a note."""
     if len(args.note_ids) > 1:
         async with db_session.session_scope() as session:
             result = await note_services.batch_delete_notes(

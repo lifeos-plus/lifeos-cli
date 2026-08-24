@@ -859,7 +859,6 @@ async def update_timelog(
     timelog_id: UUID,
     changes: TimelogUpdateInput,
 ) -> TimelogView:
-    """Update one timelog."""
     timelog = await _get_timelog_model(session, timelog_id=timelog_id)
     if timelog is None:
         raise TimelogNotFoundError(f"Timelog {timelog_id} was not found")
@@ -1040,7 +1039,6 @@ async def batch_update_timelogs(
 
 
 async def delete_timelog(session: AsyncSession, *, timelog_id: UUID) -> None:
-    """Soft-delete one timelog."""
     timelog = await _get_timelog_model(session, timelog_id=timelog_id)
     if timelog is None:
         raise TimelogNotFoundError(f"Timelog {timelog_id} was not found")

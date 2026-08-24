@@ -19,7 +19,6 @@ from lifeos_cli.i18n import cli_message as _
 
 
 def build_config_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    """Build the config command tree."""
     config_parser = add_documented_help_parser(
         subparsers,
         "config",

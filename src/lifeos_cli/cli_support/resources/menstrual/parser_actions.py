@@ -86,7 +86,6 @@ def _add_shared_menstrual_field_arguments(parser: argparse.ArgumentParser) -> No
 def build_menstrual_add_parser(
     menstrual_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the menstrual add command."""
     add_parser = add_documented_parser(
         menstrual_subparsers,
         "add",
@@ -121,7 +120,6 @@ def build_menstrual_add_parser(
 def build_menstrual_list_parser(
     menstrual_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the menstrual list command."""
     list_parser = add_documented_parser(
         menstrual_subparsers,
         "list",
@@ -155,7 +153,6 @@ def build_menstrual_list_parser(
 def build_menstrual_show_parser(
     menstrual_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the menstrual show command."""
     show_parser = add_documented_parser(
         menstrual_subparsers,
         "show",
@@ -179,7 +176,6 @@ def build_menstrual_show_parser(
 def build_menstrual_update_parser(
     menstrual_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the menstrual update command."""
     update_parser = add_documented_parser(
         menstrual_subparsers,
         "update",
@@ -232,7 +228,6 @@ def build_menstrual_update_parser(
 def build_menstrual_delete_parser(
     menstrual_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the menstrual delete command."""
     delete_parser = add_documented_parser(
         menstrual_subparsers,
         "delete",

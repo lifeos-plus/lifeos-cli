@@ -137,7 +137,6 @@ def _clear_fields(args: argparse.Namespace) -> frozenset[str]:
 
 
 async def handle_body_measurement_add_async(args: argparse.Namespace) -> int:
-    """Create one body measurement record."""
     measured_at = args.measured_at or utc_now()
     metric_values = _metric_values(args)
     payload = body_services.BodyMeasurementCreate(
@@ -231,7 +230,6 @@ async def handle_body_measurement_show_async(args: argparse.Namespace) -> int:
 
 
 async def handle_body_measurement_update_async(args: argparse.Namespace) -> int:
-    """Update one body measurement record."""
     metric_values = _metric_values(args)
     payload = body_services.BodyMeasurementUpdate(
         measured_at=to_storage_timezone(args.measured_at) if args.measured_at else None,

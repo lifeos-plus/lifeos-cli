@@ -360,7 +360,6 @@ async def delete_body_measurement(
     *,
     measurement_id: UUID,
 ) -> None:
-    """Soft-delete one body measurement."""
     measurement = await _get_measurement_model(session, measurement_id)
     if measurement is None:
         raise BodyMeasurementNotFoundError(f"Body measurement {measurement_id} was not found")

@@ -63,7 +63,6 @@ async def create_task(
     planning_cycle_start_date: date | None = None,
     person_ids: list[UUID] | None = None,
 ) -> TaskView:
-    """Create a task."""
     await ensure_vision_exists(session, vision_id)
     await validate_parent_task(session, vision_id=vision_id, parent_task_id=parent_task_id)
     planning_cycle_type, planning_cycle_days, planning_cycle_start_date = validate_planning_cycle(
@@ -233,7 +232,6 @@ async def update_task(
     person_ids: list[UUID] | None = None,
     clear_person: bool = False,
 ) -> TaskView:
-    """Update a task."""
     task = await load_model_by_id(
         session,
         model_cls=Task,
@@ -335,7 +333,6 @@ async def update_task(
 
 
 async def delete_task(session: AsyncSession, *, task_id: UUID) -> None:
-    """Soft-delete a task."""
     task = await load_model_by_id(
         session,
         model_cls=Task,

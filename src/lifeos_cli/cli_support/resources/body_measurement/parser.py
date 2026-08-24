@@ -21,7 +21,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_body_measurement_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the body command tree."""
     body_parser = add_documented_help_parser(
         subparsers,
         "body-measurement",

@@ -646,7 +646,6 @@ async def delete_note(
     *,
     note_id: UUID,
 ) -> None:
-    """Soft-delete a note."""
     note = await _get_note_model(session, note_id=note_id)
     if note is None:
         raise NoteNotFoundError(f"Note {note_id} was not found")

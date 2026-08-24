@@ -34,7 +34,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_timelog_add_parser(
     timelog_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the timelog add command."""
     add_parser = add_documented_parser(
         timelog_subparsers,
         "add",
@@ -159,7 +158,6 @@ def build_timelog_add_parser(
 def build_timelog_list_parser(
     timelog_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the timelog list command."""
     _build_timelog_query_parser(
         timelog_subparsers,
         "list",
@@ -207,7 +205,6 @@ def build_timelog_list_parser(
 def build_timelog_search_parser(
     timelog_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the timelog search command."""
     _build_timelog_query_parser(
         timelog_subparsers,
         "search",
@@ -344,7 +341,6 @@ def _add_timelog_query_arguments(
 def build_timelog_show_parser(
     timelog_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the timelog show command."""
     show_parser = add_documented_parser(
         timelog_subparsers,
         "show",
@@ -369,7 +365,6 @@ def build_timelog_show_parser(
 def build_timelog_update_parser(
     timelog_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the timelog update command."""
     update_parser = add_documented_parser(
         timelog_subparsers,
         "update",
@@ -475,7 +470,6 @@ def build_timelog_update_parser(
 def build_timelog_delete_parser(
     timelog_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the timelog delete command."""
     delete_parser = add_documented_parser(
         timelog_subparsers,
         "delete",

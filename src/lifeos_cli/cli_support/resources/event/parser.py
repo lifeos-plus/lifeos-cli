@@ -19,7 +19,6 @@ from lifeos_cli.i18n import cli_message as _
 
 
 def build_event_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    """Build the event command tree."""
     event_parser = add_documented_help_parser(
         subparsers,
         "event",

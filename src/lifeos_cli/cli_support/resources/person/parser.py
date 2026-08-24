@@ -28,7 +28,6 @@ from lifeos_cli.i18n import cli_message as _
 
 
 def build_person_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    """Build the person command tree."""
     person_parser = add_documented_help_parser(
         subparsers,
         "person",

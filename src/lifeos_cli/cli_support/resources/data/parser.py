@@ -25,7 +25,6 @@ IMPORT_TARGET_CHOICES = (*DATA_RESOURCE_CHOICES, "bundle")
 
 
 def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    """Build the data command tree."""
     data_parser = add_documented_help_parser(
         subparsers,
         "data",

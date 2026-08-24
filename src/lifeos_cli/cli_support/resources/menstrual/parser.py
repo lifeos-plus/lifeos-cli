@@ -21,7 +21,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_menstrual_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the menstrual command tree."""
     menstrual_parser = add_documented_help_parser(
         subparsers,
         "menstrual",

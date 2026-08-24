@@ -19,7 +19,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_menstrual_factor_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the menstrual-factor command tree."""
     factor_parser = add_documented_help_parser(
         subparsers,
         "menstrual-factor",

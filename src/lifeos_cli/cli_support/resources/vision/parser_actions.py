@@ -35,7 +35,6 @@ from lifeos_cli.i18n import cli_message as _
 def build_vision_add_parser(
     vision_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the vision add command."""
     add_parser = add_documented_parser(
         vision_subparsers,
         "add",
@@ -94,7 +93,6 @@ def build_vision_add_parser(
 def build_vision_list_parser(
     vision_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the vision list command."""
     list_parser = add_documented_parser(
         vision_subparsers,
         "list",
@@ -137,7 +135,6 @@ def build_vision_list_parser(
 def build_vision_show_parser(
     vision_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the vision show command."""
     show_parser = add_documented_parser(
         vision_subparsers,
         "show",
@@ -158,7 +155,6 @@ def build_vision_show_parser(
 def build_vision_update_parser(
     vision_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the vision update command."""
     update_parser = add_documented_parser(
         vision_subparsers,
         "update",
@@ -243,7 +239,6 @@ def build_vision_update_parser(
 def build_vision_delete_parser(
     vision_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the vision delete command."""
     delete_parser = add_documented_parser(
         vision_subparsers,
         "delete",
@@ -295,7 +290,6 @@ def build_vision_with_tasks_parser(
 def build_vision_stats_parser(
     vision_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the vision stats command."""
     stats_parser = add_documented_parser(
         vision_subparsers,
         "stats",
@@ -322,7 +316,6 @@ def build_vision_stats_parser(
 def build_vision_add_experience_parser(
     vision_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the vision add-experience command."""
     add_experience_parser = add_documented_parser(
         vision_subparsers,
         "add-experience",
@@ -362,7 +355,6 @@ def build_vision_add_experience_parser(
 def build_vision_sync_experience_parser(
     vision_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the vision sync-experience command."""
     sync_experience_parser = add_documented_parser(
         vision_subparsers,
         "sync-experience",
@@ -393,7 +385,6 @@ def build_vision_sync_experience_parser(
 def build_vision_harvest_parser(
     vision_subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
-    """Build the vision harvest command."""
     harvest_parser = add_documented_parser(
         vision_subparsers,
         "harvest",
