@@ -403,3 +403,35 @@ def test_task_status_cascade_applies_done_to_open_subtasks(http_client) -> None:
     child_detail_response = http_client.get(f"/api/v1/tasks/{child_id}")
     assert child_detail_response.status_code == 200
     assert child_detail_response.json()["status"] == "done"
+
+
+def test_finance_tree_copy_round_trip(http_client) -> None:
+    create_response = http_client.post(
+        "/api/v1/finance/trees",
+        json={"name": "HTTP finance tree", "primary_currency": "USD"},
+    )
+    assert create_response.status_code == 200
+    tree_id = create_response.json()["id"]
+
+    node_response = http_client.post(
+        f"/api/v1/finance/trees/{tree_id}/nodes",
+        json={"name": "Cash"},
+    )
+    assert node_response.status_code == 200
+
+    copy_response = http_client.post(
+        f"/api/v1/finance/trees/{tree_id}/copy",
+        json={},
+    )
+    assert copy_response.status_code == 200
+    copy = copy_response.json()
+    assert copy["id"] != tree_id
+    assert copy["name"] == "HTTP finance tree Copy"
+    assert copy["is_default"] is False
+    assert [node["name"] for node in copy["nodes"]] == ["Cash"]
+
+    missing_response = http_client.post(
+        "/api/v1/finance/trees/ffffffff-ffff-ffff-ffff-ffffffffffff/copy",
+        json={},
+    )
+    assert missing_response.status_code == 404

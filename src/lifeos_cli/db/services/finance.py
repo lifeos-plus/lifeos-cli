@@ -39,6 +39,14 @@ DEFAULT_FINANCE_ASSETS: tuple[tuple[str, str, int], ...] = (
 )
 FINANCE_AMOUNT_QUANT = Decimal("0.00000001")
 FINANCE_RATE_QUANT = Decimal("0.000000000001")
+FINANCE_TREE_COPY_NAME_SUFFIX = " Copy"
+"""Canonical suffix for duplicated finance tree names.
+
+This is the single source of truth for the copy-name rule: an unnamed copy
+defaults to ``<source name> Copy`` and falls back to ``<source name> Copy 2``,
+``Copy 3``, and so on until the name is available. The Web UI mirrors this
+rule in ``lifeos-web/src/features/finance/treeCopy.ts``; keep both aligned.
+"""
 
 
 def _finance_tree_nodes_loader() -> Any:
@@ -567,6 +575,93 @@ async def update_finance_tree(
     await session.flush()
     await session.refresh(tree)
     return tree
+
+
+async def _unique_tree_copy_name(
+    session: AsyncSession,
+    *,
+    source_name: str,
+    requested_name: str | None = None,
+) -> str:
+    """Resolve a unique name for a duplicated finance tree.
+
+    Uses ``requested_name`` when given; otherwise appends the canonical
+    ``FINANCE_TREE_COPY_NAME_SUFFIX`` to the source name. Falls back to
+    ``<name> Copy 2``, ``<name> Copy 3``, and so on until the name is
+    available.
+    """
+    base_name = (
+        validate_tree_name(requested_name)
+        if requested_name is not None
+        else f"{source_name}{FINANCE_TREE_COPY_NAME_SUFFIX}"
+    )
+    candidate = base_name
+    suffix = 2
+    while True:
+        try:
+            await _ensure_tree_name_available(session, name=candidate)
+            return candidate
+        except FinanceTreeAlreadyExistsError:
+            candidate = f"{base_name} {suffix}"
+            suffix += 1
+
+
+async def copy_finance_tree(
+    session: AsyncSession,
+    *,
+    tree_id: UUID,
+    name: str | None = None,
+) -> FinanceTree:
+    """Duplicate a finance tree and all of its active nodes.
+
+    The copy preserves the source hierarchy, node ordering, currency codes,
+    display order, and metadata. Snapshots are never copied, and the copy is
+    never marked as the default tree even when the source was. When ``name``
+    is omitted, ``<source name> Copy`` is used and made unique if needed.
+    """
+    source = await get_finance_tree_with_nodes(session, tree_id=tree_id)
+    if source is None:
+        raise FinanceTreeNotFoundError(f"Finance tree {tree_id} was not found")
+
+    copy_name = await _unique_tree_copy_name(
+        session,
+        source_name=source.name,
+        requested_name=name,
+    )
+
+    copy = FinanceTree(
+        name=copy_name,
+        primary_currency=source.primary_currency,
+        display_order=source.display_order,
+        is_default=False,
+        metadata_json=source.metadata_json,
+    )
+    session.add(copy)
+    await session.flush()
+
+    # Reuse the canonical node insertion path (depth/path/children_count
+    # maintenance). Node currency codes are already normalized at creation,
+    # so copying the stored values keeps the copy faithful to the source.
+    parent_ids_by_source: dict[UUID, UUID] = {}
+    for source_node in source.nodes:
+        copied_parent_id = (
+            parent_ids_by_source.get(source_node.parent_id)
+            if source_node.parent_id is not None
+            else None
+        )
+        copied_node = await create_finance_node(
+            session,
+            tree_id=copy.id,
+            parent_id=copied_parent_id,
+            name=source_node.name,
+            currency_code=source_node.currency_code,
+            display_order=source_node.display_order,
+            metadata=source_node.metadata_json,
+        )
+        parent_ids_by_source[source_node.id] = copied_node.id
+
+    await session.refresh(copy)
+    return copy
 
 
 async def delete_finance_tree(

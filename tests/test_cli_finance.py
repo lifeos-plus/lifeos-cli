@@ -27,6 +27,7 @@ def test_finance_nested_commands_are_part_of_machine_reference() -> None:
     for path in (
         ("finance", "asset", "add"),
         ("finance", "asset", "show"),
+        ("finance", "tree", "copy"),
         ("finance", "tree", "update"),
         ("finance", "tree", "delete"),
         ("finance", "node", "list"),
@@ -186,6 +187,23 @@ def test_finance_tree_delete_prints_confirmation(
 
     assert exit_code == 0
     assert f"Soft-deleted finance tree {TREE_UUID}" in captured.out
+
+
+def test_finance_tree_copy_prints_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async def fake_copy_tree(_session: object, **_kwargs: object) -> object:
+        return make_record(id=SNAPSHOT_UUID)
+
+    monkeypatch.setattr(db_session, "session_scope", make_session_scope())
+    monkeypatch.setattr(finance_services, "copy_finance_tree", fake_copy_tree)
+
+    exit_code = cli.main(["finance", "tree", "copy", str(TREE_UUID)])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert f"Copied finance tree {TREE_UUID} to {SNAPSHOT_UUID}" in captured.out
 
 
 def test_finance_snapshot_update_prints_confirmation(

@@ -58,6 +58,12 @@ class FinanceTreeUpdate(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
+class FinanceTreeCopy(BaseModel):
+    """Payload for copying a finance tree."""
+
+    name: str | None = None
+
+
 class FinanceAssetCreate(BaseModel):
     """Payload for creating a finance asset."""
 
@@ -678,6 +684,33 @@ async def ensure_default_tree(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _tree_payload(tree, nodes=nodes)
+
+
+@router.post(
+    "/trees/{tree_id}/copy",
+    response_model=FinanceTreeResponse,
+    response_model_exclude_unset=True,
+)
+async def copy_tree(
+    tree_id: UUID,
+    session: SessionDep,
+    payload: FinanceTreeCopy | None = None,
+) -> dict[str, object]:
+    """Copy a finance tree and all of its nodes into a new tree."""
+    try:
+        copy = await finance_services.copy_finance_tree(
+            session,
+            tree_id=tree_id,
+            name=payload.name if payload is not None else None,
+        )
+        copied = await finance_services.get_finance_tree_with_nodes(session, tree_id=copy.id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if copied is None:
+        raise HTTPException(status_code=404, detail=f"Finance tree {copy.id} was not found")
+    return _tree_payload(copied, nodes=list(copied.nodes))
 
 
 @router.get(

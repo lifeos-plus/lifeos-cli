@@ -35,6 +35,7 @@ from lifeos_cli.cli_support.resources.finance.handlers import (
     handle_finance_snapshot_show_async,
     handle_finance_snapshot_update_async,
     handle_finance_tree_add_async,
+    handle_finance_tree_copy_async,
     handle_finance_tree_delete_async,
     handle_finance_tree_ensure_default_async,
     handle_finance_tree_list_async,
@@ -48,7 +49,7 @@ from lifeos_cli.cli_support.time_args import parse_user_datetime_value
 from lifeos_cli.i18n import cli_message as _
 
 _ASSET_ACTIONS = ("add", "list", "show", "update", "delete")
-_TREE_ACTIONS = ("add", "list", "show", "update", "delete", "ensure-default")
+_TREE_ACTIONS = ("add", "list", "show", "update", "copy", "delete", "ensure-default")
 _NODE_ACTIONS = ("add", "list", "show", "update", "delete")
 _SNAPSHOT_ACTIONS = ("add", "list", "show", "update", "delete")
 _RATE_SNAPSHOT_ACTIONS = ("add", "list", "show", "update", "delete")
@@ -65,6 +66,7 @@ _TREE_HANDLERS = {
     "list": handle_finance_tree_list_async,
     "show": handle_finance_tree_show_async,
     "update": handle_finance_tree_update_async,
+    "copy": handle_finance_tree_copy_async,
     "delete": handle_finance_tree_delete_async,
     "ensure-default": handle_finance_tree_ensure_default_async,
 }
@@ -131,6 +133,9 @@ def _add_tree_arguments(parser: argparse.ArgumentParser, action: str) -> None:
         parser.add_argument("--primary-currency")
         parser.add_argument("--display-order", type=int)
         parser.add_argument("--default", action="store_true", default=None)
+    elif action == "copy":
+        parser.add_argument("tree_id", type=UUID)
+        parser.add_argument("--name")
     elif action == "delete":
         parser.add_argument("tree_id", type=UUID)
     elif action == "ensure-default":
@@ -304,6 +309,18 @@ def _tree_help(action: str) -> HelpContent:
             examples=(
                 "lifeos finance tree update 11111111-1111-1111-1111-111111111111 "
                 '--name "Personal Finance" --primary-currency CNY',
+            ),
+        )
+    if action == "copy":
+        return HelpContent(
+            summary=_("resources.finance.parser.copy_finance_tree"),
+            description=_(
+                "resources.finance.parser.copy_finance_tree_with_all_nodes_and_unique_name"
+            ),
+            examples=(
+                "lifeos finance tree copy 11111111-1111-1111-1111-111111111111",
+                "lifeos finance tree copy 11111111-1111-1111-1111-111111111111 "
+                '--name "Personal Finance (copy)"',
             ),
         )
     if action == "delete":

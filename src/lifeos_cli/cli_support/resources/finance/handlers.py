@@ -607,6 +607,20 @@ async def handle_finance_tree_update_async(args: argparse.Namespace) -> int:
     return 0
 
 
+async def handle_finance_tree_copy_async(args: argparse.Namespace) -> int:
+    async with db_session.session_scope() as session:
+        try:
+            tree = await finance_services.copy_finance_tree(
+                session,
+                tree_id=args.tree_id,
+                name=args.name,
+            )
+        except (LookupError, ValueError) as exc:
+            return cli_handler_utils.print_cli_error(exc)
+    print(f"Copied finance tree {args.tree_id} to {tree.id}")
+    return 0
+
+
 async def handle_finance_tree_delete_async(args: argparse.Namespace) -> int:
     async with db_session.session_scope() as session:
         try:
