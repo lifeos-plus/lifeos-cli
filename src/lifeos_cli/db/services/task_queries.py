@@ -236,7 +236,7 @@ def _apply_task_filters(
     task_ids = _parse_uuid_csv(id_in)
     if task_ids:
         stmt = stmt.where(Task.id.in_(task_ids))
-    if parent_task_id is None and vision_id is not None:
+    if id_in is None and parent_task_id is None and vision_id is not None:
         stmt = stmt.where(Task.parent_task_id.is_(None))
     elif parent_task_id is not None:
         stmt = stmt.where(Task.parent_task_id == parent_task_id)
@@ -386,6 +386,7 @@ async def list_tasks(
 ) -> list[TaskView]:
     """List tasks with basic filters."""
     _validate_id_in_cap(id_in)
+    resolved_limit = max(limit, len(_split_csv(id_in)))
     stmt = _apply_task_filters(
         select(Task),
         id_in=id_in,
@@ -401,7 +402,7 @@ async def list_tasks(
         content=content,
         query=query,
     )
-    stmt = _apply_task_display_order(stmt).offset(offset).limit(limit)
+    stmt = _apply_task_display_order(stmt).offset(offset).limit(resolved_limit)
     tasks = list((await session.execute(stmt)).scalars())
     return await _build_task_views(session, tasks)
 

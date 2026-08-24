@@ -41,7 +41,7 @@ Additional request-level boundaries apply by default:
 - Only loopback Host headers (`localhost`, `127.0.0.1`, `::1`) are accepted; add trusted hostnames with the `LIFEOS_WEB_ALLOWED_HOSTS` environment variable (comma-separated).
 - Requests carrying an `Origin` header must be same-origin or one of the allowlisted Vite development origins; anything else is rejected with `403`.
 - Request bodies are limited to 1 MiB by default (override with `LIFEOS_WEB_MAX_BODY_BYTES`), bulk payloads have explicit item caps, and `/api/` requests are rate limited per client (default 300/minute, override with `LIFEOS_WEB_RATE_LIMIT_PER_MINUTE`). Rejected requests return `429` with a JSON `detail` and a `Retry-After` header so clients can back off instead of hammering the window.
-- Task list filters are bounded: `id_in` accepts at most 100 comma-separated task IDs per request, and malformed IDs are rejected with `400`.
+- Task list filters are bounded: `id_in` accepts at most 100 comma-separated task IDs per request, malformed IDs are rejected with `400`, and a batch request returns every matching task regardless of `size` (the limit is raised to the ID count automatically). `id_in` selects tasks by ID directly and does not inherit the root-task semantics of `vision_id` listing.
 - Swagger UI and the OpenAPI schema are disabled by default; enable them explicitly with `lifeos web serve --docs`.
 
 ## Database Credentials
