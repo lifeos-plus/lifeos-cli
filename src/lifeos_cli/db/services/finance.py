@@ -44,8 +44,10 @@ FINANCE_TREE_COPY_NAME_SUFFIX = " Copy"
 
 This is the single source of truth for the copy-name rule: an unnamed copy
 defaults to ``<source name> Copy`` and falls back to ``<source name> Copy 2``,
-``Copy 3``, and so on until the name is available. The Web UI mirrors this
-rule in ``lifeos-web/src/features/finance/treeCopy.ts``; keep both aligned.
+``Copy 3``, and so on until the name is available. The LifeOS Web UI consumes
+this rule through the atomic ``POST /finance/trees/{tree_id}/copy`` endpoint;
+the client-side mirror (``lifeos-web/src/features/finance/treeCopy.ts``) was
+removed when that endpoint shipped.
 """
 
 
