@@ -111,6 +111,7 @@ def test_machine_readable_reference_describes_arguments_and_content() -> None:
     task_argument_names = [argument["name"] for argument in task_list["arguments"]]
     assert "--json" in task_argument_names
     assert "--limit" in task_argument_names
+    assert "--ids" in task_argument_names
     assert task_list["usage"].startswith("usage: lifeos task list")
     assert task_list["examples"]
 
