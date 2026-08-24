@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from lifeos_cli.application.calendar_adapter import is_mayan_day_out_of_time
 from lifeos_cli.application.datetime_utils import normalize_storage_datetime
 from lifeos_cli.application.time_preferences import (
     get_operational_date,
@@ -108,6 +109,30 @@ def overlap_minutes_for_window(
     return int((overlap_end - overlap_start).total_seconds() // 60)
 
 
+def _week_month_excluded_local_date(
+    *,
+    granularity: str,
+    start_date: date,
+    end_date: date,
+) -> date | None:
+    """Return the local date excluded from week/month stats aggregation, if any.
+
+    The Mayan Day Out of Time (July 25) belongs to no week or moon, so it is
+    excluded from week and month granularity for the Mayan 13 Moon calendar.
+    Day, year, and explicit range views keep the date.
+    """
+    if granularity not in {"week", "month"}:
+        return None
+    calendar_system = get_preferences_settings().calendar_system
+    for year in {start_date.year, end_date.year}:
+        candidate = date(year, 7, 25)
+        if start_date <= candidate <= end_date and is_mayan_day_out_of_time(
+            candidate, calendar_system=calendar_system
+        ):
+            return candidate
+    return None
+
+
 def resolve_stats_period(
     *,
     granularity: str,
@@ -177,6 +202,16 @@ async def _collect_area_stats_for_window(
     end_date: date,
 ) -> TimelogStatsReport:
     timezone_name = get_preferences_settings().timezone
+    excluded_local_date = _week_month_excluded_local_date(
+        granularity=granularity,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    excluded_window = (
+        get_utc_window_for_local_date(excluded_local_date)
+        if excluded_local_date is not None
+        else None
+    )
     metrics: dict[UUID, dict[str, int]] = defaultdict(lambda: {"minutes": 0, "timelog_count": 0})
     timelogs = await _load_overlapping_area_timelogs(
         session,
@@ -192,6 +227,13 @@ async def _collect_area_stats_for_window(
             window_start=window_start,
             window_end=window_end,
         )
+        if excluded_window is not None:
+            minutes -= overlap_minutes_for_window(
+                start_time=timelog.start_time,
+                end_time=timelog.end_time,
+                window_start=excluded_window[0],
+                window_end=excluded_window[1],
+            )
         if minutes <= 0:
             continue
         metrics[timelog.area_id]["minutes"] += minutes
@@ -356,6 +398,16 @@ async def _recompute_aggregated_period(
         start_date,
         end_date,
     )
+    excluded_local_date = _week_month_excluded_local_date(
+        granularity=granularity,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    excluded_window = (
+        get_utc_window_for_local_date(excluded_local_date)
+        if excluded_local_date is not None
+        else None
+    )
     daily_rows = (
         await session.execute(
             select(DailyTimelogStatsGroupByArea).where(
@@ -367,6 +419,8 @@ async def _recompute_aggregated_period(
     ).scalars()
     minutes_by_area: dict[UUID, int] = defaultdict(int)
     for daily_row in daily_rows:
+        if excluded_local_date is not None and daily_row.stat_date == excluded_local_date:
+            continue
         minutes_by_area[daily_row.area_id] += daily_row.minutes
 
     timelog_columns = (
@@ -387,6 +441,13 @@ async def _recompute_aggregated_period(
             window_start=window_start,
             window_end=window_end,
         )
+        if excluded_window is not None:
+            minutes -= overlap_minutes_for_window(
+                start_time=start_time,
+                end_time=end_time,
+                window_start=excluded_window[0],
+                window_end=excluded_window[1],
+            )
         if minutes > 0:
             count_by_area[area_id] += 1
 
@@ -506,6 +567,21 @@ async def get_timelog_stats_groupby_area_for_range(
         start_date=start_date,
         end_date=end_date,
     )
+    preferences = get_preferences_settings()
+    if normalized_start_date == normalized_end_date and is_mayan_day_out_of_time(
+        normalized_start_date,
+        calendar_system=preferences.calendar_system,
+    ):
+        # The Mayan Day Out of Time forms its own week/month period bucket, but
+        # belongs to no week or moon. Return an empty report so aggregated
+        # week/month consumers never surface it; wider ranges keep the day.
+        return TimelogStatsReport(
+            granularity="range",
+            start_date=normalized_start_date,
+            end_date=normalized_end_date,
+            timezone=preferences.timezone,
+            rows=(),
+        )
     window_start, window_end = get_utc_half_open_window_for_local_date_range(
         normalized_start_date,
         normalized_end_date,

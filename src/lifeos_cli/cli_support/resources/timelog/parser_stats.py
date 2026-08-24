@@ -53,6 +53,9 @@ def build_timelog_stats_parser(
                     "resources.timelog.parser_stats.use_range_for_arbitrary_windows_and_rebuild_to_refresh_persisted_stats"
                 ),
                 _(
+                    "resources.timelog.parser_stats.mayan_day_out_of_time_excluded_from_week_and_month"
+                ),
+                _(
                     "resources.timelog.parser_stats.stats_are_grouped_only_by_area_task_effort_remains_separate_task_feature"
                 ),
                 _(

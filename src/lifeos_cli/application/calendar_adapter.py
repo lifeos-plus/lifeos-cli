@@ -101,12 +101,9 @@ class MayanCalendarAdapter:
             target += timedelta(days=1)
         return target
 
-    def _is_day_out_of_time(self, target: date) -> bool:
-        return target.month == 7 and target.day == 25
-
     def week_range(self, target: date, first_day_of_week: int) -> tuple[date, date]:
         del first_day_of_week
-        if self._is_day_out_of_time(target):
+        if is_mayan_day_out_of_time(target, calendar_system="mayan_13_moon"):
             return target, target
         year_start = self.year_start(target)
         offset = self.day_offset(target)
@@ -117,7 +114,7 @@ class MayanCalendarAdapter:
         )
 
     def month_range(self, target: date) -> tuple[date, date]:
-        if self._is_day_out_of_time(target):
+        if is_mayan_day_out_of_time(target, calendar_system="mayan_13_moon"):
             return target, target
         year_start = self.year_start(target)
         offset = self.day_offset(target)
@@ -153,6 +150,17 @@ def get_calendar_adapter(
     if normalized == "mayan_13_moon":
         return MayanCalendarAdapter(seven_year_anchor_date=anchor_date)
     return GregorianCalendarAdapter(seven_year_anchor_date=anchor_date)
+
+
+def is_mayan_day_out_of_time(
+    target: date,
+    *,
+    calendar_system: str | None = None,
+) -> bool:
+    """Return whether the date is the Mayan Day Out of Time (July 25)."""
+    if validate_calendar_system(calendar_system or DEFAULT_CALENDAR_SYSTEM) != "mayan_13_moon":
+        return False
+    return target.month == 7 and target.day == 25
 
 
 def get_calendar_period_range(

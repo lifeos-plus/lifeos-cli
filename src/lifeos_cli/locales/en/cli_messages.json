@@ -806,6 +806,7 @@
         "calendar_month_in_yyyy_mm_format": "Calendar month in YYYY-MM format",
         "calendar_year_for_example_2026": "Calendar year, for example 2026",
         "local_operational_date_in_yyyy_mm_dd_format": "Local operational date in YYYY-MM-DD format",
+        "mayan_day_out_of_time_excluded_from_week_and_month": "For the Mayan 13 Moon calendar, the Day Out of Time (July 25) is excluded from week and month summaries; day and year views keep it, and wider range queries still include it.",
         "query_timelog_stats_grouped_by_area": "Query timelog stats grouped by area.",
         "query_timelog_stats_grouped_by_area_summary": "Query timelog stats grouped by area",
         "rebuild_every_local_date_touched_by_active_timelogs_with_linked_areas": "Rebuild every local date touched by active timelogs with linked areas",

@@ -11,6 +11,7 @@ from lifeos_cli.application.calendar_adapter import (
     MayanCalendarAdapter,
     get_calendar_adapter,
     get_calendar_period_range,
+    is_mayan_day_out_of_time,
     iter_calendar_periods,
 )
 from lifeos_cli.config import ConfigurationError
@@ -96,6 +97,13 @@ def test_calendar_period_helpers_validate_calendar_system() -> None:
         date(2026, 8, 23),
         calendar_system="mayan_13_moon",
     ) == (date(2026, 8, 23), date(2026, 9, 19))
+
+
+def test_is_mayan_day_out_of_time_only_applies_to_the_mayan_calendar() -> None:
+    assert is_mayan_day_out_of_time(date(2026, 7, 25), calendar_system="mayan_13_moon")
+    assert not is_mayan_day_out_of_time(date(2026, 7, 24), calendar_system="mayan_13_moon")
+    assert not is_mayan_day_out_of_time(date(2026, 7, 26), calendar_system="mayan_13_moon")
+    assert not is_mayan_day_out_of_time(date(2026, 7, 25), calendar_system="gregorian")
 
 
 def test_iter_calendar_periods_deduplicates_mayan_buckets() -> None:

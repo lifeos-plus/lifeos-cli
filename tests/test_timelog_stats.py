@@ -8,8 +8,11 @@ from typing import Any, cast
 import pytest
 
 from lifeos_cli.config import clear_config_cache
+from lifeos_cli.db.models.area import Area
+from lifeos_cli.db.models.timelog import Timelog
 from lifeos_cli.db.services import timelog_stats
 from tests.config_support import install_test_config
+from tests.support import sqlite_session_factory, utc_datetime
 
 
 @pytest.fixture
@@ -22,6 +25,64 @@ def configured_time_preferences(monkeypatch: pytest.MonkeyPatch, tmp_path) -> It
     )
     yield
     clear_config_cache()
+
+
+@pytest.fixture
+def configured_mayan_time_preferences(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> Iterator[None]:
+    install_test_config(
+        monkeypatch=monkeypatch,
+        tmp_path=tmp_path,
+        include_preferences=True,
+        timezone="UTC",
+        day_starts_at="00:00",
+        calendar_system="mayan_13_moon",
+    )
+    yield
+    clear_config_cache()
+
+
+@pytest.fixture
+def configured_gregorian_time_preferences(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> Iterator[None]:
+    install_test_config(
+        monkeypatch=monkeypatch,
+        tmp_path=tmp_path,
+        include_preferences=True,
+        timezone="UTC",
+        day_starts_at="00:00",
+        calendar_system="gregorian",
+    )
+    yield
+    clear_config_cache()
+
+
+async def _seed_area_timelogs(session) -> Area:
+    area = Area(name="Deep work")
+    session.add(area)
+    await session.flush()
+    session.add_all(
+        [
+            Timelog(
+                title="Day out of time only",
+                start_time=utc_datetime(2026, 7, 25, 10),
+                end_time=utc_datetime(2026, 7, 25, 11),
+                area_id=area.id,
+            ),
+            Timelog(
+                title="Multi-day around day out of time",
+                start_time=utc_datetime(2026, 7, 24, 12),
+                end_time=utc_datetime(2026, 7, 26, 12),
+                area_id=area.id,
+            ),
+        ]
+    )
+    await session.flush()
+    return area
 
 
 @pytest.mark.usefixtures("configured_time_preferences")
@@ -90,6 +151,179 @@ def test_get_year_bounds_returns_full_calendar_year() -> None:
 
     assert start_date == date(2026, 1, 1)
     assert end_date == date(2026, 12, 31)
+
+
+@pytest.mark.usefixtures("configured_mayan_time_preferences")
+def test_range_stats_exclude_mayan_day_out_of_time_singleton() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await _seed_area_timelogs(session)
+
+                report = await timelog_stats.get_timelog_stats_groupby_area_for_range(
+                    session,
+                    start_date=date(2026, 7, 25),
+                    end_date=date(2026, 7, 25),
+                )
+
+                assert report.rows == ()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.usefixtures("configured_mayan_time_preferences")
+def test_day_stats_keep_mayan_day_out_of_time() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await _seed_area_timelogs(session)
+
+                report = await timelog_stats.get_timelog_stats_groupby_area_for_day(
+                    session,
+                    target_date=date(2026, 7, 25),
+                )
+
+                assert len(report.rows) == 1
+                assert report.rows[0].minutes == 1500
+                assert report.rows[0].timelog_count == 2
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.usefixtures("configured_mayan_time_preferences")
+def test_range_stats_keep_mayan_day_out_of_time_in_wider_range() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await _seed_area_timelogs(session)
+
+                report = await timelog_stats.get_timelog_stats_groupby_area_for_range(
+                    session,
+                    start_date=date(2026, 7, 24),
+                    end_date=date(2026, 7, 26),
+                )
+
+                assert len(report.rows) == 1
+                assert report.rows[0].minutes == 2940
+                assert report.rows[0].timelog_count == 2
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.usefixtures("configured_mayan_time_preferences")
+def test_week_month_period_stats_exclude_mayan_day_out_of_time() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await _seed_area_timelogs(session)
+
+                week_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="week",
+                    target_date=date(2026, 7, 25),
+                )
+                month_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="month",
+                    month=date(2026, 7, 1),
+                )
+                year_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="year",
+                    year=2026,
+                )
+
+                assert week_report.start_date == date(2026, 7, 20)
+                assert week_report.end_date == date(2026, 7, 26)
+                assert len(week_report.rows) == 1
+                assert week_report.rows[0].minutes == 1440
+                assert week_report.rows[0].timelog_count == 1
+                assert len(month_report.rows) == 1
+                assert month_report.rows[0].minutes == 1440
+                assert month_report.rows[0].timelog_count == 1
+                assert len(year_report.rows) == 1
+                assert year_report.rows[0].minutes == 2940
+                assert year_report.rows[0].timelog_count == 2
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.usefixtures("configured_gregorian_time_preferences")
+def test_week_month_period_stats_keep_july_25_for_gregorian_calendar() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await _seed_area_timelogs(session)
+
+                week_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="week",
+                    target_date=date(2026, 7, 25),
+                )
+                month_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="month",
+                    month=date(2026, 7, 1),
+                )
+
+                assert len(week_report.rows) == 1
+                assert week_report.rows[0].minutes == 2940
+                assert week_report.rows[0].timelog_count == 2
+                assert len(month_report.rows) == 1
+                assert month_report.rows[0].minutes == 2940
+                assert month_report.rows[0].timelog_count == 2
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.usefixtures("configured_mayan_time_preferences")
+def test_recompute_aggregated_week_month_excludes_mayan_day_out_of_time() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await _seed_area_timelogs(session)
+                local_dates = (
+                    date(2026, 7, 24),
+                    date(2026, 7, 25),
+                    date(2026, 7, 26),
+                )
+                await timelog_stats.recompute_daily_timelog_stats_groupby_area_for_dates(
+                    session,
+                    local_dates=local_dates,
+                )
+                await timelog_stats.recompute_aggregated_timelog_stats_groupby_area_for_dates(
+                    session,
+                    local_dates=local_dates,
+                )
+
+                week_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="week",
+                    target_date=date(2026, 7, 25),
+                )
+                month_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="month",
+                    month=date(2026, 7, 1),
+                )
+                year_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="year",
+                    year=2026,
+                )
+
+                assert week_report.granularity == "week"
+                assert len(week_report.rows) == 1
+                assert week_report.rows[0].minutes == 1440
+                assert week_report.rows[0].timelog_count == 1
+                assert len(month_report.rows) == 1
+                assert month_report.rows[0].minutes == 1440
+                assert month_report.rows[0].timelog_count == 1
+                assert len(year_report.rows) == 1
+                assert year_report.rows[0].minutes == 2940
+                assert year_report.rows[0].timelog_count == 2
+
+    asyncio.run(scenario())
 
 
 def test_rebuild_timelog_stats_groupby_area_sorts_and_deduplicates_discrete_dates(
