@@ -16,6 +16,8 @@ _keep(
     isolated_runtime_locale,
     _use_stable_note_timezone,
     configured_time_preferences,
+    configured_gregorian_time_preferences,
+    configured_mayan_time_preferences,
     stub_schedule_lifecycle,
     inherit_cache,
     _compile_add_days_default,

@@ -17,6 +17,7 @@ def write_test_config(
     language: str = "en",
     day_starts_at: str = "04:00",
     week_starts_on: str = "monday",
+    calendar_system: str | None = None,
     vision_experience_rate_per_hour: int | None = None,
     theme: str | None = None,
 ) -> Path:
@@ -40,6 +41,8 @@ def write_test_config(
             lines.append(f"vision_experience_rate_per_hour = {vision_experience_rate_per_hour}")
         if theme is not None:
             lines.append(f'theme = "{theme}"')
+        if calendar_system is not None:
+            lines.append(f'calendar_system = "{calendar_system}"')
         lines.append("")
     config_path.write_text("\n".join(lines), encoding="utf-8")
     return config_path
@@ -58,6 +61,7 @@ def install_test_config(
     language: str = "en",
     day_starts_at: str = "04:00",
     week_starts_on: str = "monday",
+    calendar_system: str | None = None,
     vision_experience_rate_per_hour: int | None = None,
     theme: str | None = None,
 ) -> Path:
@@ -72,6 +76,7 @@ def install_test_config(
         language=language,
         day_starts_at=day_starts_at,
         week_starts_on=week_starts_on,
+        calendar_system=calendar_system,
         vision_experience_rate_per_hour=vision_experience_rate_per_hour,
         theme=theme,
     )
