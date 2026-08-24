@@ -636,6 +636,7 @@
       "parser_read_models": {
         "comma_separated_statuses_to_exclude": "要排除的以逗号分隔的状态",
         "comma_separated_statuses_to_include": "要包含的以逗号分隔的状态",
+        "comma_separated_task_identifiers": "以逗号分隔的 `task` 标识符，按 ID 批量查询（最多 100 个）",
         "comma_separated_vision_identifiers": "以逗号分隔的 `vision` 标识符",
         "filter_by_exact_task_content": "按确切的 `task` 内容过滤",
         "filter_by_parent_task_identifier": "按父 `task` 标识符过滤",
@@ -663,7 +664,8 @@
         "use_with_subtasks_when_you_want_to_inspect_only_one_branch_of": "当你只想查看树中的一个分支时，请使用 `with-subtasks`。",
         "with_subtasks_related_views_note": "相关视图：`task hierarchy` 查看整个 vision 树，`vision with-tasks` 查看 vision 级树。",
         "when_task_has_direct_children_completion_percentage_measures_how_many_of_those": "当 `task` 有直接子项时，`completion_percentage` 衡量这些子项中有多少已完成。",
-        "when_vision_id_is_provided_without_parent_task_id_only_root_tasks": "当提供 `--vision-id` 而不提供 `--parent-task-id` 时，仅列出根 `task`。"
+        "when_vision_id_is_provided_without_parent_task_id_only_root_tasks": "当提供 `--vision-id` 而不提供 `--parent-task-id` 时，仅列出根 `task`。",
+        "ids_filter_returns_exact_task_matches_even_with_vision_id": "`--ids` 按 ID 精确返回请求的 `task`，不受 `--vision-id` 根 `task` 语义影响。"
       },
       "parser_structure": {
         "expected_current_parent_task_identifier": "预期当前父 `task` 标识符",
@@ -1081,7 +1083,8 @@
       "serve_built_frontend_directory": "服务已构建的前端目录，例如 `lifeos-web` 的 `dist/` 构建产物。",
       "serve_local_web_api": "服务本地 Web API，可选挂载已构建的前端资源",
       "start_fastapi_server_bound_to_localhost": "启动默认绑定到 localhost 的 FastAPI 服务。",
-      "use_vite_during_frontend_development": "前端开发时使用 `lifeos-web` 下的 Vite。传入 `--static-dir <lifeos-web>/dist` 可以服务已构建的 UI。使用 uv 且数据库为 PostgreSQL 时，请搭配 `--extra web --extra postgres` 运行。"
+      "use_vite_during_frontend_development": "前端开发时使用 `lifeos-web` 下的 Vite。传入 `--static-dir <lifeos-web>/dist` 可以服务已构建的 UI。使用 uv 且数据库为 PostgreSQL 时，请搭配 `--extra web --extra postgres` 运行。",
+      "api_requests_rate_limited_per_client": "API 请求按客户端限流（默认 60 秒窗口内 300 次/分钟；可用 `LIFEOS_WEB_RATE_LIMIT_PER_MINUTE` 覆盖）。"
     },
     "init_commands": {
       "configuration_is_written_to_config_lifeos_config_toml_by_default": "默认情况下，配置写入 ~/.lifeos/config.toml。",

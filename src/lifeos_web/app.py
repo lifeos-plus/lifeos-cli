@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import math
 import os
 import time
@@ -38,6 +39,8 @@ from lifeos_web.routers import (
     timelogs,
     visions,
 )
+
+logger = logging.getLogger(__name__)
 
 API_PREFIX = "/api/v1"
 SPA_FALLBACK_EXCLUDED_SEGMENTS = frozenset({"api", "assets", "healthy"})
@@ -198,6 +201,8 @@ class RateLimitMiddleware:
         client = scope.get("client")
         key = client[0] if client else "unknown"
         now = time.monotonic()
+        rejected = False
+        wait_seconds = 1
         async with self._lock:
             hits = self._hits.get(key)
             if hits is None:
@@ -210,18 +215,27 @@ class RateLimitMiddleware:
                 del self._hits[key]
                 hits = self._hits[key] = deque()
             if len(hits) >= self.limit_per_minute:
+                rejected = True
                 wait_seconds = max(
                     1,
                     math.ceil(hits[0] + self._window_seconds - now),
                 )
-                response = JSONResponse(
-                    {"detail": "Rate limit exceeded"},
-                    status_code=429,
-                    headers={"Retry-After": str(wait_seconds)},
-                )
-                await response(scope, receive, send)
-                return
-            hits.append(now)
+            else:
+                hits.append(now)
+        if rejected:
+            logger.warning(
+                "Rate limit exceeded for client %s (%d requests in a %ds window)",
+                key,
+                self.limit_per_minute,
+                int(self._window_seconds),
+            )
+            response = JSONResponse(
+                {"detail": "Rate limit exceeded"},
+                status_code=429,
+                headers={"Retry-After": str(wait_seconds)},
+            )
+            await response(scope, receive, send)
+            return
         await self.app(scope, receive, send)
 
 

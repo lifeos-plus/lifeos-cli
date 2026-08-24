@@ -190,6 +190,55 @@ def test_task_list_id_in_returns_empty_for_unknown_ids(http_client) -> None:
     assert response.json()["pagination"]["total"] == 0
 
 
+def test_task_list_id_in_with_vision_id_returns_matching_subtasks(http_client) -> None:
+    vision_id = http_client.post(
+        "/api/v1/visions/",
+        json={"name": "ID-in vision filter vision"},
+    ).json()["id"]
+    root_id = http_client.post(
+        "/api/v1/tasks/",
+        json={"vision_id": vision_id, "content": "Root task"},
+    ).json()["id"]
+    child_id = http_client.post(
+        "/api/v1/tasks/",
+        json={
+            "vision_id": vision_id,
+            "parent_task_id": root_id,
+            "content": "Child task",
+        },
+    ).json()["id"]
+
+    response = http_client.get(
+        "/api/v1/tasks/",
+        params={"id_in": child_id, "vision_id": vision_id},
+    )
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()["items"]] == [child_id]
+
+
+def test_task_list_id_in_returns_all_matches_regardless_of_page_size(http_client) -> None:
+    vision_id = http_client.post(
+        "/api/v1/visions/",
+        json={"name": "ID-in page size vision"},
+    ).json()["id"]
+    created_ids = [
+        http_client.post(
+            "/api/v1/tasks/",
+            json={"vision_id": vision_id, "content": f"Bulk task {index}"},
+        ).json()["id"]
+        for index in range(3)
+    ]
+
+    response = http_client.get(
+        "/api/v1/tasks/",
+        params={"id_in": ",".join(created_ids), "size": 1},
+    )
+
+    assert response.status_code == 200
+    assert {item["id"] for item in response.json()["items"]} == set(created_ids)
+
+
 def test_timelog_create_list_detail_and_not_found(http_client) -> None:
     create_response = http_client.post(
         "/api/v1/timelogs/",

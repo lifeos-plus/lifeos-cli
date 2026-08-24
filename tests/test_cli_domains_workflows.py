@@ -600,6 +600,10 @@ def test_main_task_list_passes_extended_filters(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     async def fake_list_tasks(_session: object, **kwargs: object) -> list[object]:
+        assert (
+            kwargs["id_in"]
+            == "33333333-3333-3333-3333-333333333333,44444444-4444-4444-4444-444444444444"
+        )
         assert kwargs["vision_in"] == "44444444-4444-4444-4444-444444444444"
         assert kwargs["status_in"] == "todo,in_progress"
         assert kwargs["exclude_status"] == "cancelled"
@@ -615,6 +619,8 @@ def test_main_task_list_passes_extended_filters(
         [
             "task",
             "list",
+            "--ids",
+            "33333333-3333-3333-3333-333333333333,44444444-4444-4444-4444-444444444444",
             "--vision-in",
             "44444444-4444-4444-4444-444444444444",
             "--status-in",

@@ -224,7 +224,7 @@
 │   ├── hierarchy  —  Show a vision task hierarchy
 │   │       args: vision_id [required]
 │   ├── list  —  List tasks
-│   │       args: --vision-id; --vision-in; --parent-task-id; --person-id; --status; --status-in; --exclude-status; --planning-cycle-type; --planning-cycle-start-date; --content; --limit; --offset; --json
+│   │       args: --vision-id; --vision-in; --ids; --parent-task-id; --person-id; --status; --status-in; --exclude-status; --planning-cycle-type; --planning-cycle-start-date; --content; --limit; --offset; --json
 │   ├── move  —  Move a task
 │   │       args: task_id [required]; --old-parent-task-id; --new-parent-task-id; --clear-parent; --new-vision-id; --new-display-order
 │   ├── reorder  —  Reorder tasks
