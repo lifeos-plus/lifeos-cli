@@ -44,11 +44,16 @@ def build_task_list_parser(
             examples=(
                 "lifeos task list",
                 "lifeos task list --vision-id 11111111-1111-1111-1111-111111111111",
+                "lifeos task list --ids "
+                "11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222",
                 "lifeos task list --person-id 11111111-1111-1111-1111-111111111111",
                 "lifeos task list --parent-task-id "
                 "22222222-2222-2222-2222-222222222222 --status todo",
             ),
             notes=(
+                _(
+                    "resources.task.parser_read_models.ids_filter_returns_exact_task_matches_even_with_vision_id"
+                ),
                 _(
                     "resources.task.parser_read_models.when_vision_id_is_provided_without_parent_task_id_only_root_tasks"
                 ),
@@ -67,6 +72,10 @@ def build_task_list_parser(
     list_parser.add_argument(
         "--vision-in",
         help=_("resources.task.parser_read_models.comma_separated_vision_identifiers"),
+    )
+    list_parser.add_argument(
+        "--ids",
+        help=_("resources.task.parser_read_models.comma_separated_task_identifiers"),
     )
     list_parser.add_argument(
         "--parent-task-id",

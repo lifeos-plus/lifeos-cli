@@ -138,6 +138,7 @@ async def handle_task_list_async(args: argparse.Namespace) -> int:
         try:
             tasks = await task_services.list_tasks(
                 session,
+                id_in=args.ids,
                 vision_id=args.vision_id,
                 vision_in=args.vision_in,
                 parent_task_id=args.parent_task_id,

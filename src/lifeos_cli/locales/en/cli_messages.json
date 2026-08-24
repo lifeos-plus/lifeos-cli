@@ -636,6 +636,7 @@
       "parser_read_models": {
         "comma_separated_statuses_to_exclude": "Comma-separated statuses to exclude",
         "comma_separated_statuses_to_include": "Comma-separated statuses to include",
+        "comma_separated_task_identifiers": "Comma-separated task identifiers to fetch by ID (up to 100)",
         "comma_separated_vision_identifiers": "Comma-separated vision identifiers",
         "filter_by_exact_task_content": "Filter by exact task content",
         "filter_by_parent_task_identifier": "Filter by parent task identifier",
@@ -663,6 +664,7 @@
         "use_with_subtasks_when_you_want_to_inspect_only_one_branch_of": "Use `with-subtasks` when you want to inspect only one branch of the tree.",
         "with_subtasks_related_views_note": "Related views: `task hierarchy` for the full vision tree, `vision with-tasks` for the vision-level tree.",
         "when_task_has_direct_children_completion_percentage_measures_how_many_of_those": "When the task has direct children, `completion_percentage` measures how many of those children are done.",
+        "ids_filter_returns_exact_task_matches_even_with_vision_id": "`--ids` returns exactly the requested tasks and is not affected by the root-task semantics of `--vision-id`.",
         "when_vision_id_is_provided_without_parent_task_id_only_root_tasks": "When `--vision-id` is provided without `--parent-task-id`, only root tasks are listed."
       },
       "parser_structure": {
@@ -1082,7 +1084,8 @@
       "serve_built_frontend_directory": "Serve a built frontend directory, for example a lifeos-web `dist/` build.",
       "serve_local_web_api": "Serve the local Web API, optionally with built frontend assets",
       "start_fastapi_server_bound_to_localhost": "Start a FastAPI server bound to localhost by default.",
-      "use_vite_during_frontend_development": "Use `lifeos-web` with Vite during frontend development. Pass `--static-dir <lifeos-web>/dist` to serve a built UI. With uv and a PostgreSQL database, run with `--extra web --extra postgres`."
+      "use_vite_during_frontend_development": "Use `lifeos-web` with Vite during frontend development. Pass `--static-dir <lifeos-web>/dist` to serve a built UI. With uv and a PostgreSQL database, run with `--extra web --extra postgres`.",
+      "api_requests_rate_limited_per_client": "API requests are rate limited per client (default 300/minute over a 60s window; override with `LIFEOS_WEB_RATE_LIMIT_PER_MINUTE`)."
     },
     "init_commands": {
       "configuration_is_written_to_config_lifeos_config_toml_by_default": "Configuration is written to ~/.lifeos/config.toml by default.",
