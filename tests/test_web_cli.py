@@ -2706,7 +2706,6 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
 
     assert captured_ranges == [
         (date(2026, 6, 27), date(2026, 7, 24)),
-        (date(2026, 7, 25), date(2026, 7, 25)),
         (date(2026, 7, 26), date(2026, 8, 22)),
     ]
     assert response.meta["calendar_system"] == "mayan_13_moon"
@@ -2715,13 +2714,6 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
             "granularity": "month",
             "period_start": "2026-06-27",
             "period_end": "2026-07-24",
-            "area_id": str(area_id),
-            "minutes": 60,
-        },
-        {
-            "granularity": "month",
-            "period_start": "2026-07-25",
-            "period_end": "2026-07-25",
             "area_id": str(area_id),
             "minutes": 60,
         },

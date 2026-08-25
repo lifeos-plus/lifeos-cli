@@ -202,22 +202,32 @@ def iter_calendar_periods(
     first_day_of_week: int | None = None,
     seven_year_anchor_date: date | None = None,
 ) -> tuple[tuple[date, date], ...]:
-    """Return sorted unique period buckets touched by an inclusive date range."""
+    """Return sorted unique period buckets touched by an inclusive date range.
+
+    For the Mayan 13 Moon calendar, the Day Out of Time (July 25) belongs to no
+    week or moon, so week and month buckets never include it as a single-day
+    bucket of its own; day, year, and seven-year buckets keep the date.
+    """
     if end < start:
         raise ValueError("end must be on or after start")
 
     periods: dict[tuple[date, date], None] = {}
     cursor = start
     while cursor <= end:
-        periods.setdefault(
-            get_calendar_period_range(
-                granularity,
-                cursor,
-                calendar_system=calendar_system,
-                first_day_of_week=first_day_of_week,
-                seven_year_anchor_date=seven_year_anchor_date,
-            ),
-            None,
+        period = get_calendar_period_range(
+            granularity,
+            cursor,
+            calendar_system=calendar_system,
+            first_day_of_week=first_day_of_week,
+            seven_year_anchor_date=seven_year_anchor_date,
         )
+        if (
+            granularity in {"week", "month"}
+            and period[0] == period[1]
+            and is_mayan_day_out_of_time(period[0], calendar_system=calendar_system)
+        ):
+            cursor += timedelta(days=1)
+            continue
+        periods.setdefault(period, None)
         cursor += timedelta(days=1)
     return tuple(sorted(periods, key=lambda period: (period[0], period[1])))
