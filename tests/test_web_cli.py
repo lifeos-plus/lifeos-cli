@@ -2708,8 +2708,18 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
         (date(2026, 6, 27), date(2026, 7, 24)),
         (date(2026, 7, 26), date(2026, 8, 22)),
     ]
-    assert response.meta["calendar_system"] == "mayan_13_moon"
-    assert response.items == [
+    assert response.meta.calendar_system == "mayan_13_moon"
+    assert [period.model_dump() for period in response.periods] == [
+        {
+            "period_start": "2026-06-27",
+            "period_end": "2026-07-24",
+        },
+        {
+            "period_start": "2026-07-26",
+            "period_end": "2026-08-22",
+        },
+    ]
+    assert [item.model_dump() for item in response.items] == [
         {
             "granularity": "month",
             "period_start": "2026-06-27",
@@ -2723,6 +2733,63 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
             "period_end": "2026-08-22",
             "area_id": str(area_id),
             "minutes": 60,
+        },
+    ]
+
+
+def test_web_stats_aggregated_areas_keeps_empty_buckets_in_periods(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from lifeos_web.routers import stats
+
+    async def fake_get_range(
+        _session: object,
+        *,
+        start_date: date,
+        end_date: date,
+    ) -> object:
+        del start_date, end_date
+        return SimpleNamespace(rows=())
+
+    monkeypatch.setattr(
+        stats.timelog_stats,
+        "get_timelog_stats_groupby_area_for_range",
+        fake_get_range,
+    )
+    monkeypatch.setattr(
+        stats,
+        "get_preferences_settings",
+        lambda: SimpleNamespace(
+            calendar_system="mayan_13_moon",
+            calendar_first_day_of_week=1,
+            timezone="America/Toronto",
+        ),
+    )
+
+    response = asyncio.run(
+        stats.list_aggregated_areas(
+            cast(AsyncSession, object()),
+            granularity="month",
+            start=date(2026, 6, 20),
+            end=date(2026, 8, 10),
+        )
+    )
+
+    # Buckets with no timelogs must stay in `periods` so the client can render
+    # the full timeline, even though `items` holds no rows for them.
+    assert response.items == []
+    assert [period.model_dump() for period in response.periods] == [
+        {
+            "period_start": "2026-05-30",
+            "period_end": "2026-06-26",
+        },
+        {
+            "period_start": "2026-06-27",
+            "period_end": "2026-07-24",
+        },
+        {
+            "period_start": "2026-07-26",
+            "period_end": "2026-08-22",
         },
     ]
 
@@ -2765,9 +2832,9 @@ def test_web_stats_calendar_context_comes_from_backend_preferences(
         )
     )
 
-    assert response.meta["calendar_system"] == "mayan_13_moon"
-    assert response.meta["first_day_of_week"] == 6
-    assert response.meta["timezone"] == "UTC"
+    assert response.meta.calendar_system == "mayan_13_moon"
+    assert response.meta.first_day_of_week == 6
+    assert response.meta.timezone == "UTC"
 
 
 def test_web_note_person_usage_stats_endpoint_returns_counts(

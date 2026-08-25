@@ -16,8 +16,7 @@ from lifeos_cli.db.services import tags as tag_services
 from lifeos_cli.db.services import timelog_stats
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.stats import (
-    AggregatedAreaMeta,
-    AggregatedAreaResponse,
+    AggregatedAreasListResponse,
     DailyAreaMeta,
     DailyAreaResponse,
     DayBreakdownMeta,
@@ -124,7 +123,7 @@ async def get_day_breakdown(
 
 @router.get(
     "/aggregated-areas",
-    response_model=ListResponse[AggregatedAreaResponse, AggregatedAreaMeta],
+    response_model=AggregatedAreasListResponse,
 )
 async def list_aggregated_areas(
     session: SessionDep,
@@ -134,8 +133,14 @@ async def list_aggregated_areas(
     area_ids: Annotated[list[UUID] | None, Query()] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=1000)] = 1000,
-) -> ListResponse:
-    """Return aggregated timelog minutes by LifeOS area."""
+) -> AggregatedAreasListResponse:
+    """Return the complete bucket timeline and aggregated minutes by LifeOS area.
+
+    ``periods`` lists every bucket in the requested range at the given
+    granularity — including buckets with no timelogs — so clients can render
+    the full timeline without re-deriving calendar periods. ``items`` holds
+    per-area rows only for buckets that have data.
+    """
     if end < start:
         raise HTTPException(status_code=400, detail="end must be on or after start")
     preferences = get_preferences_settings()
@@ -165,8 +170,15 @@ async def list_aggregated_areas(
                         "minutes": row.minutes,
                     }
                 )
-    return ListResponse(
+    return AggregatedAreasListResponse(
         items=_page_items(rows, page=page, size=size),
+        periods=[
+            {
+                "period_start": period_start.isoformat(),
+                "period_end": period_end.isoformat(),
+            }
+            for period_start, period_end in periods
+        ],
         pagination=_pagination(page=page, size=size, total=len(rows)),
         meta={
             "granularity": granularity,

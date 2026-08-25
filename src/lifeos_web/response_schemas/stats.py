@@ -3,6 +3,7 @@
 from typing import Literal
 
 from lifeos_web.response_schemas.common import ResponseModel
+from lifeos_web.schemas import Pagination
 
 
 class DailyAreaResponse(ResponseModel):
@@ -44,6 +45,20 @@ class AggregatedAreaMeta(ResponseModel):
     area_ids: list[str] | None
     first_day_of_week: int
     calendar_system: str
+
+
+class AggregatedAreaPeriodResponse(ResponseModel):
+    period_start: str
+    period_end: str
+
+
+class AggregatedAreasListResponse(ResponseModel):
+    """Complete bucket timeline plus per-area rows for aggregated stats."""
+
+    items: list[AggregatedAreaResponse]
+    periods: list[AggregatedAreaPeriodResponse]
+    pagination: Pagination
+    meta: AggregatedAreaMeta
 
 
 class RecomputeDailyAreasResponse(ResponseModel):
