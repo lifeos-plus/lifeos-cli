@@ -41,7 +41,8 @@ _CONFIG_KEY_MAP = {
     "appearance.theme": "preferences.theme",
     "calendar.first_day_of_week": "preferences.calendar_first_day_of_week",
     "calendar.system": "preferences.calendar_system",
-    "calendar.seven_year_anchor_date": "preferences.calendar_seven_year_anchor_date",
+    "calendar.mayan_new_year_start": "preferences.calendar_mayan_new_year_start",
+    "calendar.seven_year_anchor_year": "preferences.calendar_seven_year_anchor_year",
     "navigation.visible_modules": "preferences.navigation_visible_modules",
     "notes.card_min_collapsed_lines": "preferences.notes_card_min_collapsed_lines",
     "notes.export_planning.include_cycle_notes": (
@@ -87,8 +88,12 @@ _META: dict[str, dict[str, Any]] = {
         "description": "First weekday used in calendar views.",
         "module": "calendar",
     },
-    "calendar.seven_year_anchor_date": {
-        "description": "Anchor date used to derive seven-year calendar periods.",
+    "calendar.mayan_new_year_start": {
+        "description": "Mayan new year start day (MM-DD); the day before is the Day Out of Time.",
+        "module": "calendar",
+    },
+    "calendar.seven_year_anchor_year": {
+        "description": "Anchor year used to derive seven-year calendar periods.",
         "module": "calendar",
     },
     "navigation.visible_modules": {
@@ -124,8 +129,10 @@ def _extract_config_preference_value(preferences: PreferencesSettings, key: str)
         return preferences.calendar_first_day_of_week
     if key == "calendar.system":
         return preferences.calendar_system
-    if key == "calendar.seven_year_anchor_date":
-        return preferences.calendar_seven_year_anchor_date
+    if key == "calendar.mayan_new_year_start":
+        return preferences.calendar_mayan_new_year_start
+    if key == "calendar.seven_year_anchor_year":
+        return preferences.calendar_seven_year_anchor_year
     if key == "navigation.visible_modules":
         return list(preferences.navigation_visible_modules)
     if key == "notes.card_min_collapsed_lines":

@@ -149,12 +149,14 @@ async def list_tasks(
         raise HTTPException(status_code=400, detail=f"Unsupported task fields mode: {fields}")
     calendar_system: str | None = None
     first_day_of_week: int | None = None
-    seven_year_anchor_date: date | None = None
+    seven_year_anchor_year: int | None = None
+    mayan_new_year_start: str | None = None
     if planning_cycle_type is not None and planning_cycle_start_date is not None:
         preferences = get_preferences_settings()
         calendar_system = preferences.calendar_system
         first_day_of_week = preferences.calendar_first_day_of_week
-        seven_year_anchor_date = date.fromisoformat(preferences.calendar_seven_year_anchor_date)
+        seven_year_anchor_year = preferences.calendar_seven_year_anchor_year
+        mayan_new_year_start = preferences.calendar_mayan_new_year_start
     try:
         rows = await task_services.list_tasks(
             session,
@@ -214,9 +216,8 @@ async def list_tasks(
             ),
             "calendar_system": calendar_system,
             "first_day_of_week": first_day_of_week,
-            "seven_year_anchor_date": (
-                seven_year_anchor_date.isoformat() if seven_year_anchor_date else None
-            ),
+            "seven_year_anchor_year": seven_year_anchor_year,
+            "mayan_new_year_start": mayan_new_year_start,
             "query": query,
             "fields": fields,
         },

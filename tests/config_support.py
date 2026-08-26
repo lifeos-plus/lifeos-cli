@@ -18,6 +18,8 @@ def write_test_config(
     day_starts_at: str = "04:00",
     week_starts_on: str = "monday",
     calendar_system: str | None = None,
+    mayan_new_year_start: str | None = None,
+    seven_year_anchor_year: int | None = None,
     vision_experience_rate_per_hour: int | None = None,
     theme: str | None = None,
 ) -> Path:
@@ -43,6 +45,10 @@ def write_test_config(
             lines.append(f'theme = "{theme}"')
         if calendar_system is not None:
             lines.append(f'calendar_system = "{calendar_system}"')
+        if mayan_new_year_start is not None:
+            lines.append(f'calendar_mayan_new_year_start = "{mayan_new_year_start}"')
+        if seven_year_anchor_year is not None:
+            lines.append(f"calendar_seven_year_anchor_year = {seven_year_anchor_year}")
         lines.append("")
     config_path.write_text("\n".join(lines), encoding="utf-8")
     return config_path
@@ -62,6 +68,8 @@ def install_test_config(
     day_starts_at: str = "04:00",
     week_starts_on: str = "monday",
     calendar_system: str | None = None,
+    mayan_new_year_start: str | None = None,
+    seven_year_anchor_year: int | None = None,
     vision_experience_rate_per_hour: int | None = None,
     theme: str | None = None,
 ) -> Path:
@@ -77,6 +85,8 @@ def install_test_config(
         day_starts_at=day_starts_at,
         week_starts_on=week_starts_on,
         calendar_system=calendar_system,
+        mayan_new_year_start=mayan_new_year_start,
+        seven_year_anchor_year=seven_year_anchor_year,
         vision_experience_rate_per_hour=vision_experience_rate_per_hour,
         theme=theme,
     )

@@ -18,6 +18,7 @@ _keep(
     configured_time_preferences,
     configured_gregorian_time_preferences,
     configured_mayan_time_preferences,
+    configured_custom_mayan_time_preferences,
     stub_schedule_lifecycle,
     inherit_cache,
     _compile_add_days_default,
