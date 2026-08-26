@@ -919,7 +919,8 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
         lambda: SimpleNamespace(
             calendar_system="mayan_13_moon",
             calendar_first_day_of_week=7,
-            calendar_seven_year_anchor_date="2025-07-26",
+            calendar_seven_year_anchor_year=2025,
+            calendar_mayan_new_year_start="07-26",
         ),
     )
 
@@ -961,7 +962,8 @@ def test_web_tasks_list_uses_count_for_pagination_and_query(
     assert response.pagination.total == 123
     assert response.pagination.pages == 3
     assert response.meta["query"] == "Needle"
-    assert response.meta["seven_year_anchor_date"] == "2025-07-26"
+    assert response.meta["seven_year_anchor_year"] == 2025
+    assert response.meta["mayan_new_year_start"] == "07-26"
 
 
 def test_web_tasks_reorder_route_precedes_task_id_route(
@@ -2683,6 +2685,8 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
         lambda: SimpleNamespace(
             calendar_system="mayan_13_moon",
             calendar_first_day_of_week=1,
+            calendar_seven_year_anchor_year=2025,
+            calendar_mayan_new_year_start="07-26",
             timezone="America/Toronto",
         ),
     )
@@ -2752,6 +2756,8 @@ def test_web_stats_aggregated_areas_keeps_empty_buckets_in_periods(
         lambda: SimpleNamespace(
             calendar_system="mayan_13_moon",
             calendar_first_day_of_week=1,
+            calendar_seven_year_anchor_year=2025,
+            calendar_mayan_new_year_start="07-26",
             timezone="America/Toronto",
         ),
     )
@@ -2807,6 +2813,8 @@ def test_web_stats_calendar_context_comes_from_backend_preferences(
         lambda: SimpleNamespace(
             calendar_system="mayan_13_moon",
             calendar_first_day_of_week=6,
+            calendar_seven_year_anchor_year=2025,
+            calendar_mayan_new_year_start="07-26",
             timezone="UTC",
         ),
     )
@@ -3311,25 +3319,34 @@ def test_web_calendar_preferences_persist_to_cli_config(
             PreferenceUpdate(value=7, module="calendar"),
         )
     )
-    updated_anchor_date = asyncio.run(
+    updated_new_year_start = asyncio.run(
         set_preference(
-            "calendar.seven_year_anchor_date",
-            PreferenceUpdate(value="2026-07-20", module="calendar"),
+            "calendar.mayan_new_year_start",
+            PreferenceUpdate(value="03-01", module="calendar"),
+        )
+    )
+    updated_anchor_year = asyncio.run(
+        set_preference(
+            "calendar.seven_year_anchor_year",
+            PreferenceUpdate(value=2026, module="calendar"),
         )
     )
 
     assert updated_system["value"] == "mayan_13_moon"
     assert updated_first_day["value"] == 7
-    assert updated_anchor_date["value"] == "2026-07-20"
+    assert updated_new_year_start["value"] == "03-01"
+    assert updated_anchor_year["value"] == 2026
     clear_config_cache()
     assert asyncio.run(get_preference("calendar.system"))["value"] == "mayan_13_moon"
     assert asyncio.run(get_preference("calendar.first_day_of_week"))["value"] == 7
-    assert asyncio.run(get_preference("calendar.seven_year_anchor_date"))["value"] == "2026-07-20"
+    assert asyncio.run(get_preference("calendar.mayan_new_year_start"))["value"] == "03-01"
+    assert asyncio.run(get_preference("calendar.seven_year_anchor_year"))["value"] == 2026
 
     content = config_path.read_text(encoding="utf-8")
     assert 'calendar_system = "mayan_13_moon"' in content
     assert "calendar_first_day_of_week = 7" in content
-    assert 'calendar_seven_year_anchor_date = "2026-07-20"' in content
+    assert 'calendar_mayan_new_year_start = "03-01"' in content
+    assert "calendar_seven_year_anchor_year = 2026" in content
 
 
 def test_web_note_collapse_preference_persists_to_cli_config(

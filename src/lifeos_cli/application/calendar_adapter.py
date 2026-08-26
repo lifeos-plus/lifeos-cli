@@ -9,14 +9,21 @@ from typing import Literal, Protocol
 
 from lifeos_cli.config import (
     DEFAULT_CALENDAR_FIRST_DAY_OF_WEEK,
-    DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_DATE,
+    DEFAULT_CALENDAR_MAYAN_NEW_YEAR_START,
+    DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_YEAR,
     DEFAULT_CALENDAR_SYSTEM,
     validate_calendar_first_day_of_week,
+    validate_calendar_mayan_new_year_start,
+    validate_calendar_seven_year_anchor_year,
     validate_calendar_system,
 )
 
 CalendarGranularity = Literal["day", "week", "month", "year", "7years"]
-DEFAULT_SEVEN_YEAR_ANCHOR = date.fromisoformat(DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_DATE)
+_MAYAN_NEW_YEAR_DEFAULT_PARTS = DEFAULT_CALENDAR_MAYAN_NEW_YEAR_START.split("-")
+DEFAULT_MAYAN_NEW_YEAR_START = (
+    int(_MAYAN_NEW_YEAR_DEFAULT_PARTS[0]),
+    int(_MAYAN_NEW_YEAR_DEFAULT_PARTS[1]),
+)
 
 
 class CalendarAdapter(Protocol):
@@ -39,7 +46,7 @@ class CalendarAdapter(Protocol):
 class GregorianCalendarAdapter:
     """Standard Gregorian calendar adapter."""
 
-    seven_year_anchor_date: date = DEFAULT_SEVEN_YEAR_ANCHOR
+    seven_year_anchor_year: int = DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_YEAR
 
     def week_range(self, target: date, first_day_of_week: int) -> tuple[date, date]:
         normalized_first_day = validate_calendar_first_day_of_week(first_day_of_week)
@@ -59,7 +66,7 @@ class GregorianCalendarAdapter:
         return date(target.year, 1, 1), date(target.year, 12, 31)
 
     def seven_year_range(self, target: date) -> tuple[date, date]:
-        anchor_year = self.seven_year_anchor_date.year
+        anchor_year = self.seven_year_anchor_year
         offset_years = ((target.year - anchor_year) // 7) * 7
         start = date(anchor_year + offset_years, 1, 1)
         end = date(start.year + 7, 1, 1) - timedelta(days=1)
@@ -71,13 +78,32 @@ class MayanCalendarAdapter:
     """Mayan 13 Moon calendar adapter with 13 28-day moons and Day Out of Time."""
 
     moon_length_days: int = 28
-    seven_year_anchor_date: date = DEFAULT_SEVEN_YEAR_ANCHOR
+    seven_year_anchor_year: int = DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_YEAR
+    new_year_start: tuple[int, int] = DEFAULT_MAYAN_NEW_YEAR_START
 
     def year_start(self, target: date) -> date:
-        july_26 = date(target.year, 7, 26)
-        if target >= july_26:
-            return july_26
-        return date(target.year - 1, 7, 26)
+        month, day = self.new_year_start
+        start = date(target.year, month, day)
+        if target >= start:
+            return start
+        return date(target.year - 1, month, day)
+
+    def _day_out_of_time(self, target: date) -> date:
+        """Return the Day Out of Time for the Mayan year containing target."""
+        year_start = self.year_start(target)
+        next_start = year_start.replace(year=year_start.year + 1)
+        day_out_of_time = next_start - timedelta(days=1)
+        if (day_out_of_time.month, day_out_of_time.day) == (2, 29):
+            # February 29 is treated as February 28 so the 13-moon year stays
+            # fixed at 365 days without intercalary-day boundary special cases.
+            day_out_of_time = day_out_of_time.replace(day=28)
+        return day_out_of_time
+
+    def is_day_out_of_time(self, target: date) -> bool:
+        """Return whether target is the Mayan Day Out of Time."""
+        if (target.month, target.day) == (2, 29):
+            target = target.replace(day=28)
+        return target == self._day_out_of_time(target)
 
     def day_offset(self, target: date) -> int:
         start = self.year_start(target)
@@ -103,7 +129,7 @@ class MayanCalendarAdapter:
 
     def week_range(self, target: date, first_day_of_week: int) -> tuple[date, date]:
         del first_day_of_week
-        if is_mayan_day_out_of_time(target, calendar_system="mayan_13_moon"):
+        if self.is_day_out_of_time(target):
             return target, target
         year_start = self.year_start(target)
         offset = self.day_offset(target)
@@ -114,7 +140,7 @@ class MayanCalendarAdapter:
         )
 
     def month_range(self, target: date) -> tuple[date, date]:
-        if is_mayan_day_out_of_time(target, calendar_system="mayan_13_moon"):
+        if self.is_day_out_of_time(target):
             return target, target
         year_start = self.year_start(target)
         offset = self.day_offset(target)
@@ -132,7 +158,8 @@ class MayanCalendarAdapter:
         return start, start.replace(year=start.year + 1) - timedelta(days=1)
 
     def seven_year_range(self, target: date) -> tuple[date, date]:
-        anchor_start = self.year_start(self.seven_year_anchor_date)
+        month, day = self.new_year_start
+        anchor_start = date(self.seven_year_anchor_year, month, day)
         target_start = self.year_start(target)
         offset_years = ((target_start.year - anchor_start.year) // 7) * 7
         start = anchor_start.replace(year=anchor_start.year + offset_years)
@@ -142,25 +169,46 @@ class MayanCalendarAdapter:
 def get_calendar_adapter(
     system: str | None = None,
     *,
-    seven_year_anchor_date: date | None = None,
+    seven_year_anchor_year: int | None = None,
+    mayan_new_year_start: str | None = None,
 ) -> CalendarAdapter:
     """Return the adapter for a validated calendar system."""
     normalized = validate_calendar_system(system or DEFAULT_CALENDAR_SYSTEM)
-    anchor_date = seven_year_anchor_date or DEFAULT_SEVEN_YEAR_ANCHOR
+    anchor_year = (
+        validate_calendar_seven_year_anchor_year(seven_year_anchor_year)
+        if seven_year_anchor_year is not None
+        else DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_YEAR
+    )
     if normalized == "mayan_13_moon":
-        return MayanCalendarAdapter(seven_year_anchor_date=anchor_date)
-    return GregorianCalendarAdapter(seven_year_anchor_date=anchor_date)
+        new_year_start = (
+            validate_calendar_mayan_new_year_start(mayan_new_year_start)
+            if mayan_new_year_start is not None
+            else DEFAULT_CALENDAR_MAYAN_NEW_YEAR_START
+        )
+        month, day = (int(part) for part in new_year_start.split("-"))
+        return MayanCalendarAdapter(
+            seven_year_anchor_year=anchor_year,
+            new_year_start=(month, day),
+        )
+    return GregorianCalendarAdapter(seven_year_anchor_year=anchor_year)
 
 
 def is_mayan_day_out_of_time(
     target: date,
     *,
     calendar_system: str | None = None,
+    mayan_new_year_start: str | None = None,
 ) -> bool:
-    """Return whether the date is the Mayan Day Out of Time (July 25)."""
+    """Return whether the date is the Mayan Day Out of Time for the user's calendar."""
     if validate_calendar_system(calendar_system or DEFAULT_CALENDAR_SYSTEM) != "mayan_13_moon":
         return False
-    return target.month == 7 and target.day == 25
+    adapter = get_calendar_adapter(
+        "mayan_13_moon",
+        mayan_new_year_start=mayan_new_year_start,
+    )
+    if not isinstance(adapter, MayanCalendarAdapter):
+        return False
+    return adapter.is_day_out_of_time(target)
 
 
 def get_calendar_period_range(
@@ -169,7 +217,8 @@ def get_calendar_period_range(
     *,
     calendar_system: str | None = None,
     first_day_of_week: int | None = None,
-    seven_year_anchor_date: date | None = None,
+    seven_year_anchor_year: int | None = None,
+    mayan_new_year_start: str | None = None,
 ) -> tuple[date, date]:
     """Return inclusive period boundaries for a target date."""
     if granularity == "day":
@@ -177,7 +226,8 @@ def get_calendar_period_range(
 
     adapter = get_calendar_adapter(
         calendar_system,
-        seven_year_anchor_date=seven_year_anchor_date,
+        seven_year_anchor_year=seven_year_anchor_year,
+        mayan_new_year_start=mayan_new_year_start,
     )
     normalized_first_day = validate_calendar_first_day_of_week(
         first_day_of_week or DEFAULT_CALENDAR_FIRST_DAY_OF_WEEK
@@ -198,12 +248,17 @@ def _is_out_of_time_singleton(
     *,
     granularity: CalendarGranularity,
     calendar_system: str | None,
+    mayan_new_year_start: str | None,
 ) -> bool:
     """Return whether a week/month bucket is the Mayan Day Out of Time itself."""
     return (
         granularity in {"week", "month"}
         and period[0] == period[1]
-        and is_mayan_day_out_of_time(period[0], calendar_system=calendar_system)
+        and is_mayan_day_out_of_time(
+            period[0],
+            calendar_system=calendar_system,
+            mayan_new_year_start=mayan_new_year_start,
+        )
     )
 
 
@@ -214,15 +269,17 @@ def iter_calendar_periods(
     granularity: CalendarGranularity,
     calendar_system: str | None = None,
     first_day_of_week: int | None = None,
-    seven_year_anchor_date: date | None = None,
+    seven_year_anchor_year: int | None = None,
+    mayan_new_year_start: str | None = None,
 ) -> tuple[tuple[date, date], ...]:
     """Return sorted unique period buckets touched by an inclusive date range.
 
     The walk advances by one full bucket at a time, so the cost scales with
     the number of buckets rather than the number of days. For the Mayan 13
-    Moon calendar, the Day Out of Time (July 25) belongs to no week or moon,
-    so week and month buckets never include it as a single-day bucket of its
-    own; day, year, and seven-year buckets keep the date.
+    Moon calendar, the Day Out of Time (the day before the configured new year
+    start) belongs to no week or moon, so week and month buckets never include
+    it as a single-day bucket of its own; day, year, and seven-year buckets
+    keep the date.
     """
     if end < start:
         raise ValueError("end must be on or after start")
@@ -235,12 +292,14 @@ def iter_calendar_periods(
             cursor,
             calendar_system=calendar_system,
             first_day_of_week=first_day_of_week,
-            seven_year_anchor_date=seven_year_anchor_date,
+            seven_year_anchor_year=seven_year_anchor_year,
+            mayan_new_year_start=mayan_new_year_start,
         )
         if _is_out_of_time_singleton(
             period,
             granularity=granularity,
             calendar_system=calendar_system,
+            mayan_new_year_start=mayan_new_year_start,
         ):
             cursor += timedelta(days=1)
             continue

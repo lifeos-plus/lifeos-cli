@@ -61,6 +61,24 @@ def configured_gregorian_time_preferences(
     clear_config_cache()
 
 
+@pytest.fixture
+def configured_custom_mayan_time_preferences(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> Iterator[None]:
+    install_test_config(
+        monkeypatch=monkeypatch,
+        tmp_path=tmp_path,
+        include_preferences=True,
+        timezone="UTC",
+        day_starts_at="00:00",
+        calendar_system="mayan_13_moon",
+        mayan_new_year_start="03-01",
+    )
+    yield
+    clear_config_cache()
+
+
 async def _seed_area_timelogs(session) -> Area:
     area = Area(name="Deep work")
     session.add(area)
@@ -77,6 +95,36 @@ async def _seed_area_timelogs(session) -> Area:
                 title="Multi-day around day out of time",
                 start_time=utc_datetime(2026, 7, 24, 12),
                 end_time=utc_datetime(2026, 7, 26, 12),
+                area_id=area.id,
+            ),
+        ]
+    )
+    await session.flush()
+    return area
+
+
+async def _seed_custom_new_year_timelogs(session) -> Area:
+    area = Area(name="Deep work")
+    session.add(area)
+    await session.flush()
+    session.add_all(
+        [
+            Timelog(
+                title="Day out of time only",
+                start_time=utc_datetime(2028, 2, 28, 10),
+                end_time=utc_datetime(2028, 2, 28, 11),
+                area_id=area.id,
+            ),
+            Timelog(
+                title="Leap day treated as day out of time",
+                start_time=utc_datetime(2028, 2, 29, 10),
+                end_time=utc_datetime(2028, 2, 29, 11),
+                area_id=area.id,
+            ),
+            Timelog(
+                title="Normal week day",
+                start_time=utc_datetime(2028, 2, 27, 12),
+                end_time=utc_datetime(2028, 2, 27, 13),
                 area_id=area.id,
             ),
         ]
@@ -249,6 +297,40 @@ def test_week_month_period_stats_exclude_mayan_day_out_of_time() -> None:
                 assert len(year_report.rows) == 1
                 assert year_report.rows[0].minutes == 2940
                 assert year_report.rows[0].timelog_count == 2
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.usefixtures("configured_custom_mayan_time_preferences")
+def test_week_month_period_stats_exclude_custom_mayan_day_out_of_time() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await _seed_custom_new_year_timelogs(session)
+
+                doot_week_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="week",
+                    target_date=date(2028, 2, 29),
+                )
+                normal_week_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="week",
+                    target_date=date(2028, 2, 27),
+                )
+                month_report = await timelog_stats.get_timelog_stats_groupby_area_for_period(
+                    session,
+                    granularity="month",
+                    month=date(2028, 2, 1),
+                )
+
+                assert doot_week_report.rows == ()
+                assert len(normal_week_report.rows) == 1
+                assert normal_week_report.rows[0].minutes == 60
+                assert normal_week_report.rows[0].timelog_count == 1
+                assert len(month_report.rows) == 1
+                assert month_report.rows[0].minutes == 60
+                assert month_report.rows[0].timelog_count == 1
 
     asyncio.run(scenario())
 

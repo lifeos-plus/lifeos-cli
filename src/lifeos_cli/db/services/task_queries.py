@@ -201,7 +201,8 @@ def _planning_cycle_date_filter_range(
             planning_cycle_start_date,
             calendar_system=preferences.calendar_system,
             first_day_of_week=preferences.calendar_first_day_of_week,
-            seven_year_anchor_date=date.fromisoformat(preferences.calendar_seven_year_anchor_date),
+            seven_year_anchor_year=preferences.calendar_seven_year_anchor_year,
+            mayan_new_year_start=preferences.calendar_mayan_new_year_start,
         )
     except (ConfigurationError, ValueError) as exc:
         raise ValueError(str(exc)) from exc
@@ -506,14 +507,16 @@ async def get_planning_view(
             reference_date,
             calendar_system=preferences.calendar_system,
             first_day_of_week=preferences.calendar_first_day_of_week,
-            seven_year_anchor_date=date.fromisoformat(preferences.calendar_seven_year_anchor_date),
+            seven_year_anchor_year=preferences.calendar_seven_year_anchor_year,
+            mayan_new_year_start=preferences.calendar_mayan_new_year_start,
         )[0]
     period_start, period_end = get_calendar_period_range(
         cast(CalendarGranularity, cycle_type),
         anchor,
         calendar_system=preferences.calendar_system,
         first_day_of_week=preferences.calendar_first_day_of_week,
-        seven_year_anchor_date=date.fromisoformat(preferences.calendar_seven_year_anchor_date),
+        seven_year_anchor_year=preferences.calendar_seven_year_anchor_year,
+        mayan_new_year_start=preferences.calendar_mayan_new_year_start,
     )
     stmt = _apply_task_filters(
         select(Task),

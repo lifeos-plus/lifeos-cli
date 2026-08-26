@@ -106,6 +106,78 @@ def test_is_mayan_day_out_of_time_only_applies_to_the_mayan_calendar() -> None:
     assert not is_mayan_day_out_of_time(date(2026, 7, 25), calendar_system="gregorian")
 
 
+def test_mayan_calendar_adapter_honors_custom_new_year_start() -> None:
+    adapter = MayanCalendarAdapter(new_year_start=(3, 1))
+
+    assert adapter.year_start(date(2028, 2, 28)) == date(2027, 3, 1)
+    assert adapter.year_range(date(2027, 3, 1)) == (
+        date(2027, 3, 1),
+        date(2028, 2, 29),
+    )
+    assert adapter.month_range(date(2027, 4, 1)) == (
+        date(2027, 3, 29),
+        date(2027, 4, 25),
+    )
+    assert adapter.month_range(date(2028, 2, 27)) == (
+        date(2028, 1, 31),
+        date(2028, 2, 27),
+    )
+    assert adapter.is_day_out_of_time(date(2028, 2, 28))
+    assert not adapter.is_day_out_of_time(date(2028, 2, 27))
+    assert not adapter.is_day_out_of_time(date(2028, 3, 1))
+    assert adapter.month_range(date(2028, 2, 28)) == (
+        date(2028, 2, 28),
+        date(2028, 2, 28),
+    )
+    assert adapter.week_range(date(2028, 2, 28), 1) == (
+        date(2028, 2, 28),
+        date(2028, 2, 28),
+    )
+
+
+def test_mayan_calendar_treats_february_29_as_february_28() -> None:
+    adapter = MayanCalendarAdapter(new_year_start=(3, 1))
+
+    assert adapter.is_day_out_of_time(date(2028, 2, 29))
+    assert adapter.month_range(date(2028, 2, 29)) == (
+        date(2028, 2, 29),
+        date(2028, 2, 29),
+    )
+    assert is_mayan_day_out_of_time(
+        date(2028, 2, 29),
+        calendar_system="mayan_13_moon",
+        mayan_new_year_start="03-01",
+    )
+
+
+def test_iter_calendar_periods_skips_custom_mayan_day_out_of_time() -> None:
+    periods = iter_calendar_periods(
+        start=date(2028, 2, 25),
+        end=date(2028, 3, 4),
+        granularity="week",
+        calendar_system="mayan_13_moon",
+        mayan_new_year_start="03-01",
+    )
+
+    assert periods == (
+        (date(2028, 2, 21), date(2028, 2, 27)),
+        (date(2028, 3, 1), date(2028, 3, 7)),
+    )
+
+    month_periods = iter_calendar_periods(
+        start=date(2028, 2, 25),
+        end=date(2028, 3, 4),
+        granularity="month",
+        calendar_system="mayan_13_moon",
+        mayan_new_year_start="03-01",
+    )
+
+    assert month_periods == (
+        (date(2028, 1, 31), date(2028, 2, 27)),
+        (date(2028, 3, 1), date(2028, 3, 28)),
+    )
+
+
 def test_iter_calendar_periods_deduplicates_mayan_buckets() -> None:
     periods = iter_calendar_periods(
         start=date(2026, 7, 24),
@@ -176,7 +248,8 @@ def test_task_planning_cycle_filter_range_reads_persisted_preferences(
         lambda: SimpleNamespace(
             calendar_system="mayan_13_moon",
             calendar_first_day_of_week=7,
-            calendar_seven_year_anchor_date="2025-07-26",
+            calendar_seven_year_anchor_year=2025,
+            calendar_mayan_new_year_start="07-26",
         ),
     )
 
@@ -202,7 +275,8 @@ def test_task_planning_cycle_filter_range_uses_mayan_periods(
         lambda: SimpleNamespace(
             calendar_system="mayan_13_moon",
             calendar_first_day_of_week=7,
-            calendar_seven_year_anchor_date="2025-07-26",
+            calendar_seven_year_anchor_year=2025,
+            calendar_mayan_new_year_start="07-26",
         ),
     )
 
@@ -231,7 +305,8 @@ def test_task_planning_cycle_filter_includes_overlapping_physical_windows(
         lambda: SimpleNamespace(
             calendar_system="gregorian",
             calendar_first_day_of_week=1,
-            calendar_seven_year_anchor_date="2025-07-26",
+            calendar_seven_year_anchor_year=2025,
+            calendar_mayan_new_year_start="07-26",
         ),
     )
 
@@ -279,11 +354,18 @@ def test_seven_year_ranges_follow_the_configured_anchor_for_each_calendar() -> N
         "7years",
         date(2027, 12, 31),
         calendar_system="gregorian",
-        seven_year_anchor_date=anchor,
+        seven_year_anchor_year=anchor.year,
     ) == (date(2021, 1, 1), date(2027, 12, 31))
     assert get_calendar_period_range(
         "7years",
         date(2028, 1, 1),
         calendar_system="mayan_13_moon",
-        seven_year_anchor_date=anchor,
-    ) == (date(2027, 7, 26), date(2034, 7, 25))
+        seven_year_anchor_year=anchor.year,
+    ) == (date(2021, 7, 26), date(2028, 7, 25))
+    assert get_calendar_period_range(
+        "7years",
+        date(2028, 3, 1),
+        calendar_system="mayan_13_moon",
+        seven_year_anchor_year=2025,
+        mayan_new_year_start="03-01",
+    ) == (date(2025, 3, 1), date(2032, 2, 29))

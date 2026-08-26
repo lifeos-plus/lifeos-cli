@@ -151,6 +151,8 @@ async def list_aggregated_areas(
         granularity=granularity,
         calendar_system=preferences.calendar_system,
         first_day_of_week=preferences.calendar_first_day_of_week,
+        seven_year_anchor_year=preferences.calendar_seven_year_anchor_year,
+        mayan_new_year_start=preferences.calendar_mayan_new_year_start,
     )
     minutes_by_period = await timelog_stats.get_area_minutes_by_period(
         session,

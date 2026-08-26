@@ -62,6 +62,7 @@ class TaskListMeta(ResponseModel):
     planning_cycle_start_date: str | None
     calendar_system: str | None
     first_day_of_week: int | None
-    seven_year_anchor_date: str | None
+    seven_year_anchor_year: int | None
+    mayan_new_year_start: str | None
     query: str | None
     fields: str

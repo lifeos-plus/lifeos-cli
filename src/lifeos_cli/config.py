@@ -34,7 +34,8 @@ DEFAULT_VISION_EXPERIENCE_RATE_PER_HOUR = 60
 DEFAULT_THEME = "system"
 DEFAULT_CALENDAR_FIRST_DAY_OF_WEEK = 1
 DEFAULT_CALENDAR_SYSTEM = "gregorian"
-DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_DATE = "2025-07-26"
+DEFAULT_CALENDAR_MAYAN_NEW_YEAR_START = "07-26"
+DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_YEAR = 2025
 DEFAULT_NAVIGATION_VISIBLE_MODULES = (
     "visions",
     "habits",
@@ -426,15 +427,35 @@ def validate_calendar_system(value: str) -> str:
     return normalized
 
 
-def validate_calendar_seven_year_anchor_date(value: str) -> str:
-    """Validate the date used to anchor seven-year calendar periods."""
+def validate_calendar_mayan_new_year_start(value: str) -> str:
+    """Validate the Mayan new year start day (MM-DD).
+
+    February 29 is normalized to February 28: non-leap years have no such
+    date, and treating it as February 28 keeps the 13-moon year fixed at 365
+    days without intercalary-day special cases at the year boundary.
+    """
     normalized = value.strip()
     try:
-        return date.fromisoformat(normalized).isoformat()
-    except ValueError as exc:
+        month, day = (int(part) for part in normalized.split("-"))
+        date(2024, month, day)
+    except (ValueError, TypeError) as exc:
         raise ConfigurationError(
-            "Preference `calendar_seven_year_anchor_date` must be a YYYY-MM-DD date."
+            "Preference `calendar_mayan_new_year_start` must be a MM-DD date."
         ) from exc
+    if (month, day) == (2, 29):
+        day = 28
+    return f"{month:02d}-{day:02d}"
+
+
+def validate_calendar_seven_year_anchor_year(value: int | str) -> int:
+    """Validate the year used to anchor seven-year calendar periods."""
+    normalized = _validate_int_preference(
+        value,
+        field_name="calendar_seven_year_anchor_year",
+    )
+    if normalized < 1 or normalized > 9999:
+        raise ConfigurationError("Preference `calendar_seven_year_anchor_year` must be a year.")
+    return normalized
 
 
 def validate_navigation_visible_modules(value: object) -> tuple[str, ...]:
@@ -569,8 +590,9 @@ def _render_preferences_table(settings: PreferencesSettings) -> str:
         f"theme = {_serialize_toml_string(settings.theme)}",
         f"calendar_first_day_of_week = {settings.calendar_first_day_of_week}",
         f"calendar_system = {_serialize_toml_string(settings.calendar_system)}",
-        "calendar_seven_year_anchor_date = "
-        f"{_serialize_toml_string(settings.calendar_seven_year_anchor_date)}",
+        "calendar_mayan_new_year_start = "
+        f"{_serialize_toml_string(settings.calendar_mayan_new_year_start)}",
+        f"calendar_seven_year_anchor_year = {settings.calendar_seven_year_anchor_year}",
         "navigation_visible_modules = "
         f"{_serialize_toml_string_list(settings.navigation_visible_modules)}",
         f"notes_card_min_collapsed_lines = {settings.notes_card_min_collapsed_lines}",
@@ -775,7 +797,8 @@ class PreferencesSettings:
     theme: str = DEFAULT_THEME
     calendar_first_day_of_week: int = DEFAULT_CALENDAR_FIRST_DAY_OF_WEEK
     calendar_system: str = DEFAULT_CALENDAR_SYSTEM
-    calendar_seven_year_anchor_date: str = DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_DATE
+    calendar_mayan_new_year_start: str = DEFAULT_CALENDAR_MAYAN_NEW_YEAR_START
+    calendar_seven_year_anchor_year: int = DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_YEAR
     navigation_visible_modules: tuple[str, ...] = DEFAULT_NAVIGATION_VISIBLE_MODULES
     notes_card_min_collapsed_lines: int = DEFAULT_NOTES_CARD_MIN_COLLAPSED_LINES
     notes_export_planning_include_cycle_notes: bool = (
@@ -816,7 +839,11 @@ class PreferencesSettings:
         file_theme = preference_values.get("theme")
         file_calendar_first_day_of_week = preference_values.get("calendar_first_day_of_week")
         file_calendar_system = preference_values.get("calendar_system")
-        file_calendar_seven_year_anchor_date = preference_values.get(
+        file_calendar_mayan_new_year_start = preference_values.get("calendar_mayan_new_year_start")
+        file_calendar_seven_year_anchor_year = preference_values.get(
+            "calendar_seven_year_anchor_year"
+        )
+        file_legacy_calendar_seven_year_anchor_date = preference_values.get(
             "calendar_seven_year_anchor_date"
         )
         file_navigation_visible_modules = preference_values.get("navigation_visible_modules")
@@ -890,13 +917,37 @@ class PreferencesSettings:
         )
         calendar_system = validate_calendar_system(calendar_system_value)
 
-        calendar_seven_year_anchor_date_value = (
-            file_calendar_seven_year_anchor_date
-            if isinstance(file_calendar_seven_year_anchor_date, str)
-            else DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_DATE
+        calendar_mayan_new_year_start_value = (
+            file_calendar_mayan_new_year_start
+            if isinstance(file_calendar_mayan_new_year_start, str)
+            else DEFAULT_CALENDAR_MAYAN_NEW_YEAR_START
         )
-        calendar_seven_year_anchor_date = validate_calendar_seven_year_anchor_date(
-            calendar_seven_year_anchor_date_value
+        calendar_mayan_new_year_start = validate_calendar_mayan_new_year_start(
+            calendar_mayan_new_year_start_value
+        )
+
+        calendar_seven_year_anchor_year_value = (
+            file_calendar_seven_year_anchor_year
+            if file_calendar_seven_year_anchor_year is not None
+            else None
+        )
+        if calendar_seven_year_anchor_year_value is None and isinstance(
+            file_legacy_calendar_seven_year_anchor_date, str
+        ):
+            # Migrate the legacy full-date anchor: only its year is meaningful
+            # now that the Mayan new year start is its own preference.
+            try:
+                calendar_seven_year_anchor_year_value = date.fromisoformat(
+                    file_legacy_calendar_seven_year_anchor_date
+                ).year
+            except ValueError as exc:
+                raise ConfigurationError(
+                    "Preference `calendar_seven_year_anchor_date` must be a YYYY-MM-DD date."
+                ) from exc
+        calendar_seven_year_anchor_year = validate_calendar_seven_year_anchor_year(
+            calendar_seven_year_anchor_year_value
+            if calendar_seven_year_anchor_year_value is not None
+            else DEFAULT_CALENDAR_SEVEN_YEAR_ANCHOR_YEAR
         )
 
         navigation_visible_modules_value = (
@@ -972,7 +1023,8 @@ class PreferencesSettings:
             theme=theme,
             calendar_first_day_of_week=calendar_first_day_of_week,
             calendar_system=calendar_system,
-            calendar_seven_year_anchor_date=calendar_seven_year_anchor_date,
+            calendar_mayan_new_year_start=calendar_mayan_new_year_start,
+            calendar_seven_year_anchor_year=calendar_seven_year_anchor_year,
             navigation_visible_modules=navigation_visible_modules,
             notes_card_min_collapsed_lines=notes_card_min_collapsed_lines,
             notes_export_planning_include_cycle_notes=notes_export_include_cycle_notes,

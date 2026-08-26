@@ -36,7 +36,8 @@ def _stub_calendar_preferences(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda: SimpleNamespace(
             calendar_system="gregorian",
             calendar_first_day_of_week=1,
-            calendar_seven_year_anchor_date="2025-07-26",
+            calendar_seven_year_anchor_year=2025,
+            calendar_mayan_new_year_start="07-26",
         ),
     )
 

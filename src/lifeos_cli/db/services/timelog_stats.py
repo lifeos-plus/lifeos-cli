@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from calendar import monthrange
+from calendar import isleap, monthrange
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -109,28 +109,49 @@ def overlap_minutes_for_window(
     return int((overlap_end - overlap_start).total_seconds() // 60)
 
 
-def _week_month_excluded_local_date(
+def _week_month_excluded_local_dates(
     *,
     granularity: str,
     start_date: date,
     end_date: date,
-) -> date | None:
-    """Return the local date excluded from week/month stats aggregation, if any.
+) -> tuple[date, ...]:
+    """Return local dates excluded from week/month stats aggregation, if any.
 
-    The Mayan Day Out of Time (July 25) belongs to no week or moon, so it is
-    excluded from week and month granularity for the Mayan 13 Moon calendar.
-    Day, year, and explicit range views keep the date.
+    The Mayan Day Out of Time (the day before the configured new year start)
+    belongs to no week or moon, so it is excluded from week and month
+    granularity for the Mayan 13 Moon calendar. February 29 is treated as
+    February 28, so a leap-year Day Out of Time excludes both dates. Day,
+    year, and explicit range views keep the dates.
     """
     if granularity not in {"week", "month"}:
-        return None
-    calendar_system = get_preferences_settings().calendar_system
-    for year in {start_date.year, end_date.year}:
-        candidate = date(year, 7, 25)
+        return ()
+    preferences = get_preferences_settings()
+    calendar_system = preferences.calendar_system
+    if calendar_system != "mayan_13_moon":
+        return ()
+    month, day = (int(part) for part in preferences.calendar_mayan_new_year_start.split("-"))
+    excluded: list[date] = []
+    for year in {
+        start_date.year - 1,
+        start_date.year,
+        end_date.year,
+        end_date.year + 1,
+    }:
+        candidate = date(year, month, day) - timedelta(days=1)
+        if (candidate.month, candidate.day) == (2, 29):
+            candidate = candidate.replace(day=28)
         if start_date <= candidate <= end_date and is_mayan_day_out_of_time(
-            candidate, calendar_system=calendar_system
+            candidate,
+            calendar_system=calendar_system,
+            mayan_new_year_start=preferences.calendar_mayan_new_year_start,
         ):
-            return candidate
-    return None
+            if candidate not in excluded:
+                excluded.append(candidate)
+            if (candidate.month, candidate.day) == (2, 28) and isleap(candidate.year):
+                leap_candidate = date(candidate.year, 2, 29)
+                if start_date <= leap_candidate <= end_date and leap_candidate not in excluded:
+                    excluded.append(leap_candidate)
+    return tuple(excluded)
 
 
 def resolve_stats_period(
@@ -202,16 +223,14 @@ async def _collect_area_stats_for_window(
     end_date: date,
 ) -> TimelogStatsReport:
     timezone_name = get_preferences_settings().timezone
-    excluded_local_date = _week_month_excluded_local_date(
+    excluded_local_dates = _week_month_excluded_local_dates(
         granularity=granularity,
         start_date=start_date,
         end_date=end_date,
     )
-    excluded_window = (
-        get_utc_window_for_local_date(excluded_local_date)
-        if excluded_local_date is not None
-        else None
-    )
+    excluded_windows = [
+        get_utc_window_for_local_date(excluded_date) for excluded_date in excluded_local_dates
+    ]
     metrics: dict[UUID, dict[str, int]] = defaultdict(lambda: {"minutes": 0, "timelog_count": 0})
     timelogs = await _load_overlapping_area_timelogs(
         session,
@@ -227,7 +246,7 @@ async def _collect_area_stats_for_window(
             window_start=window_start,
             window_end=window_end,
         )
-        if excluded_window is not None:
+        for excluded_window in excluded_windows:
             minutes -= overlap_minutes_for_window(
                 start_time=timelog.start_time,
                 end_time=timelog.end_time,
@@ -398,16 +417,14 @@ async def _recompute_aggregated_period(
         start_date,
         end_date,
     )
-    excluded_local_date = _week_month_excluded_local_date(
+    excluded_local_dates = _week_month_excluded_local_dates(
         granularity=granularity,
         start_date=start_date,
         end_date=end_date,
     )
-    excluded_window = (
-        get_utc_window_for_local_date(excluded_local_date)
-        if excluded_local_date is not None
-        else None
-    )
+    excluded_windows = [
+        get_utc_window_for_local_date(excluded_date) for excluded_date in excluded_local_dates
+    ]
     daily_rows = (
         await session.execute(
             select(DailyTimelogStatsGroupByArea).where(
@@ -419,7 +436,7 @@ async def _recompute_aggregated_period(
     ).scalars()
     minutes_by_area: dict[UUID, int] = defaultdict(int)
     for daily_row in daily_rows:
-        if excluded_local_date is not None and daily_row.stat_date == excluded_local_date:
+        if daily_row.stat_date in excluded_local_dates:
             continue
         minutes_by_area[daily_row.area_id] += daily_row.minutes
 
@@ -441,7 +458,7 @@ async def _recompute_aggregated_period(
             window_start=window_start,
             window_end=window_end,
         )
-        if excluded_window is not None:
+        for excluded_window in excluded_windows:
             minutes -= overlap_minutes_for_window(
                 start_time=start_time,
                 end_time=end_time,
