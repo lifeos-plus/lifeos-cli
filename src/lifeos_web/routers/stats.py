@@ -145,7 +145,6 @@ async def list_aggregated_areas(
         raise HTTPException(status_code=400, detail="end must be on or after start")
     preferences = get_preferences_settings()
     selected_areas = _parse_area_ids(area_ids)
-    rows: list[dict[str, object]] = []
     periods = iter_calendar_periods(
         start=start,
         end=end,
@@ -153,21 +152,21 @@ async def list_aggregated_areas(
         calendar_system=preferences.calendar_system,
         first_day_of_week=preferences.calendar_first_day_of_week,
     )
+    minutes_by_period = await timelog_stats.get_area_minutes_by_period(
+        session,
+        periods=periods,
+    )
+    rows: list[dict[str, object]] = []
     for period_start, period_end in periods:
-        report = await timelog_stats.get_timelog_stats_groupby_area_for_range(
-            session,
-            start_date=period_start,
-            end_date=period_end,
-        )
-        for row in report.rows:
-            if _filter_area(row.area_id, selected_areas):
+        for area_id, minutes in minutes_by_period[(period_start, period_end)].items():
+            if _filter_area(area_id, selected_areas):
                 rows.append(
                     {
                         "granularity": granularity,
                         "period_start": period_start.isoformat(),
                         "period_end": period_end.isoformat(),
-                        "area_id": str(row.area_id),
-                        "minutes": row.minutes,
+                        "area_id": str(area_id),
+                        "minutes": minutes,
                     }
                 )
     return AggregatedAreasListResponse(

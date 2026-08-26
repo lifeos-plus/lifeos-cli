@@ -154,7 +154,7 @@ def test_get_year_bounds_returns_full_calendar_year() -> None:
 
 
 @pytest.mark.usefixtures("configured_mayan_time_preferences")
-def test_range_stats_exclude_mayan_day_out_of_time_singleton() -> None:
+def test_range_stats_keep_mayan_day_out_of_time_for_single_day_range() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
@@ -166,7 +166,12 @@ def test_range_stats_exclude_mayan_day_out_of_time_singleton() -> None:
                     end_date=date(2026, 7, 25),
                 )
 
-                assert report.rows == ()
+                # A single-day range is a day query: the Day Out of Time keeps
+                # its own stats (60 min on the day + 1440 min from the
+                # multi-day timelog), matching the day view.
+                assert len(report.rows) == 1
+                assert report.rows[0].minutes == 1500
+                assert report.rows[0].timelog_count == 2
 
     asyncio.run(scenario())
 

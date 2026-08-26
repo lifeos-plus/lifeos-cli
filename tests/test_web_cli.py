@@ -2662,28 +2662,20 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
     from lifeos_web.routers import stats
 
     area_id = UUID("11111111-1111-1111-1111-111111111111")
-    captured_ranges: list[tuple[date, date]] = []
+    captured_periods: list[tuple[date, date]] = []
 
-    async def fake_get_range(
+    async def fake_get_area_minutes(
         _session: object,
         *,
-        start_date: date,
-        end_date: date,
-    ) -> object:
-        captured_ranges.append((start_date, end_date))
-        return SimpleNamespace(
-            rows=(
-                SimpleNamespace(
-                    area_id=area_id,
-                    minutes=60,
-                ),
-            )
-        )
+        periods: tuple[tuple[date, date], ...],
+    ) -> dict[tuple[date, date], dict[UUID, int]]:
+        captured_periods.extend(periods)
+        return {period: {area_id: 60} for period in periods}
 
     monkeypatch.setattr(
         stats.timelog_stats,
-        "get_timelog_stats_groupby_area_for_range",
-        fake_get_range,
+        "get_area_minutes_by_period",
+        fake_get_area_minutes,
     )
     monkeypatch.setattr(
         stats,
@@ -2704,7 +2696,7 @@ def test_web_stats_aggregated_areas_uses_mayan_calendar_buckets(
         )
     )
 
-    assert captured_ranges == [
+    assert captured_periods == [
         (date(2026, 6, 27), date(2026, 7, 24)),
         (date(2026, 7, 26), date(2026, 8, 22)),
     ]
@@ -2742,19 +2734,17 @@ def test_web_stats_aggregated_areas_keeps_empty_buckets_in_periods(
 ) -> None:
     from lifeos_web.routers import stats
 
-    async def fake_get_range(
+    async def fake_get_area_minutes(
         _session: object,
         *,
-        start_date: date,
-        end_date: date,
-    ) -> object:
-        del start_date, end_date
-        return SimpleNamespace(rows=())
+        periods: tuple[tuple[date, date], ...],
+    ) -> dict[tuple[date, date], dict[UUID, int]]:
+        return {period: {} for period in periods}
 
     monkeypatch.setattr(
         stats.timelog_stats,
-        "get_timelog_stats_groupby_area_for_range",
-        fake_get_range,
+        "get_area_minutes_by_period",
+        fake_get_area_minutes,
     )
     monkeypatch.setattr(
         stats,
@@ -2799,19 +2789,17 @@ def test_web_stats_calendar_context_comes_from_backend_preferences(
 ) -> None:
     from lifeos_web.routers import stats
 
-    async def fake_get_range(
+    async def fake_get_area_minutes(
         _session: object,
         *,
-        start_date: date,
-        end_date: date,
-    ) -> object:
-        del start_date, end_date
-        return SimpleNamespace(rows=())
+        periods: tuple[tuple[date, date], ...],
+    ) -> dict[tuple[date, date], dict[UUID, int]]:
+        return {period: {} for period in periods}
 
     monkeypatch.setattr(
         stats.timelog_stats,
-        "get_timelog_stats_groupby_area_for_range",
-        fake_get_range,
+        "get_area_minutes_by_period",
+        fake_get_area_minutes,
     )
     monkeypatch.setattr(
         stats,
