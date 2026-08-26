@@ -555,6 +555,52 @@ async def get_timelog_stats_groupby_area_for_day(
     )
 
 
+async def get_area_minutes_by_period(
+    session: AsyncSession,
+    *,
+    periods: tuple[tuple[date, date], ...],
+) -> dict[tuple[date, date], dict[UUID, int]]:
+    """Return per-area minutes for every period using a single timelog load.
+
+    The web stats timeline can span dozens of periods (for example 91 moons
+    over a seven-year month view); aggregating each period with its own query
+    would issue one round trip per bucket. Loading the overlapping timelogs
+    once and splitting them in memory keeps the request count flat.
+    """
+    if not periods:
+        return {}
+    overall_start = periods[0][0]
+    overall_end = periods[-1][1]
+    window_start, window_end = get_utc_half_open_window_for_local_date_range(
+        overall_start,
+        overall_end,
+    )
+    timelogs = await _load_overlapping_area_timelogs(
+        session,
+        window_start=window_start,
+        window_end=window_end,
+    )
+    minutes_by_period: dict[tuple[date, date], dict[UUID, int]] = {}
+    for period_start, period_end in periods:
+        period_start_window, period_end_window = get_utc_half_open_window_for_local_date_range(
+            period_start, period_end
+        )
+        minutes_by_area: dict[UUID, int] = defaultdict(int)
+        for timelog in timelogs:
+            if timelog.area_id is None:
+                continue
+            minutes = overlap_minutes_for_window(
+                start_time=timelog.start_time,
+                end_time=timelog.end_time,
+                window_start=period_start_window,
+                window_end=period_end_window,
+            )
+            if minutes > 0:
+                minutes_by_area[timelog.area_id] += minutes
+        minutes_by_period[(period_start, period_end)] = minutes_by_area
+    return minutes_by_period
+
+
 async def get_timelog_stats_groupby_area_for_range(
     session: AsyncSession,
     *,
@@ -567,21 +613,6 @@ async def get_timelog_stats_groupby_area_for_range(
         start_date=start_date,
         end_date=end_date,
     )
-    preferences = get_preferences_settings()
-    if normalized_start_date == normalized_end_date and is_mayan_day_out_of_time(
-        normalized_start_date,
-        calendar_system=preferences.calendar_system,
-    ):
-        # The Mayan Day Out of Time forms its own week/month period bucket, but
-        # belongs to no week or moon. Return an empty report so aggregated
-        # week/month consumers never surface it; wider ranges keep the day.
-        return TimelogStatsReport(
-            granularity="range",
-            start_date=normalized_start_date,
-            end_date=normalized_end_date,
-            timezone=preferences.timezone,
-            rows=(),
-        )
     window_start, window_end = get_utc_half_open_window_for_local_date_range(
         normalized_start_date,
         normalized_end_date,

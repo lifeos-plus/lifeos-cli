@@ -193,6 +193,20 @@ def get_calendar_period_range(
     raise ValueError(f"Unsupported calendar granularity: {granularity}")
 
 
+def _is_out_of_time_singleton(
+    period: tuple[date, date],
+    *,
+    granularity: CalendarGranularity,
+    calendar_system: str | None,
+) -> bool:
+    """Return whether a week/month bucket is the Mayan Day Out of Time itself."""
+    return (
+        granularity in {"week", "month"}
+        and period[0] == period[1]
+        and is_mayan_day_out_of_time(period[0], calendar_system=calendar_system)
+    )
+
+
 def iter_calendar_periods(
     *,
     start: date,
@@ -202,22 +216,34 @@ def iter_calendar_periods(
     first_day_of_week: int | None = None,
     seven_year_anchor_date: date | None = None,
 ) -> tuple[tuple[date, date], ...]:
-    """Return sorted unique period buckets touched by an inclusive date range."""
+    """Return sorted unique period buckets touched by an inclusive date range.
+
+    The walk advances by one full bucket at a time, so the cost scales with
+    the number of buckets rather than the number of days. For the Mayan 13
+    Moon calendar, the Day Out of Time (July 25) belongs to no week or moon,
+    so week and month buckets never include it as a single-day bucket of its
+    own; day, year, and seven-year buckets keep the date.
+    """
     if end < start:
         raise ValueError("end must be on or after start")
 
     periods: dict[tuple[date, date], None] = {}
     cursor = start
     while cursor <= end:
-        periods.setdefault(
-            get_calendar_period_range(
-                granularity,
-                cursor,
-                calendar_system=calendar_system,
-                first_day_of_week=first_day_of_week,
-                seven_year_anchor_date=seven_year_anchor_date,
-            ),
-            None,
+        period = get_calendar_period_range(
+            granularity,
+            cursor,
+            calendar_system=calendar_system,
+            first_day_of_week=first_day_of_week,
+            seven_year_anchor_date=seven_year_anchor_date,
         )
-        cursor += timedelta(days=1)
+        if _is_out_of_time_singleton(
+            period,
+            granularity=granularity,
+            calendar_system=calendar_system,
+        ):
+            cursor += timedelta(days=1)
+            continue
+        periods.setdefault(period, None)
+        cursor = period[1] + timedelta(days=1)
     return tuple(sorted(periods, key=lambda period: (period[0], period[1])))

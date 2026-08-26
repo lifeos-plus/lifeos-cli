@@ -114,9 +114,10 @@ def test_iter_calendar_periods_deduplicates_mayan_buckets() -> None:
         calendar_system="mayan_13_moon",
     )
 
+    # The Day Out of Time (July 25) belongs to no moon, so it must not form a
+    # single-day month bucket between moon 13 and moon 1 of the next year.
     assert periods == (
         (date(2026, 6, 27), date(2026, 7, 24)),
-        (date(2026, 7, 25), date(2026, 7, 25)),
         (date(2026, 7, 26), date(2026, 8, 22)),
     )
 
@@ -129,10 +130,40 @@ def test_iter_calendar_periods_keeps_mayan_week_boundaries_across_new_year() -> 
         calendar_system="mayan_13_moon",
     )
 
+    # The Day Out of Time (July 25) belongs to no week, so it must not form a
+    # single-day week bucket between week 52 and week 1 of the next year.
     assert periods == (
         (date(2026, 7, 18), date(2026, 7, 24)),
-        (date(2026, 7, 25), date(2026, 7, 25)),
         (date(2026, 7, 26), date(2026, 8, 1)),
+    )
+
+
+def test_iter_calendar_periods_keeps_mayan_day_out_of_time_in_year_buckets() -> None:
+    year_periods = iter_calendar_periods(
+        start=date(2026, 7, 24),
+        end=date(2026, 7, 27),
+        granularity="year",
+        calendar_system="mayan_13_moon",
+    )
+
+    assert year_periods == (
+        (date(2025, 7, 26), date(2026, 7, 25)),
+        (date(2026, 7, 26), date(2027, 7, 25)),
+    )
+
+
+def test_iter_calendar_periods_keeps_day_out_of_time_for_gregorian_calendar() -> None:
+    periods = iter_calendar_periods(
+        start=date(2026, 7, 24),
+        end=date(2026, 7, 27),
+        granularity="week",
+        calendar_system="gregorian",
+        first_day_of_week=1,
+    )
+
+    assert periods == (
+        (date(2026, 7, 20), date(2026, 7, 26)),
+        (date(2026, 7, 27), date(2026, 8, 2)),
     )
 
 
