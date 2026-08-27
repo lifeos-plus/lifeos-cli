@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Index, Numeric, Text
+from sqlalchemy import Index, Numeric, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
@@ -16,7 +16,16 @@ class BodyMeasurement(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Ba
     """One body weight/body-composition measurement with a user-owned timestamp."""
 
     __tablename__ = "body_measurements"
-    __table_args__ = (Index("ix_body_measurements_measured_at", "measured_at"),)
+    __table_args__ = (
+        Index("ix_body_measurements_measured_at", "measured_at"),
+        Index(
+            "uq_body_measurements_measured_at_active",
+            "measured_at",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+            sqlite_where=text("deleted_at IS NULL"),
+        ),
+    )
 
     measured_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
     weight_kg: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)

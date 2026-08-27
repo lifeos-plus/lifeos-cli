@@ -8,6 +8,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.time_preferences import (
@@ -244,19 +245,18 @@ async def upsert_body_measurement(
     otherwise a new record is inserted. Omitted metric and note values stay
     unchanged on the update path.
     """
-    existing = (
-        await session.execute(
-            select(BodyMeasurement)
-            .where(
-                BodyMeasurement.measured_at == payload.measured_at,
-                BodyMeasurement.deleted_at.is_(None),
-            )
-            .limit(1)
-        )
-    ).scalar_one_or_none()
+    existing = await _active_by_measured_at(session, payload.measured_at)
     if existing is None:
-        measurement = await create_body_measurement(session, payload=payload)
-        return measurement, True
+        try:
+            async with session.begin_nested():
+                measurement = await create_body_measurement(session, payload=payload)
+            return measurement, True
+        except IntegrityError:
+            # A concurrent writer inserted the same measured-at value first;
+            # fall through to the update path against that record.
+            existing = await _active_by_measured_at(session, payload.measured_at)
+            if existing is None:
+                raise
     existing.measured_at = payload.measured_at
     existing.weight_kg = to_kg(payload.weight, payload.unit)
     for field in PERCENTAGE_FIELDS | MASS_FIELDS | {"visceral_fat"}:
@@ -273,6 +273,22 @@ async def upsert_body_measurement(
         existing.notes = validate_notes(payload.notes)
     await session.flush()
     return existing, False
+
+
+async def _active_by_measured_at(
+    session: AsyncSession,
+    measured_at: datetime,
+) -> BodyMeasurement | None:
+    return (
+        await session.execute(
+            select(BodyMeasurement)
+            .where(
+                BodyMeasurement.measured_at == measured_at,
+                BodyMeasurement.deleted_at.is_(None),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
 
 
 async def get_body_measurement(

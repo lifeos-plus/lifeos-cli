@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from lifeos_cli.db.services import body_measurements as body_services
 from lifeos_cli.db.services import menstrual as menstrual_services
@@ -117,6 +118,29 @@ def test_body_measurement_upsert_creates_then_updates_same_measured_at() -> None
                 assert updated.id == created.id
                 assert updated.weight_kg == Decimal("64.10")
                 assert updated.body_fat_percentage == Decimal("22.50")
+
+    asyncio.run(scenario())
+
+
+def test_body_measurement_active_measured_at_is_unique() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await body_services.create_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 19, 8),
+                        weight="63.5",
+                    ),
+                )
+                with pytest.raises(IntegrityError):
+                    await body_services.create_body_measurement(
+                        session,
+                        payload=body_services.BodyMeasurementCreate(
+                            measured_at=_utc(2026, 8, 19, 8),
+                            weight="64.0",
+                        ),
+                    )
 
     asyncio.run(scenario())
 
