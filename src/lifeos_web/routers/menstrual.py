@@ -12,7 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from lifeos_cli.application.datetime_utils import format_utc_iso
 from lifeos_cli.db.models.menstrual import MenstrualDay, MenstrualFactor
 from lifeos_cli.db.services import menstrual as menstrual_services
-from lifeos_cli.db.services.validation_utils import DomainValidationError
+from lifeos_cli.db.services.validation_utils import (
+    DATE_RANGE_TOGETHER_MESSAGE,
+    DomainValidationError,
+)
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.common import EmptyMeta
 from lifeos_web.response_schemas.menstrual import (
@@ -69,7 +72,7 @@ async def list_menstrual_days(
     if (start_date is None) != (end_date is None):
         raise HTTPException(
             status_code=400,
-            detail="start_date and end_date must be provided together.",
+            detail=DATE_RANGE_TOGETHER_MESSAGE,
         )
     days = await menstrual_services.list_menstrual_days(
         session,

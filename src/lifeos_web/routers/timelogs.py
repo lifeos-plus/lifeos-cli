@@ -19,6 +19,7 @@ from lifeos_cli.db.services.timelog_support import (
     TimelogQueryFilters,
     TimelogUpdateInput,
 )
+from lifeos_cli.db.services.validation_utils import DATE_RANGE_TOGETHER_MESSAGE
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.timelogs import (
     LatestTimelogEndResponse,
@@ -101,7 +102,7 @@ async def list_timelogs(
     if (start_date is None) != (end_date is None):
         raise HTTPException(
             status_code=400,
-            detail="start_date and end_date must be provided together.",
+            detail=DATE_RANGE_TOGETHER_MESSAGE,
         )
     if (start_date is not None or end_date is not None) and (
         window_start is not None or window_end is not None
