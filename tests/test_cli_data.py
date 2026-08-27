@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from lifeos_cli import cli
 from lifeos_cli.db import session as db_session
@@ -406,6 +408,98 @@ def test_main_data_import_upsert_resolves_natural_key_before_import(
     assert "Created rows: 1" in captured.out
     assert resolved_rows == [{"name": "Health", "id": "11111111-1111-1111-1111-111111111111"}]
     assert session.committed is True
+
+
+def test_main_data_import_records_unique_constraint_failure_per_row(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    session = FakeAsyncSession()
+    input_path = tmp_path / "factors.jsonl"
+    input_path.write_text(
+        '{"id":"11111111-1111-1111-1111-111111111111","name":"travel"}\n',
+        encoding="utf-8",
+    )
+
+    async def fake_import_resource_snapshot(
+        _session_obj: object,
+        *,
+        resource: str,
+        rows: list[dict[str, object]],
+    ) -> data_ops.DataImportReport:
+        _ = (resource, rows)
+        raise IntegrityError(
+            "stmt", {}, Exception("UNIQUE constraint failed: menstrual_factors.name")
+        )
+
+    async def fake_run_post_import_hooks(_session_obj: object, *, resources: set[str]) -> None:
+        _ = resources
+
+    monkeypatch.setattr(
+        db_session,
+        "get_async_session_factory",
+        _make_session_factory_getter(session),
+    )
+    monkeypatch.setattr(data_ops, "import_resource_snapshot", fake_import_resource_snapshot)
+    monkeypatch.setattr(data_ops, "run_post_import_hooks", fake_run_post_import_hooks)
+
+    exit_code = cli.main(
+        [
+            "data",
+            "import",
+            "menstrual-factor",
+            "--file",
+            str(input_path),
+            "--format",
+            "jsonl",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "Failed rows: 1" in captured.out
+
+
+def test_main_data_import_bundle_reports_unique_constraint_violation_cleanly(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    session = FakeAsyncSession()
+    bundle_path = tmp_path / "bundle.zip"
+    bundle_path.write_bytes(b"not a real bundle")
+
+    async def fake_import_bundle(
+        _session_obj: object,
+        *,
+        bundle_rows: dict[str, list[dict[str, object]]],
+        replace_existing: bool = False,
+    ) -> data_ops.BundleImportReport:
+        _ = (bundle_rows, replace_existing)
+        raise IntegrityError("stmt", {}, Exception("UNIQUE constraint failed"))
+
+    monkeypatch.setattr(
+        db_session,
+        "get_async_session_factory",
+        _make_session_factory_getter(session),
+    )
+    monkeypatch.setattr(data_ops, "read_bundle", lambda _path: SimpleNamespace(resources={}))
+    monkeypatch.setattr(data_ops, "import_bundle", fake_import_bundle)
+
+    exit_code = cli.main(
+        [
+            "data",
+            "import",
+            "bundle",
+            "--file",
+            str(bundle_path),
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "UNIQUE constraint failed" in captured.err
 
 
 def test_main_data_batch_update_records_lookup_failures_without_crashing(

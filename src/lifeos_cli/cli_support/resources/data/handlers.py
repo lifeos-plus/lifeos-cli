@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
+
 from lifeos_cli.cli_support import handler_utils as cli_handler_utils
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import data_ops
@@ -237,7 +239,12 @@ async def _import_rows(
                     )
                     created_count += report.created_count
                     updated_count += report.updated_count
-            except (data_ops.DataOperationError, LookupError, ValueError) as exc:
+            except (
+                data_ops.DataOperationError,
+                LookupError,
+                ValueError,
+                IntegrityError,
+            ) as exc:
                 failures.append(
                     data_ops.DataOperationFailure(
                         index=index,
@@ -330,7 +337,7 @@ async def handle_data_import_async(args: argparse.Namespace) -> int:
         print(f"Updated rows: {import_report.updated_count}")
         print(f"Failed rows: {import_report.failed_count}")
         return 0 if import_report.failed_count == 0 else 1
-    except (data_ops.DataOperationError, LookupError, ValueError) as exc:
+    except (data_ops.DataOperationError, LookupError, ValueError, IntegrityError) as exc:
         return cli_handler_utils.print_cli_error(exc)
 
 
@@ -384,7 +391,7 @@ async def handle_data_batch_delete_async(args: argparse.Namespace) -> int:
             await session.rollback()
         else:
             await session.commit()
-    except (data_ops.DataOperationError, LookupError, ValueError) as exc:
+    except (data_ops.DataOperationError, LookupError, ValueError, IntegrityError) as exc:
         await session.rollback()
         await session.close()
         return cli_handler_utils.print_cli_error(exc)
