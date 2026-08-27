@@ -156,7 +156,7 @@ def build_person_parser(subparsers: argparse._SubParsersAction[argparse.Argument
             description=_("resources.person.parser.show_one_person_with_full_metadata"),
             examples=(
                 "lifeos person show 11111111-1111-1111-1111-111111111111",
-                "lifeos person show 11111111-1111-1111-1111-111111111111",
+                "lifeos person show 11111111-1111-1111-1111-111111111111 --json",
             ),
         ),
     )

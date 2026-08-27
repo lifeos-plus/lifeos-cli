@@ -278,6 +278,45 @@ def lint_help_summary_conventions(reference: dict[str, Any]) -> list[str]:
     return violations
 
 
+def lint_help_duplicate_texts(reference: dict[str, Any]) -> list[str]:
+    """Return help-text repetition violations for every parser node.
+
+    One message rendered in two slots of the same help screen (for example an
+    option description and a note) makes the screen noisy and lets wording
+    drift when only one copy is updated. Exact repeats across option, note,
+    and example slots are flagged, as are notes that embed an option
+    description verbatim.
+    """
+    violations: list[str] = []
+    for command in reference["commands"]:
+        path = "/".join(command["path"])
+        slots: list[tuple[str, str]] = []
+        for argument in command.get("arguments", []):
+            if argument.get("help"):
+                slots.append((f"option {argument['name']}", argument["help"]))
+        for index, note in enumerate(command.get("notes", []), start=1):
+            if note:
+                slots.append((f"note {index}", note))
+        for index, example in enumerate(command.get("examples", []), start=1):
+            if example:
+                slots.append((f"example {index}", example))
+
+        texts_by_value: dict[str, list[str]] = {}
+        for slot, text in slots:
+            texts_by_value.setdefault(text, []).append(slot)
+        for text, slot_labels in texts_by_value.items():
+            if len(slot_labels) > 1:
+                violations.append(f"{path}: same text in {', '.join(slot_labels)}: {text!r}")
+
+        option_texts = [text for slot, text in slots if slot.startswith("option")]
+        note_texts = [text for slot, text in slots if slot.startswith("note")]
+        for note in note_texts:
+            for option in option_texts:
+                if option in note and len(option) >= 20:
+                    violations.append(f"{path}: note embeds option text verbatim: {option!r}")
+    return violations
+
+
 def _render_command_arguments(arguments: Sequence[dict[str, Any]]) -> str:
     """Render one command's structured arguments as a compact reference line."""
     parts: list[str] = []

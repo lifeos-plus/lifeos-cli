@@ -10,6 +10,7 @@ from lifeos_cli.cli_support.help_audit import (
     collect_help_invocations,
     filter_help_invocations,
     filter_reference_commands,
+    lint_help_duplicate_texts,
     lint_help_summary_conventions,
     render_command_tree,
     render_help_audit_report,
@@ -210,3 +211,59 @@ def test_filter_reference_commands_limits_results_to_one_subtree() -> None:
     assert filtered["commands"]
     assert all(command["path"][0] == "note" for command in filtered["commands"])
     assert ["note", "add"] in [command["path"] for command in filtered["commands"]]
+
+
+def test_lint_help_duplicate_texts_flags_repeats_within_one_screen() -> None:
+    reference = {
+        "commands": [
+            {
+                "path": ["body-measurement", "add"],
+                "arguments": [
+                    {
+                        "name": "--measured-at",
+                        "help": "Measured time; defaults to now when omitted",
+                    }
+                ],
+                "notes": ["Measured time; defaults to now when omitted", "A unique note"],
+                "examples": [],
+            },
+            {
+                "path": ["body-measurement", "list"],
+                "arguments": [
+                    {
+                        "name": "--date",
+                        "help": "Repeat `--date` for one or more discrete local dates.",
+                    }
+                ],
+                "notes": [
+                    "Repeat `--date` for one or more discrete local dates. "
+                    "Use `--start-date/--end-date` for one inclusive local-date range."
+                ],
+                "examples": [],
+            },
+            {
+                "path": ["area", "list"],
+                "arguments": [{"name": "--limit", "help": "Maximum rows"}],
+                "notes": ["A unique note"],
+                "examples": ["lifeos area list"],
+            },
+        ]
+    }
+
+    violations = lint_help_duplicate_texts(reference)
+
+    assert any(
+        "body-measurement/add: same text in option --measured-at, note 1" in violation
+        for violation in violations
+    )
+    assert any(
+        "body-measurement/list: note embeds option text verbatim" in violation
+        for violation in violations
+    )
+    assert not any(violation.startswith("area/list") for violation in violations)
+
+
+def test_lint_help_duplicate_texts_passes_full_command_reference() -> None:
+    reference = build_machine_readable_reference(build_parser())
+
+    assert lint_help_duplicate_texts(reference) == []

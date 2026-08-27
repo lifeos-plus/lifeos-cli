@@ -784,10 +784,7 @@ def test_cli_event_timelog_list_help_shows_shared_date_range_text(
     captured = capsys.readouterr()
     normalized_output = " ".join(captured.out.split())
 
-    assert (
-        "Repeat `--date` for one or more discrete local dates. Use "
-        "`--start-date/--end-date` for one inclusive local-date range."
-    ) in captured.out
+    assert ("Use `--start-date/--end-date` for one inclusive local-date range.") in captured.out
     assert "one or more discrete" in normalized_output
     assert "--start-date START_DATE" in normalized_output
     assert "--end-date END_DATE" in normalized_output

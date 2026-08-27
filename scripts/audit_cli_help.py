@@ -19,6 +19,7 @@ from lifeos_cli.cli_support.help_audit import (
     collect_help_invocations,
     filter_help_invocations,
     filter_reference_commands,
+    lint_help_duplicate_texts,
     lint_help_summary_conventions,
     render_command_tree,
     render_help_audit_report,
@@ -61,6 +62,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Lint command summary conventions and exit non-zero on violations.",
     )
+    parser.add_argument(
+        "--check-duplicates",
+        action="store_true",
+        help="Lint duplicate help texts within one command screen and exit non-zero on violations.",
+    )
     return parser.parse_args()
 
 
@@ -87,6 +93,24 @@ def main() -> int:
             )
             return 1
         print("All command summaries follow the summary conventions.")
+        return 0
+
+    if args.check_duplicates:
+        reference = build_machine_readable_reference(build_parser())
+        violations = lint_help_duplicate_texts(reference)
+        if violations:
+            print(
+                "Help text duplicate violations:",
+                file=sys.stderr,
+            )
+            for violation in violations:
+                print(f"  {violation}", file=sys.stderr)
+            print(
+                "Reuse one message key per help screen; keep notes free of option-text copies.",
+                file=sys.stderr,
+            )
+            return 1
+        print("No help text is repeated within one command screen.")
         return 0
 
     if args.format == "tree":

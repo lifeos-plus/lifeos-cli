@@ -236,7 +236,7 @@ def build_habit_show_parser(
             ),
             examples=(
                 "lifeos habit show 11111111-1111-1111-1111-111111111111",
-                "lifeos habit show 11111111-1111-1111-1111-111111111111",
+                "lifeos habit show 11111111-1111-1111-1111-111111111111 --json",
             ),
         ),
     )
