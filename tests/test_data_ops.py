@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -439,6 +439,19 @@ def test_body_measurement_is_supported_with_measured_at_upsert_key() -> None:
         data_ops.validate_upsert_key("body-measurement", "weight_kg")
 
 
+def test_health_data_resources_are_supported_with_safe_upsert_keys() -> None:
+    assert "menstrual" in data_ops.SUPPORTED_DATA_RESOURCES
+    assert "menstrual-factor" in data_ops.SUPPORTED_DATA_RESOURCES
+    assert "sleep" in data_ops.SUPPORTED_DATA_RESOURCES
+    data_ops.validate_upsert_key("menstrual", "log_date")
+    data_ops.validate_upsert_key("menstrual-factor", "name")
+    with pytest.raises(
+        data_ops.DataOperationError,
+        match="supported keys: none",
+    ):
+        data_ops.validate_upsert_key("sleep", "start_at")
+
+
 def test_body_measurement_snapshot_round_trip_and_datetime_upsert_key() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:
@@ -536,6 +549,203 @@ def test_batch_delete_body_measurement_routes_to_service(
         data_ops.batch_delete_resource(
             cast(AsyncSession, FakeBatchSession()),
             resource="body-measurement",
+            record_ids=[
+                UUID("11111111-1111-1111-1111-111111111111"),
+                UUID("22222222-2222-2222-2222-222222222222"),
+            ],
+        )
+    )
+
+    assert report.deleted_count == 2
+    assert report.failed_count == 0
+
+
+def test_menstrual_day_snapshot_round_trip_with_factors_and_log_date_upsert_key() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await data_ops.import_resource_snapshot(
+                    session,
+                    resource="menstrual-factor",
+                    rows=[
+                        {
+                            "id": str(uuid4()),
+                            "name": "travel",
+                            "created_at": "2026-08-19T00:00:00Z",
+                            "updated_at": "2026-08-19T00:00:00Z",
+                            "deleted_at": None,
+                        }
+                    ],
+                )
+                await data_ops.import_resource_snapshot(
+                    session,
+                    resource="menstrual",
+                    rows=[
+                        {
+                            "id": str(uuid4()),
+                            "log_date": "2026-08-19",
+                            "in_period": True,
+                            "flow_amount": "medium",
+                            "symptoms": ["headache"],
+                            "mood_changes": True,
+                            "protection_used": None,
+                            "spotting": False,
+                            "notes": "evening",
+                            "factor_names": ["travel"],
+                            "created_at": "2026-08-19T00:00:00Z",
+                            "updated_at": "2026-08-19T00:00:00Z",
+                            "deleted_at": None,
+                        }
+                    ],
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                rows = await data_ops.export_resource_snapshot(
+                    session,
+                    resource="menstrual",
+                )
+                assert len(rows) == 1
+                assert rows[0]["log_date"] == "2026-08-19"
+                assert rows[0]["factor_names"] == ["travel"]
+                assert rows[0]["symptoms"] == ["headache"]
+
+                resolved = await data_ops.resolve_upsert_row_id(
+                    session,
+                    resource="menstrual",
+                    row={"log_date": "2026-08-19", "notes": "updated"},
+                    key_field="log_date",
+                    index=1,
+                )
+                assert UUID(resolved["id"]) == UUID(rows[0]["id"])
+
+    asyncio.run(scenario())
+
+
+def test_sleep_segment_snapshot_round_trip() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await data_ops.import_resource_snapshot(
+                    session,
+                    resource="sleep",
+                    rows=[
+                        {
+                            "id": str(uuid4()),
+                            "sleep_date": "2026-08-18",
+                            "start_at": "2026-08-18T22:30:00+00:00",
+                            "end_at": "2026-08-19T06:30:00+00:00",
+                            "duration_minutes": 480,
+                            "created_at": "2026-08-19T00:00:00Z",
+                            "updated_at": "2026-08-19T00:00:00Z",
+                            "deleted_at": None,
+                        }
+                    ],
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                rows = await data_ops.export_resource_snapshot(
+                    session,
+                    resource="sleep",
+                )
+                assert len(rows) == 1
+                assert rows[0]["start_at"] == "2026-08-18T22:30:00Z"
+                assert rows[0]["duration_minutes"] == 480
+
+    asyncio.run(scenario())
+
+
+def test_batch_update_menstrual_day_maps_canonical_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_update(session: object, **kwargs: object) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setitem(data_ops.UPDATE_OPERATIONS, "menstrual", fake_update)
+
+    report = asyncio.run(
+        data_ops.batch_update_resource(
+            cast(AsyncSession, FakeBatchSession()),
+            resource="menstrual",
+            rows=[
+                {
+                    "id": "11111111-1111-1111-1111-111111111111",
+                    "log_date": "2026-08-19",
+                    "flow_amount": "medium",
+                    "symptoms": None,
+                    "factor_names": ["travel"],
+                }
+            ],
+        )
+    )
+
+    assert report.updated_count == 1
+    assert captured["day_id"] == UUID("11111111-1111-1111-1111-111111111111")
+    assert captured["log_date"] == date(2026, 8, 19)
+    assert captured["flow_amount"] == "medium"
+    assert captured["clear_symptoms"] is True
+    assert captured["factor_names"] == ["travel"]
+
+
+def test_batch_update_sleep_segment_maps_canonical_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_update(session: object, **kwargs: object) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setitem(data_ops.UPDATE_OPERATIONS, "sleep", fake_update)
+
+    report = asyncio.run(
+        data_ops.batch_update_resource(
+            cast(AsyncSession, FakeBatchSession()),
+            resource="sleep",
+            rows=[
+                {
+                    "id": "11111111-1111-1111-1111-111111111111",
+                    "start_at": "2026-08-18T22:30:00+00:00",
+                    "end_at": "2026-08-19T06:30:00+00:00",
+                }
+            ],
+        )
+    )
+
+    assert report.updated_count == 1
+    assert captured["segment_id"] == UUID("11111111-1111-1111-1111-111111111111")
+    assert captured["start_at"] == datetime(2026, 8, 18, 22, 30, tzinfo=UTC)
+    assert captured["end_at"] == datetime(2026, 8, 19, 6, 30, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    ("resource", "arg_name"),
+    [
+        ("menstrual", "day_ids"),
+        ("menstrual-factor", "factor_ids"),
+        ("sleep", "segment_ids"),
+    ],
+)
+def test_batch_delete_health_resources_routes_to_service(
+    monkeypatch: pytest.MonkeyPatch,
+    resource: str,
+    arg_name: str,
+) -> None:
+    async def fake_delete(session: object, **kwargs: object) -> SimpleNamespace:
+        assert kwargs[arg_name] == [
+            UUID("11111111-1111-1111-1111-111111111111"),
+            UUID("22222222-2222-2222-2222-222222222222"),
+        ]
+        return SimpleNamespace(deleted_count=2, failed_ids=(), errors=())
+
+    monkeypatch.setitem(data_ops.DELETE_OPERATIONS, resource, fake_delete)
+
+    report = asyncio.run(
+        data_ops.batch_delete_resource(
+            cast(AsyncSession, FakeBatchSession()),
+            resource=resource,
             record_ids=[
                 UUID("11111111-1111-1111-1111-111111111111"),
                 UUID("22222222-2222-2222-2222-222222222222"),
