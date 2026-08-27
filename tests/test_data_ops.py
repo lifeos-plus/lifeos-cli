@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
@@ -426,3 +427,121 @@ def test_resolve_upsert_row_id_rejects_unsupported_key_before_session_use() -> N
                 index=1,
             )
         )
+
+
+def test_body_measurement_is_supported_with_measured_at_upsert_key() -> None:
+    assert "body-measurement" in data_ops.SUPPORTED_DATA_RESOURCES
+    data_ops.validate_upsert_key("body-measurement", "measured_at")
+    with pytest.raises(
+        data_ops.DataOperationError,
+        match="Natural-key upsert is not supported for 'body-measurement'",
+    ):
+        data_ops.validate_upsert_key("body-measurement", "weight_kg")
+
+
+def test_body_measurement_snapshot_round_trip_and_datetime_upsert_key() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await data_ops.import_resource_snapshot(
+                    session,
+                    resource="body-measurement",
+                    rows=[
+                        {
+                            "id": str(uuid4()),
+                            "measured_at": "2026-08-19T08:00:00+00:00",
+                            "weight_kg": 63.55,
+                            "body_fat_percentage": 22.5,
+                            "notes": "morning",
+                            "created_at": "2026-08-19T08:05:00Z",
+                            "updated_at": "2026-08-19T08:05:00Z",
+                            "deleted_at": None,
+                        }
+                    ],
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                rows = await data_ops.export_resource_snapshot(
+                    session,
+                    resource="body-measurement",
+                )
+                assert len(rows) == 1
+                assert rows[0]["measured_at"] == "2026-08-19T08:00:00Z"
+                assert rows[0]["weight_kg"] == 63.55
+                assert rows[0]["body_fat_percentage"] == 22.5
+
+                resolved = await data_ops.resolve_upsert_row_id(
+                    session,
+                    resource="body-measurement",
+                    row={"measured_at": "2026-08-19T04:00:00-04:00", "weight_kg": 64.0},
+                    key_field="measured_at",
+                    index=1,
+                )
+                assert UUID(resolved["id"]) == UUID(rows[0]["id"])
+
+    asyncio.run(scenario())
+
+
+def test_batch_update_body_measurement_maps_canonical_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_update(session: object, *, measurement_id: object, payload: object) -> None:
+        captured["measurement_id"] = measurement_id
+        captured["payload"] = payload
+
+    monkeypatch.setitem(data_ops.UPDATE_OPERATIONS, "body-measurement", fake_update)
+
+    report = asyncio.run(
+        data_ops.batch_update_resource(
+            cast(AsyncSession, FakeBatchSession()),
+            resource="body-measurement",
+            rows=[
+                {
+                    "id": "11111111-1111-1111-1111-111111111111",
+                    "measured_at": "2026-08-19T08:00:00+00:00",
+                    "weight_kg": 64.2,
+                    "body_fat_percentage": None,
+                    "notes": "updated",
+                }
+            ],
+        )
+    )
+
+    assert report.updated_count == 1
+    assert captured["measurement_id"] == UUID("11111111-1111-1111-1111-111111111111")
+    payload = cast(data_ops.body_measurements.BodyMeasurementUpdate, captured["payload"])
+    assert payload.measured_at == datetime(2026, 8, 19, 8, tzinfo=UTC)
+    assert payload.weight == Decimal("64.2")
+    assert payload.unit == "kg"
+    assert "body_fat_percentage" in payload.clear_fields
+    assert payload.notes == "updated"
+
+
+def test_batch_delete_body_measurement_routes_to_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_delete(session: object, **kwargs: object) -> SimpleNamespace:
+        assert kwargs["measurement_ids"] == [
+            UUID("11111111-1111-1111-1111-111111111111"),
+            UUID("22222222-2222-2222-2222-222222222222"),
+        ]
+        return SimpleNamespace(deleted_count=2, failed_ids=(), errors=())
+
+    monkeypatch.setitem(data_ops.DELETE_OPERATIONS, "body-measurement", fake_delete)
+
+    report = asyncio.run(
+        data_ops.batch_delete_resource(
+            cast(AsyncSession, FakeBatchSession()),
+            resource="body-measurement",
+            record_ids=[
+                UUID("11111111-1111-1111-1111-111111111111"),
+                UUID("22222222-2222-2222-2222-222222222222"),
+            ],
+        )
+    )
+
+    assert report.deleted_count == 2
+    assert report.failed_count == 0

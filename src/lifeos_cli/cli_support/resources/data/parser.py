@@ -127,9 +127,7 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                 _(
                     "resources.data.parser.use_dry_run_before_applying_large_file_or_full_bundle_restore"
                 ),
-                _(
-                    "resources.data.parser.natural_key_upsert_supported_keys_are_area_name_vision_name_person_name_and_habit_title"
-                ),
+                _("resources.data.parser.natural_key_upsert_supported_keys"),
             ),
         ),
     )

@@ -118,9 +118,15 @@ def _format_body_measurement_detail(
     return "\n".join(lines)
 
 
-def _metric_values(args: argparse.Namespace) -> dict[str, float]:
+def _metric_values(args: argparse.Namespace) -> dict[str, str]:
+    """Return raw metric input strings for exact decimal conversion.
+
+    Values stay strings until the domain service converts them with
+    ``Decimal(str(value))`` so user-provided decimal literals never pass
+    through a binary float representation.
+    """
     return {
-        field: float(getattr(args, arg))
+        field: str(getattr(args, arg))
         for arg, field in _METRIC_ARG_FIELDS.items()
         if getattr(args, arg) is not None
     }
@@ -156,13 +162,21 @@ async def handle_body_measurement_add_async(args: argparse.Namespace) -> int:
     )
     try:
         async with db_session.session_scope() as session:
-            measurement = await body_services.create_body_measurement(
-                session,
-                payload=payload,
-            )
+            if args.replace_existing:
+                measurement, created = await body_services.upsert_body_measurement(
+                    session,
+                    payload=payload,
+                )
+            else:
+                measurement = await body_services.create_body_measurement(
+                    session,
+                    payload=payload,
+                )
+                created = True
     except body_services.BodyMeasurementValidationError as exc:
         return cli_handler_utils.print_cli_error(exc)
-    print(f"Created body measurement {measurement.id}")
+    verb = "Created" if created else "Updated"
+    print(f"{verb} body measurement {measurement.id}")
     return 0
 
 

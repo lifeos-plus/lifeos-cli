@@ -88,6 +88,39 @@ def test_menstrual_factor_and_day_lifecycle() -> None:
     asyncio.run(scenario())
 
 
+def test_body_measurement_upsert_creates_then_updates_same_measured_at() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                created, created_flag = await body_services.upsert_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 19, 8),
+                        weight="63.55",
+                        unit="kg",
+                        body_fat_percentage="22.5",
+                    ),
+                )
+                assert created_flag is True
+                assert created.weight_kg == Decimal("63.55")
+                assert created.body_fat_percentage == Decimal("22.50")
+
+                updated, updated_flag = await body_services.upsert_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 19, 8),
+                        weight="64.10",
+                        unit="kg",
+                    ),
+                )
+                assert updated_flag is False
+                assert updated.id == created.id
+                assert updated.weight_kg == Decimal("64.10")
+                assert updated.body_fat_percentage == Decimal("22.50")
+
+    asyncio.run(scenario())
+
+
 def test_body_measurement_unit_conversion_and_update() -> None:
     assert body_services.to_kg(140, "jin") == Decimal("70.00")
     assert body_services.from_kg(Decimal("70.00"), "jin") == Decimal("140.00")

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
@@ -23,6 +24,7 @@ from lifeos_cli.config import get_database_settings, get_preferences_settings
 from lifeos_cli.db.base import Base
 from lifeos_cli.db.models import (
     Area,
+    BodyMeasurement,
     Event,
     EventOccurrenceException,
     Habit,
@@ -40,6 +42,7 @@ from lifeos_cli.db.models.association import (
 from lifeos_cli.db.models.tag_association import tag_associations
 from lifeos_cli.db.services import (
     areas,
+    body_measurements,
     events,
     habit_actions,
     habits,
@@ -61,6 +64,7 @@ from lifeos_cli.db.services.entity_tags import sync_entity_tags
 
 SUPPORTED_DATA_RESOURCES = (
     "area",
+    "body-measurement",
     "person",
     "tag",
     "vision",
@@ -90,6 +94,7 @@ NATURAL_KEY_FIELDS_BY_RESOURCE: dict[str, frozenset[str]] = {
     "vision": frozenset({"name"}),
     "person": frozenset({"name"}),
     "habit": frozenset({"title"}),
+    "body-measurement": frozenset({"measured_at"}),
 }
 
 
@@ -183,6 +188,7 @@ class DataResourceSpec:
 
 RESOURCE_SPECS: dict[str, DataResourceSpec] = {
     "area": DataResourceSpec(resource="area", model=Area),
+    "body-measurement": DataResourceSpec(resource="body-measurement", model=BodyMeasurement),
     "person": DataResourceSpec(
         resource="person",
         model=Person,
@@ -223,6 +229,7 @@ RESOURCE_SPECS: dict[str, DataResourceSpec] = {
 
 DELETE_ARG_NAMES: dict[str, str] = {
     "area": "area_ids",
+    "body-measurement": "measurement_ids",
     "person": "person_ids",
     "tag": "tag_ids",
     "vision": "vision_ids",
@@ -246,6 +253,8 @@ def _serialize_scalar(value: Any) -> Any:
         return format_utc_iso(value)
     if isinstance(value, date):
         return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
     return value
 
 
@@ -265,6 +274,8 @@ def _parse_column_value(column: Any, value: Any) -> Any:
         return int(value)
     if python_type is float:
         return float(value)
+    if python_type is Decimal:
+        return value if isinstance(value, Decimal) else Decimal(str(value))
     if python_type is str:
         return str(value)
     return value
@@ -456,11 +467,11 @@ async def resolve_upsert_row_id(
     if raw_key_value is None or str(raw_key_value).strip() == "":
         raise DataOperationError(f"Row {index} is missing a value for upsert key `{key_field}`.")
     spec = RESOURCE_SPECS[resource]
-    column = getattr(spec.model, key_field)
+    table = spec.model.__table__
+    column = table.c[key_field]
+    key_value = _parse_column_value(column, raw_key_value)
     matches = (
-        (await session.execute(select(spec.model.id).where(column == raw_key_value)))
-        .scalars()
-        .all()
+        (await session.execute(select(spec.model.id).where(column == key_value))).scalars().all()
     )
     if len(matches) > 1:
         raise DataOperationError(
@@ -1072,8 +1083,55 @@ def _batch_update_note_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
     return kwargs
 
 
+BODY_MEASUREMENT_METRIC_FIELDS = (
+    "body_fat_percentage",
+    "visceral_fat",
+    "fat_mass_kg",
+    "muscle_percentage",
+    "muscle_mass_kg",
+    "body_water_kg",
+    "protein_kg",
+    "bone_mass_kg",
+    "skeletal_muscle_kg",
+)
+
+
+def _batch_update_body_measurement_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
+    """Map canonical body-measurement patch rows onto the domain update input.
+
+    Canonical rows carry storage-unit values (``weight_kg``), so ``weight``
+    is always applied as kilograms regardless of any ``unit`` field.
+    """
+    update_kwargs: dict[str, Any] = {}
+    if "measured_at" in payload:
+        update_kwargs["measured_at"] = payload["measured_at"]
+    if "weight_kg" in payload:
+        update_kwargs["weight"] = payload["weight_kg"]
+        update_kwargs["unit"] = "kg"
+    clear_fields: set[str] = set()
+    for field in BODY_MEASUREMENT_METRIC_FIELDS:
+        if field in payload:
+            if payload[field] is None:
+                clear_fields.add(field)
+            else:
+                update_kwargs[field] = payload[field]
+    if "notes" in payload:
+        if payload["notes"] is None:
+            clear_fields.add("notes")
+        else:
+            update_kwargs["notes"] = payload["notes"]
+    return {
+        "measurement_id": UUID(str(payload["id"])),
+        "payload": body_measurements.BodyMeasurementUpdate(
+            **update_kwargs,
+            clear_fields=frozenset(clear_fields),
+        ),
+    }
+
+
 UPDATE_KWARGS_BUILDERS: dict[str, Any] = {
     "area": _batch_update_area_kwargs,
+    "body-measurement": _batch_update_body_measurement_kwargs,
     "person": _batch_update_person_kwargs,
     "tag": _batch_update_tag_kwargs,
     "vision": _batch_update_vision_kwargs,
@@ -1087,6 +1145,7 @@ UPDATE_KWARGS_BUILDERS: dict[str, Any] = {
 
 UPDATE_OPERATIONS: dict[str, Any] = {
     "area": areas.update_area,
+    "body-measurement": body_measurements.update_body_measurement,
     "person": person.update_person,
     "tag": tags.update_tag,
     "vision": visions.update_vision,
@@ -1100,6 +1159,7 @@ UPDATE_OPERATIONS: dict[str, Any] = {
 
 DELETE_OPERATIONS: dict[str, Any] = {
     "area": areas.batch_delete_areas,
+    "body-measurement": body_measurements.batch_delete_body_measurements,
     "person": person.batch_delete_person,
     "tag": tags.batch_delete_tags,
     "vision": visions.batch_delete_visions,

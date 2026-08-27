@@ -222,9 +222,40 @@ def test_body_add_passes_input_unit_to_service(
     assert exit_code == 0
     assert str(MEASUREMENT_UUID) in captured_output.out
     payload = captured["payload"]
-    assert payload.weight == 127.0
+    assert payload.weight == "127"
     assert payload.unit == "jin"
-    assert payload.body_fat_percentage == 22.5
+    assert payload.body_fat_percentage == "22.5"
+
+
+def test_body_add_replace_existing_uses_upsert_and_reports_update(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    captured: dict[str, Any] = {}
+
+    async def fake_upsert(_session: object, *, payload: Any) -> tuple[object, bool]:
+        captured["payload"] = payload
+        return make_record(id=MEASUREMENT_UUID, weight_kg=63.5), False
+
+    monkeypatch.setattr(db_session, "session_scope", make_session_scope())
+    monkeypatch.setattr(body_services, "upsert_body_measurement", fake_upsert)
+
+    exit_code = cli.main(
+        [
+            "body-measurement",
+            "add",
+            "--weight",
+            "63.5",
+            "--measured-at",
+            "2026-08-19T08:00:00",
+            "--replace-existing",
+        ]
+    )
+    captured_output = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Updated body measurement" in captured_output.out
+    assert captured["payload"].measured_at.isoformat() == "2026-08-19T08:00:00+00:00"
 
 
 def test_sleep_add_prints_confirmation(
