@@ -412,6 +412,28 @@ def test_health_sqlite_workflow_round_trip(
     assert body_date_list == 0
     assert '"weight_kg": 63.5' in body_date_output.out
 
+    assert (
+        cli.main(
+            [
+                "body-measurement",
+                "add",
+                "--weight",
+                "64.2",
+                "--measured-at",
+                "2026-08-19T08:00:00",
+                "--replace-existing",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    body_list_again = cli.main(["body-measurement", "list", "--json"])
+    body_again_output = capsys.readouterr()
+    assert body_list_again == 0
+    assert '"weight_kg": 64.2' in body_again_output.out
+    assert body_again_output.out.count('"id"') == 1
+
     sleep_summary = cli.main(["sleep", "summary", "--date", "2026-08-18"])
     summary_output = capsys.readouterr()
     assert sleep_summary == 0
