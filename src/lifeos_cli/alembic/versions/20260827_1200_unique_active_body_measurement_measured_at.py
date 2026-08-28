@@ -39,16 +39,14 @@ def _dedupe_active_measurements(schema_name: str | None) -> None:
     )
     seen_measured_at: set[object] = set()
     duplicate_ids: list[object] = []
-    for row_id, measured_at, updated_at in rows:
+    for row_id, measured_at, _updated_at in rows:
         if measured_at in seen_measured_at:
             duplicate_ids.append(row_id)
         else:
             seen_measured_at.add(measured_at)
     for row_id in duplicate_ids:
         op.get_bind().execute(
-            sa.update(table)
-            .where(table.c.id == row_id)
-            .values(deleted_at=table.c.updated_at)
+            sa.update(table).where(table.c.id == row_id).values(deleted_at=table.c.updated_at)
         )
 
 
