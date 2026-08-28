@@ -84,6 +84,10 @@ def build_body_measurement_add_parser(
                     "lifeos body-measurement add --weight 127 --unit jin "
                     "--measured-at 2026-08-19T08:00:00"
                 ),
+                (
+                    "lifeos body-measurement add --weight 64.2 --measured-at "
+                    "2026-08-19T08:00:00 --replace-existing"
+                ),
             ),
             notes=(
                 _(
@@ -216,7 +220,7 @@ def build_body_measurement_update_parser(
     update_parser.add_argument(
         "--measured-at",
         type=parse_user_datetime_value,
-        help=_("resources.body_measurement.parser_actions.measured_at_defaults_to_now"),
+        help=_("resources.body_measurement.parser_actions.optional_replacement_measured_at"),
     )
     _add_shared_body_metric_arguments(update_parser)
     update_parser.add_argument(

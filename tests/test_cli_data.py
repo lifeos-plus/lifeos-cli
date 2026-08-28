@@ -410,6 +410,93 @@ def test_main_data_import_upsert_resolves_natural_key_before_import(
     assert session.committed is True
 
 
+def test_main_data_import_upsert_retries_concurrent_natural_key_winner(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    session = FakeAsyncSession()
+    input_path = tmp_path / "body-measurements.jsonl"
+    input_path.write_text(
+        '{"measured_at":"2026-08-19T08:00:00Z","weight_kg":63.5}\n',
+        encoding="utf-8",
+    )
+    generated_id = "11111111-1111-1111-1111-111111111111"
+    winner_id = UUID("22222222-2222-2222-2222-222222222222")
+    imported_rows: list[dict[str, object]] = []
+
+    async def fake_resolve_upsert_row_id(
+        _session_obj: object,
+        **_kwargs: object,
+    ) -> dict[str, object]:
+        return {
+            "measured_at": "2026-08-19T08:00:00Z",
+            "weight_kg": 63.5,
+            "id": generated_id,
+        }
+
+    async def fake_find_upsert_match_id(
+        _session_obj: object,
+        **_kwargs: object,
+    ) -> UUID:
+        return winner_id
+
+    async def fake_import_resource_snapshot(
+        _session_obj: object,
+        *,
+        resource: str,
+        rows: list[dict[str, object]],
+    ) -> data_ops.DataImportReport:
+        imported_rows.extend(rows)
+        if len(imported_rows) == 1:
+            raise IntegrityError("stmt", {}, Exception("concurrent unique conflict"))
+        return data_ops.DataImportReport(
+            resource=resource,
+            processed_count=1,
+            created_count=0,
+            updated_count=1,
+            failed_count=0,
+            failures=(),
+        )
+
+    async def fake_run_post_import_hooks(_session_obj: object, *, resources: set[str]) -> None:
+        _ = resources
+
+    monkeypatch.setattr(
+        db_session,
+        "get_async_session_factory",
+        _make_session_factory_getter(session),
+    )
+    monkeypatch.setattr(data_ops, "resolve_upsert_row_id", fake_resolve_upsert_row_id)
+    monkeypatch.setattr(data_ops, "find_upsert_match_id", fake_find_upsert_match_id)
+    monkeypatch.setattr(data_ops, "import_resource_snapshot", fake_import_resource_snapshot)
+    monkeypatch.setattr(data_ops, "run_post_import_hooks", fake_run_post_import_hooks)
+
+    exit_code = cli.main(
+        [
+            "data",
+            "import",
+            "body-measurement",
+            "--file",
+            str(input_path),
+            "--format",
+            "jsonl",
+            "--mode",
+            "upsert",
+            "--key",
+            "measured_at",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Created rows: 0" in captured.out
+    assert "Updated rows: 1" in captured.out
+    assert imported_rows[0]["id"] == generated_id
+    assert imported_rows[1]["id"] == str(winner_id)
+    assert session.committed is True
+
+
 def test_main_data_import_records_unique_constraint_failure_per_row(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -418,7 +505,8 @@ def test_main_data_import_records_unique_constraint_failure_per_row(
     session = FakeAsyncSession()
     input_path = tmp_path / "factors.jsonl"
     input_path.write_text(
-        '{"id":"11111111-1111-1111-1111-111111111111","name":"travel"}\n',
+        '{"id":"11111111-1111-1111-1111-111111111111","name":"travel"}\n'
+        '{"id":"22222222-2222-2222-2222-222222222222","name":"stress"}\n',
         encoding="utf-8",
     )
 
@@ -458,6 +546,7 @@ def test_main_data_import_records_unique_constraint_failure_per_row(
     captured = capsys.readouterr()
 
     assert exit_code == 1
+    assert "Processed rows: 1" in captured.out
     assert "Failed rows: 1" in captured.out
 
 

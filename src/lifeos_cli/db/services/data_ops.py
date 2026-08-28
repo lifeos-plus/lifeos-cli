@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 
 from sqlalchemy import delete, insert, select, text, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.datetime_utils import (
@@ -294,7 +295,13 @@ def _parse_column_value(column: Any, value: Any) -> Any:
     if python_type is float:
         return float(value)
     if python_type is Decimal:
-        return value if isinstance(value, Decimal) else Decimal(str(value))
+        try:
+            decimal_value = value if isinstance(value, Decimal) else Decimal(str(value))
+        except (InvalidOperation, TypeError, ValueError) as exc:
+            raise DataOperationError(f"Invalid decimal value for `{column.name}`.") from exc
+        if not decimal_value.is_finite():
+            raise DataOperationError(f"Decimal value for `{column.name}` must be finite.")
+        return decimal_value
     if python_type is str:
         return str(value)
     return value
@@ -482,6 +489,35 @@ def validate_upsert_key(resource: str, key_field: str) -> None:
         )
 
 
+async def find_upsert_match_id(
+    session: AsyncSession,
+    *,
+    resource: str,
+    row: dict[str, Any],
+    key_field: str,
+    index: int,
+) -> UUID | None:
+    """Return the sole active row matching one import natural key, if present."""
+    validate_upsert_key(resource, key_field)
+    raw_key_value = row.get(key_field)
+    if raw_key_value is None or str(raw_key_value).strip() == "":
+        raise DataOperationError(f"Row {index} is missing a value for upsert key `{key_field}`.")
+    spec = RESOURCE_SPECS[resource]
+    table = spec.model.__table__
+    column = table.c[key_field]
+    key_value = _parse_column_value(column, raw_key_value)
+    filters = [column == key_value]
+    if "deleted_at" in table.c:
+        filters.append(table.c.deleted_at.is_(None))
+    matches = (await session.execute(select(table.c.id).where(*filters))).scalars().all()
+    if len(matches) > 1:
+        raise DataOperationError(
+            f"Row {index} upsert key `{key_field}` is ambiguous: "
+            f"{len(matches)} active records match."
+        )
+    return matches[0] if matches else None
+
+
 async def resolve_upsert_row_id(
     session: AsyncSession,
     *,
@@ -496,24 +532,15 @@ async def resolve_upsert_row_id(
     exists, a fresh UUID when no match exists and the row has no id, or the
     row unchanged when a match exists and the row already carries the same id.
     """
-    validate_upsert_key(resource, key_field)
-    raw_key_value = row.get(key_field)
-    if raw_key_value is None or str(raw_key_value).strip() == "":
-        raise DataOperationError(f"Row {index} is missing a value for upsert key `{key_field}`.")
-    spec = RESOURCE_SPECS[resource]
-    table = spec.model.__table__
-    column = table.c[key_field]
-    key_value = _parse_column_value(column, raw_key_value)
-    matches = (
-        (await session.execute(select(spec.model.id).where(column == key_value))).scalars().all()
+    match_id = await find_upsert_match_id(
+        session,
+        resource=resource,
+        row=row,
+        key_field=key_field,
+        index=index,
     )
-    if len(matches) > 1:
-        raise DataOperationError(
-            f"Row {index} upsert key `{key_field}` is ambiguous: "
-            f"{len(matches)} active records match."
-        )
-    if matches:
-        return {**row, "id": str(matches[0])}
+    if match_id is not None:
+        return {**row, "id": str(match_id)}
     if "id" not in row or row["id"] is None or str(row["id"]).strip() == "":
         return {**row, "id": str(uuid4())}
     return row
@@ -1264,6 +1291,16 @@ def _batch_update_menstrual_day_kwargs(payload: dict[str, Any]) -> dict[str, Any
     return kwargs
 
 
+def _batch_update_menstrual_factor_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
+    """Map a canonical menstrual-factor patch row onto the domain update input."""
+    if "name" not in payload or payload["name"] is None:
+        raise DataOperationError("Menstrual-factor batch update requires a non-null `name`.")
+    return {
+        "factor_id": UUID(str(payload["id"])),
+        "name": payload["name"],
+    }
+
+
 def _batch_update_sleep_segment_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
     """Map canonical sleep-segment patch rows onto the domain update input."""
     kwargs: dict[str, Any] = {"segment_id": UUID(str(payload["id"]))}
@@ -1277,6 +1314,7 @@ UPDATE_KWARGS_BUILDERS: dict[str, Any] = {
     "area": _batch_update_area_kwargs,
     "body-measurement": _batch_update_body_measurement_kwargs,
     "menstrual": _batch_update_menstrual_day_kwargs,
+    "menstrual-factor": _batch_update_menstrual_factor_kwargs,
     "person": _batch_update_person_kwargs,
     "sleep": _batch_update_sleep_segment_kwargs,
     "tag": _batch_update_tag_kwargs,
@@ -1293,6 +1331,7 @@ UPDATE_OPERATIONS: dict[str, Any] = {
     "area": areas.update_area,
     "body-measurement": body_measurements.update_body_measurement,
     "menstrual": menstrual_services.update_menstrual_day,
+    "menstrual-factor": menstrual_services.update_menstrual_factor,
     "person": person.update_person,
     "sleep": sleep_services.update_sleep_segment,
     "tag": tags.update_tag,
@@ -1345,7 +1384,7 @@ async def batch_update_resource(
                 kwargs = build_kwargs(_normalize_patch_payload(resource, row))
                 await operation(session, **kwargs)
             updated_count += 1
-        except (DataOperationError, LookupError, ValueError) as exc:
+        except (DataOperationError, LookupError, ValueError, IntegrityError) as exc:
             failures.append(
                 DataOperationFailure(
                     index=index,

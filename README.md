@@ -98,7 +98,7 @@ Install the optional local Web API runtime dependencies when you want browser or
 uv tool install --upgrade "lifeos-cli[web]"
 ```
 
-To upgrade an existing installation, run `uv tool upgrade lifeos-cli` (add the same extras you installed, for example `uv tool upgrade "lifeos-cli[web]"`). If you originally installed an exact version pin such as `lifeos-cli==1.3.5` or `lifeos-cli@1.3.5`, `uv tool upgrade` keeps the pinned version; reinstall with `uv tool install "lifeos-cli[web]@latest"` to move to the latest release.
+To upgrade an existing installation, run `uv tool upgrade lifeos-cli`. If you originally installed an exact version pin such as `lifeos-cli==1.3.5` or `lifeos-cli@1.3.5`, `uv tool upgrade` keeps the pinned version; reinstall with `uv tool install "lifeos-cli@latest"` to move to the latest release, preserving any extras in the requirement when needed (for example, `uv tool install "lifeos-cli[web]@latest"`).
 
 `lifeos-cli` supports SQLite and PostgreSQL.
 

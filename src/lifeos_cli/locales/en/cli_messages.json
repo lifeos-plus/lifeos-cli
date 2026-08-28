@@ -996,6 +996,7 @@
         "weights_are_stored_in_kg_regardless_of_input_unit": "Weights are stored in kg regardless of the input unit.",
         "default_unit_is_the_preferred_weight_unit": "The default unit is the configured `preferences.weight_unit`.",
         "measured_at_defaults_to_now": "Measured time; defaults to now when omitted",
+        "optional_replacement_measured_at": "Optional replacement measured time",
         "replace_existing_measured_at_record": "Replace the active record with the same measured time instead of creating a duplicate",
         "optional_body_fat_percentage": "Optional body fat percentage",
         "optional_visceral_fat": "Optional visceral fat",

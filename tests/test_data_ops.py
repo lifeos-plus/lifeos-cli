@@ -12,6 +12,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
 from sqlalchemy import Column, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.backend_policy import backend_policy_for_drivername
@@ -456,6 +457,7 @@ def test_body_measurement_snapshot_round_trip_and_datetime_upsert_key() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
+                active_id = uuid4()
                 await data_ops.import_resource_snapshot(
                     session,
                     resource="body-measurement",
@@ -463,13 +465,21 @@ def test_body_measurement_snapshot_round_trip_and_datetime_upsert_key() -> None:
                         {
                             "id": str(uuid4()),
                             "measured_at": "2026-08-19T08:00:00+00:00",
+                            "weight_kg": 62.0,
+                            "created_at": "2026-08-18T08:05:00Z",
+                            "updated_at": "2026-08-18T08:05:00Z",
+                            "deleted_at": "2026-08-18T09:00:00Z",
+                        },
+                        {
+                            "id": str(active_id),
+                            "measured_at": "2026-08-19T08:00:00+00:00",
                             "weight_kg": 63.55,
                             "body_fat_percentage": 22.5,
                             "notes": "morning",
                             "created_at": "2026-08-19T08:05:00Z",
                             "updated_at": "2026-08-19T08:05:00Z",
                             "deleted_at": None,
-                        }
+                        },
                     ],
                 )
                 await session.commit()
@@ -492,8 +502,23 @@ def test_body_measurement_snapshot_round_trip_and_datetime_upsert_key() -> None:
                     index=1,
                 )
                 assert UUID(resolved["id"]) == UUID(rows[0]["id"])
+                assert UUID(resolved["id"]) == active_id
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("value", ["not-a-number", "NaN", "Infinity"])
+def test_body_measurement_snapshot_rejects_non_finite_decimal_values(value: str) -> None:
+    with pytest.raises(data_ops.DataOperationError, match="weight_kg"):
+        data_ops.prepare_snapshot_row(
+            "body-measurement",
+            1,
+            {
+                "id": str(uuid4()),
+                "measured_at": "2026-08-19T08:00:00Z",
+                "weight_kg": value,
+            },
+        )
 
 
 def test_batch_update_body_measurement_maps_canonical_fields(
@@ -688,6 +713,62 @@ def test_batch_update_menstrual_day_maps_canonical_fields(
     assert captured["flow_amount"] == "medium"
     assert captured["clear_symptoms"] is True
     assert captured["factor_names"] == ["travel"]
+
+
+def test_batch_update_menstrual_factor_maps_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_update(session: object, **kwargs: object) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setitem(data_ops.UPDATE_OPERATIONS, "menstrual-factor", fake_update)
+
+    report = asyncio.run(
+        data_ops.batch_update_resource(
+            cast(AsyncSession, FakeBatchSession()),
+            resource="menstrual-factor",
+            rows=[
+                {
+                    "id": "11111111-1111-1111-1111-111111111111",
+                    "name": "exercise",
+                }
+            ],
+        )
+    )
+
+    assert report.updated_count == 1
+    assert captured == {
+        "factor_id": UUID("11111111-1111-1111-1111-111111111111"),
+        "name": "exercise",
+    }
+
+
+def test_batch_update_records_integrity_error_as_row_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_update(session: object, **kwargs: object) -> None:
+        raise IntegrityError("stmt", {}, Exception("unique conflict"))
+
+    monkeypatch.setitem(data_ops.UPDATE_OPERATIONS, "body-measurement", fake_update)
+
+    report = asyncio.run(
+        data_ops.batch_update_resource(
+            cast(AsyncSession, FakeBatchSession()),
+            resource="body-measurement",
+            rows=[
+                {
+                    "id": "11111111-1111-1111-1111-111111111111",
+                    "measured_at": "2026-08-19T08:00:00Z",
+                }
+            ],
+        )
+    )
+
+    assert report.updated_count == 0
+    assert report.failed_count == 1
+    assert "unique conflict" in report.failures[0].message
 
 
 def test_batch_update_sleep_segment_maps_canonical_fields(

@@ -167,6 +167,34 @@ async def create_menstrual_factor(
     return factor
 
 
+async def update_menstrual_factor(
+    session: AsyncSession,
+    *,
+    factor_id: UUID,
+    name: str,
+) -> MenstrualFactor:
+    """Rename one active menstrual factor while preserving active-name uniqueness."""
+    factor = (
+        await session.execute(
+            select(MenstrualFactor)
+            .where(
+                MenstrualFactor.id == factor_id,
+                MenstrualFactor.deleted_at.is_(None),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if factor is None:
+        raise MenstrualFactorNotFoundError(f"Menstrual factor {factor_id} was not found")
+    normalized = validate_factor_name(name)
+    conflict = await _get_active_factor_by_name(session, normalized)
+    if conflict is not None and conflict.id != factor.id:
+        raise MenstrualValidationError(f"Menstrual factor {normalized!r} already exists.")
+    factor.name = normalized
+    await session.flush()
+    return factor
+
+
 async def list_menstrual_factors(
     session: AsyncSession,
     *,

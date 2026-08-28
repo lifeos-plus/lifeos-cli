@@ -50,6 +50,22 @@ def test_cli_brand_banner_uses_ansi_shadow_font() -> None:
     assert get_cli_brand_banner_width() == 44
 
 
+def test_body_measurement_help_documents_replace_and_update_time_semantics(capsys) -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["body-measurement", "add", "--help"])
+    add_help = capsys.readouterr().out
+    assert "--replace-existing" in add_help
+    assert "--replace-existing" in add_help.split("Examples:", maxsplit=1)[1]
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["body-measurement", "update", "--help"])
+    update_help = capsys.readouterr().out
+    assert "Optional replacement measured time" in update_help
+    assert "defaults to now" not in update_help
+
+
 def test_cli_init_help_avoids_hard_wrapped_description_fragments(capsys) -> None:
     parser = build_parser()
 

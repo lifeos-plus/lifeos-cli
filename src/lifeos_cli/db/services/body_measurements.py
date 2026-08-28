@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
@@ -43,6 +43,17 @@ MASS_FIELDS = frozenset(
 )
 
 
+def _decimal_value(value: Decimal | float | int | str, *, field: str) -> Decimal:
+    """Parse one finite decimal value and translate parser failures consistently."""
+    try:
+        decimal_value = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise BodyMeasurementValidationError(f"{field} must be a number.") from exc
+    if not decimal_value.is_finite():
+        raise BodyMeasurementValidationError(f"{field} must be a finite number.")
+    return decimal_value
+
+
 class BodyMeasurementNotFoundError(LookupError):
     """Raised when a body measurement cannot be found."""
 
@@ -65,18 +76,18 @@ def validate_unit(unit: str) -> str:
 def to_kg(value: Decimal | float | int | str, unit: str) -> Decimal:
     """Convert one weight value in the given unit to canonical kilograms."""
     normalized_unit = validate_unit(unit)
-    try:
-        decimal_value = Decimal(str(value))
-    except (TypeError, ValueError) as exc:
-        raise BodyMeasurementValidationError("Weight must be a number.") from exc
+    decimal_value = _decimal_value(value, field="Weight")
     if decimal_value <= 0:
         raise BodyMeasurementValidationError("Weight must be positive.")
-    converted = (decimal_value * WEIGHT_UNIT_FACTORS[normalized_unit]).quantize(Decimal("0.01"))
+    converted = decimal_value * WEIGHT_UNIT_FACTORS[normalized_unit]
     if converted > MAX_WEIGHT_KG:
         raise BodyMeasurementValidationError(
             f"Weight must be at most {MAX_WEIGHT_KG} kg after unit conversion."
         )
-    return converted
+    quantized = converted.quantize(Decimal("0.01"))
+    if quantized <= 0:
+        raise BodyMeasurementValidationError("Weight must be at least 0.01 kg after conversion.")
+    return quantized
 
 
 def from_kg(weight_kg: Decimal | float | int | str, unit: str) -> Decimal:
@@ -104,30 +115,21 @@ def _validate_percentage(
     *,
     field: str,
 ) -> Decimal:
-    try:
-        decimal_value = Decimal(str(value))
-    except (TypeError, ValueError) as exc:
-        raise BodyMeasurementValidationError(f"{field} must be a number.") from exc
+    decimal_value = _decimal_value(value, field=field)
     if decimal_value < 0 or decimal_value > 100:
         raise BodyMeasurementValidationError(f"{field} must be between 0 and 100.")
     return decimal_value.quantize(Decimal("0.01"))
 
 
 def _validate_visceral_fat(value: Decimal | float | int | str) -> Decimal:
-    try:
-        decimal_value = Decimal(str(value))
-    except (TypeError, ValueError) as exc:
-        raise BodyMeasurementValidationError("visceral_fat must be a number.") from exc
+    decimal_value = _decimal_value(value, field="visceral_fat")
     if decimal_value < 0 or decimal_value > 100:
         raise BodyMeasurementValidationError("visceral_fat must be between 0 and 100.")
     return decimal_value.quantize(Decimal("0.01"))
 
 
 def _validate_mass(value: Decimal | float | int | str, *, field: str) -> Decimal:
-    try:
-        decimal_value = Decimal(str(value))
-    except (TypeError, ValueError) as exc:
-        raise BodyMeasurementValidationError(f"{field} must be a number.") from exc
+    decimal_value = _decimal_value(value, field=field)
     if decimal_value < 0 or decimal_value > MAX_WEIGHT_KG:
         raise BodyMeasurementValidationError(f"{field} must be between 0 and {MAX_WEIGHT_KG}.")
     return decimal_value.quantize(Decimal("0.01"))
@@ -227,9 +229,19 @@ async def create_body_measurement(
 ) -> BodyMeasurement:
     """Create one body measurement record."""
     values = _normalize_create(payload)
+    if await _active_by_measured_at(session, payload.measured_at) is not None:
+        raise BodyMeasurementValidationError(
+            "An active body measurement already exists for the same measured_at time."
+        )
     measurement = BodyMeasurement(**values)
-    session.add(measurement)
-    await session.flush()
+    try:
+        async with session.begin_nested():
+            session.add(measurement)
+            await session.flush()
+    except IntegrityError as exc:
+        raise BodyMeasurementValidationError(
+            "An active body measurement already exists for the same measured_at time."
+        ) from exc
     return measurement
 
 
@@ -249,7 +261,9 @@ async def upsert_body_measurement(
     if existing is None:
         try:
             async with session.begin_nested():
-                measurement = await create_body_measurement(session, payload=payload)
+                measurement = BodyMeasurement(**_normalize_create(payload))
+                session.add(measurement)
+                await session.flush()
             return measurement, True
         except IntegrityError:
             # A concurrent writer inserted the same measured-at value first;
@@ -403,6 +417,11 @@ async def update_body_measurement(
     if measurement is None:
         raise BodyMeasurementNotFoundError(f"Body measurement {measurement_id} was not found")
     if payload.measured_at is not None:
+        conflict = await _active_by_measured_at(session, payload.measured_at)
+        if conflict is not None and conflict.id != measurement.id:
+            raise BodyMeasurementValidationError(
+                "An active body measurement already exists for the same measured_at time."
+            )
         measurement.measured_at = payload.measured_at
     if payload.weight is not None:
         measurement.weight_kg = to_kg(payload.weight, payload.unit)
@@ -423,7 +442,12 @@ async def update_body_measurement(
         measurement.notes = None
     elif payload.notes is not None:
         measurement.notes = validate_notes(payload.notes)
-    await session.flush()
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        raise BodyMeasurementValidationError(
+            "An active body measurement already exists for the same measured_at time."
+        ) from exc
     return measurement
 
 
