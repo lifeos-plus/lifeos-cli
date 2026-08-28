@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 
 from sqlalchemy import delete, insert, select, text, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.datetime_utils import (
@@ -23,6 +25,7 @@ from lifeos_cli.config import get_database_settings, get_preferences_settings
 from lifeos_cli.db.base import Base
 from lifeos_cli.db.models import (
     Area,
+    BodyMeasurement,
     Event,
     EventOccurrenceException,
     Habit,
@@ -37,9 +40,12 @@ from lifeos_cli.db.models import (
 from lifeos_cli.db.models.association import (
     PERSON_TARGET_MODEL,
 )
+from lifeos_cli.db.models.menstrual import MenstrualDay, MenstrualFactor, menstrual_day_factors
+from lifeos_cli.db.models.sleep_segment import SleepSegment
 from lifeos_cli.db.models.tag_association import tag_associations
 from lifeos_cli.db.services import (
     areas,
+    body_measurements,
     events,
     habit_actions,
     habits,
@@ -52,6 +58,12 @@ from lifeos_cli.db.services import (
     timelogs,
     visions,
 )
+from lifeos_cli.db.services import (
+    menstrual as menstrual_services,
+)
+from lifeos_cli.db.services import (
+    sleep as sleep_services,
+)
 from lifeos_cli.db.services.entity_associations import (
     get_target_ids_for_sources,
     set_association_links,
@@ -61,7 +73,11 @@ from lifeos_cli.db.services.entity_tags import sync_entity_tags
 
 SUPPORTED_DATA_RESOURCES = (
     "area",
+    "body-measurement",
+    "menstrual",
+    "menstrual-factor",
     "person",
+    "sleep",
     "tag",
     "vision",
     "task",
@@ -90,6 +106,9 @@ NATURAL_KEY_FIELDS_BY_RESOURCE: dict[str, frozenset[str]] = {
     "vision": frozenset({"name"}),
     "person": frozenset({"name"}),
     "habit": frozenset({"title"}),
+    "body-measurement": frozenset({"measured_at"}),
+    "menstrual": frozenset({"log_date"}),
+    "menstrual-factor": frozenset({"name"}),
 }
 
 
@@ -183,11 +202,15 @@ class DataResourceSpec:
 
 RESOURCE_SPECS: dict[str, DataResourceSpec] = {
     "area": DataResourceSpec(resource="area", model=Area),
+    "body-measurement": DataResourceSpec(resource="body-measurement", model=BodyMeasurement),
+    "menstrual": DataResourceSpec(resource="menstrual", model=MenstrualDay),
+    "menstrual-factor": DataResourceSpec(resource="menstrual-factor", model=MenstrualFactor),
     "person": DataResourceSpec(
         resource="person",
         model=Person,
         tag_entity_type="person",
     ),
+    "sleep": DataResourceSpec(resource="sleep", model=SleepSegment),
     "tag": DataResourceSpec(
         resource="tag",
         model=Tag,
@@ -223,7 +246,11 @@ RESOURCE_SPECS: dict[str, DataResourceSpec] = {
 
 DELETE_ARG_NAMES: dict[str, str] = {
     "area": "area_ids",
+    "body-measurement": "measurement_ids",
+    "menstrual": "day_ids",
+    "menstrual-factor": "factor_ids",
     "person": "person_ids",
+    "sleep": "segment_ids",
     "tag": "tag_ids",
     "vision": "vision_ids",
     "task": "task_ids",
@@ -246,6 +273,8 @@ def _serialize_scalar(value: Any) -> Any:
         return format_utc_iso(value)
     if isinstance(value, date):
         return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
     return value
 
 
@@ -265,6 +294,14 @@ def _parse_column_value(column: Any, value: Any) -> Any:
         return int(value)
     if python_type is float:
         return float(value)
+    if python_type is Decimal:
+        try:
+            decimal_value = value if isinstance(value, Decimal) else Decimal(str(value))
+        except (InvalidOperation, TypeError, ValueError) as exc:
+            raise DataOperationError(f"Invalid decimal value for `{column.name}`.") from exc
+        if not decimal_value.is_finite():
+            raise DataOperationError(f"Decimal value for `{column.name}` must be finite.")
+        return decimal_value
     if python_type is str:
         return str(value)
     return value
@@ -342,6 +379,7 @@ class PreparedSnapshotRow:
     index: int
     row_id: UUID
     direct_values: dict[str, Any]
+    factor_names: list[str] | None = None
     tag_ids: list[UUID] | None = None
     person_ids: list[UUID] | None = None
     note_task_ids: list[UUID] | None = None
@@ -350,6 +388,14 @@ class PreparedSnapshotRow:
     note_timelog_ids: list[UUID] | None = None
     note_habit_action_ids: list[UUID] | None = None
     occurrence_exceptions: list[dict[str, Any]] | None = None
+
+
+def _parse_string_array(value: Any, *, field_name: str) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise DataOperationError(f"Expected `{field_name}` to be a JSON array.")
+    return [str(item) for item in value]
 
 
 def prepare_snapshot_row(resource: str, index: int, payload: dict[str, Any]) -> PreparedSnapshotRow:
@@ -410,11 +456,17 @@ def prepare_snapshot_row(resource: str, index: int, payload: dict[str, Any]) -> 
         if resource == "event" and "occurrence_exceptions" in payload
         else None
     )
+    factor_names = (
+        _parse_string_array(payload["factor_names"], field_name="factor_names")
+        if resource == "menstrual" and "factor_names" in payload
+        else None
+    )
     return PreparedSnapshotRow(
         resource=resource,
         index=index,
         row_id=row_id,
         direct_values=direct_values,
+        factor_names=factor_names,
         tag_ids=tag_ids,
         person_ids=person_ids,
         note_task_ids=note_task_ids,
@@ -437,6 +489,35 @@ def validate_upsert_key(resource: str, key_field: str) -> None:
         )
 
 
+async def find_upsert_match_id(
+    session: AsyncSession,
+    *,
+    resource: str,
+    row: dict[str, Any],
+    key_field: str,
+    index: int,
+) -> UUID | None:
+    """Return the sole active row matching one import natural key, if present."""
+    validate_upsert_key(resource, key_field)
+    raw_key_value = row.get(key_field)
+    if raw_key_value is None or str(raw_key_value).strip() == "":
+        raise DataOperationError(f"Row {index} is missing a value for upsert key `{key_field}`.")
+    spec = RESOURCE_SPECS[resource]
+    table = spec.model.__table__
+    column = table.c[key_field]
+    key_value = _parse_column_value(column, raw_key_value)
+    filters = [column == key_value]
+    if "deleted_at" in table.c:
+        filters.append(table.c.deleted_at.is_(None))
+    matches = (await session.execute(select(table.c.id).where(*filters))).scalars().all()
+    if len(matches) > 1:
+        raise DataOperationError(
+            f"Row {index} upsert key `{key_field}` is ambiguous: "
+            f"{len(matches)} active records match."
+        )
+    return matches[0] if matches else None
+
+
 async def resolve_upsert_row_id(
     session: AsyncSession,
     *,
@@ -451,24 +532,15 @@ async def resolve_upsert_row_id(
     exists, a fresh UUID when no match exists and the row has no id, or the
     row unchanged when a match exists and the row already carries the same id.
     """
-    validate_upsert_key(resource, key_field)
-    raw_key_value = row.get(key_field)
-    if raw_key_value is None or str(raw_key_value).strip() == "":
-        raise DataOperationError(f"Row {index} is missing a value for upsert key `{key_field}`.")
-    spec = RESOURCE_SPECS[resource]
-    column = getattr(spec.model, key_field)
-    matches = (
-        (await session.execute(select(spec.model.id).where(column == raw_key_value)))
-        .scalars()
-        .all()
+    match_id = await find_upsert_match_id(
+        session,
+        resource=resource,
+        row=row,
+        key_field=key_field,
+        index=index,
     )
-    if len(matches) > 1:
-        raise DataOperationError(
-            f"Row {index} upsert key `{key_field}` is ambiguous: "
-            f"{len(matches)} active records match."
-        )
-    if matches:
-        return {**row, "id": str(matches[0])}
+    if match_id is not None:
+        return {**row, "id": str(match_id)}
     if "id" not in row or row["id"] is None or str(row["id"]).strip() == "":
         return {**row, "id": str(uuid4())}
     return row
@@ -520,6 +592,30 @@ async def _load_event_occurrence_exceptions(
                 "deleted_at": None if row.deleted_at is None else row.deleted_at.isoformat(),
             }
         )
+    return mapping
+
+
+async def _load_menstrual_factor_names(
+    session: AsyncSession,
+    *,
+    day_ids: list[UUID],
+) -> dict[UUID, list[str]]:
+    """Load active factor names per menstrual day in stable name order."""
+    if not day_ids:
+        return {}
+    stmt = (
+        select(menstrual_day_factors.c.menstrual_day_id, MenstrualFactor.name)
+        .join(MenstrualFactor, MenstrualFactor.id == menstrual_day_factors.c.factor_id)
+        .where(
+            menstrual_day_factors.c.menstrual_day_id.in_(day_ids),
+            MenstrualFactor.deleted_at.is_(None),
+        )
+        .order_by(MenstrualFactor.name.asc())
+    )
+    rows = (await session.execute(stmt)).all()
+    mapping: dict[UUID, list[str]] = {day_id: [] for day_id in day_ids}
+    for day_id, name in rows:
+        mapping[day_id].append(name)
     return mapping
 
 
@@ -631,9 +727,16 @@ async def export_resource_snapshot(
         if resource == "note"
         else {}
     )
+    menstrual_factor_map = (
+        await _load_menstrual_factor_names(session, day_ids=entity_ids)
+        if resource == "menstrual"
+        else {}
+    )
 
     for payload in payloads:
         entity_id = UUID(str(payload["id"]))
+        if resource == "menstrual":
+            payload["factor_names"] = menstrual_factor_map.get(entity_id, [])
         if spec.tag_entity_type:
             payload["tag_ids"] = [str(tag_id) for tag_id in tag_map.get(entity_id, [])]
         if spec.person_entity_type:
@@ -684,6 +787,12 @@ async def _sync_snapshot_relations(
     prepared_row: PreparedSnapshotRow,
 ) -> None:
     spec = RESOURCE_SPECS[prepared_row.resource]
+    if prepared_row.resource == "menstrual" and prepared_row.factor_names is not None:
+        await _sync_menstrual_factors(
+            session,
+            day_id=prepared_row.row_id,
+            factor_names=prepared_row.factor_names,
+        )
     if spec.tag_entity_type is not None and prepared_row.tag_ids is not None:
         await sync_entity_tags(
             session,
@@ -777,6 +886,41 @@ async def _sync_snapshot_relations(
                     for exception_payload in prepared_row.occurrence_exceptions
                 ],
             )
+
+
+async def _sync_menstrual_factors(
+    session: AsyncSession,
+    *,
+    day_id: UUID,
+    factor_names: list[str],
+) -> None:
+    """Replace a menstrual day's factor links by active factor name."""
+    names = list(dict.fromkeys(factor_names))
+    factor_rows = list(
+        (
+            await session.execute(
+                select(MenstrualFactor.id, MenstrualFactor.name).where(
+                    MenstrualFactor.name.in_(names),
+                    MenstrualFactor.deleted_at.is_(None),
+                )
+            )
+        ).all()
+    )
+    factor_id_by_name = {name: factor_id for factor_id, name in factor_rows}
+    missing = [name for name in names if name not in factor_id_by_name]
+    if missing:
+        raise DataOperationError(
+            "Menstrual factor names must already exist for imported rows: " + ", ".join(missing)
+        )
+    factor_ids = [factor_id_by_name[name] for name in names]
+    await session.execute(
+        delete(menstrual_day_factors).where(menstrual_day_factors.c.menstrual_day_id == day_id)
+    )
+    if factor_ids:
+        await session.execute(
+            insert(menstrual_day_factors),
+            [{"menstrual_day_id": day_id, "factor_id": factor_id} for factor_id in factor_ids],
+        )
 
 
 async def _import_prepared_base_rows(
@@ -1072,9 +1216,107 @@ def _batch_update_note_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
     return kwargs
 
 
+BODY_MEASUREMENT_METRIC_FIELDS = (
+    "body_fat_percentage",
+    "visceral_fat",
+    "fat_mass_kg",
+    "muscle_percentage",
+    "muscle_mass_kg",
+    "body_water_kg",
+    "protein_kg",
+    "bone_mass_kg",
+    "skeletal_muscle_kg",
+)
+
+
+def _batch_update_body_measurement_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
+    """Map canonical body-measurement patch rows onto the domain update input.
+
+    Canonical rows carry storage-unit values (``weight_kg``), so ``weight``
+    is always applied as kilograms regardless of any ``unit`` field.
+    """
+    update_kwargs: dict[str, Any] = {}
+    if "measured_at" in payload:
+        update_kwargs["measured_at"] = payload["measured_at"]
+    if "weight_kg" in payload:
+        update_kwargs["weight"] = payload["weight_kg"]
+        update_kwargs["unit"] = "kg"
+    clear_fields: set[str] = set()
+    for field in BODY_MEASUREMENT_METRIC_FIELDS:
+        if field in payload:
+            if payload[field] is None:
+                clear_fields.add(field)
+            else:
+                update_kwargs[field] = payload[field]
+    if "notes" in payload:
+        if payload["notes"] is None:
+            clear_fields.add("notes")
+        else:
+            update_kwargs["notes"] = payload["notes"]
+    return {
+        "measurement_id": UUID(str(payload["id"])),
+        "payload": body_measurements.BodyMeasurementUpdate(
+            **update_kwargs,
+            clear_fields=frozenset(clear_fields),
+        ),
+    }
+
+
+def _batch_update_menstrual_day_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
+    """Map canonical menstrual-day patch rows onto the domain update input."""
+    kwargs: dict[str, Any] = {"day_id": UUID(str(payload["id"]))}
+    for field in ("log_date", "in_period", "mood_changes", "protection_used", "spotting"):
+        if field in payload and payload[field] is not None:
+            kwargs[field] = payload[field]
+    if "flow_amount" in payload:
+        if payload["flow_amount"] is None:
+            kwargs["clear_flow"] = True
+        else:
+            kwargs["flow_amount"] = payload["flow_amount"]
+    if "symptoms" in payload:
+        if payload["symptoms"] is None:
+            kwargs["clear_symptoms"] = True
+        else:
+            kwargs["symptoms"] = payload["symptoms"]
+    if "notes" in payload:
+        if payload["notes"] is None:
+            kwargs["clear_notes"] = True
+        else:
+            kwargs["notes"] = payload["notes"]
+    if "factor_names" in payload:
+        if payload["factor_names"] is None:
+            kwargs["clear_factors"] = True
+        else:
+            kwargs["factor_names"] = payload["factor_names"]
+    return kwargs
+
+
+def _batch_update_menstrual_factor_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
+    """Map a canonical menstrual-factor patch row onto the domain update input."""
+    if "name" not in payload or payload["name"] is None:
+        raise DataOperationError("Menstrual-factor batch update requires a non-null `name`.")
+    return {
+        "factor_id": UUID(str(payload["id"])),
+        "name": payload["name"],
+    }
+
+
+def _batch_update_sleep_segment_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
+    """Map canonical sleep-segment patch rows onto the domain update input."""
+    kwargs: dict[str, Any] = {"segment_id": UUID(str(payload["id"]))}
+    for field in ("start_at", "end_at"):
+        if field in payload and payload[field] is not None:
+            kwargs[field] = payload[field]
+    return kwargs
+
+
 UPDATE_KWARGS_BUILDERS: dict[str, Any] = {
     "area": _batch_update_area_kwargs,
+    "body-measurement": _batch_update_body_measurement_kwargs,
+    "menstrual": _batch_update_menstrual_day_kwargs,
+    "menstrual-factor": _batch_update_menstrual_factor_kwargs,
     "person": _batch_update_person_kwargs,
+    "sleep": _batch_update_sleep_segment_kwargs,
     "tag": _batch_update_tag_kwargs,
     "vision": _batch_update_vision_kwargs,
     "task": _batch_update_task_kwargs,
@@ -1087,7 +1329,11 @@ UPDATE_KWARGS_BUILDERS: dict[str, Any] = {
 
 UPDATE_OPERATIONS: dict[str, Any] = {
     "area": areas.update_area,
+    "body-measurement": body_measurements.update_body_measurement,
+    "menstrual": menstrual_services.update_menstrual_day,
+    "menstrual-factor": menstrual_services.update_menstrual_factor,
     "person": person.update_person,
+    "sleep": sleep_services.update_sleep_segment,
     "tag": tags.update_tag,
     "vision": visions.update_vision,
     "task": tasks.update_task,
@@ -1100,7 +1346,11 @@ UPDATE_OPERATIONS: dict[str, Any] = {
 
 DELETE_OPERATIONS: dict[str, Any] = {
     "area": areas.batch_delete_areas,
+    "body-measurement": body_measurements.batch_delete_body_measurements,
+    "menstrual": menstrual_services.batch_delete_menstrual_days,
+    "menstrual-factor": menstrual_services.batch_delete_menstrual_factors,
     "person": person.batch_delete_person,
+    "sleep": sleep_services.batch_delete_sleep_segments,
     "tag": tags.batch_delete_tags,
     "vision": visions.batch_delete_visions,
     "task": tasks.batch_delete_tasks,
@@ -1134,7 +1384,7 @@ async def batch_update_resource(
                 kwargs = build_kwargs(_normalize_patch_payload(resource, row))
                 await operation(session, **kwargs)
             updated_count += 1
-        except (DataOperationError, LookupError, ValueError) as exc:
+        except (DataOperationError, LookupError, ValueError, IntegrityError) as exc:
             failures.append(
                 DataOperationFailure(
                     index=index,

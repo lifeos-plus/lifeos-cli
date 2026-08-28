@@ -13,7 +13,10 @@ from lifeos_cli.application.datetime_utils import format_utc_iso
 from lifeos_cli.application.time_preferences import to_storage_timezone
 from lifeos_cli.db.models.sleep_segment import SleepSegment
 from lifeos_cli.db.services import sleep as sleep_services
-from lifeos_cli.db.services.validation_utils import DomainValidationError
+from lifeos_cli.db.services.validation_utils import (
+    DATE_RANGE_TOGETHER_MESSAGE,
+    DomainValidationError,
+)
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.common import EmptyMeta
 from lifeos_web.response_schemas.sleep import (
@@ -72,7 +75,7 @@ async def list_sleep_segments(
     if (start_date is None) != (end_date is None):
         raise HTTPException(
             status_code=400,
-            detail="start_date and end_date must be provided together.",
+            detail=DATE_RANGE_TOGETHER_MESSAGE,
         )
     segments = await sleep_services.list_sleep_segments(
         session,
@@ -110,7 +113,7 @@ async def list_sleep_summaries(
     if (start_date is None) != (end_date is None):
         raise HTTPException(
             status_code=400,
-            detail="start_date and end_date must be provided together.",
+            detail=DATE_RANGE_TOGETHER_MESSAGE,
         )
     summaries = await sleep_services.get_sleep_daily_summaries(
         session,

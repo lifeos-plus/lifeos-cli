@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from lifeos_cli.db.models.menstrual import MenstrualDay, MenstrualFactor
+from lifeos_cli.db.services.batching import BatchDeleteResult, batch_delete_records
+from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
 from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
 
 MENSTRUAL_FLOW_AMOUNTS = ("low", "medium", "high")
@@ -165,6 +167,34 @@ async def create_menstrual_factor(
     return factor
 
 
+async def update_menstrual_factor(
+    session: AsyncSession,
+    *,
+    factor_id: UUID,
+    name: str,
+) -> MenstrualFactor:
+    """Rename one active menstrual factor while preserving active-name uniqueness."""
+    factor = (
+        await session.execute(
+            select(MenstrualFactor)
+            .where(
+                MenstrualFactor.id == factor_id,
+                MenstrualFactor.deleted_at.is_(None),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if factor is None:
+        raise MenstrualFactorNotFoundError(f"Menstrual factor {factor_id} was not found")
+    normalized = validate_factor_name(name)
+    conflict = await _get_active_factor_by_name(session, normalized)
+    if conflict is not None and conflict.id != factor.id:
+        raise MenstrualValidationError(f"Menstrual factor {normalized!r} already exists.")
+    factor.name = normalized
+    await session.flush()
+    return factor
+
+
 async def list_menstrual_factors(
     session: AsyncSession,
     *,
@@ -204,6 +234,22 @@ async def delete_menstrual_factor(
         raise MenstrualFactorNotFoundError(f"Menstrual factor {factor_id} was not found")
     factor.soft_delete()
     await session.flush()
+
+
+async def batch_delete_menstrual_factors(
+    session: AsyncSession,
+    *,
+    factor_ids: list[UUID],
+) -> BatchDeleteResult:
+    """Soft-delete multiple menstrual factors with per-record error reporting."""
+    return await batch_delete_records(
+        identifiers=deduplicate_preserving_order(factor_ids),
+        delete_record=lambda factor_id: delete_menstrual_factor(
+            session,
+            factor_id=factor_id,
+        ),
+        handled_exceptions=(MenstrualFactorNotFoundError,),
+    )
 
 
 async def get_menstrual_day(
@@ -368,3 +414,19 @@ async def delete_menstrual_day(
         raise MenstrualDayNotFoundError(f"Menstrual day {day_id} was not found")
     day.soft_delete()
     await session.flush()
+
+
+async def batch_delete_menstrual_days(
+    session: AsyncSession,
+    *,
+    day_ids: list[UUID],
+) -> BatchDeleteResult:
+    """Soft-delete multiple menstrual days with per-record error reporting."""
+    return await batch_delete_records(
+        identifiers=deduplicate_preserving_order(day_ids),
+        delete_record=lambda day_id: delete_menstrual_day(
+            session,
+            day_id=day_id,
+        ),
+        handled_exceptions=(MenstrualDayNotFoundError,),
+    )

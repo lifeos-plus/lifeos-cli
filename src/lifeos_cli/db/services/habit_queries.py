@@ -30,6 +30,7 @@ from lifeos_cli.db.services.habit_support import (
     validate_habit_status,
 )
 from lifeos_cli.db.services.read_models import HabitActionView
+from lifeos_cli.db.services.validation_utils import DATE_RANGE_TOGETHER_MESSAGE
 from lifeos_cli.db.sql_expressions import AddDaysToDate
 
 
@@ -67,7 +68,7 @@ def _normalize_action_window(
     if start_date is None and end_date is None:
         return None
     if start_date is None or end_date is None:
-        raise HabitValidationError("start_date and end_date must be provided together")
+        raise HabitValidationError(DATE_RANGE_TOGETHER_MESSAGE)
     if end_date < start_date:
         raise HabitValidationError("end_date must be on or after start_date")
     return start_date, end_date

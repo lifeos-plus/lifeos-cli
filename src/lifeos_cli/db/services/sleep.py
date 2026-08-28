@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.time_preferences import get_operational_date
 from lifeos_cli.db.models.sleep_segment import SleepSegment
+from lifeos_cli.db.services.batching import BatchDeleteResult, batch_delete_records
+from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
 from lifeos_cli.db.services.validation_utils import DomainValidationError
 
 MAX_SLEEP_SEGMENT_HOURS = 48
@@ -167,6 +169,22 @@ async def delete_sleep_segment(
         raise SleepSegmentNotFoundError(f"Sleep segment {segment_id} was not found")
     segment.soft_delete()
     await session.flush()
+
+
+async def batch_delete_sleep_segments(
+    session: AsyncSession,
+    *,
+    segment_ids: list[UUID],
+) -> BatchDeleteResult:
+    """Soft-delete multiple sleep segments with per-record error reporting."""
+    return await batch_delete_records(
+        identifiers=deduplicate_preserving_order(segment_ids),
+        delete_record=lambda segment_id: delete_sleep_segment(
+            session,
+            segment_id=segment_id,
+        ),
+        handled_exceptions=(SleepSegmentNotFoundError,),
+    )
 
 
 @dataclass(frozen=True)

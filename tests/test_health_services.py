@@ -88,6 +88,65 @@ def test_menstrual_factor_and_day_lifecycle() -> None:
     asyncio.run(scenario())
 
 
+def test_body_measurement_upsert_creates_then_updates_same_measured_at() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                created, created_flag = await body_services.upsert_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 19, 8),
+                        weight="63.55",
+                        unit="kg",
+                        body_fat_percentage="22.5",
+                    ),
+                )
+                assert created_flag is True
+                assert created.weight_kg == Decimal("63.55")
+                assert created.body_fat_percentage == Decimal("22.50")
+
+                updated, updated_flag = await body_services.upsert_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 19, 8),
+                        weight="64.10",
+                        unit="kg",
+                    ),
+                )
+                assert updated_flag is False
+                assert updated.id == created.id
+                assert updated.weight_kg == Decimal("64.10")
+                assert updated.body_fat_percentage == Decimal("22.50")
+
+    asyncio.run(scenario())
+
+
+def test_body_measurement_active_measured_at_is_unique() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await body_services.create_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 19, 8),
+                        weight="63.5",
+                    ),
+                )
+                with pytest.raises(
+                    body_services.BodyMeasurementValidationError,
+                    match="already exists",
+                ):
+                    await body_services.create_body_measurement(
+                        session,
+                        payload=body_services.BodyMeasurementCreate(
+                            measured_at=_utc(2026, 8, 19, 8),
+                            weight="64.0",
+                        ),
+                    )
+
+    asyncio.run(scenario())
+
+
 def test_body_measurement_unit_conversion_and_update() -> None:
     assert body_services.to_kg(140, "jin") == Decimal("70.00")
     assert body_services.from_kg(Decimal("70.00"), "jin") == Decimal("140.00")
@@ -95,6 +154,9 @@ def test_body_measurement_unit_conversion_and_update() -> None:
     assert body_services.compute_bmi(70, None) is None
     with pytest.raises(body_services.BodyMeasurementValidationError):
         body_services.to_kg(2000, "kg")
+    for invalid_value in ("not-a-number", "NaN", "Infinity", "0.001"):
+        with pytest.raises(body_services.BodyMeasurementValidationError):
+            body_services.to_kg(invalid_value, "kg")
 
     async def scenario() -> None:
         async with sqlite_session_factory() as factory:
@@ -138,6 +200,73 @@ def test_body_measurement_unit_conversion_and_update() -> None:
                     )
                     is None
                 )
+
+    asyncio.run(scenario())
+
+
+def test_body_measurement_update_rejects_another_active_measured_at() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as factory:
+            async with factory() as session:
+                first = await body_services.create_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 19, 8),
+                        weight="63.5",
+                    ),
+                )
+                await body_services.create_body_measurement(
+                    session,
+                    payload=body_services.BodyMeasurementCreate(
+                        measured_at=_utc(2026, 8, 20, 8),
+                        weight="64.0",
+                    ),
+                )
+
+                with pytest.raises(
+                    body_services.BodyMeasurementValidationError,
+                    match="already exists",
+                ):
+                    await body_services.update_body_measurement(
+                        session,
+                        measurement_id=first.id,
+                        payload=body_services.BodyMeasurementUpdate(
+                            measured_at=_utc(2026, 8, 20, 8),
+                        ),
+                    )
+
+    asyncio.run(scenario())
+
+
+def test_menstrual_factor_update_validates_name_uniqueness() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as factory:
+            async with factory() as session:
+                travel = await menstrual_services.create_menstrual_factor(
+                    session,
+                    name="travel",
+                )
+                stress = await menstrual_services.create_menstrual_factor(
+                    session,
+                    name="stress",
+                )
+
+                updated = await menstrual_services.update_menstrual_factor(
+                    session,
+                    factor_id=travel.id,
+                    name="  exercise  ",
+                )
+                assert updated.name == "exercise"
+
+                with pytest.raises(
+                    menstrual_services.MenstrualValidationError,
+                    match="already exists",
+                ):
+                    await menstrual_services.update_menstrual_factor(
+                        session,
+                        factor_id=stress.id,
+                        name="exercise",
+                    )
 
     asyncio.run(scenario())
 

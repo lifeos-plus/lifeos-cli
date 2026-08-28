@@ -9,6 +9,7 @@ from datetime import date, datetime, time
 
 from lifeos_cli.application.datetime_utils import parse_iso_datetime_input
 from lifeos_cli.application.time_preferences import to_storage_timezone
+from lifeos_cli.db.services.validation_utils import DATE_RANGE_TOGETHER_MESSAGE
 
 _DATE_ONLY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -73,7 +74,7 @@ def resolve_date_selection_arguments(
     start_date: date | None = None,
     end_date: date | None = None,
     conflict_message: str = "Use either --date or --start-date/--end-date, not both.",
-    incomplete_message: str = "Provide both --start-date and --end-date.",
+    incomplete_message: str = DATE_RANGE_TOGETHER_MESSAGE,
     explicit_inverted_message: str = "The --end-date value must be on or after --start-date.",
 ) -> ResolvedDateSelection:
     """Resolve repeated discrete dates or one explicit inclusive date range."""
@@ -93,7 +94,7 @@ def resolve_required_date_interval_arguments(
     *,
     start_date: date | None = None,
     end_date: date | None = None,
-    empty_message: str = "Provide both --start-date and --end-date.",
+    empty_message: str = DATE_RANGE_TOGETHER_MESSAGE,
 ) -> tuple[date, date]:
     """Resolve one required explicit inclusive date interval from CLI flags."""
     selection = resolve_date_selection_arguments(

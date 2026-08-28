@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Collection, Sequence
 
+DATE_RANGE_TOGETHER_MESSAGE = "start_date and end_date must be provided together."
+
 
 class DomainValidationError(ValueError):
     """Base class for domain-service validation errors."""

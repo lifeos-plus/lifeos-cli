@@ -50,6 +50,22 @@ def test_cli_brand_banner_uses_ansi_shadow_font() -> None:
     assert get_cli_brand_banner_width() == 44
 
 
+def test_body_measurement_help_documents_replace_and_update_time_semantics(capsys) -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["body-measurement", "add", "--help"])
+    add_help = capsys.readouterr().out
+    assert "--replace-existing" in add_help
+    assert "--replace-existing" in add_help.split("Examples:", maxsplit=1)[1]
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["body-measurement", "update", "--help"])
+    update_help = capsys.readouterr().out
+    assert "Optional replacement measured time" in update_help
+    assert "defaults to now" not in update_help
+
+
 def test_cli_init_help_avoids_hard_wrapped_description_fragments(capsys) -> None:
     parser = build_parser()
 
@@ -784,10 +800,7 @@ def test_cli_event_timelog_list_help_shows_shared_date_range_text(
     captured = capsys.readouterr()
     normalized_output = " ".join(captured.out.split())
 
-    assert (
-        "Repeat `--date` for one or more discrete local dates. Use "
-        "`--start-date/--end-date` for one inclusive local-date range."
-    ) in captured.out
+    assert ("Use `--start-date/--end-date` for one inclusive local-date range.") in captured.out
     assert "one or more discrete" in normalized_output
     assert "--start-date START_DATE" in normalized_output
     assert "--end-date END_DATE" in normalized_output

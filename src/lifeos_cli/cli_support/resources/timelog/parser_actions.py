@@ -351,7 +351,7 @@ def build_timelog_show_parser(
             ),
             examples=(
                 "lifeos timelog show 11111111-1111-1111-1111-111111111111",
-                "lifeos timelog show 11111111-1111-1111-1111-111111111111",
+                "lifeos timelog show 11111111-1111-1111-1111-111111111111 --json",
             ),
         ),
     )

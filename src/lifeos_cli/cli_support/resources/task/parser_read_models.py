@@ -122,7 +122,7 @@ def build_task_show_parser(
             description=_("resources.task.parser_read_models.show_one_task_with_full_metadata"),
             examples=(
                 "lifeos task show 11111111-1111-1111-1111-111111111111",
-                "lifeos task show 11111111-1111-1111-1111-111111111111",
+                "lifeos task show 11111111-1111-1111-1111-111111111111 --json",
             ),
         ),
     )

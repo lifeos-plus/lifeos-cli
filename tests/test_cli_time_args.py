@@ -66,7 +66,7 @@ def test_resolve_date_selection_arguments_rejects_incomplete_explicit_bounds() -
             end_date=None,
         )
     except ValueError as exc:
-        assert str(exc) == "Provide both --start-date and --end-date."
+        assert str(exc) == "start_date and end_date must be provided together."
     else:
         raise AssertionError("expected DateArgumentError")
 
@@ -132,7 +132,7 @@ def test_resolve_required_date_interval_arguments_rejects_empty_input() -> None:
     try:
         resolve_required_date_interval_arguments()
     except ValueError as exc:
-        assert str(exc) == "Provide both --start-date and --end-date."
+        assert str(exc) == "start_date and end_date must be provided together."
     else:
         raise AssertionError("expected DateArgumentError")
 

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.time_preferences import (
@@ -15,7 +16,13 @@ from lifeos_cli.application.time_preferences import (
 )
 from lifeos_cli.config import get_preferences_settings
 from lifeos_cli.db.models.body_measurement import BodyMeasurement
-from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
+from lifeos_cli.db.services.batching import BatchDeleteResult, batch_delete_records
+from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
+from lifeos_cli.db.services.validation_utils import (
+    DATE_RANGE_TOGETHER_MESSAGE,
+    DomainValidationError,
+    validate_choice,
+)
 
 WEIGHT_UNIT_FACTORS: dict[str, Decimal] = {
     "kg": Decimal("1"),
@@ -34,6 +41,17 @@ MASS_FIELDS = frozenset(
         "skeletal_muscle_kg",
     }
 )
+
+
+def _decimal_value(value: Decimal | float | int | str, *, field: str) -> Decimal:
+    """Parse one finite decimal value and translate parser failures consistently."""
+    try:
+        decimal_value = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise BodyMeasurementValidationError(f"{field} must be a number.") from exc
+    if not decimal_value.is_finite():
+        raise BodyMeasurementValidationError(f"{field} must be a finite number.")
+    return decimal_value
 
 
 class BodyMeasurementNotFoundError(LookupError):
@@ -55,24 +73,24 @@ def validate_unit(unit: str) -> str:
     )
 
 
-def to_kg(value: Decimal | float | int, unit: str) -> Decimal:
+def to_kg(value: Decimal | float | int | str, unit: str) -> Decimal:
     """Convert one weight value in the given unit to canonical kilograms."""
     normalized_unit = validate_unit(unit)
-    try:
-        decimal_value = Decimal(str(value))
-    except (TypeError, ValueError) as exc:
-        raise BodyMeasurementValidationError("Weight must be a number.") from exc
+    decimal_value = _decimal_value(value, field="Weight")
     if decimal_value <= 0:
         raise BodyMeasurementValidationError("Weight must be positive.")
-    converted = (decimal_value * WEIGHT_UNIT_FACTORS[normalized_unit]).quantize(Decimal("0.01"))
+    converted = decimal_value * WEIGHT_UNIT_FACTORS[normalized_unit]
     if converted > MAX_WEIGHT_KG:
         raise BodyMeasurementValidationError(
             f"Weight must be at most {MAX_WEIGHT_KG} kg after unit conversion."
         )
-    return converted
+    quantized = converted.quantize(Decimal("0.01"))
+    if quantized <= 0:
+        raise BodyMeasurementValidationError("Weight must be at least 0.01 kg after conversion.")
+    return quantized
 
 
-def from_kg(weight_kg: Decimal | float | int, unit: str) -> Decimal:
+def from_kg(weight_kg: Decimal | float | int | str, unit: str) -> Decimal:
     """Convert canonical kilograms to the requested display unit."""
     normalized_unit = validate_unit(unit)
     return (Decimal(str(weight_kg)) / WEIGHT_UNIT_FACTORS[normalized_unit]).quantize(
@@ -80,7 +98,10 @@ def from_kg(weight_kg: Decimal | float | int, unit: str) -> Decimal:
     )
 
 
-def compute_bmi(weight_kg: Decimal | float | int, height_cm: float | None) -> Decimal | None:
+def compute_bmi(
+    weight_kg: Decimal | float | int | str,
+    height_cm: float | None,
+) -> Decimal | None:
     """Compute BMI from canonical weight and optional height."""
     if height_cm is None or height_cm <= 0:
         return None
@@ -89,31 +110,26 @@ def compute_bmi(weight_kg: Decimal | float | int, height_cm: float | None) -> De
     return bmi.quantize(Decimal("0.1"))
 
 
-def _validate_percentage(value: Decimal | float | int, *, field: str) -> Decimal:
-    try:
-        decimal_value = Decimal(str(value))
-    except (TypeError, ValueError) as exc:
-        raise BodyMeasurementValidationError(f"{field} must be a number.") from exc
+def _validate_percentage(
+    value: Decimal | float | int | str,
+    *,
+    field: str,
+) -> Decimal:
+    decimal_value = _decimal_value(value, field=field)
     if decimal_value < 0 or decimal_value > 100:
         raise BodyMeasurementValidationError(f"{field} must be between 0 and 100.")
     return decimal_value.quantize(Decimal("0.01"))
 
 
-def _validate_visceral_fat(value: Decimal | float | int) -> Decimal:
-    try:
-        decimal_value = Decimal(str(value))
-    except (TypeError, ValueError) as exc:
-        raise BodyMeasurementValidationError("visceral_fat must be a number.") from exc
+def _validate_visceral_fat(value: Decimal | float | int | str) -> Decimal:
+    decimal_value = _decimal_value(value, field="visceral_fat")
     if decimal_value < 0 or decimal_value > 100:
         raise BodyMeasurementValidationError("visceral_fat must be between 0 and 100.")
     return decimal_value.quantize(Decimal("0.01"))
 
 
-def _validate_mass(value: Decimal | float | int, *, field: str) -> Decimal:
-    try:
-        decimal_value = Decimal(str(value))
-    except (TypeError, ValueError) as exc:
-        raise BodyMeasurementValidationError(f"{field} must be a number.") from exc
+def _validate_mass(value: Decimal | float | int | str, *, field: str) -> Decimal:
+    decimal_value = _decimal_value(value, field=field)
     if decimal_value < 0 or decimal_value > MAX_WEIGHT_KG:
         raise BodyMeasurementValidationError(f"{field} must be between 0 and {MAX_WEIGHT_KG}.")
     return decimal_value.quantize(Decimal("0.01"))
@@ -132,17 +148,17 @@ class BodyMeasurementCreate:
     """Validated body measurement creation payload."""
 
     measured_at: datetime
-    weight: Decimal | float | int
+    weight: Decimal | float | int | str
     unit: str = "kg"
-    body_fat_percentage: Decimal | float | None = None
-    visceral_fat: Decimal | float | None = None
-    fat_mass_kg: Decimal | float | None = None
-    muscle_percentage: Decimal | float | None = None
-    muscle_mass_kg: Decimal | float | None = None
-    body_water_kg: Decimal | float | None = None
-    protein_kg: Decimal | float | None = None
-    bone_mass_kg: Decimal | float | None = None
-    skeletal_muscle_kg: Decimal | float | None = None
+    body_fat_percentage: Decimal | float | str | None = None
+    visceral_fat: Decimal | float | str | None = None
+    fat_mass_kg: Decimal | float | str | None = None
+    muscle_percentage: Decimal | float | str | None = None
+    muscle_mass_kg: Decimal | float | str | None = None
+    body_water_kg: Decimal | float | str | None = None
+    protein_kg: Decimal | float | str | None = None
+    bone_mass_kg: Decimal | float | str | None = None
+    skeletal_muscle_kg: Decimal | float | str | None = None
     notes: str | None = None
 
 
@@ -151,17 +167,17 @@ class BodyMeasurementUpdate:
     """Validated body measurement update payload; None values stay unchanged."""
 
     measured_at: datetime | None = None
-    weight: Decimal | float | int | None = None
+    weight: Decimal | float | int | str | None = None
     unit: str = "kg"
-    body_fat_percentage: Decimal | float | None = None
-    visceral_fat: Decimal | float | None = None
-    fat_mass_kg: Decimal | float | None = None
-    muscle_percentage: Decimal | float | None = None
-    muscle_mass_kg: Decimal | float | None = None
-    body_water_kg: Decimal | float | None = None
-    protein_kg: Decimal | float | None = None
-    bone_mass_kg: Decimal | float | None = None
-    skeletal_muscle_kg: Decimal | float | None = None
+    body_fat_percentage: Decimal | float | str | None = None
+    visceral_fat: Decimal | float | str | None = None
+    fat_mass_kg: Decimal | float | str | None = None
+    muscle_percentage: Decimal | float | str | None = None
+    muscle_mass_kg: Decimal | float | str | None = None
+    body_water_kg: Decimal | float | str | None = None
+    protein_kg: Decimal | float | str | None = None
+    bone_mass_kg: Decimal | float | str | None = None
+    skeletal_muscle_kg: Decimal | float | str | None = None
     notes: str | None = None
     clear_fields: frozenset[str] = frozenset()
 
@@ -213,10 +229,80 @@ async def create_body_measurement(
 ) -> BodyMeasurement:
     """Create one body measurement record."""
     values = _normalize_create(payload)
+    if await _active_by_measured_at(session, payload.measured_at) is not None:
+        raise BodyMeasurementValidationError(
+            "An active body measurement already exists for the same measured_at time."
+        )
     measurement = BodyMeasurement(**values)
-    session.add(measurement)
-    await session.flush()
+    try:
+        async with session.begin_nested():
+            session.add(measurement)
+            await session.flush()
+    except IntegrityError as exc:
+        raise BodyMeasurementValidationError(
+            "An active body measurement already exists for the same measured_at time."
+        ) from exc
     return measurement
+
+
+async def upsert_body_measurement(
+    session: AsyncSession,
+    *,
+    payload: BodyMeasurementCreate,
+) -> tuple[BodyMeasurement, bool]:
+    """Create or update one measurement keyed by its measured-at time.
+
+    When an active record already exists with the same measured-at timestamp,
+    the provided values are applied to it and ``created`` is ``False``;
+    otherwise a new record is inserted. Omitted metric and note values stay
+    unchanged on the update path.
+    """
+    existing = await _active_by_measured_at(session, payload.measured_at)
+    if existing is None:
+        try:
+            async with session.begin_nested():
+                measurement = BodyMeasurement(**_normalize_create(payload))
+                session.add(measurement)
+                await session.flush()
+            return measurement, True
+        except IntegrityError:
+            # A concurrent writer inserted the same measured-at value first;
+            # fall through to the update path against that record.
+            existing = await _active_by_measured_at(session, payload.measured_at)
+            if existing is None:
+                raise
+    existing.measured_at = payload.measured_at
+    existing.weight_kg = to_kg(payload.weight, payload.unit)
+    for field in PERCENTAGE_FIELDS | MASS_FIELDS | {"visceral_fat"}:
+        value = getattr(payload, field)
+        if value is None:
+            continue
+        if field in PERCENTAGE_FIELDS:
+            setattr(existing, field, _validate_percentage(value, field=field))
+        elif field == "visceral_fat":
+            setattr(existing, field, _validate_visceral_fat(value))
+        else:
+            setattr(existing, field, _validate_mass(value, field=field))
+    if payload.notes is not None:
+        existing.notes = validate_notes(payload.notes)
+    await session.flush()
+    return existing, False
+
+
+async def _active_by_measured_at(
+    session: AsyncSession,
+    measured_at: datetime,
+) -> BodyMeasurement | None:
+    return (
+        await session.execute(
+            select(BodyMeasurement)
+            .where(
+                BodyMeasurement.measured_at == measured_at,
+                BodyMeasurement.deleted_at.is_(None),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
 
 
 async def get_body_measurement(
@@ -231,7 +317,7 @@ async def get_body_measurement(
 def _require_paired_range(start_date: date | None, end_date: date | None) -> None:
     """Reject partial local-date ranges, which cannot be mapped to a UTC window."""
     if (start_date is None) != (end_date is None):
-        raise BodyMeasurementValidationError("start_date and end_date must be provided together.")
+        raise BodyMeasurementValidationError(DATE_RANGE_TOGETHER_MESSAGE)
 
 
 def _local_date_window(start_date: date, end_date: date) -> tuple[datetime, datetime]:
@@ -331,6 +417,11 @@ async def update_body_measurement(
     if measurement is None:
         raise BodyMeasurementNotFoundError(f"Body measurement {measurement_id} was not found")
     if payload.measured_at is not None:
+        conflict = await _active_by_measured_at(session, payload.measured_at)
+        if conflict is not None and conflict.id != measurement.id:
+            raise BodyMeasurementValidationError(
+                "An active body measurement already exists for the same measured_at time."
+            )
         measurement.measured_at = payload.measured_at
     if payload.weight is not None:
         measurement.weight_kg = to_kg(payload.weight, payload.unit)
@@ -351,7 +442,12 @@ async def update_body_measurement(
         measurement.notes = None
     elif payload.notes is not None:
         measurement.notes = validate_notes(payload.notes)
-    await session.flush()
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        raise BodyMeasurementValidationError(
+            "An active body measurement already exists for the same measured_at time."
+        ) from exc
     return measurement
 
 
@@ -365,6 +461,22 @@ async def delete_body_measurement(
         raise BodyMeasurementNotFoundError(f"Body measurement {measurement_id} was not found")
     measurement.soft_delete()
     await session.flush()
+
+
+async def batch_delete_body_measurements(
+    session: AsyncSession,
+    *,
+    measurement_ids: list[UUID],
+) -> BatchDeleteResult:
+    """Soft-delete multiple body measurements with per-record error reporting."""
+    return await batch_delete_records(
+        identifiers=deduplicate_preserving_order(measurement_ids),
+        delete_record=lambda measurement_id: delete_body_measurement(
+            session,
+            measurement_id=measurement_id,
+        ),
+        handled_exceptions=(BodyMeasurementNotFoundError,),
+    )
 
 
 def preferred_weight_unit() -> str:

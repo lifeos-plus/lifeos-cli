@@ -329,7 +329,7 @@ def build_event_show_parser(
             description=_("resources.event.parser_actions.show_one_event_with_full_metadata"),
             examples=(
                 "lifeos event show 11111111-1111-1111-1111-111111111111",
-                "lifeos event show 11111111-1111-1111-1111-111111111111",
+                "lifeos event show 11111111-1111-1111-1111-111111111111 --json",
             ),
         ),
     )

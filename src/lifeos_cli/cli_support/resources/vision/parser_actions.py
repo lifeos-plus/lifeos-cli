@@ -143,7 +143,7 @@ def build_vision_show_parser(
             description=_("resources.vision.parser_actions.show_one_vision_with_full_metadata"),
             examples=(
                 "lifeos vision show 11111111-1111-1111-1111-111111111111",
-                "lifeos vision show 11111111-1111-1111-1111-111111111111",
+                "lifeos vision show 11111111-1111-1111-1111-111111111111 --json",
             ),
         ),
     )

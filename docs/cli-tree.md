@@ -15,7 +15,7 @@
 │           args: area_id [required]; --name; --description; --clear-description; --color; --icon; --clear-icon; --active; --display-order
 ├── body-measurement  —  Manage body weight and composition measurements
 │   ├── add  —  Add a body measurement
-│   │       args: --weight; --unit; --measured-at; --body-fat; --visceral-fat; --fat-mass; --muscle-percentage; --muscle-mass; --body-water; --protein; --bone-mass; --skeletal-muscle; --notes
+│   │       args: --weight; --unit; --measured-at; --replace-existing; --body-fat; --visceral-fat; --fat-mass; --muscle-percentage; --muscle-mass; --body-water; --protein; --bone-mass; --skeletal-muscle; --notes
 │   ├── delete  —  Delete body measurements
 │   │       args: measurement_ids [required]
 │   ├── list  —  List body measurements

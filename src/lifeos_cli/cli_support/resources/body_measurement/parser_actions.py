@@ -31,47 +31,38 @@ from lifeos_cli.i18n import cli_message as _
 def _add_shared_body_metric_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--body-fat",
-        type=float,
         help=_("resources.body_measurement.parser_actions.optional_body_fat_percentage"),
     )
     parser.add_argument(
         "--visceral-fat",
-        type=float,
         help=_("resources.body_measurement.parser_actions.optional_visceral_fat"),
     )
     parser.add_argument(
         "--fat-mass",
-        type=float,
         help=_("resources.body_measurement.parser_actions.optional_fat_mass_kg"),
     )
     parser.add_argument(
         "--muscle-percentage",
-        type=float,
         help=_("resources.body_measurement.parser_actions.optional_muscle_percentage"),
     )
     parser.add_argument(
         "--muscle-mass",
-        type=float,
         help=_("resources.body_measurement.parser_actions.optional_muscle_mass_kg"),
     )
     parser.add_argument(
         "--body-water",
-        type=float,
         help=_("resources.body_measurement.parser_actions.optional_body_water_kg"),
     )
     parser.add_argument(
         "--protein",
-        type=float,
         help=_("resources.body_measurement.parser_actions.optional_protein_kg"),
     )
     parser.add_argument(
         "--bone-mass",
-        type=float,
         help=_("resources.body_measurement.parser_actions.optional_bone_mass_kg"),
     )
     parser.add_argument(
         "--skeletal-muscle",
-        type=float,
         help=_("resources.body_measurement.parser_actions.optional_skeletal_muscle_kg"),
     )
 
@@ -93,6 +84,10 @@ def build_body_measurement_add_parser(
                     "lifeos body-measurement add --weight 127 --unit jin "
                     "--measured-at 2026-08-19T08:00:00"
                 ),
+                (
+                    "lifeos body-measurement add --weight 64.2 --measured-at "
+                    "2026-08-19T08:00:00 --replace-existing"
+                ),
             ),
             notes=(
                 _(
@@ -101,14 +96,12 @@ def build_body_measurement_add_parser(
                 _(
                     "resources.body_measurement.parser_actions.default_unit_is_the_preferred_weight_unit"
                 ),
-                _("resources.body_measurement.parser_actions.measured_at_defaults_to_now"),
                 help_message("notes.datetime.configuredTimezone"),
             ),
         ),
     )
     add_parser.add_argument(
         "--weight",
-        type=float,
         required=True,
         help=_("resources.body_measurement.parser_actions.weight_value_in_input_unit"),
     )
@@ -121,6 +114,11 @@ def build_body_measurement_add_parser(
         "--measured-at",
         type=parse_user_datetime_value,
         help=_("resources.body_measurement.parser_actions.measured_at_defaults_to_now"),
+    )
+    add_parser.add_argument(
+        "--replace-existing",
+        action="store_true",
+        help=_("resources.body_measurement.parser_actions.replace_existing_measured_at_record"),
     )
     _add_shared_body_metric_arguments(add_parser)
     add_parser.add_argument(
@@ -212,7 +210,6 @@ def build_body_measurement_update_parser(
     )
     update_parser.add_argument(
         "--weight",
-        type=float,
         help=_("resources.body_measurement.parser_actions.weight_value_in_input_unit"),
     )
     update_parser.add_argument(
@@ -223,7 +220,7 @@ def build_body_measurement_update_parser(
     update_parser.add_argument(
         "--measured-at",
         type=parse_user_datetime_value,
-        help=_("resources.body_measurement.parser_actions.measured_at_defaults_to_now"),
+        help=_("resources.body_measurement.parser_actions.optional_replacement_measured_at"),
     )
     _add_shared_body_metric_arguments(update_parser)
     update_parser.add_argument(

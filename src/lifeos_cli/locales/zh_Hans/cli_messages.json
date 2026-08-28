@@ -159,7 +159,7 @@
         "write_exported_data_to_file_instead_of_stdout": "将导出的数据写入文件而不是 stdout",
         "write_row_level_failures_to_jsonl_file": "将行级故障写入 JSONL 文件",
         "import_mode_create_or_upsert": "导入模式：create 始终新增；upsert 按 --key 匹配并更新或新增",
-        "natural_key_upsert_supported_keys_are_area_name_vision_name_person_name_and_habit_title": "自然键 upsert 支持字段：area.name、vision.name、person.name、habit.title",
+        "natural_key_upsert_supported_keys": "自然键 upsert 支持字段：area.name、vision.name、person.name、habit.title、body-measurement.measured_at、menstrual.log_date、menstrual-factor.name",
         "upsert_natural_key_field": "用于匹配现有记录的自然键字段"
       }
     },
@@ -996,6 +996,8 @@
         "weights_are_stored_in_kg_regardless_of_input_unit": "无论输入单位如何，体重都以 kg 存储。",
         "default_unit_is_the_preferred_weight_unit": "默认单位为配置的 `preferences.weight_unit`。",
         "measured_at_defaults_to_now": "测量时间；省略时默认为当前时间",
+        "optional_replacement_measured_at": "可选的新测量时间",
+        "replace_existing_measured_at_record": "存在相同测量时间的有效记录时更新该记录，而不是创建重复记录",
         "optional_body_fat_percentage": "可选体脂率",
         "optional_visceral_fat": "可选内脏脂肪",
         "optional_fat_mass_kg": "可选脂肪量（kg）",

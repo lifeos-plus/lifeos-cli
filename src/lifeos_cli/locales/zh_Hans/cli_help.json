@@ -10,7 +10,7 @@
       "valueConflict": "不要在同一命令中混用某个取值参数及其对应的 clear 参数。"
     },
     "dateSelection": {
-      "dateOrRange": "重复 `--date` 表示一个或多个离散本地日期。使用 `--start-date/--end-date` 表示一个包含端点的本地日期范围。"
+      "dateOrRange": "使用 `--start-date/--end-date` 表示一个包含端点的本地日期范围。"
     },
     "datetime": {
       "configuredTimezone": "当日期时间省略时区信息时，会先使用当前配置的时区解释该值，再转换为 UTC。"

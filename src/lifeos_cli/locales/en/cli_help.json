@@ -10,7 +10,7 @@
       "valueConflict": "Do not mix a value flag with the matching clear flag in the same command."
     },
     "dateSelection": {
-      "dateOrRange": "Repeat `--date` for one or more discrete local dates. Use `--start-date/--end-date` for one inclusive local-date range."
+      "dateOrRange": "Use `--start-date/--end-date` for one inclusive local-date range."
     },
     "datetime": {
       "configuredTimezone": "When a datetime omits timezone information, the configured timezone is used before the value is converted to UTC."

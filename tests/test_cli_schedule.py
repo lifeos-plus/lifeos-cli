@@ -484,4 +484,4 @@ def test_main_schedule_list_rejects_incomplete_explicit_date_range(
     captured = capsys.readouterr()
 
     assert exit_code == 1
-    assert "Provide both --start-date and --end-date." in captured.err
+    assert "start_date and end_date must be provided together." in captured.err

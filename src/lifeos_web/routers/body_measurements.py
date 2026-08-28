@@ -14,7 +14,10 @@ from lifeos_cli.application.time_preferences import to_storage_timezone
 from lifeos_cli.config import get_preferences_settings
 from lifeos_cli.db.models.body_measurement import BodyMeasurement
 from lifeos_cli.db.services import body_measurements as body_services
-from lifeos_cli.db.services.validation_utils import DomainValidationError
+from lifeos_cli.db.services.validation_utils import (
+    DATE_RANGE_TOGETHER_MESSAGE,
+    DomainValidationError,
+)
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.body_measurements import BodyMeasurementResponse
 from lifeos_web.response_schemas.common import EmptyMeta
@@ -98,7 +101,7 @@ async def list_body_measurements(
     if (start_date is None) != (end_date is None):
         raise HTTPException(
             status_code=400,
-            detail="start_date and end_date must be provided together.",
+            detail=DATE_RANGE_TOGETHER_MESSAGE,
         )
     measurements = await body_services.list_body_measurements(
         session,
