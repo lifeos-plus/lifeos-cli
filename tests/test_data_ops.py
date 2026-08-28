@@ -6,7 +6,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 from uuid import UUID, uuid4
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -17,6 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.backend_policy import backend_policy_for_drivername
 from lifeos_cli.db.models.area import Area
+from lifeos_cli.db.models.body_measurement import BodyMeasurement
+from lifeos_cli.db.models.habit import Habit
+from lifeos_cli.db.models.menstrual import MenstrualDay, MenstrualFactor
+from lifeos_cli.db.models.person import Person
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import data_ops
 from lifeos_cli.db.types import UTCDateTime
@@ -352,6 +356,72 @@ def test_resolve_upsert_row_id_matches_existing_record_by_natural_key() -> None:
 
                 assert UUID(resolved["id"]) == area_id
                 assert resolved["color"] == "#111111"
+
+    asyncio.run(scenario())
+
+
+def test_natural_key_upserts_ignore_soft_deleted_matches_for_every_supported_resource() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                cases: list[tuple[str, str, object, Any, Any]] = [
+                    ("area", "name", "Health", Area(name="Health"), Area(name="Health")),
+                    ("vision", "name", "Launch", Vision(name="Launch"), Vision(name="Launch")),
+                    ("person", "name", "Alice", Person(name="Alice"), Person(name="Alice")),
+                    (
+                        "habit",
+                        "title",
+                        "Walk",
+                        Habit(title="Walk", start_date=date(2026, 8, 1), duration_days=30),
+                        Habit(title="Walk", start_date=date(2026, 9, 1), duration_days=30),
+                    ),
+                    (
+                        "body-measurement",
+                        "measured_at",
+                        datetime(2026, 8, 19, 8, tzinfo=UTC),
+                        BodyMeasurement(
+                            measured_at=datetime(2026, 8, 19, 8, tzinfo=UTC),
+                            weight_kg=Decimal("62.0"),
+                        ),
+                        BodyMeasurement(
+                            measured_at=datetime(2026, 8, 19, 8, tzinfo=UTC),
+                            weight_kg=Decimal("63.0"),
+                        ),
+                    ),
+                    (
+                        "menstrual",
+                        "log_date",
+                        date(2026, 8, 19),
+                        MenstrualDay(log_date=date(2026, 8, 19)),
+                        MenstrualDay(log_date=date(2026, 8, 19)),
+                    ),
+                    (
+                        "menstrual-factor",
+                        "name",
+                        "travel",
+                        MenstrualFactor(name="travel"),
+                        MenstrualFactor(name="travel"),
+                    ),
+                ]
+                expected_ids: dict[str, UUID] = {}
+                for resource, _, _, deleted_row, active_row in cases:
+                    deleted_row.soft_delete()
+                    session.add_all([deleted_row, active_row])
+                    await session.flush()
+                    expected_ids[resource] = active_row.id
+                await session.commit()
+
+            async with session_factory() as session:
+                for resource, key_field, key_value, _, _ in cases:
+                    resolved = await data_ops.resolve_upsert_row_id(
+                        session,
+                        resource=resource,
+                        row={key_field: key_value},
+                        key_field=key_field,
+                        index=1,
+                    )
+
+                    assert UUID(resolved["id"]) == expected_ids[resource]
 
     asyncio.run(scenario())
 
