@@ -24,13 +24,16 @@ router = APIRouter(prefix="/areas", tags=["areas"])
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
 logger = logging.getLogger(__name__)
 
-ORDER_WRITE_RETRY_ATTEMPTS = 3
 ORDER_WRITE_RETRY_BACKOFF_SECONDS = (0.1, 0.3, 0.9)
+_LOCK_CONTENTION_SQLSTATES = frozenset({"40001", "40P01", "55P03"})
 _LOCK_CONTENTION_MARKERS = (
     "database is locked",
+    "database schema is locked",
+    "database table is locked",
     "lock timeout",
     "deadlock detected",
     "could not serialize access",
+    "could not obtain lock",
 )
 
 
@@ -109,6 +112,8 @@ async def set_area_order(order: list[UUID], session: SessionDep) -> None:
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except OperationalError as exc:
+        if not _is_lock_contention_error(exc):
+            raise
         logger.warning("Area order write failed after retries: %s", exc)
         raise HTTPException(
             status_code=503,
@@ -119,7 +124,11 @@ async def set_area_order(order: list[UUID], session: SessionDep) -> None:
 
 def _is_lock_contention_error(exc: OperationalError) -> bool:
     """Return whether an OperationalError is a database lock conflict."""
-    details = str(exc).lower()
+    original = exc.orig
+    sqlstate = getattr(original, "sqlstate", None) or getattr(original, "pgcode", None)
+    if sqlstate in _LOCK_CONTENTION_SQLSTATES:
+        return True
+    details = f"{exc} {original}".lower()
     return any(marker in details for marker in _LOCK_CONTENTION_MARKERS)
 
 
@@ -129,12 +138,12 @@ async def _persist_area_order(
     order: list[UUID],
 ) -> None:
     """Persist the area order, retrying transient database lock conflicts."""
-    for attempt in range(ORDER_WRITE_RETRY_ATTEMPTS):
+    for attempt in range(len(ORDER_WRITE_RETRY_BACKOFF_SECONDS) + 1):
         try:
             await area_services.reorder_areas(session, order=order)
             return
         except OperationalError as exc:
-            last_attempt = attempt == ORDER_WRITE_RETRY_ATTEMPTS - 1
+            last_attempt = attempt == len(ORDER_WRITE_RETRY_BACKOFF_SECONDS)
             if last_attempt or not _is_lock_contention_error(exc):
                 raise
             await session.rollback()
