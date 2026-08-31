@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import math
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.models.area import Area
@@ -19,6 +22,16 @@ from lifeos_web.schemas import ListResponse, Pagination
 
 router = APIRouter(prefix="/areas", tags=["areas"])
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
+logger = logging.getLogger(__name__)
+
+ORDER_WRITE_RETRY_ATTEMPTS = 3
+ORDER_WRITE_RETRY_BACKOFF_SECONDS = (0.1, 0.3, 0.9)
+_LOCK_CONTENTION_MARKERS = (
+    "database is locked",
+    "lock timeout",
+    "deadlock detected",
+    "could not serialize access",
+)
 
 
 class AreaCreate(BaseModel):
@@ -91,11 +104,41 @@ async def get_area_order(session: SessionDep) -> list[str]:
 @router.put("/order", status_code=204)
 async def set_area_order(order: list[UUID], session: SessionDep) -> None:
     """Persist area display order from the frontend area sorter."""
-    for index, area_id in enumerate(order):
+    try:
+        await _persist_area_order(session, order=order)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except OperationalError as exc:
+        logger.warning("Area order write failed after retries: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail="The database is busy; please retry.",
+            headers={"Retry-After": "1"},
+        ) from exc
+
+
+def _is_lock_contention_error(exc: OperationalError) -> bool:
+    """Return whether an OperationalError is a database lock conflict."""
+    details = str(exc).lower()
+    return any(marker in details for marker in _LOCK_CONTENTION_MARKERS)
+
+
+async def _persist_area_order(
+    session: AsyncSession,
+    *,
+    order: list[UUID],
+) -> None:
+    """Persist the area order, retrying transient database lock conflicts."""
+    for attempt in range(ORDER_WRITE_RETRY_ATTEMPTS):
         try:
-            await area_services.update_area(session, area_id=area_id, display_order=index)
-        except LookupError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
+            await area_services.reorder_areas(session, order=order)
+            return
+        except OperationalError as exc:
+            last_attempt = attempt == ORDER_WRITE_RETRY_ATTEMPTS - 1
+            if last_attempt or not _is_lock_contention_error(exc):
+                raise
+            await session.rollback()
+            await asyncio.sleep(ORDER_WRITE_RETRY_BACKOFF_SECONDS[attempt])
 
 
 @router.delete("/order", status_code=204)
