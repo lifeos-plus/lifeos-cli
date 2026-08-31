@@ -110,6 +110,32 @@ async def list_areas(
     return list((await session.execute(stmt)).scalars())
 
 
+async def reorder_areas(
+    session: AsyncSession,
+    *,
+    order: list[UUID],
+) -> None:
+    """Persist a new display order for area ids in a single flush.
+
+    Every id must reference an existing, non-deleted area. Duplicate ids are
+    tolerated and keep their last occurrence order, mirroring the previous
+    per-row update behavior. Loading all rows up front and flushing once keeps
+    the write transaction short, which matters for SQLite single-writer
+    contention.
+    """
+    if not order:
+        return
+    unique_ids = deduplicate_preserving_order(order)
+    rows = (await session.execute(select(Area).where(Area.id.in_(unique_ids)))).scalars()
+    areas_by_id = {area.id: area for area in rows}
+    missing = [str(area_id) for area_id in unique_ids if area_id not in areas_by_id]
+    if missing:
+        raise AreaNotFoundError(f"Area(s) {', '.join(missing)} were not found")
+    for index, area_id in enumerate(order):
+        areas_by_id[area_id].display_order = index
+    await session.flush()
+
+
 async def update_area(
     session: AsyncSession,
     *,

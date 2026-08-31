@@ -12,10 +12,12 @@ verifies what endpoints actually execute, not just their declared schemas.
 
 from __future__ import annotations
 
+import sqlite3
 import uuid
 from pathlib import Path
 
 import pytest
+from sqlalchemy.exc import OperationalError
 
 from lifeos_cli import cli
 from lifeos_cli.config import clear_config_cache
@@ -484,3 +486,187 @@ def test_finance_tree_copy_round_trip(http_client) -> None:
         json={},
     )
     assert missing_response.status_code == 404
+
+
+def test_area_order_round_trip(http_client) -> None:
+    created_ids = [
+        http_client.post(
+            "/api/v1/areas/",
+            json={"name": f"HTTP order area {index}"},
+        ).json()["id"]
+        for index in range(3)
+    ]
+
+    reordered = list(reversed(created_ids))
+    response = http_client.put("/api/v1/areas/order", json=reordered)
+    assert response.status_code == 204
+    assert http_client.get("/api/v1/areas/order").json() == reordered
+
+
+def test_area_order_unknown_id_returns_404(http_client) -> None:
+    response = http_client.put(
+        "/api/v1/areas/order",
+        json=[str(uuid.uuid4())],
+    )
+
+    assert response.status_code == 404
+
+
+def test_area_order_database_locked_retries_then_503(
+    http_client,
+    monkeypatch,
+) -> None:
+    from lifeos_web import routers
+
+    area_id = http_client.post(
+        "/api/v1/areas/",
+        json={"name": "Locked retry area"},
+    ).json()["id"]
+    monkeypatch.setattr(
+        routers.areas,
+        "ORDER_WRITE_RETRY_BACKOFF_SECONDS",
+        (0.0, 0.0, 0.0),
+    )
+    attempts = {"count": 0}
+
+    async def flaky_reorder(session, *, order):
+        attempts["count"] += 1
+        raise OperationalError(
+            "UPDATE areas SET display_order=?",
+            {},
+            Exception("(sqlite3.OperationalError) database is locked"),
+        )
+
+    monkeypatch.setattr(
+        routers.areas.area_services,
+        "reorder_areas",
+        flaky_reorder,
+    )
+
+    response = http_client.put("/api/v1/areas/order", json=[area_id])
+
+    assert response.status_code == 503
+    assert response.headers.get("retry-after") == "1"
+    assert attempts["count"] == len(routers.areas.ORDER_WRITE_RETRY_BACKOFF_SECONDS) + 1
+
+
+def test_area_order_non_lock_operational_error_is_not_mapped_to_503(
+    http_client,
+    monkeypatch,
+) -> None:
+    from lifeos_web import routers
+
+    area_id = http_client.post(
+        "/api/v1/areas/",
+        json={"name": "Broken database area"},
+    ).json()["id"]
+
+    async def broken_reorder(session, *, order):
+        raise OperationalError(
+            "UPDATE areas SET display_order=?",
+            {},
+            Exception("disk I/O error"),
+        )
+
+    monkeypatch.setattr(
+        routers.areas.area_services,
+        "reorder_areas",
+        broken_reorder,
+    )
+
+    with pytest.raises(OperationalError, match="disk I/O error"):
+        http_client.put("/api/v1/areas/order", json=[area_id])
+
+
+@pytest.mark.parametrize("sqlstate", ["40001", "40P01", "55P03"])
+def test_area_order_postgres_lock_sqlstates_are_retryable(sqlstate: str) -> None:
+    from lifeos_web import routers
+
+    class PostgreSQLLockError(Exception):
+        def __init__(self, code: str) -> None:
+            super().__init__("PostgreSQL operation failed")
+            self.sqlstate = code
+
+    original = PostgreSQLLockError(sqlstate)
+    error = OperationalError("UPDATE areas", {}, original)
+
+    assert routers.areas._is_lock_contention_error(error)
+
+
+def test_area_order_recovers_after_transient_lock(
+    http_client,
+    monkeypatch,
+) -> None:
+    from lifeos_web import routers
+
+    area_id = http_client.post(
+        "/api/v1/areas/",
+        json={"name": "Recovered area"},
+    ).json()["id"]
+    monkeypatch.setattr(
+        routers.areas,
+        "ORDER_WRITE_RETRY_BACKOFF_SECONDS",
+        (0.0,),
+    )
+    original_reorder = routers.areas.area_services.reorder_areas
+    attempts = {"count": 0}
+
+    async def flaky_once(session, *, order):
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            raise OperationalError(
+                "UPDATE areas SET display_order=?",
+                {},
+                Exception("(sqlite3.OperationalError) database is locked"),
+            )
+        await original_reorder(session, order=order)
+
+    monkeypatch.setattr(
+        routers.areas.area_services,
+        "reorder_areas",
+        flaky_once,
+    )
+
+    response = http_client.put("/api/v1/areas/order", json=[area_id])
+
+    assert response.status_code == 204
+    assert attempts["count"] == 2
+    assert http_client.get("/api/v1/areas/order").json() == [area_id]
+
+
+def test_area_order_database_locked_by_raw_connection_returns_503(
+    http_client,
+    monkeypatch,
+) -> None:
+    from lifeos_web import routers
+
+    first_id = http_client.post(
+        "/api/v1/areas/",
+        json={"name": "Raw locked area A"},
+    ).json()["id"]
+    second_id = http_client.post(
+        "/api/v1/areas/",
+        json={"name": "Raw locked area B"},
+    ).json()["id"]
+    monkeypatch.setattr(routers.areas, "ORDER_WRITE_RETRY_BACKOFF_SECONDS", ())
+
+    database_url = str(db_session.get_async_engine().url)
+    database_path = database_url.removeprefix("sqlite+aiosqlite:///")
+    lock_holder = sqlite3.connect(database_path, timeout=0.1)
+    lock_holder.execute("PRAGMA busy_timeout=0")
+    try:
+        lock_holder.execute("BEGIN IMMEDIATE")
+        lock_holder.execute(
+            "UPDATE areas SET display_order=display_order WHERE id=?",
+            (first_id,),
+        )
+        response = http_client.put(
+            "/api/v1/areas/order",
+            json=[second_id, first_id],
+        )
+
+        assert response.status_code == 503
+        assert response.headers.get("retry-after") == "1"
+    finally:
+        lock_holder.rollback()
+        lock_holder.close()
