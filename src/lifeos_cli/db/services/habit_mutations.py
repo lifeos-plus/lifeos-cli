@@ -31,6 +31,7 @@ from lifeos_cli.db.services.habit_support import (
     InvalidHabitOperationError,
     calculate_habit_duration_for_repeat_count,
     ensure_active_capacity,
+    ensure_area_exists,
     ensure_task_exists,
     get_habit_occurrence_end_date,
     habit_occurs_on_date,
@@ -60,6 +61,7 @@ async def create_habit(
     cadence_monthdays: Sequence[object] | None = None,
     target_per_cycle: int | None = None,
     task_id: UUID | None = None,
+    area_id: UUID | None = None,
 ) -> Habit:
     """Create a new habit without pre-generating dated action rows."""
     normalized_title = title.strip()
@@ -86,6 +88,7 @@ async def create_habit(
     )
     await ensure_active_capacity(session)
     await ensure_task_exists(session, task_id)
+    await ensure_area_exists(session, area_id)
     habit = Habit(
         title=normalized_title,
         description=description,
@@ -102,6 +105,7 @@ async def create_habit(
         status="active",
         status_changed_date=start_date,
         task_id=task_id,
+        area_id=area_id,
     )
     session.add(habit)
     await session.flush()
@@ -137,6 +141,8 @@ async def update_habit(
     status: str | None = None,
     task_id: UUID | None = None,
     clear_task: bool = False,
+    area_id: UUID | None = None,
+    clear_area: bool = False,
 ) -> Habit:
     """Update a habit and reconcile materialized dated actions."""
     habit = await get_habit(session, habit_id=habit_id)
@@ -215,6 +221,11 @@ async def update_habit(
     elif task_id is not None:
         await ensure_task_exists(session, task_id)
         habit.task_id = task_id
+    if clear_area:
+        habit.area_id = None
+    elif area_id is not None:
+        await ensure_area_exists(session, area_id)
+        habit.area_id = area_id
     if status is not None:
         normalized_status = validate_habit_status(status)
         if normalized_status == "active" and habit.status != "active":

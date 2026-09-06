@@ -178,6 +178,7 @@ class HabitCreate(BaseModel):
     cadence_monthdays: list[int] | None = None
     target_per_cycle: int | None = None
     task_id: UUID | None = None
+    area_id: UUID | None = None
 
 
 class HabitUpdate(BaseModel):
@@ -195,6 +196,7 @@ class HabitUpdate(BaseModel):
     target_per_cycle: int | None = None
     status: str | None = None
     task_id: UUID | None = None
+    area_id: UUID | None = None
 
 
 class HabitActionUpdate(BaseModel):

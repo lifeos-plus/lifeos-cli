@@ -539,7 +539,7 @@ def test_cli_db_help_explains_ping_upgrade_boundary(capsys) -> None:
         (
             ["habit", "list", "--help"],
             "Default list output prints a header row followed by tab-separated columns: "
-            "habit_id, status, start_date, duration_days, cadence, task_id, title.",
+            "habit_id, status, area_id, start_date, duration_days, cadence, task_id, title.",
         ),
         (
             ["note", "list", "--help"],

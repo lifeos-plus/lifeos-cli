@@ -20,6 +20,7 @@ class Habit(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
         Index("ix_habits_start_date", "start_date"),
         Index("ix_habits_status", "status"),
         Index("ix_habits_task_id", "task_id"),
+        Index("ix_habits_area_id", "area_id"),
         Index("ix_habits_cadence_frequency", "cadence_frequency"),
     )
 
@@ -38,8 +39,14 @@ class Habit(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
         ForeignKey("tasks.id", ondelete="SET NULL"),
         nullable=True,
     )
+    area_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("areas.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     task = relationship("Task", foreign_keys=[task_id])
+    area = relationship("Area", foreign_keys=[area_id])
     actions = relationship(
         "HabitAction",
         back_populates="habit",

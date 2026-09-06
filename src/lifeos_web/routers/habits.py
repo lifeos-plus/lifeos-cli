@@ -35,6 +35,7 @@ SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
 
 def _habit_model_payload(habit: Habit) -> dict[str, object]:
     """Serialize a Habit SQLAlchemy model for the local Web API."""
+    area_id = getattr(habit, "area_id", None)
     return {
         "id": str(habit.id),
         "title": habit.title,
@@ -47,6 +48,7 @@ def _habit_model_payload(habit: Habit) -> dict[str, object]:
         "target_per_cycle": habit.target_per_cycle,
         "status": habit.status,
         "task_id": str(habit.task_id) if habit.task_id else None,
+        "area_id": str(area_id) if area_id else None,
     }
 
 
@@ -79,12 +81,14 @@ async def _action_with_habit_summary(
     habit = await habit_services.get_habit(session, habit_id=UUID(str(payload["habit_id"])))
     if habit is None:
         raise HTTPException(status_code=404, detail=f"Habit {payload['habit_id']} was not found")
+    area_id = getattr(habit, "area_id", None)
     payload["habit"] = {
         "title": habit.title,
         "description": habit.description,
         "start_date": habit.start_date.isoformat(),
         "duration_days": habit.duration_days,
         "cadence_frequency": habit.cadence_frequency,
+        "area_id": str(area_id) if area_id else None,
     }
     return payload
 
@@ -108,11 +112,13 @@ async def list_habits(
     page: int = 1,
     size: int = 100,
     status_filter: str | None = None,
+    area_id: UUID | None = None,
 ) -> ListResponse:
     """List habits for the local Web UI."""
     rows = await habit_services.list_habits(
         session,
         status=status_filter,
+        area_id=area_id,
         limit=size,
         offset=(page - 1) * size,
     )
@@ -120,7 +126,7 @@ async def list_habits(
     return ListResponse(
         items=items,
         pagination=Pagination(page=page, size=size, total=len(items), pages=1 if items else 0),
-        meta={"status_filter": status_filter},
+        meta={"status_filter": status_filter, "area_id": str(area_id) if area_id else None},
     )
 
 
@@ -133,11 +139,13 @@ async def list_habit_overviews(
     page: int = 1,
     size: int = 100,
     status_filter: str | None = None,
+    area_id: UUID | None = None,
 ) -> ListResponse:
     """List habits with frontend-compatible zeroed stats."""
     habits = await habit_services.list_habits(
         session,
         status=status_filter,
+        area_id=area_id,
         limit=size,
         offset=(page - 1) * size,
     )
@@ -151,7 +159,7 @@ async def list_habit_overviews(
     return ListResponse(
         items=items,
         pagination=Pagination(page=page, size=size, total=len(items), pages=1 if items else 0),
-        meta={"status_filter": status_filter},
+        meta={"status_filter": status_filter, "area_id": str(area_id) if area_id else None},
     )
 
 
@@ -195,6 +203,7 @@ async def create_habit(
             cadence_monthdays=payload.cadence_monthdays,
             target_per_cycle=payload.target_per_cycle,
             task_id=payload.task_id,
+            area_id=payload.area_id,
         )
     except (LookupError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -233,6 +242,8 @@ async def update_habit(
             status=payload.status,
             task_id=payload.task_id,
             clear_task=clear_task,
+            area_id=payload.area_id,
+            clear_area="area_id" in fields and payload.area_id is None,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

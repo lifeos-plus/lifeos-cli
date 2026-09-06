@@ -28,6 +28,7 @@ class HabitResponse(ResponseModel):
     target_per_cycle: int
     status: str
     task_id: str | None
+    area_id: str | None
 
 
 class HabitOverviewResponse(ResponseModel):
@@ -50,6 +51,7 @@ class HabitSummaryResponse(ResponseModel):
     start_date: str
     duration_days: int
     cadence_frequency: str
+    area_id: str | None
 
 
 class HabitActionWithHabitResponse(HabitActionResponse):
@@ -62,6 +64,7 @@ class HabitAssociationsResponse(ResponseModel):
 
 class HabitListMeta(ResponseModel):
     status_filter: str | None
+    area_id: str | None
 
 
 class HabitActionDateMeta(ResponseModel):

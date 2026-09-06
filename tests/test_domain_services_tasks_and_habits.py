@@ -11,6 +11,7 @@ import pytest
 from sqlalchemy import event, select
 
 from lifeos_cli.application import time_preferences
+from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import (
@@ -2414,3 +2415,44 @@ def test_list_habit_actions_with_total_builds_views_once(
     assert [view.action_date for view in views] == [date(2026, 4, 1), date(2026, 4, 2)]
     assert total == 3
     assert len(captured_calls) == 1
+
+
+def test_habit_area_association_supports_create_list_and_clear() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                area = Area(name="Health")
+                session.add(area)
+                await session.flush()
+
+                habit = await habits.create_habit(
+                    session,
+                    title="Drink water",
+                    start_date=date(2026, 9, 1),
+                    duration_days=7,
+                    area_id=area.id,
+                )
+                assert habit.area_id == area.id
+
+                listed = await habits.list_habits(session, area_id=area.id)
+                assert [item.id for item in listed] == [habit.id]
+
+                other_area_id = UUID("99999999-9999-9999-9999-999999999999")
+                assert await habits.list_habits(session, area_id=other_area_id) == []
+
+                updated = await habits.update_habit(
+                    session,
+                    habit_id=habit.id,
+                    area_id=None,
+                    clear_area=True,
+                )
+                assert updated.area_id is None
+
+                with pytest.raises(habits.HabitAreaReferenceNotFoundError):
+                    await habits.update_habit(
+                        session,
+                        habit_id=habit.id,
+                        area_id=other_area_id,
+                    )
+
+    asyncio.run(scenario())

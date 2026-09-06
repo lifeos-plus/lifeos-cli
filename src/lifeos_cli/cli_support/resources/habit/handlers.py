@@ -21,6 +21,7 @@ from lifeos_cli.db.services.habit_support import WEEKEND_HABIT_WEEKDAYS
 HABIT_SUMMARY_COLUMNS = (
     "habit_id",
     "status",
+    "area_id",
     "start_date",
     "duration_days",
     "cadence",
@@ -30,6 +31,7 @@ HABIT_SUMMARY_COLUMNS = (
 HABIT_SUMMARY_WITH_STATS_COLUMNS = (
     "habit_id",
     "status",
+    "area_id",
     "start_date",
     "duration_days",
     "cadence",
@@ -79,10 +81,18 @@ def _format_habit_cadence(habit: Habit) -> str:
     return f"{cadence}:monthdays={cadence_monthdays}"
 
 
+def _format_habit_area(habit: Habit) -> str:
+    """Return the habit area identifier or a dash when unset."""
+    area_id = getattr(habit, "area_id", None)
+    return str(area_id) if area_id else "-"
+
+
 def _format_habit_summary(habit: Habit) -> str:
     status = "deleted" if habit.deleted_at is not None else habit.status
     return (
-        f"{habit.id}\t{status}\t{habit.start_date}\t{habit.duration_days}\t{_format_habit_cadence(habit)}\t"
+        f"{habit.id}\t{status}\t{_format_habit_area(habit)}\t{habit.start_date}\t"
+        f"{habit.duration_days}\t"
+        f"{_format_habit_cadence(habit)}\t"
         f"{habit.task_id or '-'}\t{habit.title}"
     )
 
@@ -91,7 +101,9 @@ def _format_habit_summary_with_stats(overview: dict[str, object]) -> str:
     habit, stats = _extract_habit_overview(overview)
     status = "deleted" if habit.deleted_at is not None else habit.status
     return (
-        f"{habit.id}\t{status}\t{habit.start_date}\t{habit.duration_days}\t{_format_habit_cadence(habit)}\t"
+        f"{habit.id}\t{status}\t{_format_habit_area(habit)}\t{habit.start_date}\t"
+        f"{habit.duration_days}\t"
+        f"{_format_habit_cadence(habit)}\t"
         f"{stats['progress_percentage']:.1f}\t{stats['current_streak']}\t"
         f"{stats['longest_streak']}\t{habit.title}"
     )
@@ -112,6 +124,7 @@ def _format_habit_detail(habit: Habit, stats: dict[str, object]) -> str:
             f"cadence_monthdays: {_format_cadence_monthdays(habit)}",
             f"target_per_cycle: {getattr(habit, 'target_per_cycle', 1)}",
             f"task_id: {habit.task_id or '-'}",
+            f"area_id: {_format_habit_area(habit)}",
             f"progress_percentage: {stats['progress_percentage']:.1f}",
             f"total_cycles: {stats['total_cycles']}",
             f"eligible_cycles: {stats['eligible_cycles']}",
@@ -187,9 +200,11 @@ async def handle_habit_add_async(args: argparse.Namespace) -> int:
                 cadence_monthdays=args.monthdays,
                 target_per_cycle=args.target_per_cycle,
                 task_id=args.task_id,
+                area_id=args.area_id,
             )
         except (
             habit_services.HabitValidationError,
+            habit_services.HabitAreaReferenceNotFoundError,
             habit_services.HabitTaskReferenceNotFoundError,
             habit_services.InvalidHabitOperationError,
         ) as exc:
@@ -205,6 +220,7 @@ async def handle_habit_list_async(args: argparse.Namespace) -> int:
                 overviews = await habit_services.list_habit_overviews(
                     session,
                     status=args.status,
+                    area_id=args.area_id,
                     title=args.title,
                     active_window_only=args.active_window_only,
                     limit=args.limit,
@@ -214,6 +230,7 @@ async def handle_habit_list_async(args: argparse.Namespace) -> int:
                     await habit_services.count_habits(
                         session,
                         status=args.status,
+                        area_id=args.area_id,
                         title=args.title,
                         active_window_only=args.active_window_only,
                     )
@@ -235,6 +252,7 @@ async def handle_habit_list_async(args: argparse.Namespace) -> int:
             habits = await habit_services.list_habits(
                 session,
                 status=args.status,
+                area_id=args.area_id,
                 title=args.title,
                 active_window_only=args.active_window_only,
                 limit=args.limit,
@@ -244,6 +262,7 @@ async def handle_habit_list_async(args: argparse.Namespace) -> int:
                 await habit_services.count_habits(
                     session,
                     status=args.status,
+                    area_id=args.area_id,
                     title=args.title,
                     active_window_only=args.active_window_only,
                 )
@@ -296,6 +315,11 @@ async def handle_habit_update_async(args: argparse.Namespace) -> int:
             "--clear-task",
         ),
         (
+            args.clear_area and args.area_id is not None,
+            "--area-id",
+            "--clear-area",
+        ),
+        (
             args.clear_weekdays and (args.weekdays is not None or args.weekends_only),
             "--weekdays / --weekends-only",
             "--clear-weekdays",
@@ -328,9 +352,12 @@ async def handle_habit_update_async(args: argparse.Namespace) -> int:
                 status=args.status,
                 task_id=args.task_id,
                 clear_task=args.clear_task,
+                area_id=args.area_id,
+                clear_area=args.clear_area,
             )
         except (
             habit_services.HabitNotFoundError,
+            habit_services.HabitAreaReferenceNotFoundError,
             habit_services.HabitValidationError,
             habit_services.HabitTaskReferenceNotFoundError,
             habit_services.InvalidHabitOperationError,

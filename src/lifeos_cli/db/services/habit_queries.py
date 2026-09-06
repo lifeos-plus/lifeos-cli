@@ -44,10 +44,13 @@ def _apply_habit_filters(
     status: str | None,
     title: str | None,
     active_window_only: bool,
+    area_id: UUID | None,
 ) -> Any:
     stmt = stmt.where(Habit.deleted_at.is_(None))
     if status is not None:
         stmt = stmt.where(Habit.status == validate_habit_status(status))
+    if area_id is not None:
+        stmt = stmt.where(Habit.area_id == area_id)
     if title is not None:
         normalized_title = title.strip()
         if normalized_title:
@@ -421,6 +424,7 @@ async def list_habits(
     session: AsyncSession,
     *,
     status: str | None = None,
+    area_id: UUID | None = None,
     title: str | None = None,
     active_window_only: bool = False,
     limit: int = 100,
@@ -432,6 +436,7 @@ async def list_habits(
     stmt = _apply_habit_filters(
         stmt,
         status=status,
+        area_id=area_id,
         title=title,
         active_window_only=active_window_only,
     )
@@ -443,6 +448,7 @@ async def count_habits(
     session: AsyncSession,
     *,
     status: str | None = None,
+    area_id: UUID | None = None,
     title: str | None = None,
     active_window_only: bool = False,
 ) -> int:
@@ -452,6 +458,7 @@ async def count_habits(
     stmt = _apply_habit_filters(
         stmt,
         status=status,
+        area_id=area_id,
         title=title,
         active_window_only=active_window_only,
     )
@@ -540,6 +547,7 @@ async def list_habit_overviews(
     session: AsyncSession,
     *,
     status: str | None = None,
+    area_id: UUID | None = None,
     title: str | None = None,
     active_window_only: bool = False,
     limit: int = 100,
@@ -549,6 +557,7 @@ async def list_habit_overviews(
     habits = await list_habits(
         session,
         status=status,
+        area_id=area_id,
         title=title,
         active_window_only=active_window_only,
         limit=limit,
