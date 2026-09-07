@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from uuid import UUID
 
-from sqlalchemy import JSON, Date, ForeignKey, Index, Integer, String, Text, Uuid
+from sqlalchemy import JSON, CheckConstraint, Date, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
@@ -16,6 +16,22 @@ class Habit(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
 
     __tablename__ = "habits"
     __table_args__ = (
+        CheckConstraint(
+            "duration_days BETWEEN 1 AND 10000",
+            name="ck_habits_duration_days_valid",
+        ),
+        CheckConstraint(
+            "target_per_cycle > 0",
+            name="ck_habits_target_per_cycle_positive",
+        ),
+        CheckConstraint(
+            "cadence_frequency IN ('daily', 'weekly', 'monthly', 'yearly')",
+            name="ck_habits_cadence_frequency_valid",
+        ),
+        CheckConstraint(
+            "status IN ('active', 'completed', 'paused', 'expired')",
+            name="ck_habits_status_valid",
+        ),
         Index("ix_habits_title", "title"),
         Index("ix_habits_start_date", "start_date"),
         Index("ix_habits_status", "status"),

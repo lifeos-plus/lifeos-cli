@@ -516,6 +516,14 @@ def test_cli_db_help_explains_ping_upgrade_boundary(capsys) -> None:
     assert "Use this before `db upgrade`" in captured.out
 
     with pytest.raises(SystemExit):
+        parser.parse_args(["db", "check", "--help"])
+
+    captured = capsys.readouterr()
+
+    assert "weak association references" in captured.out
+    assert "only removes hard-dangling weak links" in captured.out
+
+    with pytest.raises(SystemExit):
         parser.parse_args(["db", "upgrade", "--help"])
 
     captured = capsys.readouterr()

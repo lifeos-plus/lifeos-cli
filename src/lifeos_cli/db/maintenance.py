@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from contextlib import ExitStack
+from dataclasses import dataclass
 from importlib.resources import as_file, files
 
 from alembic import command
 from alembic.config import Config
+from alembic.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import text
 
 from lifeos_cli.config import (
@@ -14,7 +17,30 @@ from lifeos_cli.config import (
     ensure_database_url_storage_ready,
     get_database_settings,
 )
-from lifeos_cli.db.session import get_async_engine
+from lifeos_cli.db.services.integrity_audit import audit_referential_integrity
+from lifeos_cli.db.session import get_async_engine, get_async_session_factory
+
+
+@dataclass(frozen=True)
+class DatabaseCheckReport:
+    """Operational database checks suitable for CLI reporting."""
+
+    dialect: str
+    current_revision: str | None
+    head_revision: str
+    storage_issues: tuple[str, ...]
+    association_issues: tuple[str, ...]
+    association_warnings: tuple[str, ...]
+    repaired_count: int
+
+    @property
+    def ok(self) -> bool:
+        """Return whether schema, storage, and weak references are healthy."""
+        return (
+            self.current_revision == self.head_revision
+            and not self.storage_issues
+            and not self.association_issues
+        )
 
 
 async def ping_database() -> None:
@@ -22,6 +48,68 @@ async def ping_database() -> None:
     engine = get_async_engine()
     async with engine.connect() as connection:
         await connection.execute(text("SELECT 1"))
+
+
+async def check_database(*, repair: bool = False) -> DatabaseCheckReport:
+    """Check migration state, backend integrity, and polymorphic references."""
+    settings = get_database_settings()
+    database_url = settings.require_database_url()
+    with ExitStack() as stack:
+        alembic_config = build_alembic_config(sqlalchemy_url=database_url, stack=stack)
+        head_revision = ScriptDirectory.from_config(alembic_config).get_current_head()
+        if head_revision is None:
+            raise RuntimeError("Packaged Alembic migrations do not define a head revision.")
+
+    engine = get_async_engine()
+    storage_issues: list[str] = []
+    async with engine.connect() as connection:
+        dialect = connection.dialect.name
+
+        def current_revision(sync_connection) -> str | None:
+            context = MigrationContext.configure(
+                sync_connection,
+                opts={"version_table_schema": settings.database_schema},
+            )
+            return context.get_current_revision()
+
+        revision = await connection.run_sync(current_revision)
+        if dialect == "sqlite":
+            quick_check = (await connection.execute(text("PRAGMA quick_check"))).scalars().all()
+            storage_issues.extend(str(value) for value in quick_check if str(value).lower() != "ok")
+            foreign_key_rows = (await connection.execute(text("PRAGMA foreign_key_check"))).all()
+            storage_issues.extend(
+                "Foreign-key violation: " + ", ".join(str(value) for value in row)
+                for row in foreign_key_rows
+            )
+
+    session = get_async_session_factory()()
+    try:
+        audit = await audit_referential_integrity(session, repair=repair)
+        if repair:
+            repaired_count = audit.repaired_count
+            audit = await audit_referential_integrity(session, repair=False)
+            await session.commit()
+        else:
+            repaired_count = 0
+            await session.rollback()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+    return DatabaseCheckReport(
+        dialect=dialect,
+        current_revision=revision,
+        head_revision=head_revision,
+        storage_issues=tuple(storage_issues),
+        association_issues=tuple(
+            issue.message for issue in audit.issues if not issue.kind.startswith("soft_deleted_")
+        ),
+        association_warnings=tuple(
+            issue.message for issue in audit.issues if issue.kind.startswith("soft_deleted_")
+        ),
+        repaired_count=repaired_count,
+    )
 
 
 def build_alembic_config(*, sqlalchemy_url: str, stack: ExitStack) -> Config:

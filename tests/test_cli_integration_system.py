@@ -25,6 +25,10 @@ def test_real_cli_init_and_db_commands(integration_context: IntegrationContext) 
     assert_ok(upgrade_result)
     assert "Database migrations are up to date." in upgrade_result.stdout
 
+    check_result = run_lifeos(integration_context, "db", "check")
+    assert_ok(check_result)
+    assert "Database checks passed." in check_result.stdout
+
     config_result = run_lifeos(integration_context, "config", "show")
     assert_ok(config_result)
     assert integration_context.schema in config_result.stdout

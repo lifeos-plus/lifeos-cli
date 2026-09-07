@@ -82,6 +82,14 @@ def _normalize_active_default_tree() -> None:
         )
 
 
+def _finance_tree_columns() -> set[str]:
+    bind = op.get_bind()
+    return {
+        column["name"]
+        for column in sa.inspect(bind).get_columns("finance_trees", schema=_schema_name())
+    }
+
+
 def upgrade() -> None:
     schema_name = _schema_name()
     with op.batch_alter_table("finance_snapshots", schema=schema_name) as batch_op:
@@ -120,15 +128,34 @@ def downgrade() -> None:
     schema_name = _schema_name()
     op.drop_index("ix_finance_trees_default", table_name="finance_trees")
     op.drop_index("uq_finance_trees_name_active", table_name="finance_trees")
+    existing_columns = _finance_tree_columns()
     with op.batch_alter_table("finance_trees", schema=schema_name) as batch_op:
-        batch_op.add_column(
-            sa.Column("purpose", sa.String(length=20), nullable=False, server_default="custom"),
-        )
-        batch_op.add_column(
-            sa.Column("time_mode", sa.String(length=20), nullable=False, server_default="instant"),
-        )
-        batch_op.alter_column("purpose", server_default=None)
-        batch_op.alter_column("time_mode", server_default=None)
+        if "purpose" not in existing_columns:
+            batch_op.add_column(
+                sa.Column(
+                    "purpose",
+                    sa.String(length=20),
+                    nullable=False,
+                    server_default="custom",
+                ),
+            )
+        if "time_mode" not in existing_columns:
+            batch_op.add_column(
+                sa.Column(
+                    "time_mode",
+                    sa.String(length=20),
+                    nullable=False,
+                    server_default="instant",
+                ),
+            )
+    # SQLite batch mode must rebuild the table for these alterations. Keep the
+    # add and alter phases separate so Alembic does not derive a circular
+    # partial-reordering graph for the two new columns.
+    with op.batch_alter_table("finance_trees", schema=schema_name) as batch_op:
+        if "purpose" not in existing_columns:
+            batch_op.alter_column("purpose", server_default=None)
+        if "time_mode" not in existing_columns:
+            batch_op.alter_column("time_mode", server_default=None)
     op.create_index(
         "uq_finance_trees_purpose_name_active",
         "finance_trees",

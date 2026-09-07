@@ -83,6 +83,18 @@ Models opt into `SoftDeleteMixin`, which adds `deleted_at`. A global ORM listene
 - When a schema is configured (PostgreSQL), the migration context applies `schema_translate_map` and sets `version_table_schema` so the Alembic version table follows the data schema.
 - `Base.metadata` uses an explicit naming convention so generated constraint names are stable and safe for PostgreSQL's 63-byte identifier limit.
 - Always audit and migrate existing data before adding constraints; do not assume a production database is clean.
+- CI exercises a full SQLite `base -> head -> base -> head` migration round trip and runs Alembic metadata drift checks at both heads.
+- `lifeos db check` reports migration drift, backend-native integrity failures, and dangling polymorphic associations; repair is always an explicit opt-in.
+
+### Backup and restore
+
+Schema-v4 bundles separate portable resource projections from a lossless source-table
+snapshot. Derived timelog aggregate tables are intentionally excluded and recomputed
+after restore. Every required entry is covered by manifest row counts and SHA-256
+digests. Archive parsing applies duplicate-name, path traversal, expanded-size, shape,
+domain, and reference guards before a replacement transaction mutates the database.
+The final archive is written through an owner-only temporary file in the destination
+directory, fsynced, and atomically renamed.
 
 ## 6. Web API Surface
 

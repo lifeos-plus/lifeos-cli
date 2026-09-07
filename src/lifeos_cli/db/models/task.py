@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import Date, ForeignKey, Index, Integer, String, Text, Uuid
+from sqlalchemy import CheckConstraint, Date, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
@@ -16,6 +16,27 @@ class Task(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
 
     __tablename__ = "tasks"
     __table_args__ = (
+        CheckConstraint(
+            "status IN ('todo', 'in_progress', 'done', 'cancelled', 'paused')",
+            name="ck_tasks_status_valid",
+        ),
+        CheckConstraint(
+            "planning_cycle_type IS NULL OR planning_cycle_type IN "
+            "('day', 'week', 'month', 'year', '7years')",
+            name="ck_tasks_planning_cycle_type_valid",
+        ),
+        CheckConstraint(
+            "(planning_cycle_type IS NULL AND planning_cycle_days IS NULL AND "
+            "planning_cycle_start_date IS NULL) OR "
+            "(planning_cycle_type IS NOT NULL AND planning_cycle_days > 0 AND "
+            "planning_cycle_start_date IS NOT NULL)",
+            name="ck_tasks_planning_cycle_complete",
+        ),
+        CheckConstraint(
+            "actual_effort_self >= 0 AND actual_effort_total >= 0 AND "
+            "(estimated_effort IS NULL OR estimated_effort >= 0)",
+            name="ck_tasks_effort_nonnegative",
+        ),
         Index("ix_tasks_vision_display_order_created", "vision_id", "display_order", "created_at"),
     )
 

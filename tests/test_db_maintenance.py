@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import sqlite3
-from contextlib import ExitStack
+from contextlib import ExitStack, closing
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from alembic import command
 
 from lifeos_cli.db import maintenance
 
@@ -80,7 +81,7 @@ def test_upgrade_database_supports_sqlite_file(
     )
     maintenance.upgrade_database("head")
 
-    with sqlite3.connect(database_path) as connection:
+    with closing(sqlite3.connect(database_path)) as connection:
         table_names = {
             row[0]
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
@@ -90,3 +91,47 @@ def test_upgrade_database_supports_sqlite_file(
     assert "notes" in table_names
     assert "events" in table_names
     assert "associations" in table_names
+
+
+def test_full_sqlite_migration_chain_round_trips_without_metadata_drift(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "migration-round-trip.db"
+    sqlalchemy_url = f"sqlite+aiosqlite:///{database_path}"
+    with ExitStack() as stack:
+        config = maintenance.build_alembic_config(sqlalchemy_url=sqlalchemy_url, stack=stack)
+        command.upgrade(config, "head")
+        command.check(config)
+        command.downgrade(config, "base")
+        command.upgrade(config, "head")
+        command.check(config)
+
+
+def test_invariant_migration_rejects_existing_invalid_rows_with_actionable_error(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "invalid-existing-data.db"
+    sqlalchemy_url = f"sqlite+aiosqlite:///{database_path}"
+    with ExitStack() as stack:
+        config = maintenance.build_alembic_config(sqlalchemy_url=sqlalchemy_url, stack=stack)
+        command.upgrade(config, "20260906_1200")
+        with closing(sqlite3.connect(database_path)) as connection, connection:
+            connection.execute(
+                "INSERT INTO habits "
+                "(id, title, start_date, duration_days, cadence_frequency, "
+                "target_per_cycle, status, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    "11111111111111111111111111111111",
+                    "invalid legacy habit",
+                    "2026-09-07",
+                    -1,
+                    "daily",
+                    1,
+                    "active",
+                    "2026-09-07 00:00:00",
+                    "2026-09-07 00:00:00",
+                ),
+            )
+        with pytest.raises(RuntimeError, match="Repair the rows and rerun"):
+            command.upgrade(config, "head")

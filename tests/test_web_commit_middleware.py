@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 
 from starlette.types import Message, Receive, Scope, Send
 
@@ -111,4 +112,4 @@ def test_create_app_registers_commit_middleware() -> None:
 
 
 def test_middleware_is_async_callable() -> None:
-    assert asyncio.iscoroutinefunction(CommitSessionMiddleware.__call__)
+    assert inspect.iscoroutinefunction(CommitSessionMiddleware.__call__)

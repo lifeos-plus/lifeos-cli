@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -404,13 +404,22 @@ async def bump_template_usage(
     when: datetime | None = None,
 ) -> TimelogTemplateView:
     """Increment one template's usage metadata."""
-    template = await _get_template_model(
-        session,
-        template_id=template_id,
+    used_at = when or utc_now()
+    result = await session.execute(
+        update(TimelogTemplate)
+        .where(
+            TimelogTemplate.id == template_id,
+            TimelogTemplate.deleted_at.is_(None),
+        )
+        .values(
+            usage_count=TimelogTemplate.usage_count + 1,
+            last_used_at=used_at,
+            updated_at=used_at,
+        )
+        .returning(TimelogTemplate.id)
     )
-    if template is None:
+    if result.scalar_one_or_none() is None:
         raise TimelogTemplateNotFoundError(f"Timelog template {template_id} was not found")
-    template.touch_usage(when=when or utc_now())
-    await session.flush()
-    await session.refresh(template)
+    template = await _get_template_model(session, template_id=template_id)
+    assert template is not None
     return await _build_template_view(session, template)

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
-from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 
 from sqlalchemy import delete, insert, select, text, update
 from sqlalchemy.exc import IntegrityError
@@ -64,6 +63,23 @@ from lifeos_cli.db.services import (
 from lifeos_cli.db.services import (
     sleep as sleep_services,
 )
+from lifeos_cli.db.services.bundle_codec import (
+    BundleCodecError,
+    decode_jsonl,
+    encode_jsonl,
+    read_bundle_archive,
+    sha256_hex,
+    write_bundle_atomic,
+)
+from lifeos_cli.db.services.bundle_tables import (
+    BundleTableError,
+    export_table_rows,
+    prepare_table_rows,
+    restore_table_rows,
+    source_table_names,
+    source_tables,
+    validate_domain_row,
+)
 from lifeos_cli.db.services.entity_associations import (
     get_target_ids_for_sources,
     set_association_links,
@@ -88,7 +104,8 @@ SUPPORTED_DATA_RESOURCES = (
     "note",
 )
 BUNDLE_RESOURCE_ORDER = SUPPORTED_DATA_RESOURCES
-BUNDLE_SCHEMA_VERSION = 3
+BUNDLE_SCHEMA_VERSION = 4
+LEGACY_BUNDLE_SCHEMA_VERSION = 3
 
 # Resource keys used by bundles written before the person resource was
 # standardized to singular naming. Old archives stay importable by mapping
@@ -187,6 +204,7 @@ class BundlePayload:
 
     manifest: dict[str, Any]
     resources: dict[str, list[dict[str, Any]]]
+    tables: dict[str, list[dict[str, Any]]] = dataclass_field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -283,16 +301,34 @@ def _parse_column_value(column: Any, value: Any) -> Any:
         return None
     python_type = getattr(column.type, "python_type", None)
     if python_type is UUID:
-        return value if isinstance(value, UUID) else UUID(str(value))
+        if not isinstance(value, (UUID, str)):
+            raise DataOperationError(f"Value for `{column.name}` must be a UUID string.")
+        return value if isinstance(value, UUID) else UUID(value)
     if python_type is datetime:
-        return value if isinstance(value, datetime) else _normalize_json_datetime(str(value))
+        if not isinstance(value, (datetime, str)):
+            raise DataOperationError(
+                f"Value for `{column.name}` must be an ISO-8601 datetime string."
+            )
+        return (
+            normalize_storage_datetime(value)
+            if isinstance(value, datetime)
+            else _normalize_json_datetime(value)
+        )
     if python_type is date:
-        return value if isinstance(value, date) else date.fromisoformat(str(value))
+        if isinstance(value, datetime) or not isinstance(value, (date, str)):
+            raise DataOperationError(f"Value for `{column.name}` must be an ISO date string.")
+        return value if isinstance(value, date) else date.fromisoformat(value)
     if python_type is bool:
-        return bool(value)
+        if type(value) is not bool:
+            raise DataOperationError(f"Value for `{column.name}` must be a boolean.")
+        return value
     if python_type is int:
-        return int(value)
+        if type(value) is not int:
+            raise DataOperationError(f"Value for `{column.name}` must be an integer.")
+        return value
     if python_type is float:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise DataOperationError(f"Value for `{column.name}` must be a number.")
         return float(value)
     if python_type is Decimal:
         try:
@@ -303,7 +339,13 @@ def _parse_column_value(column: Any, value: Any) -> Any:
             raise DataOperationError(f"Decimal value for `{column.name}` must be finite.")
         return decimal_value
     if python_type is str:
-        return str(value)
+        if not isinstance(value, str):
+            raise DataOperationError(f"Value for `{column.name}` must be a string.")
+        if column.type.length is not None and len(value) > column.type.length:
+            raise DataOperationError(
+                f"Value for `{column.name}` exceeds the maximum length of {column.type.length}."
+            )
+        return value
     return value
 
 
@@ -404,12 +446,40 @@ def prepare_snapshot_row(resource: str, index: int, payload: dict[str, Any]) -> 
         raise DataOperationError(f"Unsupported data resource {resource!r}.")
     spec = RESOURCE_SPECS[resource]
     table = spec.model.__table__
+    allowed_fields = set(_model_column_names(spec))
+    if spec.tag_entity_type:
+        allowed_fields.add("tag_ids")
+    if spec.person_entity_type or resource == "note":
+        allowed_fields.add("person_ids")
+    if resource == "note":
+        allowed_fields.update(
+            {
+                "task_ids",
+                "vision_ids",
+                "event_ids",
+                "timelog_ids",
+                "habit_action_ids",
+            }
+        )
+    if resource == "event":
+        allowed_fields.add("occurrence_exceptions")
+    if resource == "menstrual":
+        allowed_fields.add("factor_names")
+    unknown_fields = sorted(set(payload) - allowed_fields)
+    if unknown_fields:
+        raise DataOperationError(
+            f"{resource} row {index} contains unknown fields: {', '.join(unknown_fields)}."
+        )
     direct_values: dict[str, Any] = {}
     for column_name in _model_column_names(spec):
         if column_name not in payload:
             continue
         column = table.c[column_name]
         direct_values[column_name] = _parse_column_value(column, payload[column_name])
+    try:
+        validate_domain_row(table.name, direct_values, row_number=index)
+    except BundleTableError as exc:
+        raise DataOperationError(str(exc)) from exc
     if "id" not in direct_values:
         raise DataOperationError("Each imported row must include `id`.")
     row_id = direct_values["id"]
@@ -1506,7 +1576,11 @@ async def run_post_import_hooks(session: AsyncSession, *, resources: set[str]) -
         await _recompute_task_effort_and_timelog_stats(session)
 
 
-def _bundle_manifest(resource_counts: dict[str, int]) -> dict[str, Any]:
+def _bundle_manifest(
+    resource_counts: dict[str, int],
+    table_counts: dict[str, int],
+    entries: dict[str, bytes],
+) -> dict[str, Any]:
     return {
         "schema_version": BUNDLE_SCHEMA_VERSION,
         "exported_at": datetime.now().astimezone().isoformat(),
@@ -1515,6 +1589,19 @@ def _bundle_manifest(resource_counts: dict[str, int]) -> dict[str, Any]:
         "timezone": get_preferences_settings().timezone,
         "included_resources": list(resource_counts.keys()),
         "resource_counts": resource_counts,
+        "source_tables": list(table_counts.keys()),
+        "table_counts": table_counts,
+        "derived_tables": [
+            "aggregated_timelog_stats_groupby_area",
+            "daily_timelog_stats_groupby_area",
+        ],
+        "entries": {
+            entry_name: {
+                "sha256": sha256_hex(content),
+                "row_count": content.count(b"\n"),
+            }
+            for entry_name, content in entries.items()
+        },
     }
 
 
@@ -1523,23 +1610,25 @@ async def export_bundle(
     *,
     output_path: Path,
 ) -> BundleExportReport:
-    """Export all supported resources into one bundle zip file."""
+    """Export portable resources and a lossless source-table snapshot atomically."""
     resource_counts: dict[str, int] = {}
-    with ZipFile(output_path, "w", compression=ZIP_DEFLATED) as archive:
-        for resource in BUNDLE_RESOURCE_ORDER:
-            rows = await export_resource_snapshot(
-                session,
-                resource=resource,
-            )
-            archive.writestr(
-                f"{resource}.jsonl",
-                "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows),
-            )
-            resource_counts[resource] = len(rows)
-        archive.writestr(
-            "manifest.json",
-            json.dumps(_bundle_manifest(resource_counts), ensure_ascii=False, indent=2),
-        )
+    entries: dict[str, bytes] = {}
+    for resource in BUNDLE_RESOURCE_ORDER:
+        rows = await export_resource_snapshot(session, resource=resource)
+        entries[f"resources/{resource}.jsonl"] = encode_jsonl(rows)
+        resource_counts[resource] = len(rows)
+
+    table_counts: dict[str, int] = {}
+    for table in source_tables():
+        rows = await export_table_rows(session, table)
+        entries[f"tables/{table.name}.jsonl"] = encode_jsonl(rows)
+        table_counts[table.name] = len(rows)
+
+    write_bundle_atomic(
+        output_path,
+        entries=entries,
+        manifest=_bundle_manifest(resource_counts, table_counts, entries),
+    )
     return BundleExportReport(resource_counts=resource_counts, output_path=output_path)
 
 
@@ -1547,40 +1636,88 @@ def read_bundle(path: Path) -> BundlePayload:
     """Read and validate a bundle zip file."""
     resources: dict[str, list[dict[str, Any]]] = {}
     try:
-        with ZipFile(path, "r") as archive:
-            if "manifest.json" not in archive.namelist():
-                raise DataOperationError("Bundle archive is missing manifest.json.")
-            manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
-            if not isinstance(manifest, dict):
-                raise DataOperationError("Bundle manifest must be a JSON object.")
-            schema_version = manifest.get("schema_version")
-            if schema_version != BUNDLE_SCHEMA_VERSION:
-                raise DataOperationError(
-                    "Unsupported bundle schema version "
-                    f"{schema_version!r}. Expected {BUNDLE_SCHEMA_VERSION}. "
-                    "Older bundle schemas are not supported after habit-action notes moved "
-                    "to linked notes."
-                )
-            for resource in BUNDLE_RESOURCE_ORDER:
-                entry_name = f"{resource}.jsonl"
-                legacy_key = LEGACY_BUNDLE_RESOURCE_KEYS.get(resource)
-                legacy_entry_name = f"{legacy_key}.jsonl" if legacy_key else None
-                if entry_name not in archive.namelist() and legacy_entry_name in archive.namelist():
-                    entry_name = legacy_entry_name
-                if entry_name not in archive.namelist():
-                    resources[resource] = []
-                    continue
-                raw_text = archive.read(entry_name).decode("utf-8")
-                resources[resource] = [
-                    json.loads(line) for line in raw_text.splitlines() if line.strip()
-                ]
-    except BadZipFile as exc:
-        raise DataOperationError(f"Unable to read bundle archive: {exc}.") from exc
-    except OSError as exc:
-        raise DataOperationError(f"Unable to read bundle archive: {exc}.") from exc
-    except json.JSONDecodeError as exc:
-        raise DataOperationError(f"Invalid bundle JSON content: {exc.msg}.") from exc
-    return BundlePayload(manifest=manifest, resources=resources)
+        decoded = read_bundle_archive(path)
+    except BundleCodecError as exc:
+        raise DataOperationError(str(exc)) from exc
+
+    manifest = decoded.manifest
+    schema_version = manifest.get("schema_version")
+    if schema_version == LEGACY_BUNDLE_SCHEMA_VERSION:
+        for resource in BUNDLE_RESOURCE_ORDER:
+            entry_name = f"{resource}.jsonl"
+            legacy_key = LEGACY_BUNDLE_RESOURCE_KEYS.get(resource)
+            legacy_entry_name = f"{legacy_key}.jsonl" if legacy_key else None
+            if entry_name not in decoded.entries and legacy_entry_name in decoded.entries:
+                entry_name = legacy_entry_name
+            content = decoded.entries.get(entry_name, b"")
+            try:
+                resources[resource] = decode_jsonl(content, entry_name=entry_name)
+            except BundleCodecError as exc:
+                raise DataOperationError(str(exc)) from exc
+        return BundlePayload(manifest=manifest, resources=resources)
+    if schema_version != BUNDLE_SCHEMA_VERSION:
+        raise DataOperationError(
+            "Unsupported bundle schema version "
+            f"{schema_version!r}. Expected {BUNDLE_SCHEMA_VERSION}. "
+            "Older bundle schemas are not supported after habit-action notes moved "
+            "to linked notes."
+        )
+
+    expected_entries = {
+        *(f"resources/{resource}.jsonl" for resource in BUNDLE_RESOURCE_ORDER),
+        *(f"tables/{table_name}.jsonl" for table_name in source_table_names()),
+    }
+    manifest_entries = manifest.get("entries")
+    if not isinstance(manifest_entries, dict):
+        raise DataOperationError("Bundle manifest entries must be a JSON object.")
+    if set(decoded.entries) != expected_entries or set(manifest_entries) != expected_entries:
+        missing = sorted(expected_entries - set(decoded.entries))
+        untracked = sorted(set(decoded.entries) - expected_entries)
+        details = []
+        if missing:
+            details.append("missing: " + ", ".join(missing))
+        if untracked:
+            details.append("unexpected: " + ", ".join(untracked))
+        raise DataOperationError(
+            "Bundle entry set is incomplete or invalid (" + "; ".join(details) + ")."
+        )
+    if manifest.get("included_resources") != list(BUNDLE_RESOURCE_ORDER):
+        raise DataOperationError("Bundle manifest has an invalid included_resources list.")
+    if manifest.get("source_tables") != list(source_table_names()):
+        raise DataOperationError("Bundle manifest has an invalid source_tables list.")
+    resource_counts = manifest.get("resource_counts")
+    table_counts = manifest.get("table_counts")
+    if not isinstance(resource_counts, dict) or not isinstance(table_counts, dict):
+        raise DataOperationError("Bundle manifest resource_counts and table_counts are required.")
+
+    decoded_rows: dict[str, list[dict[str, Any]]] = {}
+    for entry_name in sorted(expected_entries):
+        metadata = manifest_entries[entry_name]
+        content = decoded.entries[entry_name]
+        if not isinstance(metadata, dict):
+            raise DataOperationError(f"Invalid manifest metadata for {entry_name}.")
+        if metadata.get("sha256") != sha256_hex(content):
+            raise DataOperationError(f"Checksum mismatch for bundle entry {entry_name}.")
+        try:
+            rows = decode_jsonl(content, entry_name=entry_name)
+        except BundleCodecError as exc:
+            raise DataOperationError(str(exc)) from exc
+        if metadata.get("row_count") != len(rows):
+            raise DataOperationError(f"Row count mismatch for bundle entry {entry_name}.")
+        decoded_rows[entry_name] = rows
+
+    resources = {
+        resource: decoded_rows[f"resources/{resource}.jsonl"] for resource in BUNDLE_RESOURCE_ORDER
+    }
+    tables = {
+        table_name: decoded_rows[f"tables/{table_name}.jsonl"]
+        for table_name in source_table_names()
+    }
+    if resource_counts != {resource: len(rows) for resource, rows in resources.items()}:
+        raise DataOperationError("Bundle manifest resource_counts do not match archive entries.")
+    if table_counts != {table_name: len(rows) for table_name, rows in tables.items()}:
+        raise DataOperationError("Bundle manifest table_counts do not match archive entries.")
+    return BundlePayload(manifest=manifest, resources=resources, tables=tables)
 
 
 async def truncate_supported_data(session: AsyncSession) -> None:
@@ -1608,9 +1745,39 @@ async def import_bundle(
     session: AsyncSession,
     *,
     bundle_rows: dict[str, list[dict[str, Any]]],
+    bundle_tables: dict[str, list[dict[str, Any]]] | None = None,
+    bundle_schema_version: int = BUNDLE_SCHEMA_VERSION,
     replace_existing: bool = False,
 ) -> BundleImportReport:
     """Import a full bundle atomically."""
+    if bundle_schema_version == LEGACY_BUNDLE_SCHEMA_VERSION and replace_existing:
+        raise DataOperationError(
+            "Legacy schema-v3 bundles are partial exports and cannot safely replace a database; "
+            "import without --replace-existing or re-export with the current LifeOS version."
+        )
+
+    if bundle_tables is not None:
+        try:
+            prepared_tables = prepare_table_rows(bundle_tables)
+        except BundleTableError as exc:
+            raise DataOperationError(f"Invalid source-table snapshot: {exc}") from exc
+        if replace_existing:
+            await truncate_supported_data(session)
+        created_count, updated_count = await restore_table_rows(
+            session,
+            prepared_tables,
+            replace_existing=replace_existing,
+        )
+        await run_post_import_hooks(session, resources={"task", "timelog"})
+        return BundleImportReport(
+            processed_count=created_count + updated_count,
+            created_count=created_count,
+            updated_count=updated_count,
+            failed_count=0,
+            failures=(),
+            imported_resources=tuple(source_table_names()),
+        )
+
     if replace_existing:
         await truncate_supported_data(session)
 

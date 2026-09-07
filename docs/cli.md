@@ -88,7 +88,12 @@ Check database connectivity and migrations:
 ```bash
 lifeos db ping
 lifeos db upgrade
+lifeos db check
 ```
+
+`db check` verifies the Alembic revision, SQLite storage and foreign-key integrity when
+applicable, and polymorphic association endpoints. `db check --repair` only removes
+hard-dangling weak links; links to soft-deleted records remain recoverable.
 
 ## Runtime Preferences
 
@@ -123,6 +128,19 @@ The current command tree is organized around a few stable families:
 command shape.
 
 `data import --mode upsert --key <field>` supports idempotent natural-key sync for `area.name`, `vision.name`, `person.name`, and `habit.title`: each row is matched against existing active records, updated when one match exists, and inserted otherwise (a fresh id is generated when the row has none). Ambiguous keys and missing key values are reported as row-level failures.
+
+`data export all` writes a schema-v4 bundle atomically with owner-only (`0600`)
+permissions. It contains both portable active-resource JSONL and a lossless snapshot of
+every authoritative table, including finance data, timelog templates, relationships,
+and soft-deleted history. The manifest records a SHA-256 digest and row count for every
+required entry. Restore validates the complete archive and all row shapes, domain
+invariants, foreign keys, and weak endpoints before `--replace-existing` can clear any
+table. Legacy schema-v3 bundles remain available for merge import but cannot replace a
+database because those archives were partial.
+
+Bundles are not encrypted. Store them on an encrypted volume or encrypt them with your
+backup system before copying them to shared or remote storage; file mode `0600` only
+protects access on systems that enforce POSIX permissions.
 
 Use `lifeos <resource> --help` to enter one family and then follow the resource-level help into the action or namespace you need.
 

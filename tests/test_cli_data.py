@@ -105,7 +105,7 @@ def test_main_data_import_bundle_uses_atomic_restore(
     def fake_read_bundle(path: Path) -> data_ops.BundlePayload:
         assert path == Path("backup.zip")
         return data_ops.BundlePayload(
-            manifest={"schema_version": 3},
+            manifest={"schema_version": data_ops.BUNDLE_SCHEMA_VERSION},
             resources={"note": [{"id": "11111111-1111-1111-1111-111111111111"}]},
         )
 

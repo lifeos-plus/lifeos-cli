@@ -9,7 +9,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -492,15 +493,14 @@ async def count_finance_trees(
 async def _clear_other_defaults(
     session: AsyncSession,
     *,
-    default_tree: FinanceTree,
+    default_tree_id: UUID | None = None,
 ) -> None:
-    stmt = select(FinanceTree).where(
-        FinanceTree.deleted_at.is_(None),
-        FinanceTree.is_default.is_(True),
+    stmt = update(FinanceTree).where(
+        FinanceTree.deleted_at.is_(None), FinanceTree.is_default.is_(True)
     )
-    for tree in (await session.execute(stmt)).scalars():
-        if tree is not default_tree:
-            tree.is_default = False
+    if default_tree_id is not None:
+        stmt = stmt.where(FinanceTree.id != default_tree_id)
+    await session.execute(stmt.values(is_default=False))
 
 
 async def create_finance_tree(
@@ -514,6 +514,8 @@ async def create_finance_tree(
 ) -> FinanceTree:
     resolved_name = validate_tree_name(name)
     await _ensure_tree_name_available(session, name=resolved_name)
+    if is_default:
+        await _clear_other_defaults(session)
     tree = FinanceTree(
         name=resolved_name,
         primary_currency=normalize_currency_code(primary_currency),
@@ -522,8 +524,6 @@ async def create_finance_tree(
         metadata_json=metadata,
     )
     session.add(tree)
-    if is_default:
-        await _clear_other_defaults(session, default_tree=tree)
     await session.flush()
     await session.refresh(tree)
     return tree
@@ -559,9 +559,9 @@ async def update_finance_tree(
     if display_order is not None:
         tree.display_order = display_order
     if is_default is not None:
-        tree.is_default = is_default
         if is_default:
-            await _clear_other_defaults(session, default_tree=tree)
+            await _clear_other_defaults(session, default_tree_id=tree.id)
+        tree.is_default = is_default
     if update_metadata:
         tree.metadata_json = metadata
 
@@ -1858,22 +1858,29 @@ async def ensure_default_finance_tree(
     existing = (await session.execute(stmt)).scalar_one_or_none()
     if existing is not None:
         return existing
-    tree = await create_finance_tree(
-        session,
-        name="Finance",
-        primary_currency=primary_currency,
-        is_default=True,
-    )
-    await create_finance_node(
-        session,
-        tree_id=tree.id,
-        name="Assets",
-        display_order=0,
-    )
-    await create_finance_node(
-        session,
-        tree_id=tree.id,
-        name="Liabilities",
-        display_order=1,
-    )
-    return tree
+    try:
+        async with session.begin_nested():
+            tree = await create_finance_tree(
+                session,
+                name="Finance",
+                primary_currency=primary_currency,
+                is_default=True,
+            )
+            await create_finance_node(
+                session,
+                tree_id=tree.id,
+                name="Assets",
+                display_order=0,
+            )
+            await create_finance_node(
+                session,
+                tree_id=tree.id,
+                name="Liabilities",
+                display_order=1,
+            )
+        return tree
+    except IntegrityError:
+        concurrent_default = (await session.execute(stmt)).scalar_one_or_none()
+        if concurrent_default is not None:
+            return concurrent_default
+        raise

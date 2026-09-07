@@ -7,7 +7,19 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Index, Integer, Numeric, String, Text, Uuid, text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    Uuid,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
@@ -26,8 +38,14 @@ class FinanceTree(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
             postgresql_where=text("deleted_at IS NULL"),
             sqlite_where=text("deleted_at IS NULL"),
         ),
-        Index("ix_finance_trees_default", "is_default"),
         Index("ix_finance_trees_display_order", "display_order"),
+        Index(
+            "uq_finance_trees_single_active_default",
+            "is_default",
+            unique=True,
+            postgresql_where=text("is_default IS TRUE AND deleted_at IS NULL"),
+            sqlite_where=text("is_default = 1 AND deleted_at IS NULL"),
+        ),
     )
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -58,6 +76,10 @@ class FinanceAsset(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base)
 
     __tablename__ = "finance_assets"
     __table_args__ = (
+        CheckConstraint(
+            "decimal_places BETWEEN 0 AND 8",
+            name="ck_finance_assets_decimal_places_valid",
+        ),
         Index(
             "uq_finance_assets_code_active",
             "code",
@@ -84,6 +106,10 @@ class FinanceTreeNode(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Ba
 
     __tablename__ = "finance_tree_nodes"
     __table_args__ = (
+        CheckConstraint(
+            "depth >= 0 AND children_count >= 0",
+            name="ck_finance_tree_nodes_counts_nonnegative",
+        ),
         Index("ix_finance_tree_nodes_tree_path", "tree_id", "path", unique=True),
         Index("ix_finance_tree_nodes_parent", "parent_id"),
         Index("ix_finance_tree_nodes_tree_order", "tree_id", "display_order", "created_at"),
@@ -99,7 +125,6 @@ class FinanceTreeNode(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Ba
         Uuid,
         ForeignKey("finance_tree_nodes.id", ondelete="CASCADE"),
         nullable=True,
-        index=True,
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     currency_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
@@ -151,7 +176,6 @@ class FinanceSnapshot(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Ba
         Uuid,
         ForeignKey("finance_rate_snapshots.id", ondelete="SET NULL"),
         nullable=True,
-        index=True,
     )
     title: Mapped[str | None] = mapped_column(String(200), nullable=True)
     snapshot_ts: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
@@ -207,7 +231,6 @@ class FinanceSnapshotEntry(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixi
         Uuid,
         ForeignKey("finance_tree_nodes.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(20, 8), nullable=False)
     currency_code: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -250,6 +273,10 @@ class FinanceRateSnapshotEntry(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDelete
 
     __tablename__ = "finance_rate_snapshot_entries"
     __table_args__ = (
+        CheckConstraint(
+            "rate > 0",
+            name="ck_finance_rate_snapshot_entries_rate_positive",
+        ),
         Index(
             "uq_finance_rate_snapshot_entries_pair_active",
             "rate_snapshot_id",

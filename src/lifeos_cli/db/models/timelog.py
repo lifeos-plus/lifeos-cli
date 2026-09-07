@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Index, Integer, String, Text, Uuid
+from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
@@ -17,6 +17,15 @@ class Timelog(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
 
     __tablename__ = "timelogs"
     __table_args__ = (
+        CheckConstraint("end_time >= start_time", name="ck_timelogs_time_range_valid"),
+        CheckConstraint(
+            "tracking_method IN ('manual', 'automatic', 'imported')",
+            name="ck_timelogs_tracking_method_valid",
+        ),
+        CheckConstraint(
+            "energy_level IS NULL OR energy_level BETWEEN 1 AND 5",
+            name="ck_timelogs_energy_level_valid",
+        ),
         Index("ix_timelogs_task_id", "task_id"),
         Index("ix_timelogs_area_id", "area_id"),
         Index("ix_timelogs_tracking_method", "tracking_method"),

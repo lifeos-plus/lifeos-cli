@@ -31,6 +31,28 @@ class Event(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
             "event_type IN ('appointment', 'timeblock', 'deadline')",
             name="ck_events_event_type_valid",
         ),
+        CheckConstraint(
+            "status IN ('planned', 'cancelled', 'completed')",
+            name="ck_events_status_valid",
+        ),
+        CheckConstraint(
+            "priority BETWEEN 0 AND 5",
+            name="ck_events_priority_valid",
+        ),
+        CheckConstraint(
+            "end_time IS NULL OR end_time >= start_time",
+            name="ck_events_time_range_valid",
+        ),
+        CheckConstraint(
+            "recurrence_frequency IS NULL OR recurrence_frequency IN "
+            "('daily', 'weekly', 'monthly', 'yearly')",
+            name="ck_events_recurrence_frequency_valid",
+        ),
+        CheckConstraint(
+            "(recurrence_interval IS NULL OR recurrence_interval > 0) AND "
+            "(recurrence_count IS NULL OR recurrence_count > 0)",
+            name="ck_events_recurrence_numbers_positive",
+        ),
         Index("ix_events_status_start_time", "status", "start_time"),
         Index("ix_events_event_type", "event_type"),
         Index("ix_events_area_id", "area_id"),

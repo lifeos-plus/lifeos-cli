@@ -73,7 +73,6 @@ class MenstrualDay(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base)
 
     __tablename__ = "menstrual_days"
     __table_args__ = (
-        Index("ix_menstrual_days_log_date", "log_date"),
         Index(
             "uq_menstrual_days_log_date_active",
             "log_date",

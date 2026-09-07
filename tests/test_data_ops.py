@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import stat
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -18,9 +20,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from lifeos_cli.db.backend_policy import backend_policy_for_drivername
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.models.body_measurement import BodyMeasurement
+from lifeos_cli.db.models.finance import FinanceTree
 from lifeos_cli.db.models.habit import Habit
 from lifeos_cli.db.models.menstrual import MenstrualDay, MenstrualFactor
+from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.person import Person
+from lifeos_cli.db.models.timelog_template import TimelogTemplate
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import data_ops
 from lifeos_cli.db.types import UTCDateTime
@@ -95,6 +100,64 @@ def test_serialize_datetime_snapshot_values_uses_explicit_utc() -> None:
     serialized = data_ops._serialize_scalar(value)
 
     assert serialized == "2026-06-14T01:00:00Z"
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        (
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "duration_days": -5,
+            },
+            "duration_days must be between 1 and 10000",
+        ),
+        (
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "status": "not-a-status",
+            },
+            "status must be one of",
+        ),
+        (
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "target_per_cycle": -2,
+            },
+            "target_per_cycle must be greater than zero",
+        ),
+    ],
+)
+def test_habit_snapshot_import_rejects_domain_invalid_rows(
+    payload: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(data_ops.DataOperationError, match=message):
+        data_ops.prepare_snapshot_row("habit", 1, payload)
+
+
+def test_snapshot_parser_does_not_coerce_string_booleans() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="must be a boolean"):
+        data_ops.prepare_snapshot_row(
+            "area",
+            1,
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "is_active": "false",
+            },
+        )
+
+
+def test_snapshot_parser_rejects_unknown_fields() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="unknown fields: typo_field"):
+        data_ops.prepare_snapshot_row(
+            "note",
+            1,
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "typo_field": "silently ignored before strict validation",
+            },
+        )
 
 
 def test_batch_update_resource_parses_extended_note_relation_fields(
@@ -318,6 +381,113 @@ def test_read_bundle_maps_legacy_person_entry_name(tmp_path: Path) -> None:
 
     assert payload.resources["person"] == [{"id": "11111111-1111-1111-1111-111111111111"}]
     assert "people" not in payload.resources
+
+
+def test_bundle_rejects_a_missing_v4_entry(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "incomplete.zip"
+    with ZipFile(bundle_path, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "manifest.json",
+            json.dumps({"schema_version": data_ops.BUNDLE_SCHEMA_VERSION, "entries": {}}),
+        )
+
+    with pytest.raises(data_ops.DataOperationError, match="entry set is incomplete"):
+        data_ops.read_bundle(bundle_path)
+
+
+def test_bundle_rejects_tampered_v4_content(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        source_path = tmp_path / "source.zip"
+        tampered_path = tmp_path / "tampered.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await data_ops.export_bundle(session, output_path=source_path)
+        with ZipFile(source_path, "r") as source:
+            contents = {name: source.read(name) for name in source.namelist()}
+        contents["resources/note.jsonl"] = b'{"id":"tampered"}\n'
+        with ZipFile(tampered_path, "w", compression=ZIP_DEFLATED) as target:
+            for name, content in contents.items():
+                target.writestr(name, content)
+
+        with pytest.raises(data_ops.DataOperationError, match="Checksum mismatch"):
+            data_ops.read_bundle(tampered_path)
+
+    asyncio.run(scenario())
+
+
+def test_legacy_bundle_cannot_replace_the_database() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="partial exports"):
+        asyncio.run(
+            data_ops.import_bundle(
+                cast(AsyncSession, object()),
+                bundle_rows={},
+                bundle_schema_version=data_ops.LEGACY_BUNDLE_SCHEMA_VERSION,
+                replace_existing=True,
+            )
+        )
+
+
+def test_lossless_bundle_replace_preserves_unexposed_and_soft_deleted_rows(
+    tmp_path: Path,
+) -> None:
+    async def scenario() -> None:
+        finance_tree_id = uuid4()
+        template_id = uuid4()
+        deleted_note_id = uuid4()
+        bundle_path = tmp_path / "lossless.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                session.add_all(
+                    [
+                        FinanceTree(
+                            id=finance_tree_id,
+                            name="Private balance sheet",
+                            primary_currency="USD",
+                            display_order=0,
+                            is_default=True,
+                        ),
+                        TimelogTemplate(
+                            id=template_id,
+                            title="Deep work",
+                            title_normalized="deep work",
+                            position=0,
+                            usage_count=7,
+                        ),
+                        Note(
+                            id=deleted_note_id,
+                            content="soft-deleted history",
+                            deleted_at=datetime(2026, 1, 1, tzinfo=UTC),
+                        ),
+                    ]
+                )
+                await session.flush()
+                await data_ops.export_bundle(session, output_path=bundle_path)
+
+                payload = data_ops.read_bundle(bundle_path)
+                report = await data_ops.import_bundle(
+                    session,
+                    bundle_rows=payload.resources,
+                    bundle_tables=payload.tables,
+                    bundle_schema_version=payload.manifest["schema_version"],
+                    replace_existing=True,
+                )
+                await session.flush()
+                session.expunge_all()
+
+                assert report.failed_count == 0
+                assert await session.get(FinanceTree, finance_tree_id) is not None
+                restored_template = await session.get(TimelogTemplate, template_id)
+                assert restored_template is not None
+                assert restored_template.usage_count == 7
+                restored_note = (
+                    await session.execute(select(Note).execution_options(include_soft_deleted=True))
+                ).scalar_one()
+                assert restored_note.id == deleted_note_id
+                assert restored_note.deleted_at is not None
+
+        assert stat.S_IMODE(bundle_path.stat().st_mode) == 0o600
+
+    asyncio.run(scenario())
 
 
 def test_validate_upsert_key_rejects_unsupported_resources_and_fields() -> None:

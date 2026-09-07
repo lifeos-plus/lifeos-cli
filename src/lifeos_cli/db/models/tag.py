@@ -22,7 +22,6 @@ class Tag(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
             postgresql_where=text("deleted_at IS NULL"),
             sqlite_where=text("deleted_at IS NULL"),
         ),
-        Index("ix_tags_name_entity_type_category", "name", "entity_type", "category"),
     )
 
     name: Mapped[str] = mapped_column(String(100), nullable=False)

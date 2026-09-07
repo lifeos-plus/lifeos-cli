@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Index, Integer, String, Uuid, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, String, Uuid, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
@@ -17,6 +17,14 @@ class TimelogTemplate(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Ba
 
     __tablename__ = "timelog_templates"
     __table_args__ = (
+        CheckConstraint(
+            "default_duration_minutes IS NULL OR default_duration_minutes BETWEEN 1 AND 1440",
+            name="ck_timelog_templates_duration_valid",
+        ),
+        CheckConstraint(
+            "position >= 0 AND usage_count >= 0",
+            name="ck_timelog_templates_counters_nonnegative",
+        ),
         Index(
             "uq_timelog_templates_title_normalized_active",
             "title_normalized",
@@ -42,11 +50,6 @@ class TimelogTemplate(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Ba
     last_used_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
     area = relationship("Area", foreign_keys=[area_id])
-
-    def touch_usage(self, *, when: datetime) -> None:
-        """Record one use of this template."""
-        self.usage_count = (self.usage_count or 0) + 1
-        self.last_used_at = when
 
     def __repr__(self) -> str:
         return f"TimelogTemplate(id={self.id!s}, title={self.title!r}, position={self.position!r})"

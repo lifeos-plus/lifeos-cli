@@ -322,12 +322,29 @@ async def handle_data_import_async(args: argparse.Namespace) -> int:
                 print("Bundle import requires --file.", file=sys.stderr)
                 return 1
             bundle_payload = data_ops.read_bundle(Path(args.file))
+            if (
+                args.replace_existing
+                and bundle_payload.manifest.get("schema_version")
+                == data_ops.LEGACY_BUNDLE_SCHEMA_VERSION
+            ):
+                raise data_ops.DataOperationError(
+                    "Legacy schema-v3 bundles are partial exports and cannot safely replace "
+                    "a database; import without --replace-existing or re-export with the "
+                    "current LifeOS version."
+                )
             session = db_session.get_async_session_factory()()
             try:
+                lossless_kwargs = {}
+                if getattr(bundle_payload, "tables", None):
+                    lossless_kwargs = {
+                        "bundle_tables": bundle_payload.tables,
+                        "bundle_schema_version": bundle_payload.manifest.get("schema_version", 0),
+                    }
                 bundle_report = await data_ops.import_bundle(
                     session,
                     bundle_rows=bundle_payload.resources,
                     replace_existing=args.replace_existing,
+                    **lossless_kwargs,
                 )
                 if args.dry_run:
                     await session.rollback()

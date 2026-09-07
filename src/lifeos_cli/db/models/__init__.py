@@ -14,6 +14,9 @@ from .event_occurrence_exception import (
     EventOccurrenceException,
 )
 from .finance import (
+    FinanceAsset,
+    FinanceRateSnapshot,
+    FinanceRateSnapshotEntry,
     FinanceSnapshot,
     FinanceSnapshotEntry,
     FinanceTree,
@@ -26,6 +29,7 @@ from .note import Note
 from .person import Person
 from .sleep_segment import SleepSegment
 from .tag import Tag
+from .tag_association import tag_associations
 from .task import Task
 from .timelog import Timelog
 from .timelog_template import TimelogTemplate
@@ -39,6 +43,9 @@ __all__ = [
     "DailyTimelogStatsGroupByArea",
     "Event",
     "EventOccurrenceException",
+    "FinanceAsset",
+    "FinanceRateSnapshot",
+    "FinanceRateSnapshotEntry",
     "FinanceSnapshot",
     "FinanceSnapshotEntry",
     "FinanceTree",
@@ -51,6 +58,7 @@ __all__ = [
     "Person",
     "SleepSegment",
     "Tag",
+    "tag_associations",
     "Task",
     "Timelog",
     "TimelogTemplate",
