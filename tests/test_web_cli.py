@@ -688,6 +688,7 @@ def test_web_habit_action_payload_uses_slim_habit_summary(
         "start_date": "2026-06-01",
         "duration_days": 30,
         "cadence_frequency": "daily",
+        "area_id": None,
     }
     habit_summary = cast(dict[str, object], summary_payload["habit"])
     assert "id" not in habit_summary

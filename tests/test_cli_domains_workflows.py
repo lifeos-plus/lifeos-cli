@@ -1061,9 +1061,9 @@ def test_main_habit_list_prints_count(
 
     assert exit_code == 0
     assert captured.out.splitlines() == [
-        "habit_id\tstatus\tstart_date\tduration_days\tcadence\ttask_id\ttitle",
+        "habit_id\tstatus\tarea_id\tstart_date\tduration_days\tcadence\ttask_id\ttitle",
         (
-            "77777777-7777-7777-7777-777777777777\tactive\t2026-04-09\t21\t"
+            "77777777-7777-7777-7777-777777777777\tactive\t-\t2026-04-09\t21\t"
             "daily:1:-\t-\tDaily Exercise"
         ),
         "Total habits: 1",
@@ -1110,9 +1110,9 @@ def test_main_habit_list_with_stats_prints_header(
 
     assert exit_code == 0
     assert captured.out.splitlines() == [
-        "habit_id\tstatus\tstart_date\tduration_days\tcadence\tprogress_percentage\tcurrent_streak\tlongest_streak\ttitle",
+        "habit_id\tstatus\tarea_id\tstart_date\tduration_days\tcadence\tprogress_percentage\tcurrent_streak\tlongest_streak\ttitle",
         (
-            "78787878-7878-7878-7878-787878787878\tactive\t2026-04-09\t30\t"
+            "78787878-7878-7878-7878-787878787878\tactive\t-\t2026-04-09\t30\t"
             "weekly:3:monday,wednesday,friday\t66.7\t4\t6\tStrength training"
         ),
         "Total habits: 1",

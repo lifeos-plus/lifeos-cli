@@ -29,6 +29,7 @@ from lifeos_cli.db.services.habit_queries import (
 )
 from lifeos_cli.db.services.habit_support import (
     HabitActionNotFoundError,
+    HabitAreaReferenceNotFoundError,
     HabitNotFoundError,
     HabitTaskReferenceNotFoundError,
     HabitValidationError,
@@ -39,6 +40,7 @@ from lifeos_cli.db.services.habit_support import (
 
 __all__ = [
     "HabitActionNotFoundError",
+    "HabitAreaReferenceNotFoundError",
     "HabitNotFoundError",
     "HabitTaskReferenceNotFoundError",
     "HabitValidationError",

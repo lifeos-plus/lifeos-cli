@@ -72,6 +72,8 @@ def build_habit_add_parser(
             ),
             examples=(
                 'lifeos habit add "Daily Exercise" --start-date 2026-04-09 --duration-days 21',
+                'lifeos habit add "Daily Exercise" --start-date 2026-04-09 --duration-days 21 '
+                "--area-id 11111111-1111-1111-1111-111111111111",
                 'lifeos habit add "Morning Review" --start-date 2026-04-09 --duration-days 100 '
                 "--task-id 11111111-1111-1111-1111-111111111111",
                 'lifeos habit add "Gym" --start-date 2026-04-09 --duration-days 100 '
@@ -153,6 +155,9 @@ def build_habit_add_parser(
     add_parser.add_argument(
         "--task-id", type=UUID, help=_("common.messages.optional_linked_task_identifier")
     )
+    add_parser.add_argument(
+        "--area-id", type=UUID, help=_("common.messages.optional_linked_area_identifier")
+    )
     add_parser.set_defaults(handler=make_sync_handler(handle_habit_add_async))
 
 
@@ -176,6 +181,8 @@ def build_habit_list_parser(
             examples=(
                 "lifeos habit list",
                 "lifeos habit list --status active --with-stats",
+                "lifeos habit list --status active "
+                "--area-id 11111111-1111-1111-1111-111111111111 --count",
                 'lifeos habit list --title "Daily Exercise" --active-window-only',
                 "lifeos habit list --status active --count",
             ),
@@ -197,6 +204,9 @@ def build_habit_list_parser(
     )
     list_parser.add_argument(
         "--status", help=_("resources.habit.parser_actions.filter_by_habit_status")
+    )
+    list_parser.add_argument(
+        "--area-id", type=UUID, help=_("common.messages.filter_by_linked_area")
     )
     list_parser.add_argument(
         "--title", help=_("resources.habit.parser_actions.filter_by_exact_habit_title")
@@ -262,6 +272,8 @@ def build_habit_update_parser(
             ),
             examples=(
                 "lifeos habit update 11111111-1111-1111-1111-111111111111 --status paused",
+                "lifeos habit update 11111111-1111-1111-1111-111111111111 "
+                "--area-id 11111111-1111-1111-1111-111111111111",
                 "lifeos habit update 11111111-1111-1111-1111-111111111111 "
                 "--duration-days 100 --start-date 2026-04-10",
                 "lifeos habit update 11111111-1111-1111-1111-111111111111 "
@@ -362,6 +374,14 @@ def build_habit_update_parser(
         "--clear-task",
         action="store_true",
         help=_("resources.habit.parser_actions.remove_linked_task_reference"),
+    )
+    update_parser.add_argument(
+        "--area-id", type=UUID, help=_("common.messages.updated_linked_area_identifier")
+    )
+    update_parser.add_argument(
+        "--clear-area",
+        action="store_true",
+        help=_("common.messages.clear_linked_area"),
     )
     update_parser.set_defaults(handler=make_sync_handler(handle_habit_update_async))
 

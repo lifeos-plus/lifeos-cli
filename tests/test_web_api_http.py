@@ -411,6 +411,55 @@ def test_habit_action_list_and_update(http_client) -> None:
     }
 
 
+def test_habit_area_association_round_trip(http_client) -> None:
+    area_response = http_client.post(
+        "/api/v1/areas/",
+        json={"name": "HTTP habit area"},
+    )
+    assert area_response.status_code == 200
+    area_id = area_response.json()["id"]
+
+    create_response = http_client.post(
+        "/api/v1/habits/",
+        json={
+            "title": "Area-linked habit",
+            "start_date": "2026-08-01",
+            "duration_days": 30,
+            "cadence_frequency": "daily",
+            "target_per_cycle": 1,
+            "area_id": area_id,
+        },
+    )
+    assert create_response.status_code == 200
+    habit = create_response.json()
+    assert habit["area_id"] == area_id
+
+    overview_response = http_client.get("/api/v1/habits/overviews")
+    assert overview_response.status_code == 200
+    overview_habit = next(
+        item["habit"]
+        for item in overview_response.json()["items"]
+        if item["habit"]["id"] == habit["id"]
+    )
+    assert overview_habit["area_id"] == area_id
+
+    filtered_response = http_client.get(
+        "/api/v1/habits/",
+        params={"area_id": area_id},
+    )
+    assert filtered_response.status_code == 200
+    filtered = filtered_response.json()
+    assert {item["id"] for item in filtered["items"]} == {habit["id"]}
+    assert filtered["meta"]["area_id"] == area_id
+
+    clear_response = http_client.patch(
+        f"/api/v1/habits/{habit['id']}",
+        json={"area_id": None},
+    )
+    assert clear_response.status_code == 200
+    assert clear_response.json()["area_id"] is None
+
+
 def test_task_status_cascade_applies_done_to_open_subtasks(http_client) -> None:
     vision_response = http_client.post(
         "/api/v1/visions/",

@@ -114,18 +114,18 @@
 │               args: tree_id [required]; --name; --primary-currency; --display-order; --default
 ├── habit  —  Manage recurring habits
 │   ├── add  —  Create a habit
-│   │       args: title [required]; --description; --start-date; --duration-days; --cadence-frequency; --weekdays; --weekends-only; --monthdays; --target-per-cycle; --target-per-week; --task-id
+│   │       args: title [required]; --description; --start-date; --duration-days; --cadence-frequency; --weekdays; --weekends-only; --monthdays; --target-per-cycle; --target-per-week; --task-id; --area-id
 │   ├── delete  —  Delete a habit
 │   │       args: habit_ids [required]
 │   ├── list  —  List habits
-│   │       args: --status; --title; --active-window-only; --with-stats; --count; --limit; --offset; --json
+│   │       args: --status; --area-id; --title; --active-window-only; --with-stats; --count; --limit; --offset; --json
 │   ├── show  —  Show a habit
 │   │       args: habit_id [required]; --json
 │   ├── stats  —  Show habit statistics
 │   │       args: habit_id [required]
 │   ├── task-associations  —  List task-to-habit associations
 │   └── update  —  Update a habit
-│           args: habit_id [required]; --title; --description; --clear-description; --start-date; --duration-days; --cadence-frequency; --weekdays; --weekends-only; --clear-weekdays; --monthdays; --clear-monthdays; --target-per-cycle; --target-per-week; --status; --task-id; --clear-task
+│           args: habit_id [required]; --title; --description; --clear-description; --start-date; --duration-days; --cadence-frequency; --weekdays; --weekends-only; --clear-weekdays; --monthdays; --clear-monthdays; --target-per-cycle; --target-per-week; --status; --task-id; --clear-task; --area-id; --clear-area
 ├── habit-action  —  Manage dated habit actions
 │   ├── delete  —  Delete a habit action
 │   │       args: action_ids [required]

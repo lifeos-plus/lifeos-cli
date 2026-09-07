@@ -87,6 +87,10 @@ class HabitTaskReferenceNotFoundError(LookupError):
     """Raised when a referenced task cannot be found."""
 
 
+class HabitAreaReferenceNotFoundError(LookupError):
+    """Raised when a referenced area cannot be found."""
+
+
 class HabitValidationError(DomainValidationError):
     """Raised when habit input validation fails."""
 
@@ -618,6 +622,19 @@ async def ensure_task_exists(session: AsyncSession, task_id: UUID | None) -> Non
     )
     if result.scalar_one_or_none() is None:
         raise HabitTaskReferenceNotFoundError(f"Task {task_id} was not found")
+
+
+async def ensure_area_exists(session: AsyncSession, area_id: UUID | None) -> None:
+    """Ensure an optional area reference exists."""
+    from lifeos_cli.db.models.area import Area
+
+    if area_id is None:
+        return
+    result = await session.execute(
+        select(Area.id).where(Area.id == area_id, Area.deleted_at.is_(None)).limit(1)
+    )
+    if result.scalar_one_or_none() is None:
+        raise HabitAreaReferenceNotFoundError(f"Area {area_id} was not found")
 
 
 async def ensure_active_capacity(

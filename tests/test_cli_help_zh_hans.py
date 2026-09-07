@@ -251,7 +251,7 @@ def test_cli_timelog_search_help_supports_zh_hans_locale(
         (
             ["habit", "list", "--help"],
             "默认 `list` 输出会先输出一行表头，随后按制表符分隔输出列："
-            "habit_id、status、start_date、duration_days、cadence、task_id、title。",
+            "habit_id、status、area_id、start_date、duration_days、cadence、task_id、title。",
         ),
         (
             ["note", "list", "--help"],
