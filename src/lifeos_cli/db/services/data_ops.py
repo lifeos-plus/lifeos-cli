@@ -1730,7 +1730,7 @@ def _prepare_v4_table_entry(
     table: Table,
     metadata: object,
 ) -> list[dict[str, Any]]:
-    """Verify, then incrementally decode and prepare one table entry."""
+    """Incrementally verify, decode, and prepare one table entry."""
     entry_name = f"tables/{table.name}.jsonl"
     if not isinstance(metadata, dict):
         raise DataOperationError(f"Invalid manifest metadata for {entry_name}.")
@@ -1744,20 +1744,13 @@ def _prepare_v4_table_entry(
     digest = hashlib.sha256()
     actual_row_count = 0
     with decoded.open_entry(entry_name) as entry:
-        for line in entry:
-            digest.update(line)
-            if line.strip():
-                actual_row_count += 1
-    if checksum != digest.hexdigest():
-        raise DataOperationError(f"Checksum mismatch for bundle entry {entry_name}.")
-    if row_count != actual_row_count:
-        raise DataOperationError(f"Row count mismatch for bundle entry {entry_name}.")
-
-    with decoded.open_entry(entry_name) as entry:
 
         def iter_rows():
+            nonlocal actual_row_count
             for line_number, line in enumerate(entry, start=1):
+                digest.update(line)
                 if line.strip():
+                    actual_row_count += 1
                     yield decode_jsonl_row(
                         line,
                         entry_name=entry_name,
@@ -1765,9 +1758,14 @@ def _prepare_v4_table_entry(
                     )
 
         try:
-            return prepare_table_entry_rows(table, iter_rows())
+            prepared_rows = prepare_table_entry_rows(table, iter_rows())
         except BundleTableError as exc:
             raise DataOperationError(f"Invalid source-table snapshot: {exc}") from exc
+    if checksum != digest.hexdigest():
+        raise DataOperationError(f"Checksum mismatch for bundle entry {entry_name}.")
+    if row_count != actual_row_count:
+        raise DataOperationError(f"Row count mismatch for bundle entry {entry_name}.")
+    return prepared_rows
 
 
 def _read_open_bundle(

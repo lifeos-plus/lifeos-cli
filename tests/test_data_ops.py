@@ -550,10 +550,15 @@ def test_bundle_rejects_tampered_v4_content(tmp_path: Path) -> None:
         tampered_path = tmp_path / "tampered.zip"
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
+                session.add(Note(content="original"))
+                await session.flush()
                 await data_ops.export_bundle(session, output_path=source_path)
         with ZipFile(source_path, "r") as source:
             contents = {name: source.read(name) for name in source.namelist()}
-        contents["tables/notes.jsonl"] = b'{"id":"tampered"}\n'
+        contents["tables/notes.jsonl"] = contents["tables/notes.jsonl"].replace(
+            b'"original"',
+            b'"tampered"',
+        )
         with ZipFile(tampered_path, "w", compression=ZIP_DEFLATED) as target:
             for name, content in contents.items():
                 target.writestr(name, content)
