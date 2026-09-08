@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 from alembic import command
-from sqlalchemy import CheckConstraint
+from sqlalchemy import JSON, CheckConstraint
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from lifeos_cli.db import maintenance
@@ -183,6 +183,7 @@ def test_invariant_migration_normalizes_legacy_event_json_null(
 def test_optional_event_json_uses_sql_null_for_python_none() -> None:
     recurrence_rule_type = Event.__table__.c.recurrence_rule.type
 
+    assert isinstance(recurrence_rule_type, JSON)
     assert recurrence_rule_type.none_as_null is True
 
 
