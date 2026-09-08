@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
-from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
@@ -576,7 +575,7 @@ def test_main_data_import_bundle_reports_unique_constraint_violation_cleanly(
     monkeypatch.setattr(
         data_ops,
         "read_bundle",
-        lambda _path, **_kwargs: SimpleNamespace(resources={}),
+        lambda _path, **_kwargs: data_ops.BundlePayload(manifest={}, resources={}),
     )
     monkeypatch.setattr(data_ops, "import_bundle", fake_import_bundle)
 

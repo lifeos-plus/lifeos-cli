@@ -335,10 +335,9 @@ async def handle_data_import_async(args: argparse.Namespace) -> int:
             session = db_session.get_async_session_factory()()
             try:
                 lossless_kwargs = {}
-                if getattr(bundle_payload, "tables", None):
+                if bundle_payload.tables is not None:
                     lossless_kwargs = {
                         "bundle_tables": bundle_payload.tables,
-                        "bundle_tables_prepared": bundle_payload.tables_prepared,
                         "bundle_schema_version": bundle_payload.manifest.get("schema_version", 0),
                     }
                 bundle_report = await data_ops.import_bundle(

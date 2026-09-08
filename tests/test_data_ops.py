@@ -596,7 +596,6 @@ def test_lossless_bundle_replace_preserves_unexposed_and_soft_deleted_rows(
                     session,
                     bundle_rows=payload.resources,
                     bundle_tables=payload.tables,
-                    bundle_tables_prepared=payload.tables_prepared,
                     bundle_schema_version=payload.manifest["schema_version"],
                     replace_existing=True,
                 )

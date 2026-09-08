@@ -547,27 +547,6 @@ def _parse_value(table: Table, column: Any, value: Any, *, row_number: int) -> A
     return value
 
 
-def prepare_table_rows(
-    raw_tables: Mapping[str, list[dict[str, Any]]],
-) -> dict[str, list[dict[str, Any]]]:
-    """Strictly parse a complete source-table snapshot before any database writes."""
-    expected_names = set(source_table_names())
-    actual_names = set(raw_tables)
-    missing = sorted(expected_names - actual_names)
-    unknown = sorted(actual_names - expected_names)
-    if missing:
-        raise BundleTableError("Bundle is missing source tables: " + ", ".join(missing))
-    if unknown:
-        raise BundleTableError("Bundle contains unknown source tables: " + ", ".join(unknown))
-
-    prepared = {
-        table.name: prepare_table_entry_rows(table, raw_tables[table.name])
-        for table in source_tables()
-    }
-    validate_prepared_tables(prepared)
-    return prepared
-
-
 def prepare_table_entry_rows(
     table: Table,
     raw_rows: Iterable[dict[str, Any]],
@@ -657,10 +636,7 @@ def validate_domain_row(
             monthdays = row.get("cadence_monthdays")
             if weekdays is not None and (
                 not isinstance(weekdays, list)
-                or any(
-                    day not in VALID_WEEKDAY_NAMES
-                    for day in weekdays
-                )
+                or any(day not in VALID_WEEKDAY_NAMES for day in weekdays)
             ):
                 fail("cadence_weekdays must contain valid weekday names.")
             if monthdays is not None and (

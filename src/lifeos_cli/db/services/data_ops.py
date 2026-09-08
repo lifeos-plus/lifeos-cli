@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from dataclasses import field as dataclass_field
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -81,7 +80,6 @@ from lifeos_cli.db.services.bundle_tables import (
     BundleTableError,
     iter_export_table_rows,
     prepare_table_entry_rows,
-    prepare_table_rows,
     restore_table_rows,
     source_table_names,
     source_tables,
@@ -207,13 +205,19 @@ class BundleImportReport:
 
 
 @dataclass(frozen=True)
+class PreparedBundleTables:
+    """Typed and fully validated source-table rows ready for atomic restore."""
+
+    rows: dict[str, list[dict[str, Any]]]
+
+
+@dataclass(frozen=True)
 class BundlePayload:
-    """Manifest and resource rows loaded from one bundle archive."""
+    """Validated manifest and data loaded from one bundle archive."""
 
     manifest: dict[str, Any]
     resources: dict[str, list[dict[str, Any]]]
-    tables: dict[str, list[dict[str, Any]]] = dataclass_field(default_factory=dict)
-    tables_prepared: bool = False
+    tables: PreparedBundleTables | None = None
 
 
 @dataclass(frozen=True)
@@ -1841,8 +1845,7 @@ def _read_open_bundle(
     return BundlePayload(
         manifest=manifest,
         resources=resources,
-        tables=tables,
-        tables_prepared=True,
+        tables=PreparedBundleTables(rows=tables),
     )
 
 
@@ -1871,8 +1874,7 @@ async def import_bundle(
     session: AsyncSession,
     *,
     bundle_rows: dict[str, list[dict[str, Any]]],
-    bundle_tables: dict[str, list[dict[str, Any]]] | None = None,
-    bundle_tables_prepared: bool = False,
+    bundle_tables: PreparedBundleTables | None = None,
     bundle_schema_version: int = BUNDLE_SCHEMA_VERSION,
     replace_existing: bool = False,
 ) -> BundleImportReport:
@@ -1884,13 +1886,7 @@ async def import_bundle(
         )
 
     if bundle_tables is not None:
-        if bundle_tables_prepared:
-            prepared_tables = bundle_tables
-        else:
-            try:
-                prepared_tables = prepare_table_rows(bundle_tables)
-            except BundleTableError as exc:
-                raise DataOperationError(f"Invalid source-table snapshot: {exc}") from exc
+        prepared_tables = bundle_tables.rows
         if replace_existing:
             await truncate_supported_data(session)
         created_count, updated_count = await restore_table_rows(

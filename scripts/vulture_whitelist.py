@@ -106,6 +106,7 @@ _keep(
     load_dialect_impl,
     process_bind_param,
     process_result_value,
+    default_schema_name,
     metadata_json,
     model_config,
     node_name,

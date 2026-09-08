@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import tempfile
@@ -123,11 +122,6 @@ def decode_jsonl(content: bytes, *, entry_name: str) -> list[dict[str, Any]]:
         for line_number, line in enumerate(content.splitlines(), start=1)
         if line.strip()
     ]
-
-
-def sha256_hex(content: bytes) -> str:
-    """Return the lowercase SHA-256 digest for content."""
-    return hashlib.sha256(content).hexdigest()
 
 
 def _validate_entry_name(name: str) -> None:
