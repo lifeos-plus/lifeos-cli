@@ -90,6 +90,8 @@ def do_run_migrations(connection: Connection) -> None:
             # schema translation. Treat the isolated LifeOS schema as PostgreSQL's
             # default so model tables declared without a schema match reflected tables.
             connection.dialect.default_schema_name = database_schema
+            if connection.dialect.default_schema_name != database_schema:
+                raise RuntimeError("Could not configure PostgreSQL schema reflection.")
     _configure_migration_context(connection)
     with context.begin_transaction():
         context.run_migrations()
