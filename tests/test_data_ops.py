@@ -769,7 +769,11 @@ def test_bundle_v4_contract_matches_current_authoritative_schema() -> None:
         json.dumps(schema_shape, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
 
-    assert fingerprint == "d6edbf508005a514d13b48f3d99e33678058c46cf5e9495f8a1660b2ee923b0b"
+    expected_fingerprint = (
+        "d6edbf508005a514d13b48f3d99e3367"  # pragma: allowlist secret
+        "8058c46cf5e9495f8a1660b2ee923b0b"  # pragma: allowlist secret
+    )
+    assert fingerprint == expected_fingerprint
 
 
 def test_timelog_import_hook_removes_stale_derived_rows_without_source_timelogs() -> None:
