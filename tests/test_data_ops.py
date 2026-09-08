@@ -39,7 +39,9 @@ from lifeos_cli.db.services.bundle_tables import (
     BUNDLE_V4_TABLE_SPECS,
     DERIVED_TABLE_NAMES,
     BundleTableError,
+    source_table_names,
     validate_domain_row,
+    validate_prepared_tables,
 )
 from lifeos_cli.db.types import UTCDateTime
 from tests.support import sqlite_session_factory
@@ -693,6 +695,70 @@ def test_bundle_domain_validation_covers_database_invariants_before_restore(
 ) -> None:
     with pytest.raises(BundleTableError, match=message):
         validate_domain_row(table_name, row, row_number=1)
+
+
+def _empty_prepared_bundle_tables() -> dict[str, list[dict[str, Any]]]:
+    return {table_name: [] for table_name in source_table_names()}
+
+
+def test_bundle_validation_rejects_cross_vision_task_hierarchy() -> None:
+    first_vision_id = uuid4()
+    second_vision_id = uuid4()
+    parent_id = uuid4()
+    child_id = uuid4()
+    prepared = _empty_prepared_bundle_tables()
+    prepared["visions"] = [
+        {"id": first_vision_id, "area_id": None},
+        {"id": second_vision_id, "area_id": None},
+    ]
+    prepared["tasks"] = [
+        {
+            "id": parent_id,
+            "vision_id": first_vision_id,
+            "parent_task_id": None,
+            "deleted_at": None,
+        },
+        {
+            "id": child_id,
+            "vision_id": second_vision_id,
+            "parent_task_id": parent_id,
+            "deleted_at": None,
+        },
+    ]
+
+    with pytest.raises(BundleTableError, match="different vision"):
+        validate_prepared_tables(prepared)
+
+
+def test_bundle_validation_rejects_inconsistent_finance_node_hierarchy() -> None:
+    tree_id = uuid4()
+    root_id = uuid4()
+    child_id = uuid4()
+    prepared = _empty_prepared_bundle_tables()
+    prepared["finance_trees"] = [{"id": tree_id, "is_default": False, "deleted_at": None}]
+    prepared["finance_tree_nodes"] = [
+        {
+            "id": root_id,
+            "tree_id": tree_id,
+            "parent_id": None,
+            "path": str(root_id),
+            "depth": 0,
+            "children_count": 1,
+            "deleted_at": None,
+        },
+        {
+            "id": child_id,
+            "tree_id": tree_id,
+            "parent_id": root_id,
+            "path": "incorrect",
+            "depth": 1,
+            "children_count": 0,
+            "deleted_at": None,
+        },
+    ]
+
+    with pytest.raises(BundleTableError, match="inconsistent path or depth"):
+        validate_prepared_tables(prepared)
 
 
 def test_legacy_bundle_cannot_replace_the_database() -> None:
