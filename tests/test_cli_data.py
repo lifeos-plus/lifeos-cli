@@ -102,8 +102,13 @@ def test_main_data_import_bundle_uses_atomic_restore(
 ) -> None:
     session = FakeAsyncSession()
 
-    def fake_read_bundle(path: Path) -> data_ops.BundlePayload:
+    def fake_read_bundle(
+        path: Path,
+        *,
+        load_portable_resources: bool,
+    ) -> data_ops.BundlePayload:
         assert path == Path("backup.zip")
+        assert not load_portable_resources
         return data_ops.BundlePayload(
             manifest={"schema_version": data_ops.BUNDLE_SCHEMA_VERSION},
             resources={"note": [{"id": "11111111-1111-1111-1111-111111111111"}]},
@@ -573,7 +578,11 @@ def test_main_data_import_bundle_reports_unique_constraint_violation_cleanly(
         "get_async_session_factory",
         _make_session_factory_getter(session),
     )
-    monkeypatch.setattr(data_ops, "read_bundle", lambda _path: SimpleNamespace(resources={}))
+    monkeypatch.setattr(
+        data_ops,
+        "read_bundle",
+        lambda _path, **_kwargs: SimpleNamespace(resources={}),
+    )
     monkeypatch.setattr(data_ops, "import_bundle", fake_import_bundle)
 
     exit_code = cli.main(

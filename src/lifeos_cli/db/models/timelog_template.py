@@ -19,11 +19,11 @@ class TimelogTemplate(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Ba
     __table_args__ = (
         CheckConstraint(
             "default_duration_minutes IS NULL OR default_duration_minutes BETWEEN 1 AND 1440",
-            name="ck_timelog_templates_duration_valid",
+            name="duration_valid",
         ),
         CheckConstraint(
             "position >= 0 AND usage_count >= 0",
-            name="ck_timelog_templates_counters_nonnegative",
+            name="counters_nonnegative",
         ),
         Index(
             "uq_timelog_templates_title_normalized_active",

@@ -7,6 +7,7 @@ from datetime import date
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     ForeignKey,
@@ -20,6 +21,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
+
+MENSTRUAL_FLOW_AMOUNTS = frozenset({"low", "medium", "high"})
 
 menstrual_day_factors = Table(
     "menstrual_day_factors",
@@ -73,6 +76,11 @@ class MenstrualDay(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base)
 
     __tablename__ = "menstrual_days"
     __table_args__ = (
+        CheckConstraint(
+            "flow_amount IS NULL OR "
+            "(in_period IS TRUE AND flow_amount IN ('low', 'medium', 'high'))",
+            name="flow_amount_valid",
+        ),
         Index(
             "uq_menstrual_days_log_date_active",
             "log_date",

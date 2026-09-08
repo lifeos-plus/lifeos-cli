@@ -25,6 +25,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
 from lifeos_cli.db.types import UTCDateTime
 
+FINANCE_RATE_SNAPSHOT_POLICIES = frozenset({"none", "selected"})
+
 
 class FinanceTree(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
     """Reusable finance tree for any finance snapshot view."""
@@ -78,7 +80,7 @@ class FinanceAsset(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base)
     __table_args__ = (
         CheckConstraint(
             "decimal_places BETWEEN 0 AND 8",
-            name="ck_finance_assets_decimal_places_valid",
+            name="decimal_places_valid",
         ),
         Index(
             "uq_finance_assets_code_active",
@@ -108,7 +110,7 @@ class FinanceTreeNode(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Ba
     __table_args__ = (
         CheckConstraint(
             "depth >= 0 AND children_count >= 0",
-            name="ck_finance_tree_nodes_counts_nonnegative",
+            name="counts_nonnegative",
         ),
         Index("ix_finance_tree_nodes_tree_path", "tree_id", "path", unique=True),
         Index("ix_finance_tree_nodes_parent", "parent_id"),
@@ -161,6 +163,10 @@ class FinanceSnapshot(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Ba
 
     __tablename__ = "finance_snapshots"
     __table_args__ = (
+        CheckConstraint(
+            "rate_snapshot_policy IN ('none', 'selected')",
+            name="rate_snapshot_policy_valid",
+        ),
         Index("ix_finance_snapshots_tree_ts", "tree_id", "snapshot_ts"),
         Index("ix_finance_snapshots_tree_period", "tree_id", "period_start", "period_end"),
         Index("ix_finance_snapshots_rate_snapshot", "rate_snapshot_id"),
@@ -275,7 +281,7 @@ class FinanceRateSnapshotEntry(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDelete
     __table_args__ = (
         CheckConstraint(
             "rate > 0",
-            name="ck_finance_rate_snapshot_entries_rate_positive",
+            name="rate_positive",
         ),
         Index(
             "uq_finance_rate_snapshot_entries_pair_active",

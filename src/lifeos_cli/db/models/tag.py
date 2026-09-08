@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Index, String, Text, text
+from sqlalchemy import CheckConstraint, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
+
+TAG_ENTITY_TYPES = frozenset({"area", "event", "note", "person", "task", "timelog", "vision"})
 
 
 class Tag(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
@@ -13,6 +15,10 @@ class Tag(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
 
     __tablename__ = "tags"
     __table_args__ = (
+        CheckConstraint(
+            "entity_type IN ('area', 'event', 'note', 'person', 'task', 'timelog', 'vision')",
+            name="entity_type_valid",
+        ),
         Index(
             "uq_tags_name_type_category_active",
             "name",

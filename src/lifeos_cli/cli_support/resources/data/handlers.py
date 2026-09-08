@@ -321,7 +321,10 @@ async def handle_data_import_async(args: argparse.Namespace) -> int:
             if args.file is None:
                 print("Bundle import requires --file.", file=sys.stderr)
                 return 1
-            bundle_payload = data_ops.read_bundle(Path(args.file))
+            bundle_payload = data_ops.read_bundle(
+                Path(args.file),
+                load_portable_resources=False,
+            )
             if (
                 args.replace_existing
                 and bundle_payload.manifest.get("schema_version")

@@ -29,6 +29,10 @@ from lifeos_cli.application.datetime_utils import (
     parse_iso_datetime_input,
 )
 from lifeos_cli.db.base import Base
+from lifeos_cli.db.models.event_occurrence_exception import EVENT_OCCURRENCE_ACTIONS
+from lifeos_cli.db.models.finance import FINANCE_RATE_SNAPSHOT_POLICIES
+from lifeos_cli.db.models.menstrual import MENSTRUAL_FLOW_AMOUNTS
+from lifeos_cli.db.models.tag import TAG_ENTITY_TYPES
 
 DERIVED_TABLE_NAMES = frozenset(
     {
@@ -195,6 +199,22 @@ def validate_domain_row(
         if value is not None and value not in choices:
             fail(f"{field} must be one of {', '.join(sorted(choices))}; got {value!r}.")
 
+    def require_string_list(
+        field: str,
+        *,
+        maximum_items: int | None = None,
+        maximum_length: int | None = None,
+    ) -> None:
+        value = row.get(field)
+        if value is None:
+            return
+        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+            fail(f"{field} must be an array of strings.")
+        if maximum_items is not None and len(value) > maximum_items:
+            fail(f"{field} must contain at most {maximum_items} values.")
+        if maximum_length is not None and any(len(item) > maximum_length for item in value):
+            fail(f"{field} values must be at most {maximum_length} characters.")
+
     try:
         if table_name == "habits":
             duration = row.get("duration_days")
@@ -291,10 +311,23 @@ def validate_domain_row(
             )
             if frequency is None and any(value is not None for value in recurrence_values):
                 fail("recurrence details require recurrence_frequency.")
+            if row.get("recurrence_rule") is not None and not isinstance(
+                row["recurrence_rule"], dict
+            ):
+                fail("recurrence_rule must be a JSON object.")
             for field in ("recurrence_interval", "recurrence_count"):
                 value = row.get(field)
                 if value is not None and value <= 0:
                     fail(f"{field} must be greater than zero.")
+            recurrence_until = row.get("recurrence_until")
+            if (
+                recurrence_until is not None
+                and row.get("start_time") is not None
+                and recurrence_until < row["start_time"]
+            ):
+                fail("recurrence_until must be on or after start_time.")
+        elif table_name == "event_occurrence_exceptions":
+            require_choice("action", set(EVENT_OCCURRENCE_ACTIONS))
         elif table_name == "timelogs":
             require_choice("tracking_method", {"automatic", "imported", "manual"})
             if row.get("end_time") is not None and row.get("start_time") is not None:
@@ -326,6 +359,17 @@ def validate_domain_row(
             rate = row.get("rate")
             if rate is not None and rate <= 0:
                 fail("rate must be greater than zero.")
+        elif table_name == "finance_snapshots":
+            require_choice("rate_snapshot_policy", set(FINANCE_RATE_SNAPSHOT_POLICIES))
+        elif table_name == "menstrual_days":
+            require_choice("flow_amount", set(MENSTRUAL_FLOW_AMOUNTS))
+            if row.get("flow_amount") is not None and row.get("in_period") is not True:
+                fail("flow_amount requires in_period to be true.")
+            require_string_list("symptoms", maximum_items=20, maximum_length=50)
+        elif table_name == "people":
+            require_string_list("nicknames")
+        elif table_name == "tags":
+            require_choice("entity_type", set(TAG_ENTITY_TYPES))
         elif table_name == "body_measurements":
             weight = row.get("weight_kg")
             if weight is not None and not Decimal("0") < weight <= Decimal("1000"):

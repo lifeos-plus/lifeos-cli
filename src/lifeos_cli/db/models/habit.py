@@ -18,19 +18,19 @@ class Habit(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
     __table_args__ = (
         CheckConstraint(
             "duration_days BETWEEN 1 AND 10000",
-            name="ck_habits_duration_days_valid",
+            name="duration_days_valid",
         ),
         CheckConstraint(
             "target_per_cycle > 0",
-            name="ck_habits_target_per_cycle_positive",
+            name="target_per_cycle_positive",
         ),
         CheckConstraint(
             "cadence_frequency IN ('daily', 'weekly', 'monthly', 'yearly')",
-            name="ck_habits_cadence_frequency_valid",
+            name="cadence_frequency_valid",
         ),
         CheckConstraint(
             "status IN ('active', 'completed', 'paused', 'expired')",
-            name="ck_habits_status_valid",
+            name="status_valid",
         ),
         Index("ix_habits_title", "title"),
         Index("ix_habits_start_date", "start_date"),

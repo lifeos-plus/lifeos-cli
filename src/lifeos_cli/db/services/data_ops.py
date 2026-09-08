@@ -64,12 +64,13 @@ from lifeos_cli.db.services import (
     sleep as sleep_services,
 )
 from lifeos_cli.db.services.bundle_codec import (
+    BundleArchiveReader,
     BundleCodecError,
     decode_jsonl,
     encode_jsonl,
-    read_bundle_archive,
+    open_bundle_archive,
+    open_bundle_atomic,
     sha256_hex,
-    write_bundle_atomic,
 )
 from lifeos_cli.db.services.bundle_tables import (
     BundleTableError,
@@ -388,28 +389,65 @@ def _parse_event_occurrence_exceptions(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         raise DataOperationError("Expected `occurrence_exceptions` to be a JSON array.")
     parsed: list[dict[str, Any]] = []
-    for item in value:
+    expected_fields = {"id", "action", "instance_start", "created_at", "updated_at", "deleted_at"}
+    seen_ids: set[UUID] = set()
+    seen_active_instances: set[datetime] = set()
+    for item_number, item in enumerate(value, start=1):
         if not isinstance(item, dict):
             raise DataOperationError("Each event occurrence exception must be a JSON object.")
-        try:
-            parsed.append(
-                {
-                    "id": UUID(str(item["id"])),
-                    "action": str(item["action"]),
-                    "instance_start": _normalize_json_datetime(str(item["instance_start"])),
-                    "created_at": _normalize_json_datetime(str(item["created_at"])),
-                    "updated_at": _normalize_json_datetime(str(item["updated_at"])),
-                    "deleted_at": (
-                        None
-                        if item.get("deleted_at") is None
-                        else _normalize_json_datetime(str(item["deleted_at"]))
-                    ),
-                }
-            )
-        except KeyError as exc:
+        actual_fields = set(item)
+        if actual_fields != expected_fields:
+            missing = sorted(expected_fields - actual_fields)
+            unknown = sorted(actual_fields - expected_fields)
+            details = []
+            if missing:
+                details.append("missing " + ", ".join(missing))
+            if unknown:
+                details.append("unknown " + ", ".join(unknown))
             raise DataOperationError(
-                f"Each event occurrence exception must include `{exc.args[0]}`."
-            ) from exc
+                f"Event occurrence exception {item_number} has an invalid shape "
+                f"({'; '.join(details)})."
+            )
+        for field in ("id", "action", "instance_start", "created_at", "updated_at"):
+            if not isinstance(item[field], str):
+                raise DataOperationError(
+                    f"Event occurrence exception {item_number} field `{field}` must be a string."
+                )
+        if item["deleted_at"] is not None and not isinstance(item["deleted_at"], str):
+            raise DataOperationError(
+                f"Event occurrence exception {item_number} field `deleted_at` "
+                "must be a string or null."
+            )
+        if item["action"] != "skip":
+            raise DataOperationError(
+                f"Event occurrence exception {item_number} action must be `skip`."
+            )
+        exception_id = UUID(item["id"])
+        instance_start = _normalize_json_datetime(item["instance_start"])
+        deleted_at = (
+            None
+            if item["deleted_at"] is None
+            else _normalize_json_datetime(item["deleted_at"])
+        )
+        if exception_id in seen_ids:
+            raise DataOperationError("Event occurrence exception ids must be unique per event.")
+        if deleted_at is None and instance_start in seen_active_instances:
+            raise DataOperationError(
+                "Active event occurrence instance timestamps must be unique per event."
+            )
+        seen_ids.add(exception_id)
+        if deleted_at is None:
+            seen_active_instances.add(instance_start)
+        parsed.append(
+            {
+                "id": exception_id,
+                "action": item["action"],
+                "instance_start": instance_start,
+                "created_at": _normalize_json_datetime(item["created_at"]),
+                "updated_at": _normalize_json_datetime(item["updated_at"]),
+                "deleted_at": deleted_at,
+            }
+        )
     return parsed
 
 
@@ -437,7 +475,9 @@ def _parse_string_array(value: Any, *, field_name: str) -> list[str]:
         return []
     if not isinstance(value, list):
         raise DataOperationError(f"Expected `{field_name}` to be a JSON array.")
-    return [str(item) for item in value]
+    if any(not isinstance(item, str) for item in value):
+        raise DataOperationError(f"Every `{field_name}` value must be a string.")
+    return list(value)
 
 
 def prepare_snapshot_row(resource: str, index: int, payload: dict[str, Any]) -> PreparedSnapshotRow:
@@ -1579,7 +1619,7 @@ async def run_post_import_hooks(session: AsyncSession, *, resources: set[str]) -
 def _bundle_manifest(
     resource_counts: dict[str, int],
     table_counts: dict[str, int],
-    entries: dict[str, bytes],
+    entry_metadata: dict[str, dict[str, str | int]],
 ) -> dict[str, Any]:
     return {
         "schema_version": BUNDLE_SCHEMA_VERSION,
@@ -1595,14 +1635,25 @@ def _bundle_manifest(
             "aggregated_timelog_stats_groupby_area",
             "daily_timelog_stats_groupby_area",
         ],
-        "entries": {
-            entry_name: {
-                "sha256": sha256_hex(content),
-                "row_count": content.count(b"\n"),
-            }
-            for entry_name, content in entries.items()
-        },
+        "entries": entry_metadata,
     }
+
+
+async def _start_bundle_export_snapshot(session: AsyncSession) -> None:
+    """Use one stable PostgreSQL snapshot for the bundle's many SELECTs."""
+    bind = session.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    if session.in_transaction():
+        connection = await session.connection()
+        isolation_level = (await connection.get_isolation_level()).upper()
+        if isolation_level not in {"REPEATABLE READ", "SERIALIZABLE"}:
+            raise DataOperationError(
+                "PostgreSQL bundle export requires a fresh session or an existing "
+                "REPEATABLE READ/SERIALIZABLE transaction."
+            )
+        return
+    await session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
 
 
 async def export_bundle(
@@ -1611,45 +1662,67 @@ async def export_bundle(
     output_path: Path,
 ) -> BundleExportReport:
     """Export portable resources and a lossless source-table snapshot atomically."""
+    await _start_bundle_export_snapshot(session)
     resource_counts: dict[str, int] = {}
-    entries: dict[str, bytes] = {}
-    for resource in BUNDLE_RESOURCE_ORDER:
-        rows = await export_resource_snapshot(session, resource=resource)
-        entries[f"resources/{resource}.jsonl"] = encode_jsonl(rows)
-        resource_counts[resource] = len(rows)
-
     table_counts: dict[str, int] = {}
-    for table in source_tables():
-        rows = await export_table_rows(session, table)
-        entries[f"tables/{table.name}.jsonl"] = encode_jsonl(rows)
-        table_counts[table.name] = len(rows)
+    entry_metadata: dict[str, dict[str, str | int]] = {}
+    with open_bundle_atomic(output_path) as writer:
+        for resource in BUNDLE_RESOURCE_ORDER:
+            rows = await export_resource_snapshot(session, resource=resource)
+            entry_name = f"resources/{resource}.jsonl"
+            content = encode_jsonl(rows)
+            writer.write_entry(entry_name, content)
+            resource_counts[resource] = len(rows)
+            entry_metadata[entry_name] = {
+                "sha256": sha256_hex(content),
+                "row_count": len(rows),
+            }
 
-    write_bundle_atomic(
-        output_path,
-        entries=entries,
-        manifest=_bundle_manifest(resource_counts, table_counts, entries),
-    )
+        for table in source_tables():
+            rows = await export_table_rows(session, table)
+            entry_name = f"tables/{table.name}.jsonl"
+            content = encode_jsonl(rows)
+            writer.write_entry(entry_name, content)
+            table_counts[table.name] = len(rows)
+            entry_metadata[entry_name] = {
+                "sha256": sha256_hex(content),
+                "row_count": len(rows),
+            }
+
+        writer.write_manifest(_bundle_manifest(resource_counts, table_counts, entry_metadata))
     return BundleExportReport(resource_counts=resource_counts, output_path=output_path)
 
 
-def read_bundle(path: Path) -> BundlePayload:
+def read_bundle(path: Path, *, load_portable_resources: bool = True) -> BundlePayload:
     """Read and validate a bundle zip file."""
-    resources: dict[str, list[dict[str, Any]]] = {}
     try:
-        decoded = read_bundle_archive(path)
+        with open_bundle_archive(path) as decoded:
+            return _read_open_bundle(
+                decoded,
+                load_portable_resources=load_portable_resources,
+            )
     except BundleCodecError as exc:
         raise DataOperationError(str(exc)) from exc
 
+
+def _read_open_bundle(
+    decoded: BundleArchiveReader,
+    *,
+    load_portable_resources: bool,
+) -> BundlePayload:
+    """Validate and decode an already-open bundle archive."""
+    resources: dict[str, list[dict[str, Any]]] = {}
     manifest = decoded.manifest
+    archive_entries = set(decoded.entry_names)
     schema_version = manifest.get("schema_version")
     if schema_version == LEGACY_BUNDLE_SCHEMA_VERSION:
         for resource in BUNDLE_RESOURCE_ORDER:
             entry_name = f"{resource}.jsonl"
             legacy_key = LEGACY_BUNDLE_RESOURCE_KEYS.get(resource)
             legacy_entry_name = f"{legacy_key}.jsonl" if legacy_key else None
-            if entry_name not in decoded.entries and legacy_entry_name in decoded.entries:
+            if entry_name not in archive_entries and legacy_entry_name in archive_entries:
                 entry_name = legacy_entry_name
-            content = decoded.entries.get(entry_name, b"")
+            content = decoded.read_entry(entry_name) if entry_name in archive_entries else b""
             try:
                 resources[resource] = decode_jsonl(content, entry_name=entry_name)
             except BundleCodecError as exc:
@@ -1670,14 +1743,24 @@ def read_bundle(path: Path) -> BundlePayload:
     manifest_entries = manifest.get("entries")
     if not isinstance(manifest_entries, dict):
         raise DataOperationError("Bundle manifest entries must be a JSON object.")
-    if set(decoded.entries) != expected_entries or set(manifest_entries) != expected_entries:
-        missing = sorted(expected_entries - set(decoded.entries))
-        untracked = sorted(set(decoded.entries) - expected_entries)
+    tracked_entries = set(manifest_entries)
+    if archive_entries != expected_entries or tracked_entries != expected_entries:
+        missing = sorted(expected_entries - archive_entries)
+        unexpected = sorted(archive_entries - expected_entries)
+        untracked = sorted(archive_entries - tracked_entries)
+        missing_from_archive = sorted(tracked_entries - archive_entries)
         details = []
         if missing:
-            details.append("missing: " + ", ".join(missing))
+            details.append("missing required archive entries: " + ", ".join(missing))
+        if unexpected:
+            details.append("unexpected archive entries: " + ", ".join(unexpected))
         if untracked:
-            details.append("unexpected: " + ", ".join(untracked))
+            details.append("untracked archive entries: " + ", ".join(untracked))
+        if missing_from_archive:
+            details.append("manifest-only entries: " + ", ".join(missing_from_archive))
+        unlisted = sorted(expected_entries - tracked_entries)
+        if unlisted:
+            details.append("entries absent from manifest: " + ", ".join(unlisted))
         raise DataOperationError(
             "Bundle entry set is incomplete or invalid (" + "; ".join(details) + ")."
         )
@@ -1693,27 +1776,36 @@ def read_bundle(path: Path) -> BundlePayload:
     decoded_rows: dict[str, list[dict[str, Any]]] = {}
     for entry_name in sorted(expected_entries):
         metadata = manifest_entries[entry_name]
-        content = decoded.entries[entry_name]
+        content = decoded.read_entry(entry_name)
         if not isinstance(metadata, dict):
             raise DataOperationError(f"Invalid manifest metadata for {entry_name}.")
-        if metadata.get("sha256") != sha256_hex(content):
+        checksum = metadata.get("sha256")
+        if not isinstance(checksum, str) or checksum != sha256_hex(content):
             raise DataOperationError(f"Checksum mismatch for bundle entry {entry_name}.")
         try:
             rows = decode_jsonl(content, entry_name=entry_name)
         except BundleCodecError as exc:
             raise DataOperationError(str(exc)) from exc
-        if metadata.get("row_count") != len(rows):
+        row_count = metadata.get("row_count")
+        if type(row_count) is not int or row_count < 0 or row_count != len(rows):
             raise DataOperationError(f"Row count mismatch for bundle entry {entry_name}.")
-        decoded_rows[entry_name] = rows
+        if load_portable_resources or entry_name.startswith("tables/"):
+            decoded_rows[entry_name] = rows
 
-    resources = {
-        resource: decoded_rows[f"resources/{resource}.jsonl"] for resource in BUNDLE_RESOURCE_ORDER
-    }
+    if load_portable_resources:
+        resources = {
+            resource: decoded_rows[f"resources/{resource}.jsonl"]
+            for resource in BUNDLE_RESOURCE_ORDER
+        }
     tables = {
         table_name: decoded_rows[f"tables/{table_name}.jsonl"]
         for table_name in source_table_names()
     }
-    if resource_counts != {resource: len(rows) for resource, rows in resources.items()}:
+    expected_resource_counts = {
+        resource: manifest_entries[f"resources/{resource}.jsonl"]["row_count"]
+        for resource in BUNDLE_RESOURCE_ORDER
+    }
+    if resource_counts != expected_resource_counts:
         raise DataOperationError("Bundle manifest resource_counts do not match archive entries.")
     if table_counts != {table_name: len(rows) for table_name, rows in tables.items()}:
         raise DataOperationError("Bundle manifest table_counts do not match archive entries.")

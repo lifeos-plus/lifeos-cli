@@ -88,13 +88,7 @@ Models opt into `SoftDeleteMixin`, which adds `deleted_at`. A global ORM listene
 
 ### Backup and restore
 
-Schema-v4 bundles separate portable resource projections from a lossless source-table
-snapshot. Derived timelog aggregate tables are intentionally excluded and recomputed
-after restore. Every required entry is covered by manifest row counts and SHA-256
-digests. Archive parsing applies duplicate-name, path traversal, expanded-size, shape,
-domain, and reference guards before a replacement transaction mutates the database.
-The final archive is written through an owner-only temporary file in the destination
-directory, fsynced, and atomically renamed.
+Schema-v4 bundles separate portable resource projections from a lossless source-table snapshot. Derived timelog aggregate tables are intentionally excluded and recomputed after restore. Every required entry is covered by manifest row counts and SHA-256 digests. Archive parsing applies duplicate-name, path traversal, expanded-size, shape, domain, and reference guards before a replacement transaction mutates the database. Export uses a stable transaction snapshot, writes entries incrementally through an owner-only temporary file in the destination directory, fsyncs the completed file and rename, and then atomically publishes it.
 
 ## 6. Web API Surface
 

@@ -17,14 +17,14 @@ class Timelog(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
 
     __tablename__ = "timelogs"
     __table_args__ = (
-        CheckConstraint("end_time >= start_time", name="ck_timelogs_time_range_valid"),
+        CheckConstraint("end_time >= start_time", name="time_range_valid"),
         CheckConstraint(
             "tracking_method IN ('manual', 'automatic', 'imported')",
-            name="ck_timelogs_tracking_method_valid",
+            name="tracking_method_valid",
         ),
         CheckConstraint(
             "energy_level IS NULL OR energy_level BETWEEN 1 AND 5",
-            name="ck_timelogs_energy_level_valid",
+            name="energy_level_valid",
         ),
         Index("ix_timelogs_task_id", "task_id"),
         Index("ix_timelogs_area_id", "area_id"),

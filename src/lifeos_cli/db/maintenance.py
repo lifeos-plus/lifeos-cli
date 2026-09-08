@@ -82,32 +82,40 @@ async def check_database(*, repair: bool = False) -> DatabaseCheckReport:
                 for row in foreign_key_rows
             )
 
-    session = get_async_session_factory()()
-    try:
-        audit = await audit_referential_integrity(session, repair=repair)
-        if repair:
-            repaired_count = audit.repaired_count
-            audit = await audit_referential_integrity(session, repair=False)
-            await session.commit()
-        else:
-            repaired_count = 0
+    association_issues: tuple[str, ...] = ()
+    association_warnings: tuple[str, ...] = ()
+    repaired_count = 0
+    if revision == head_revision:
+        session = get_async_session_factory()()
+        try:
+            audit = await audit_referential_integrity(
+                session,
+                repair=repair and not storage_issues,
+            )
+            if repair and not storage_issues:
+                repaired_count = audit.repaired_count
+                audit = await audit_referential_integrity(session, repair=False)
+                await session.commit()
+            else:
+                await session.rollback()
+        except Exception:
             await session.rollback()
-    except Exception:
-        await session.rollback()
-        raise
-    finally:
-        await session.close()
+            raise
+        finally:
+            await session.close()
+        association_issues = tuple(
+            issue.message for issue in audit.issues if not issue.kind.startswith("soft_deleted_")
+        )
+        association_warnings = tuple(
+            issue.message for issue in audit.issues if issue.kind.startswith("soft_deleted_")
+        )
     return DatabaseCheckReport(
         dialect=dialect,
         current_revision=revision,
         head_revision=head_revision,
         storage_issues=tuple(storage_issues),
-        association_issues=tuple(
-            issue.message for issue in audit.issues if not issue.kind.startswith("soft_deleted_")
-        ),
-        association_warnings=tuple(
-            issue.message for issue in audit.issues if issue.kind.startswith("soft_deleted_")
-        ),
+        association_issues=association_issues,
+        association_warnings=association_warnings,
         repaired_count=repaired_count,
     )
 

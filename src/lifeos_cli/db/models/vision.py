@@ -21,15 +21,15 @@ class Vision(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
     __table_args__ = (
         CheckConstraint(
             "status IN ('active', 'archived', 'fruit')",
-            name="ck_visions_status_valid",
+            name="status_valid",
         ),
         CheckConstraint(
             "stage >= 0 AND experience_points >= 0",
-            name="ck_visions_progress_nonnegative",
+            name="progress_nonnegative",
         ),
         CheckConstraint(
             "experience_rate_per_hour IS NULL OR experience_rate_per_hour > 0",
-            name="ck_visions_experience_rate_positive",
+            name="experience_rate_positive",
         ),
     )
 

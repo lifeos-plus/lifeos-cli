@@ -19,13 +19,13 @@ class BodyMeasurement(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Ba
     __table_args__ = (
         CheckConstraint(
             "weight_kg > 0 AND weight_kg <= 1000",
-            name="ck_body_measurements_weight_valid",
+            name="weight_valid",
         ),
         CheckConstraint(
             "(body_fat_percentage IS NULL OR body_fat_percentage BETWEEN 0 AND 100) AND "
             "(muscle_percentage IS NULL OR muscle_percentage BETWEEN 0 AND 100) AND "
             "(visceral_fat IS NULL OR visceral_fat BETWEEN 0 AND 100)",
-            name="ck_body_measurements_percentages_valid",
+            name="percentages_valid",
         ),
         CheckConstraint(
             "(fat_mass_kg IS NULL OR fat_mass_kg BETWEEN 0 AND 1000) AND "
@@ -34,7 +34,7 @@ class BodyMeasurement(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Ba
             "(protein_kg IS NULL OR protein_kg BETWEEN 0 AND 1000) AND "
             "(bone_mass_kg IS NULL OR bone_mass_kg BETWEEN 0 AND 1000) AND "
             "(skeletal_muscle_kg IS NULL OR skeletal_muscle_kg BETWEEN 0 AND 1000)",
-            name="ck_body_measurements_masses_valid",
+            name="masses_valid",
         ),
         Index(
             "uq_body_measurements_measured_at_active",

@@ -13,15 +13,15 @@ depends_on = None
 
 CONSTRAINTS: dict[str, tuple[tuple[str, str], ...]] = {
     "body_measurements": (
-        ("ck_body_measurements_weight_valid", "weight_kg > 0 AND weight_kg <= 1000"),
+        ("weight_valid", "weight_kg > 0 AND weight_kg <= 1000"),
         (
-            "ck_body_measurements_percentages_valid",
+            "percentages_valid",
             "(body_fat_percentage IS NULL OR body_fat_percentage BETWEEN 0 AND 100) AND "
             "(muscle_percentage IS NULL OR muscle_percentage BETWEEN 0 AND 100) AND "
             "(visceral_fat IS NULL OR visceral_fat BETWEEN 0 AND 100)",
         ),
         (
-            "ck_body_measurements_masses_valid",
+            "masses_valid",
             "(fat_mass_kg IS NULL OR fat_mass_kg BETWEEN 0 AND 1000) AND "
             "(muscle_mass_kg IS NULL OR muscle_mass_kg BETWEEN 0 AND 1000) AND "
             "(body_water_kg IS NULL OR body_water_kg BETWEEN 0 AND 1000) AND "
@@ -31,103 +31,131 @@ CONSTRAINTS: dict[str, tuple[tuple[str, str], ...]] = {
         ),
     ),
     "events": (
-        ("ck_events_status_valid", "status IN ('planned', 'cancelled', 'completed')"),
-        ("ck_events_priority_valid", "priority BETWEEN 0 AND 5"),
-        ("ck_events_time_range_valid", "end_time IS NULL OR end_time >= start_time"),
+        ("status_valid", "status IN ('planned', 'cancelled', 'completed')"),
+        ("priority_valid", "priority BETWEEN 0 AND 5"),
+        ("time_range_valid", "end_time IS NULL OR end_time >= start_time"),
         (
-            "ck_events_recurrence_frequency_valid",
+            "recurrence_frequency_valid",
             "recurrence_frequency IS NULL OR recurrence_frequency IN "
             "('daily', 'weekly', 'monthly', 'yearly')",
         ),
         (
-            "ck_events_recurrence_numbers_positive",
+            "recurrence_details_valid",
+            "(recurrence_frequency IS NULL AND recurrence_interval IS NULL AND "
+            "recurrence_count IS NULL AND recurrence_until IS NULL AND recurrence_rule IS NULL) OR "
+            "(recurrence_frequency IS NOT NULL AND "
             "(recurrence_interval IS NULL OR recurrence_interval > 0) AND "
-            "(recurrence_count IS NULL OR recurrence_count > 0)",
+            "(recurrence_count IS NULL OR recurrence_count > 0))",
         ),
     ),
+    "event_occurrence_exceptions": (
+        ("action_valid", "action IN ('skip')"),
+    ),
     "finance_assets": (
-        ("ck_finance_assets_decimal_places_valid", "decimal_places BETWEEN 0 AND 8"),
+        ("decimal_places_valid", "decimal_places BETWEEN 0 AND 8"),
     ),
     "finance_rate_snapshot_entries": (
-        ("ck_finance_rate_snapshot_entries_rate_positive", "rate > 0"),
+        ("rate_positive", "rate > 0"),
+    ),
+    "finance_snapshots": (
+        ("rate_snapshot_policy_valid", "rate_snapshot_policy IN ('none', 'selected')"),
     ),
     "finance_tree_nodes": (
         (
-            "ck_finance_tree_nodes_counts_nonnegative",
+            "counts_nonnegative",
             "depth >= 0 AND children_count >= 0",
         ),
     ),
     "habit_actions": (
-        ("ck_habit_actions_status_valid", "status IN ('pending', 'done', 'skip', 'miss')"),
+        ("status_valid", "status IN ('pending', 'done', 'skip', 'miss')"),
     ),
     "habits": (
-        ("ck_habits_duration_days_valid", "duration_days BETWEEN 1 AND 10000"),
-        ("ck_habits_target_per_cycle_positive", "target_per_cycle > 0"),
+        ("duration_days_valid", "duration_days BETWEEN 1 AND 10000"),
+        ("target_per_cycle_positive", "target_per_cycle > 0"),
         (
-            "ck_habits_cadence_frequency_valid",
+            "cadence_frequency_valid",
             "cadence_frequency IN ('daily', 'weekly', 'monthly', 'yearly')",
         ),
         (
-            "ck_habits_status_valid",
+            "status_valid",
             "status IN ('active', 'completed', 'paused', 'expired')",
         ),
     ),
+    "menstrual_days": (
+        (
+            "flow_amount_valid",
+            "flow_amount IS NULL OR "
+            "(in_period IS TRUE AND flow_amount IN ('low', 'medium', 'high'))",
+        ),
+    ),
     "sleep_segments": (
-        ("ck_sleep_segments_time_range_valid", "end_at > start_at"),
-        ("ck_sleep_segments_duration_valid", "duration_minutes BETWEEN 1 AND 2880"),
+        ("time_range_valid", "end_at > start_at"),
+        ("duration_valid", "duration_minutes BETWEEN 1 AND 2880"),
     ),
     "tasks": (
         (
-            "ck_tasks_status_valid",
+            "status_valid",
             "status IN ('todo', 'in_progress', 'done', 'cancelled', 'paused')",
         ),
         (
-            "ck_tasks_planning_cycle_type_valid",
+            "planning_cycle_type_valid",
             "planning_cycle_type IS NULL OR planning_cycle_type IN "
             "('day', 'week', 'month', 'year', '7years')",
         ),
         (
-            "ck_tasks_planning_cycle_complete",
+            "planning_cycle_complete",
             "(planning_cycle_type IS NULL AND planning_cycle_days IS NULL AND "
             "planning_cycle_start_date IS NULL) OR "
             "(planning_cycle_type IS NOT NULL AND planning_cycle_days > 0 AND "
             "planning_cycle_start_date IS NOT NULL)",
         ),
         (
-            "ck_tasks_effort_nonnegative",
+            "effort_nonnegative",
             "actual_effort_self >= 0 AND actual_effort_total >= 0 AND "
             "(estimated_effort IS NULL OR estimated_effort >= 0)",
         ),
     ),
+    "tag_associations": (
+        (
+            "entity_type_valid",
+            "entity_type IN ('area', 'event', 'note', 'person', 'task', 'timelog', 'vision')",
+        ),
+    ),
+    "tags": (
+        (
+            "entity_type_valid",
+            "entity_type IN ('area', 'event', 'note', 'person', 'task', 'timelog', 'vision')",
+        ),
+    ),
     "timelog_templates": (
         (
-            "ck_timelog_templates_duration_valid",
+            "duration_valid",
             "default_duration_minutes IS NULL OR default_duration_minutes BETWEEN 1 AND 1440",
         ),
         (
-            "ck_timelog_templates_counters_nonnegative",
+            "counters_nonnegative",
             "position >= 0 AND usage_count >= 0",
         ),
     ),
     "timelogs": (
-        ("ck_timelogs_time_range_valid", "end_time >= start_time"),
+        ("time_range_valid", "end_time >= start_time"),
         (
-            "ck_timelogs_tracking_method_valid",
+            "tracking_method_valid",
             "tracking_method IN ('manual', 'automatic', 'imported')",
         ),
         (
-            "ck_timelogs_energy_level_valid",
+            "energy_level_valid",
             "energy_level IS NULL OR energy_level BETWEEN 1 AND 5",
         ),
     ),
     "visions": (
-        ("ck_visions_status_valid", "status IN ('active', 'archived', 'fruit')"),
+        ("status_valid", "status IN ('active', 'archived', 'fruit')"),
         (
-            "ck_visions_progress_nonnegative",
+            "progress_nonnegative",
             "stage >= 0 AND experience_points >= 0",
         ),
         (
-            "ck_visions_experience_rate_positive",
+            "experience_rate_positive",
             "experience_rate_per_hour IS NULL OR experience_rate_per_hour > 0",
         ),
     ),
@@ -157,7 +185,8 @@ def _assert_existing_rows_valid(schema_name: str | None) -> None:
             ).scalar_one()
             if invalid_count:
                 raise RuntimeError(
-                    f"Cannot add {constraint_name}: {invalid_count} existing row(s) violate "
+                    f"Cannot add ck_{table_name}_{constraint_name}: "
+                    f"{invalid_count} existing row(s) violate "
                     "the new invariant. Repair the rows and rerun `lifeos db upgrade`."
                 )
     finance_trees = f'"{schema_name}"."finance_trees"' if schema_name else '"finance_trees"'

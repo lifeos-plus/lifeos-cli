@@ -28,6 +28,7 @@ from lifeos_cli.db.models.person import Person
 from lifeos_cli.db.models.timelog_template import TimelogTemplate
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import data_ops
+from lifeos_cli.db.services.bundle_codec import BundleCodecError, open_bundle_atomic
 from lifeos_cli.db.types import UTCDateTime
 from tests.support import sqlite_session_factory
 
@@ -44,6 +45,35 @@ class RecordingSession:
 
     async def execute(self, statement: object) -> None:
         self.statements.append(statement)
+
+
+class FakePostgresConnection:
+    def __init__(self, isolation_level: str) -> None:
+        self.isolation_level = isolation_level
+
+    async def get_isolation_level(self) -> str:
+        return self.isolation_level
+
+
+class FakePostgresSession:
+    def __init__(self, *, in_transaction: bool, isolation_level: str = "READ COMMITTED") -> None:
+        self._in_transaction = in_transaction
+        self.connection_options: dict[str, str] | None = None
+        self._connection = FakePostgresConnection(isolation_level)
+
+    def get_bind(self) -> object:
+        return SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+
+    def in_transaction(self) -> bool:
+        return self._in_transaction
+
+    async def connection(
+        self,
+        *,
+        execution_options: dict[str, str] | None = None,
+    ) -> FakePostgresConnection:
+        self.connection_options = execution_options
+        return self._connection
 
 
 def test_batch_update_resource_parses_typed_timelog_fields(
@@ -156,6 +186,39 @@ def test_snapshot_parser_rejects_unknown_fields() -> None:
             {
                 "id": "11111111-1111-1111-1111-111111111111",
                 "typo_field": "silently ignored before strict validation",
+            },
+        )
+
+
+def test_snapshot_parser_rejects_non_string_factor_names() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="factor_names.*must be a string"):
+        data_ops.prepare_snapshot_row(
+            "menstrual",
+            1,
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "factor_names": [123],
+            },
+        )
+
+
+def test_snapshot_parser_rejects_invalid_event_occurrence_action() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="action must be `skip`"):
+        data_ops.prepare_snapshot_row(
+            "event",
+            1,
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "occurrence_exceptions": [
+                    {
+                        "id": "22222222-2222-2222-2222-222222222222",
+                        "action": "delete",
+                        "instance_start": "2026-09-08T09:00:00Z",
+                        "created_at": "2026-09-08T08:00:00Z",
+                        "updated_at": "2026-09-08T08:00:00Z",
+                        "deleted_at": None,
+                    }
+                ],
             },
         )
 
@@ -352,6 +415,43 @@ def test_read_bundle_rejects_missing_manifest(tmp_path: Path) -> None:
 
     with pytest.raises(data_ops.DataOperationError, match="manifest.json"):
         data_ops.read_bundle(bundle_path)
+
+
+def test_atomic_bundle_writer_removes_partial_output_on_failure(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "partial.zip"
+
+    with pytest.raises(RuntimeError, match="interrupted"):
+        with open_bundle_atomic(bundle_path) as writer:
+            writer.write_entry("resources/note.jsonl", b"{}\n")
+            raise RuntimeError("interrupted")
+
+    assert not bundle_path.exists()
+    assert not list(tmp_path.glob(".partial.zip.*.tmp"))
+
+
+def test_atomic_bundle_writer_requires_manifest(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "missing-manifest.zip"
+
+    with pytest.raises(BundleCodecError, match="missing its manifest"):
+        with open_bundle_atomic(bundle_path) as writer:
+            writer.write_entry("resources/note.jsonl", b"{}\n")
+
+    assert not bundle_path.exists()
+
+
+def test_postgres_bundle_export_starts_repeatable_read_snapshot() -> None:
+    session = FakePostgresSession(in_transaction=False)
+
+    asyncio.run(data_ops._start_bundle_export_snapshot(cast(AsyncSession, session)))
+
+    assert session.connection_options == {"isolation_level": "REPEATABLE READ"}
+
+
+def test_postgres_bundle_export_rejects_read_committed_transaction() -> None:
+    session = FakePostgresSession(in_transaction=True)
+
+    with pytest.raises(data_ops.DataOperationError, match="requires a fresh session"):
+        asyncio.run(data_ops._start_bundle_export_snapshot(cast(AsyncSession, session)))
 
 
 def test_read_bundle_rejects_legacy_schema_version(tmp_path: Path) -> None:

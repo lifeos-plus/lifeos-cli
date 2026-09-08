@@ -15,7 +15,7 @@ from lifeos_cli.db.models.association import Association
 from lifeos_cli.db.models.event import Event
 from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.person import Person
-from lifeos_cli.db.models.tag import Tag
+from lifeos_cli.db.models.tag import TAG_ENTITY_TYPES, Tag
 from lifeos_cli.db.models.tag_association import tag_associations
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
@@ -31,7 +31,7 @@ from lifeos_cli.db.services.model_utils import (
 from lifeos_cli.db.services.read_models import TagView, build_tag_view
 from lifeos_cli.db.services.validation_utils import DomainValidationError, choice_validator
 
-VALID_TAG_ENTITY_TYPES = {"note", "person", "task", "vision", "area", "event", "timelog"}
+VALID_TAG_ENTITY_TYPES = set(TAG_ENTITY_TYPES)
 TAGGED_ENTITY_MODELS = {
     "area": Area,
     "event": Event,

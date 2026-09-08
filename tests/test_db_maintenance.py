@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import sqlite3
 from contextlib import ExitStack, closing
 from pathlib import Path
@@ -7,8 +8,11 @@ from types import SimpleNamespace
 
 import pytest
 from alembic import command
+from sqlalchemy import CheckConstraint
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from lifeos_cli.db import maintenance
+from lifeos_cli.db.base import Base
 
 
 def test_build_alembic_config_uses_packaged_migration_resources() -> None:
@@ -135,3 +139,58 @@ def test_invariant_migration_rejects_existing_invalid_rows_with_actionable_error
             )
         with pytest.raises(RuntimeError, match="Repair the rows and rerun"):
             command.upgrade(config, "head")
+
+
+def test_new_check_constraints_use_canonical_naming_convention() -> None:
+    expected = {
+        "ck_events_recurrence_details_valid",
+        "ck_event_occurrence_exceptions_action_valid",
+        "ck_finance_snapshots_rate_snapshot_policy_valid",
+        "ck_menstrual_days_flow_amount_valid",
+        "ck_tag_associations_entity_type_valid",
+        "ck_tags_entity_type_valid",
+    }
+    actual = {
+        str(constraint.name)
+        for table in Base.metadata.sorted_tables
+        for constraint in table.constraints
+        if isinstance(constraint, CheckConstraint)
+    }
+
+    assert expected <= actual
+    assert not any(name.startswith("ck_events_ck_events_") for name in expected)
+
+
+def test_database_check_reports_uninitialized_schema_without_running_domain_audit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def scenario() -> maintenance.DatabaseCheckReport:
+        database_path = tmp_path / "uninitialized.db"
+        sqlalchemy_url = f"sqlite+aiosqlite:///{database_path}"
+        engine = create_async_engine(sqlalchemy_url)
+        monkeypatch.setattr(
+            maintenance,
+            "get_database_settings",
+            lambda: SimpleNamespace(
+                database_schema=None,
+                require_database_url=lambda: sqlalchemy_url,
+            ),
+        )
+        monkeypatch.setattr(maintenance, "get_async_engine", lambda: engine)
+        monkeypatch.setattr(
+            maintenance,
+            "get_async_session_factory",
+            lambda: pytest.fail("domain audit must be skipped until the schema is current"),
+        )
+        try:
+            return await maintenance.check_database()
+        finally:
+            await engine.dispose()
+
+    report = asyncio.run(scenario())
+
+    assert report.current_revision is None
+    assert report.current_revision != report.head_revision
+    assert report.association_issues == ()
+    assert not report.ok

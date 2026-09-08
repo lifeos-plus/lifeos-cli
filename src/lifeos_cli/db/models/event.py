@@ -33,25 +33,28 @@ class Event(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
         ),
         CheckConstraint(
             "status IN ('planned', 'cancelled', 'completed')",
-            name="ck_events_status_valid",
+            name="status_valid",
         ),
         CheckConstraint(
             "priority BETWEEN 0 AND 5",
-            name="ck_events_priority_valid",
+            name="priority_valid",
         ),
         CheckConstraint(
             "end_time IS NULL OR end_time >= start_time",
-            name="ck_events_time_range_valid",
+            name="time_range_valid",
         ),
         CheckConstraint(
             "recurrence_frequency IS NULL OR recurrence_frequency IN "
             "('daily', 'weekly', 'monthly', 'yearly')",
-            name="ck_events_recurrence_frequency_valid",
+            name="recurrence_frequency_valid",
         ),
         CheckConstraint(
+            "(recurrence_frequency IS NULL AND recurrence_interval IS NULL AND "
+            "recurrence_count IS NULL AND recurrence_until IS NULL AND recurrence_rule IS NULL) OR "
+            "(recurrence_frequency IS NOT NULL AND "
             "(recurrence_interval IS NULL OR recurrence_interval > 0) AND "
-            "(recurrence_count IS NULL OR recurrence_count > 0)",
-            name="ck_events_recurrence_numbers_positive",
+            "(recurrence_count IS NULL OR recurrence_count > 0))",
+            name="recurrence_details_valid",
         ),
         Index("ix_events_status_start_time", "status", "start_time"),
         Index("ix_events_event_type", "event_type"),

@@ -19,7 +19,7 @@ class HabitAction(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
     __table_args__ = (
         CheckConstraint(
             "status IN ('pending', 'done', 'skip', 'miss')",
-            name="ck_habit_actions_status_valid",
+            name="status_valid",
         ),
         Index("ix_habit_actions_habit_id", "habit_id"),
         Index("ix_habit_actions_action_date", "action_date"),

@@ -16,10 +16,10 @@ class SleepSegment(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base)
 
     __tablename__ = "sleep_segments"
     __table_args__ = (
-        CheckConstraint("end_at > start_at", name="ck_sleep_segments_time_range_valid"),
+        CheckConstraint("end_at > start_at", name="time_range_valid"),
         CheckConstraint(
             "duration_minutes BETWEEN 1 AND 2880",
-            name="ck_sleep_segments_duration_valid",
+            name="duration_valid",
         ),
         Index("ix_sleep_segments_sleep_date", "sleep_date"),
         Index("ix_sleep_segments_start_at", "start_at"),
