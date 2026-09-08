@@ -164,6 +164,17 @@ def _schema_name() -> str | None:
     return op.get_context().version_table_schema
 
 
+def _normalize_legacy_json_nulls(schema_name: str | None) -> None:
+    """Convert JSON literal nulls that predate the recurrence invariant to SQL NULL."""
+    connection = op.get_bind()
+    events = f'"{schema_name}"."events"' if schema_name else '"events"'
+    if connection.dialect.name == "postgresql":
+        null_predicate = "CAST(recurrence_rule AS TEXT) = 'null'"
+    else:
+        null_predicate = "recurrence_rule = 'null'"
+    op.execute(sa.text(f"UPDATE {events} SET recurrence_rule = NULL WHERE {null_predicate}"))
+
+
 def _assert_existing_rows_valid(schema_name: str | None) -> None:
     if op.get_context().as_sql:
         return
@@ -195,6 +206,7 @@ def _assert_existing_rows_valid(schema_name: str | None) -> None:
 
 def upgrade() -> None:
     schema_name = _schema_name()
+    _normalize_legacy_json_nulls(schema_name)
     _assert_existing_rows_valid(schema_name)
     for table_name, index_name in REDUNDANT_INDEXES:
         op.drop_index(index_name, table_name=table_name, schema=schema_name)

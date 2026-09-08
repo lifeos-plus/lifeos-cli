@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from lifeos_cli.db import maintenance
 from lifeos_cli.db.base import Base
+from lifeos_cli.db.models.event import Event
 
 
 def test_build_alembic_config_uses_packaged_migration_resources() -> None:
@@ -139,6 +140,50 @@ def test_invariant_migration_rejects_existing_invalid_rows_with_actionable_error
             )
         with pytest.raises(RuntimeError, match="Repair the rows and rerun"):
             command.upgrade(config, "head")
+
+
+def test_invariant_migration_normalizes_legacy_event_json_null(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "legacy-event-json-null.db"
+    sqlalchemy_url = f"sqlite+aiosqlite:///{database_path}"
+    with ExitStack() as stack:
+        config = maintenance.build_alembic_config(sqlalchemy_url=sqlalchemy_url, stack=stack)
+        command.upgrade(config, "20260906_1200")
+        with closing(sqlite3.connect(database_path)) as connection, connection:
+            connection.execute(
+                "INSERT INTO events "
+                "(id, title, start_time, priority, status, is_all_day, event_type, "
+                "recurrence_rule, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    "11111111111111111111111111111111",
+                    "legacy ordinary event",
+                    "2026-09-07 09:00:00",
+                    0,
+                    "planned",
+                    False,
+                    "appointment",
+                    "null",
+                    "2026-09-07 00:00:00",
+                    "2026-09-07 00:00:00",
+                ),
+            )
+
+        command.upgrade(config, "head")
+
+        with closing(sqlite3.connect(database_path)) as connection:
+            recurrence_rule = connection.execute(
+                "SELECT recurrence_rule FROM events WHERE title = ?",
+                ("legacy ordinary event",),
+            ).fetchone()
+        assert recurrence_rule == (None,)
+
+
+def test_optional_event_json_uses_sql_null_for_python_none() -> None:
+    recurrence_rule_type = Event.__table__.c.recurrence_rule.type
+
+    assert recurrence_rule_type.none_as_null is True
 
 
 def test_new_check_constraints_use_canonical_naming_convention() -> None:
