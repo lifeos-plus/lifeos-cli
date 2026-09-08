@@ -153,19 +153,6 @@ def open_bundle_atomic(output_path: Path) -> Iterator[BundleArchiveWriter]:
         raise
 
 
-def write_bundle_atomic(
-    output_path: Path,
-    *,
-    entries: dict[str, bytes],
-    manifest: dict[str, Any],
-) -> None:
-    """Write a complete owner-only archive and atomically replace the target."""
-    with open_bundle_atomic(output_path) as writer:
-        for entry_name, content in entries.items():
-            writer.write_entry(entry_name, content)
-        writer.write_manifest(manifest)
-
-
 @contextmanager
 def open_bundle_archive(path: Path) -> Iterator[BundleArchiveReader]:
     """Validate archive structure and yield streaming entry access."""

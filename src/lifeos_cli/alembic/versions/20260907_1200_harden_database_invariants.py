@@ -47,15 +47,9 @@ CONSTRAINTS: dict[str, tuple[tuple[str, str], ...]] = {
             "(recurrence_count IS NULL OR recurrence_count > 0))",
         ),
     ),
-    "event_occurrence_exceptions": (
-        ("action_valid", "action IN ('skip')"),
-    ),
-    "finance_assets": (
-        ("decimal_places_valid", "decimal_places BETWEEN 0 AND 8"),
-    ),
-    "finance_rate_snapshot_entries": (
-        ("rate_positive", "rate > 0"),
-    ),
+    "event_occurrence_exceptions": (("action_valid", "action IN ('skip')"),),
+    "finance_assets": (("decimal_places_valid", "decimal_places BETWEEN 0 AND 8"),),
+    "finance_rate_snapshot_entries": (("rate_positive", "rate > 0"),),
     "finance_snapshots": (
         ("rate_snapshot_policy_valid", "rate_snapshot_policy IN ('none', 'selected')"),
     ),
@@ -65,9 +59,7 @@ CONSTRAINTS: dict[str, tuple[tuple[str, str], ...]] = {
             "depth >= 0 AND children_count >= 0",
         ),
     ),
-    "habit_actions": (
-        ("status_valid", "status IN ('pending', 'done', 'skip', 'miss')"),
-    ),
+    "habit_actions": (("status_valid", "status IN ('pending', 'done', 'skip', 'miss')"),),
     "habits": (
         ("duration_days_valid", "duration_days BETWEEN 1 AND 10000"),
         ("target_per_cycle_positive", "target_per_cycle > 0"),

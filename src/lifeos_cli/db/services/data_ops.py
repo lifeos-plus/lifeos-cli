@@ -425,9 +425,7 @@ def _parse_event_occurrence_exceptions(value: Any) -> list[dict[str, Any]]:
         exception_id = UUID(item["id"])
         instance_start = _normalize_json_datetime(item["instance_start"])
         deleted_at = (
-            None
-            if item["deleted_at"] is None
-            else _normalize_json_datetime(item["deleted_at"])
+            None if item["deleted_at"] is None else _normalize_json_datetime(item["deleted_at"])
         )
         if exception_id in seen_ids:
             raise DataOperationError("Event occurrence exception ids must be unique per event.")

@@ -11,6 +11,7 @@ from lifeos_cli.db.models.tag import TAG_ENTITY_TYPES
 def _sql_quoted_list(values: frozenset[str]) -> str:
     return ", ".join(f"'{value}'" for value in sorted(values))
 
+
 tag_associations = Table(
     "tag_associations",
     Base.metadata,
