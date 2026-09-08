@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from contextlib import aclosing
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -1688,19 +1689,20 @@ async def export_bundle(
             row_count = 0
             entry_size = 0
             with writer.open_entry(entry_name) as entry:
-                async for row in iter_export_table_rows(session, table):
-                    encoded_row = encode_jsonl_row(row)
-                    entry_size += len(encoded_row)
-                    expanded_size += len(encoded_row)
-                    if entry_size > MAX_BUNDLE_ENTRY_BYTES:
-                        raise DataOperationError(
-                            f"Bundle entry {entry_name} exceeds the supported expanded size."
-                        )
-                    if expanded_size > MAX_BUNDLE_TOTAL_BYTES:
-                        raise DataOperationError("Bundle exceeds the supported expanded size.")
-                    entry.write(encoded_row)
-                    digest.update(encoded_row)
-                    row_count += 1
+                async with aclosing(iter_export_table_rows(session, table)) as rows:
+                    async for row in rows:
+                        encoded_row = encode_jsonl_row(row)
+                        entry_size += len(encoded_row)
+                        expanded_size += len(encoded_row)
+                        if entry_size > MAX_BUNDLE_ENTRY_BYTES:
+                            raise DataOperationError(
+                                f"Bundle entry {entry_name} exceeds the supported expanded size."
+                            )
+                        if expanded_size > MAX_BUNDLE_TOTAL_BYTES:
+                            raise DataOperationError("Bundle exceeds the supported expanded size.")
+                        entry.write(encoded_row)
+                        digest.update(encoded_row)
+                        row_count += 1
             table_counts[table.name] = row_count
             entry_metadata[entry_name] = {
                 "sha256": digest.hexdigest(),

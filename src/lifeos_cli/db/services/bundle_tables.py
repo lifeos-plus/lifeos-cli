@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Iterable, Mapping
+from collections.abc import AsyncGenerator, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -482,7 +482,7 @@ def _serialize_value(value: Any) -> Any:
 async def iter_export_table_rows(
     session: AsyncSession,
     table: Table,
-) -> AsyncIterator[dict[str, Any]]:
+) -> AsyncGenerator[dict[str, Any], None]:
     """Stream every row, including soft-deleted rows, deterministically."""
     primary_key = list(table.primary_key.columns)
     columns = [table.c[name] for name in source_table_column_names(table.name)]

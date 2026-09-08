@@ -445,7 +445,7 @@ def test_atomic_bundle_writer_requires_manifest(tmp_path: Path) -> None:
     assert not bundle_path.exists()
 
 
-def test_bundle_export_rejects_output_that_its_reader_cannot_accept(
+def test_bundle_export_includes_manifest_in_reader_size_limit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -459,6 +459,33 @@ def test_bundle_export_rejects_output_that_its_reader_cannot_accept(
         assert not bundle_path.exists()
 
     asyncio.run(scenario())
+
+
+def test_bundle_export_closes_row_stream_when_size_limit_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stream_closed = False
+
+    async def oversized_rows(_session: object, _table: object):
+        nonlocal stream_closed
+        try:
+            yield {"oversized": "row"}
+        finally:
+            stream_closed = True
+
+    async def scenario() -> None:
+        bundle_path = tmp_path / "oversized-row.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                monkeypatch.setattr(data_ops, "MAX_BUNDLE_TOTAL_BYTES", 1)
+                monkeypatch.setattr(data_ops, "iter_export_table_rows", oversized_rows)
+                with pytest.raises(data_ops.DataOperationError, match="supported expanded size"):
+                    await data_ops.export_bundle(session, output_path=bundle_path)
+        assert not bundle_path.exists()
+
+    asyncio.run(scenario())
+    assert stream_closed
 
 
 def test_postgres_bundle_export_starts_repeatable_read_snapshot() -> None:
