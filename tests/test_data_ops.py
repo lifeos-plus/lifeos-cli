@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import stat
 from contextlib import asynccontextmanager
@@ -739,6 +740,36 @@ def test_bundle_v4_contract_matches_current_authoritative_schema() -> None:
     assert {spec.name: spec.columns for spec in BUNDLE_V4_TABLE_SPECS} == {
         table.name: tuple(column.name for column in table.columns) for table in actual_tables
     }
+    schema_shape = []
+    for spec in BUNDLE_V4_TABLE_SPECS:
+        table = Base.metadata.tables[spec.name]
+        columns = []
+        for column_name in spec.columns:
+            column = table.c[column_name]
+            column_type = column.type
+            columns.append(
+                {
+                    "name": column_name,
+                    "type": f"{type(column_type).__module__}.{type(column_type).__qualname__}",
+                    "length": getattr(column_type, "length", None),
+                    "precision": getattr(column_type, "precision", None),
+                    "scale": getattr(column_type, "scale", None),
+                    "timezone": getattr(column_type, "timezone", None),
+                    "none_as_null": getattr(column_type, "none_as_null", None),
+                    "nullable": column.nullable,
+                    "primary_key": column.primary_key,
+                    "foreign_keys": sorted(
+                        f"{foreign_key.column.table.name}.{foreign_key.column.name}"
+                        for foreign_key in column.foreign_keys
+                    ),
+                }
+            )
+        schema_shape.append({"table": spec.name, "columns": columns})
+    fingerprint = hashlib.sha256(
+        json.dumps(schema_shape, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+    assert fingerprint == "d6edbf508005a514d13b48f3d99e33678058c46cf5e9495f8a1660b2ee923b0b"
 
 
 def test_timelog_import_hook_removes_stale_derived_rows_without_source_timelogs() -> None:
