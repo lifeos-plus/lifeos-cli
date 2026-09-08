@@ -1686,36 +1686,42 @@ async def export_bundle(
     table_counts: dict[str, int] = {}
     entry_metadata: dict[str, dict[str, str | int]] = {}
     expanded_size = 0
-    with open_bundle_atomic(output_path) as writer:
-        for table in source_tables():
-            entry_name = f"tables/{table.name}.jsonl"
-            digest = hashlib.sha256()
-            row_count = 0
-            entry_size = 0
-            with writer.open_entry(entry_name) as entry:
-                async with aclosing(iter_export_table_rows(session, table)) as rows:
-                    async for row in rows:
-                        encoded_row = encode_jsonl_row(row)
-                        entry_size += len(encoded_row)
-                        expanded_size += len(encoded_row)
-                        if entry_size > MAX_BUNDLE_ENTRY_BYTES:
-                            raise DataOperationError(
-                                f"Bundle entry {entry_name} exceeds the supported expanded size."
-                            )
-                        if expanded_size > MAX_BUNDLE_TOTAL_BYTES:
-                            raise DataOperationError("Bundle exceeds the supported expanded size.")
-                        entry.write(encoded_row)
-                        digest.update(encoded_row)
-                        row_count += 1
-            table_counts[table.name] = row_count
-            entry_metadata[entry_name] = {
-                "sha256": digest.hexdigest(),
-                "row_count": row_count,
-            }
+    try:
+        with open_bundle_atomic(output_path) as writer:
+            for table in source_tables():
+                entry_name = f"tables/{table.name}.jsonl"
+                digest = hashlib.sha256()
+                row_count = 0
+                entry_size = 0
+                with writer.open_entry(entry_name) as entry:
+                    async with aclosing(iter_export_table_rows(session, table)) as rows:
+                        async for row in rows:
+                            encoded_row = encode_jsonl_row(row)
+                            entry_size += len(encoded_row)
+                            expanded_size += len(encoded_row)
+                            if entry_size > MAX_BUNDLE_ENTRY_BYTES:
+                                raise DataOperationError(
+                                    f"Bundle entry {entry_name} exceeds the supported "
+                                    "expanded size."
+                                )
+                            if expanded_size > MAX_BUNDLE_TOTAL_BYTES:
+                                raise DataOperationError(
+                                    "Bundle exceeds the supported expanded size."
+                                )
+                            entry.write(encoded_row)
+                            digest.update(encoded_row)
+                            row_count += 1
+                table_counts[table.name] = row_count
+                entry_metadata[entry_name] = {
+                    "sha256": digest.hexdigest(),
+                    "row_count": row_count,
+                }
 
-        manifest_size = writer.write_manifest(_bundle_manifest(table_counts, entry_metadata))
-        if expanded_size + manifest_size > MAX_BUNDLE_TOTAL_BYTES:
-            raise DataOperationError("Bundle exceeds the supported expanded size.")
+            manifest_size = writer.write_manifest(_bundle_manifest(table_counts, entry_metadata))
+            if expanded_size + manifest_size > MAX_BUNDLE_TOTAL_BYTES:
+                raise DataOperationError("Bundle exceeds the supported expanded size.")
+    except (BundleCodecError, BundleTableError) as exc:
+        raise DataOperationError(f"Unable to export a valid bundle: {exc}") from exc
     return BundleExportReport(table_counts=table_counts, output_path=output_path)
 
 
@@ -1726,6 +1732,13 @@ def read_bundle(path: Path) -> BundlePayload:
             return _read_open_bundle(decoded)
     except BundleCodecError as exc:
         raise DataOperationError(str(exc)) from exc
+
+
+def _get_bundle_schema_version(manifest: dict[str, Any]) -> int:
+    schema_version = manifest.get("schema_version")
+    if type(schema_version) is not int:
+        raise DataOperationError("Bundle manifest schema_version must be an integer.")
+    return schema_version
 
 
 def _prepare_v4_table_entry(
@@ -1779,7 +1792,7 @@ def _read_open_bundle(
     resources: dict[str, list[dict[str, Any]]] = {}
     manifest = decoded.manifest
     archive_entries = set(decoded.entry_names)
-    schema_version = manifest.get("schema_version")
+    schema_version = _get_bundle_schema_version(manifest)
     if schema_version == LEGACY_BUNDLE_SCHEMA_VERSION:
         for resource in BUNDLE_RESOURCE_ORDER:
             entry_name = f"{resource}.jsonl"
@@ -1885,7 +1898,7 @@ async def import_bundle(
     replace_existing: bool = False,
 ) -> BundleImportReport:
     """Import a full bundle atomically."""
-    schema_version = bundle.manifest.get("schema_version")
+    schema_version = _get_bundle_schema_version(bundle.manifest)
     if schema_version == LEGACY_BUNDLE_SCHEMA_VERSION and replace_existing:
         raise DataOperationError(
             "Legacy schema-v3 bundles are partial exports and cannot safely replace a database; "

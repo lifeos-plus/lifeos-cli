@@ -77,7 +77,15 @@ class BundleArchiveWriter:
         """Write the archive manifest exactly once and return its expanded size."""
         if self._manifest_written:
             raise BundleCodecError("Bundle manifest has already been written.")
-        manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
+        try:
+            manifest_bytes = json.dumps(
+                manifest,
+                ensure_ascii=False,
+                indent=2,
+                allow_nan=False,
+            ).encode("utf-8")
+        except (TypeError, ValueError) as exc:
+            raise BundleCodecError(f"Bundle manifest is not valid JSON: {exc}.") from exc
         self._archive.writestr("manifest.json", manifest_bytes)
         self._manifest_written = True
         return len(manifest_bytes)
@@ -85,7 +93,10 @@ class BundleArchiveWriter:
 
 def encode_jsonl_row(row: dict[str, Any]) -> bytes:
     """Encode one canonical JSONL row for incremental hashing and writes."""
-    return (json.dumps(row, ensure_ascii=False) + "\n").encode("utf-8")
+    try:
+        return (json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n").encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise BundleCodecError(f"Bundle row is not valid JSON: {exc}.") from exc
 
 
 def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -97,12 +108,17 @@ def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return value
 
 
+def _reject_nonfinite_json_number(value: str) -> Any:
+    raise BundleCodecError(f"JSON contains non-finite number {value!r}.")
+
+
 def decode_jsonl_row(content: bytes, *, entry_name: str, line_number: int) -> dict[str, Any]:
     """Decode one JSONL row and require an object value."""
     try:
         value = json.loads(
             content.decode("utf-8"),
             object_pairs_hook=_reject_duplicate_json_keys,
+            parse_constant=_reject_nonfinite_json_number,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise BundleCodecError(
@@ -202,6 +218,7 @@ def open_bundle_archive(path: Path) -> Iterator[BundleArchiveReader]:
                 manifest = json.loads(
                     archive.read("manifest.json").decode("utf-8"),
                     object_pairs_hook=_reject_duplicate_json_keys,
+                    parse_constant=_reject_nonfinite_json_number,
                 )
             except (UnicodeDecodeError, json.JSONDecodeError) as exc:
                 raise BundleCodecError(f"Invalid bundle manifest: {exc}.") from exc

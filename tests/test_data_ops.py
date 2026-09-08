@@ -35,7 +35,12 @@ from lifeos_cli.db.models.timelog_template import TimelogTemplate
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import data_ops
 from lifeos_cli.db.services.bundle_codec import BundleCodecError, open_bundle_atomic
-from lifeos_cli.db.services.bundle_tables import BUNDLE_V4_TABLE_SPECS, DERIVED_TABLE_NAMES
+from lifeos_cli.db.services.bundle_tables import (
+    BUNDLE_V4_TABLE_SPECS,
+    DERIVED_TABLE_NAMES,
+    BundleTableError,
+    validate_domain_row,
+)
 from lifeos_cli.db.types import UTCDateTime
 from tests.support import sqlite_session_factory
 
@@ -527,6 +532,28 @@ def test_read_bundle_rejects_legacy_schema_version(tmp_path: Path) -> None:
         data_ops.read_bundle(bundle_path)
 
 
+@pytest.mark.parametrize("schema_version", [4.0, True, "4", None])
+def test_read_bundle_requires_integer_schema_version(
+    tmp_path: Path,
+    schema_version: object,
+) -> None:
+    bundle_path = tmp_path / "invalid-version.zip"
+    with ZipFile(bundle_path, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", json.dumps({"schema_version": schema_version}))
+
+    with pytest.raises(data_ops.DataOperationError, match="schema_version must be an integer"):
+        data_ops.read_bundle(bundle_path)
+
+
+def test_read_bundle_rejects_nonfinite_json_numbers(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "nonfinite-json.zip"
+    with ZipFile(bundle_path, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", '{"schema_version": NaN}')
+
+    with pytest.raises(data_ops.DataOperationError, match="non-finite number"):
+        data_ops.read_bundle(bundle_path)
+
+
 def test_read_bundle_maps_legacy_person_entry_name(tmp_path: Path) -> None:
     bundle_path = tmp_path / "legacy-person-bundle.zip"
     with ZipFile(bundle_path, "w", compression=ZIP_DEFLATED) as archive:
@@ -601,19 +628,71 @@ def test_bundle_rejects_boolean_manifest_table_count(tmp_path: Path) -> None:
     asyncio.run(scenario())
 
 
-def test_bundle_rejects_postgresql_unsupported_null_characters(tmp_path: Path) -> None:
+def test_bundle_export_rejects_postgresql_unsupported_null_characters(tmp_path: Path) -> None:
     async def scenario() -> None:
         bundle_path = tmp_path / "null-character.zip"
         async with sqlite_session_factory() as session_factory:
             async with session_factory() as session:
                 session.add(Note(content="invalid\x00content"))
                 await session.flush()
-                await data_ops.export_bundle(session, output_path=bundle_path)
-
-        with pytest.raises(data_ops.DataOperationError, match="unsupported by PostgreSQL"):
-            data_ops.read_bundle(bundle_path)
+                with pytest.raises(data_ops.DataOperationError, match="unsupported by PostgreSQL"):
+                    await data_ops.export_bundle(session, output_path=bundle_path)
+        assert not bundle_path.exists()
 
     asyncio.run(scenario())
+
+
+def test_bundle_export_rejects_nonportable_integer_and_json_values(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        for name, tree in (
+            ("integer", FinanceTree(name="Integer", display_order=2**31)),
+            ("json", FinanceTree(name="JSON", metadata_json={"nested": "invalid\x00value"})),
+        ):
+            bundle_path = tmp_path / f"{name}.zip"
+            async with sqlite_session_factory() as session_factory:
+                async with session_factory() as session:
+                    session.add(tree)
+                    await session.flush()
+                    with pytest.raises(data_ops.DataOperationError):
+                        await data_ops.export_bundle(session, output_path=bundle_path)
+            assert not bundle_path.exists()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("table_name", "row", "message"),
+    [
+        (
+            "associations",
+            {
+                "source_model": "event",
+                "target_model": "tag",
+                "link_type": "is_about",
+            },
+            "target_model",
+        ),
+        (
+            "associations",
+            {
+                "source_model": "event",
+                "target_model": "person",
+                "link_type": "invalid",
+            },
+            "link_type",
+        ),
+        ("tag_associations", {"entity_type": "habit_action"}, "entity_type"),
+        ("tasks", {"actual_effort_self": -1}, "actual_effort_self"),
+        ("finance_tree_nodes", {"children_count": -1}, "children_count"),
+    ],
+)
+def test_bundle_domain_validation_covers_database_invariants_before_restore(
+    table_name: str,
+    row: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(BundleTableError, match=message):
+        validate_domain_row(table_name, row, row_number=1)
 
 
 def test_legacy_bundle_cannot_replace_the_database() -> None:

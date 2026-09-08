@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import AsyncGenerator, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -30,6 +31,11 @@ from lifeos_cli.application.datetime_utils import (
     parse_iso_datetime_input,
 )
 from lifeos_cli.db.base import Base
+from lifeos_cli.db.models.association import (
+    ASSOCIATION_SOURCE_MODELS,
+    ASSOCIATION_TARGET_MODELS,
+    VALID_ASSOCIATION_LINK_TYPES,
+)
 from lifeos_cli.db.models.event_occurrence_exception import EVENT_OCCURRENCE_ACTIONS
 from lifeos_cli.db.models.finance import FINANCE_RATE_SNAPSHOT_POLICIES
 from lifeos_cli.db.models.menstrual import MENSTRUAL_FLOW_AMOUNTS
@@ -490,11 +496,40 @@ async def iter_export_table_rows(
     if primary_key:
         statement = statement.order_by(*primary_key)
     result = await session.stream(statement)
+    row_number = 0
     try:
         async for mapping in result.mappings():
-            yield {column.name: _serialize_value(mapping[column.name]) for column in columns}
+            row_number += 1
+            serialized = {column.name: _serialize_value(mapping[column.name]) for column in columns}
+            _prepare_table_row(table, serialized, row_number=row_number)
+            yield serialized
     finally:
         await result.close()
+
+
+def _validate_json_value(value: Any) -> None:
+    if value is None or type(value) in {bool, int}:
+        return
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("contains a non-finite JSON number")
+        return
+    if isinstance(value, str):
+        if "\x00" in value:
+            raise ValueError("contains a null character unsupported by PostgreSQL JSON")
+        return
+    if isinstance(value, list):
+        for item in value:
+            _validate_json_value(item)
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise ValueError("contains a non-string JSON object key")
+            _validate_json_value(key)
+            _validate_json_value(item)
+        return
+    raise ValueError(f"contains unsupported JSON value {type(value).__name__}")
 
 
 def _parse_value(table: Table, column: Any, value: Any, *, row_number: int) -> Any:
@@ -514,6 +549,8 @@ def _parse_value(table: Table, column: Any, value: Any, *, row_number: int) -> A
         if isinstance(column_type, Integer):
             if type(value) is not int:
                 raise ValueError("must be an integer")
+            if not -(2**31) <= value < 2**31:
+                raise ValueError("is outside the PostgreSQL INTEGER range")
             return value
         if isinstance(column_type, Numeric):
             if isinstance(value, bool):
@@ -521,6 +558,14 @@ def _parse_value(table: Table, column: Any, value: Any, *, row_number: int) -> A
             parsed = Decimal(str(value))
             if not parsed.is_finite():
                 raise ValueError("must be finite")
+            precision = column_type.precision
+            scale = column_type.scale
+            if precision is not None and scale is not None:
+                quantum = Decimal(1).scaleb(-scale)
+                if parsed != parsed.quantize(quantum):
+                    raise ValueError(f"exceeds the numeric scale of {scale}")
+                if abs(parsed) >= Decimal(10) ** (precision - scale):
+                    raise ValueError(f"exceeds the numeric precision of {precision}")
             return parsed
         if isinstance(column_type, DateTime) or python_type is datetime:
             if not isinstance(value, str):
@@ -543,6 +588,7 @@ def _parse_value(table: Table, column: Any, value: Any, *, row_number: int) -> A
                 raise ValueError(f"exceeds the maximum length of {column_type.length}")
             return value
         if isinstance(column_type, JSON):
+            _validate_json_value(value)
             return value
     except (InvalidOperation, ValueError, TypeError) as exc:
         raise BundleTableError(f"{label} {exc}.") from exc
@@ -554,28 +600,10 @@ def prepare_table_entry_rows(
     raw_rows: Iterable[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Parse and validate one versioned table entry without retaining raw rows."""
-    expected_column_names = source_table_column_names(table.name)
-    expected_columns = set(expected_column_names)
     parsed_rows: list[dict[str, Any]] = []
     seen_primary_keys: set[tuple[Any, ...]] = set()
     for row_number, raw_row in enumerate(raw_rows, start=1):
-        actual_columns = set(raw_row)
-        if actual_columns != expected_columns:
-            missing_columns = sorted(expected_columns - actual_columns)
-            unknown_columns = sorted(actual_columns - expected_columns)
-            details = []
-            if missing_columns:
-                details.append("missing " + ", ".join(missing_columns))
-            if unknown_columns:
-                details.append("unknown " + ", ".join(unknown_columns))
-            raise BundleTableError(
-                f"{table.name} row {row_number} has an invalid shape ({'; '.join(details)})."
-            )
-        parsed = {
-            column.name: _parse_value(table, column, raw_row[column.name], row_number=row_number)
-            for column in (table.c[name] for name in expected_column_names)
-        }
-        validate_domain_row(table.name, parsed, row_number=row_number)
+        parsed = _prepare_table_row(table, raw_row, row_number=row_number)
         key = tuple(parsed[column.name] for column in table.primary_key.columns)
         if not key or any(value is None for value in key):
             raise BundleTableError(f"{table.name} row {row_number} has a null primary key.")
@@ -584,6 +612,34 @@ def prepare_table_entry_rows(
         seen_primary_keys.add(key)
         parsed_rows.append(parsed)
     return _sort_self_references(table, parsed_rows)
+
+
+def _prepare_table_row(
+    table: Table,
+    raw_row: Mapping[str, Any],
+    *,
+    row_number: int,
+) -> dict[str, Any]:
+    expected_column_names = source_table_column_names(table.name)
+    expected_columns = set(expected_column_names)
+    actual_columns = set(raw_row)
+    if actual_columns != expected_columns:
+        missing_columns = sorted(expected_columns - actual_columns)
+        unknown_columns = sorted(actual_columns - expected_columns)
+        details = []
+        if missing_columns:
+            details.append("missing " + ", ".join(missing_columns))
+        if unknown_columns:
+            details.append("unknown " + ", ".join(unknown_columns))
+        raise BundleTableError(
+            f"{table.name} row {row_number} has an invalid shape ({'; '.join(details)})."
+        )
+    parsed = {
+        column.name: _parse_value(table, column, raw_row[column.name], row_number=row_number)
+        for column in (table.c[name] for name in expected_column_names)
+    }
+    validate_domain_row(table.name, parsed, row_number=row_number)
+    return parsed
 
 
 def validate_prepared_tables(prepared: Mapping[str, list[dict[str, Any]]]) -> None:
@@ -661,6 +717,10 @@ def validate_domain_row(
                     fail("target_per_cycle exceeds the monthly cadence capacity.")
         elif table_name == "habit_actions":
             require_choice("status", VALID_HABIT_ACTION_STATUSES)
+        elif table_name == "associations":
+            require_choice("source_model", set(ASSOCIATION_SOURCE_MODELS))
+            require_choice("target_model", set(ASSOCIATION_TARGET_MODELS))
+            require_choice("link_type", set(VALID_ASSOCIATION_LINK_TYPES))
         elif table_name == "tasks":
             require_choice("status", VALID_TASK_STATUSES)
             require_choice("planning_cycle_type", set(VALID_PLANNING_CYCLE_TYPES))
@@ -676,6 +736,10 @@ def validate_domain_row(
                 fail("planning cycle fields must be all null or all populated.")
             if planning[1] is not None and planning[1] <= 0:
                 fail("planning_cycle_days must be greater than zero.")
+            for field in ("actual_effort_self", "actual_effort_total", "estimated_effort"):
+                value = row.get(field)
+                if value is not None and value < 0:
+                    fail(f"{field} must be zero or greater.")
         elif table_name == "visions":
             require_choice("status", VALID_VISION_STATUSES)
             for field in ("stage", "experience_points"):
@@ -759,6 +823,11 @@ def validate_domain_row(
                 fail("rate must be greater than zero.")
         elif table_name == "finance_snapshots":
             require_choice("rate_snapshot_policy", set(FINANCE_RATE_SNAPSHOT_POLICIES))
+        elif table_name == "finance_tree_nodes":
+            for field in ("depth", "children_count"):
+                value = row.get(field)
+                if value is not None and value < 0:
+                    fail(f"{field} must be zero or greater.")
         elif table_name == "menstrual_days":
             require_choice("flow_amount", set(MENSTRUAL_FLOW_AMOUNTS))
             if row.get("flow_amount") is not None and row.get("in_period") is not True:
@@ -767,6 +836,8 @@ def validate_domain_row(
         elif table_name == "people":
             require_string_list("nicknames")
         elif table_name == "tags":
+            require_choice("entity_type", set(TAG_ENTITY_TYPES))
+        elif table_name == "tag_associations":
             require_choice("entity_type", set(TAG_ENTITY_TYPES))
         elif table_name == "body_measurements":
             weight = row.get("weight_kg")
