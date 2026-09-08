@@ -33,6 +33,17 @@ database_schema = normalize_database_schema(
 target_metadata = Base.metadata
 
 
+def _include_application_object(
+    _object: object,
+    name: str | None,
+    type_: str,
+    _reflected: bool,
+    _compare_to: object | None,
+) -> bool:
+    """Exclude Alembic's own revision table from application schema comparison."""
+    return type_ != "table" or name != "alembic_version"
+
+
 def _configure_migration_context(connection: Connection) -> None:
     if database_schema is not None:
         context.configure(
@@ -40,6 +51,7 @@ def _configure_migration_context(connection: Connection) -> None:
             target_metadata=target_metadata,
             compare_type=True,
             compare_server_default=True,
+            include_object=_include_application_object,
             version_table_schema=database_schema,
         )
         return
@@ -48,6 +60,7 @@ def _configure_migration_context(connection: Connection) -> None:
         target_metadata=target_metadata,
         compare_type=True,
         compare_server_default=True,
+        include_object=_include_application_object,
     )
 
 
@@ -61,6 +74,7 @@ def run_migrations_offline() -> None:
             dialect_opts={"paramstyle": "named"},
             compare_type=True,
             compare_server_default=True,
+            include_object=_include_application_object,
             version_table_schema=database_schema,
         )
     else:
@@ -71,6 +85,7 @@ def run_migrations_offline() -> None:
             dialect_opts={"paramstyle": "named"},
             compare_type=True,
             compare_server_default=True,
+            include_object=_include_application_object,
         )
 
     with context.begin_transaction():
