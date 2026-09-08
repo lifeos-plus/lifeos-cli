@@ -78,6 +78,7 @@ from lifeos_cli.db.services.bundle_codec import (
     open_bundle_atomic,
 )
 from lifeos_cli.db.services.bundle_tables import (
+    DERIVED_TABLE_NAMES,
     BundleTableError,
     iter_export_table_rows,
     prepare_table_entry_rows,
@@ -1640,7 +1641,6 @@ async def run_post_import_hooks(session: AsyncSession, *, resources: set[str]) -
 
 
 def _bundle_manifest(
-    table_counts: dict[str, int],
     entry_metadata: dict[str, dict[str, str | int]],
 ) -> dict[str, Any]:
     return {
@@ -1649,12 +1649,8 @@ def _bundle_manifest(
         "app_version": get_installed_package_version(),
         "database_schema": get_database_settings().database_schema,
         "timezone": get_preferences_settings().timezone,
-        "source_tables": list(table_counts.keys()),
-        "table_counts": table_counts,
-        "derived_tables": [
-            "aggregated_timelog_stats_groupby_area",
-            "daily_timelog_stats_groupby_area",
-        ],
+        "source_tables": list(source_table_names()),
+        "derived_tables": sorted(DERIVED_TABLE_NAMES),
         "entries": entry_metadata,
     }
 
@@ -1717,7 +1713,7 @@ async def export_bundle(
                     "row_count": row_count,
                 }
 
-            manifest_size = writer.write_manifest(_bundle_manifest(table_counts, entry_metadata))
+            manifest_size = writer.write_manifest(_bundle_manifest(entry_metadata))
             if expanded_size + manifest_size > MAX_BUNDLE_TOTAL_BYTES:
                 raise DataOperationError("Bundle exceeds the supported expanded size.")
     except (BundleCodecError, BundleTableError) as exc:
@@ -1841,10 +1837,6 @@ def _read_open_bundle(
         )
     if manifest.get("source_tables") != list(source_table_names()):
         raise DataOperationError("Bundle manifest has an invalid source_tables list.")
-    table_counts = manifest.get("table_counts")
-    if not isinstance(table_counts, dict):
-        raise DataOperationError("Bundle manifest table_counts are required.")
-
     tables: dict[str, list[dict[str, Any]]] = {}
     for table in source_tables():
         entry_name = f"tables/{table.name}.jsonl"
@@ -1853,12 +1845,6 @@ def _read_open_bundle(
             table=table,
             metadata=manifest_entries[entry_name],
         )
-    expected_table_counts = {table_name: len(rows) for table_name, rows in tables.items()}
-    if set(table_counts) != set(expected_table_counts) or any(
-        type(table_counts[table_name]) is not int or table_counts[table_name] != expected_count
-        for table_name, expected_count in expected_table_counts.items()
-    ):
-        raise DataOperationError("Bundle manifest table_counts do not match archive entries.")
     try:
         validate_prepared_tables(tables)
     except BundleTableError as exc:

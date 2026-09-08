@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import AsyncGenerator, Iterable, Mapping
+from collections.abc import AsyncGenerator, Collection, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -32,6 +32,7 @@ from lifeos_cli.application.datetime_utils import (
 )
 from lifeos_cli.db.base import Base
 from lifeos_cli.db.models.association import (
+    ASSOCIATION_MODEL_MAP,
     ASSOCIATION_SOURCE_MODELS,
     ASSOCIATION_TARGET_MODELS,
     VALID_ASSOCIATION_LINK_TYPES,
@@ -658,7 +659,7 @@ def validate_domain_row(
     def fail(message: str) -> None:
         raise BundleTableError(f"{table_name} row {row_number}: {message}")
 
-    def require_choice(field: str, choices: set[str]) -> None:
+    def require_choice(field: str, choices: Collection[str]) -> None:
         value = row.get(field)
         if value is not None and value not in choices:
             fail(f"{field} must be one of {', '.join(sorted(choices))}; got {value!r}.")
@@ -718,12 +719,12 @@ def validate_domain_row(
         elif table_name == "habit_actions":
             require_choice("status", VALID_HABIT_ACTION_STATUSES)
         elif table_name == "associations":
-            require_choice("source_model", set(ASSOCIATION_SOURCE_MODELS))
-            require_choice("target_model", set(ASSOCIATION_TARGET_MODELS))
-            require_choice("link_type", set(VALID_ASSOCIATION_LINK_TYPES))
+            require_choice("source_model", ASSOCIATION_SOURCE_MODELS)
+            require_choice("target_model", ASSOCIATION_TARGET_MODELS)
+            require_choice("link_type", VALID_ASSOCIATION_LINK_TYPES)
         elif table_name == "tasks":
             require_choice("status", VALID_TASK_STATUSES)
-            require_choice("planning_cycle_type", set(VALID_PLANNING_CYCLE_TYPES))
+            require_choice("planning_cycle_type", VALID_PLANNING_CYCLE_TYPES)
             planning = (
                 row.get("planning_cycle_type"),
                 row.get("planning_cycle_days"),
@@ -789,7 +790,7 @@ def validate_domain_row(
             ):
                 fail("recurrence_until must be on or after start_time.")
         elif table_name == "event_occurrence_exceptions":
-            require_choice("action", set(EVENT_OCCURRENCE_ACTIONS))
+            require_choice("action", EVENT_OCCURRENCE_ACTIONS)
         elif table_name == "timelogs":
             require_choice("tracking_method", VALID_TIMELOG_TRACKING_METHODS)
             if row.get("end_time") is not None and row.get("start_time") is not None:
@@ -822,23 +823,23 @@ def validate_domain_row(
             if rate is not None and rate <= 0:
                 fail("rate must be greater than zero.")
         elif table_name == "finance_snapshots":
-            require_choice("rate_snapshot_policy", set(FINANCE_RATE_SNAPSHOT_POLICIES))
+            require_choice("rate_snapshot_policy", FINANCE_RATE_SNAPSHOT_POLICIES)
         elif table_name == "finance_tree_nodes":
             for field in ("depth", "children_count"):
                 value = row.get(field)
                 if value is not None and value < 0:
                     fail(f"{field} must be zero or greater.")
         elif table_name == "menstrual_days":
-            require_choice("flow_amount", set(MENSTRUAL_FLOW_AMOUNTS))
+            require_choice("flow_amount", MENSTRUAL_FLOW_AMOUNTS)
             if row.get("flow_amount") is not None and row.get("in_period") is not True:
                 fail("flow_amount requires in_period to be true.")
             require_string_list("symptoms", maximum_items=20, maximum_length=50)
         elif table_name == "people":
             require_string_list("nicknames")
         elif table_name == "tags":
-            require_choice("entity_type", set(TAG_ENTITY_TYPES))
+            require_choice("entity_type", TAG_ENTITY_TYPES)
         elif table_name == "tag_associations":
-            require_choice("entity_type", set(TAG_ENTITY_TYPES))
+            require_choice("entity_type", TAG_ENTITY_TYPES)
         elif table_name == "body_measurements":
             weight = row.get("weight_kg")
             if weight is not None and not Decimal("0") < weight <= Decimal("1000"):
@@ -919,17 +920,9 @@ def _validate_snapshot_foreign_keys(prepared: Mapping[str, list[dict[str, Any]]]
                         )
 
     entity_tables = {
-        "area": "areas",
-        "event": "events",
-        "habit_action": "habit_actions",
-        "note": "notes",
-        "person": "people",
-        "tag": "tags",
-        "task": "tasks",
-        "timelog": "timelogs",
-        "timelog_template": "timelog_templates",
-        "vision": "visions",
+        entity_type: model.__table__.name for entity_type, model in ASSOCIATION_MODEL_MAP.items()
     }
+    entity_tables["area"] = "areas"
     entity_ids = {
         entity_type: {row["id"] for row in prepared[table_name]}
         for entity_type, table_name in entity_tables.items()

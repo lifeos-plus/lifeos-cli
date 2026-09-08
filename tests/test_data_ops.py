@@ -606,7 +606,7 @@ def test_bundle_rejects_tampered_v4_content(tmp_path: Path) -> None:
     asyncio.run(scenario())
 
 
-def test_bundle_rejects_boolean_manifest_table_count(tmp_path: Path) -> None:
+def test_bundle_rejects_boolean_manifest_entry_row_count(tmp_path: Path) -> None:
     async def scenario() -> None:
         source_path = tmp_path / "source.zip"
         malformed_path = tmp_path / "boolean-count.zip"
@@ -616,13 +616,13 @@ def test_bundle_rejects_boolean_manifest_table_count(tmp_path: Path) -> None:
         with ZipFile(source_path, "r") as source:
             contents = {name: source.read(name) for name in source.namelist()}
         manifest = json.loads(contents["manifest.json"])
-        manifest["table_counts"]["notes"] = False
+        manifest["entries"]["tables/notes.jsonl"]["row_count"] = False
         contents["manifest.json"] = json.dumps(manifest).encode("utf-8")
         with ZipFile(malformed_path, "w", compression=ZIP_DEFLATED) as target:
             for name, content in contents.items():
                 target.writestr(name, content)
 
-        with pytest.raises(data_ops.DataOperationError, match="table_counts"):
+        with pytest.raises(data_ops.DataOperationError, match="row count metadata"):
             data_ops.read_bundle(malformed_path)
 
     asyncio.run(scenario())
