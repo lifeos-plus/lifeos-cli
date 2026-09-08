@@ -35,13 +35,11 @@ target_metadata = Base.metadata
 
 def _configure_migration_context(connection: Connection) -> None:
     if database_schema is not None:
-        connection = connection.execution_options(schema_translate_map={None: database_schema})
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
             compare_server_default=True,
-            include_schemas=True,
             version_table_schema=database_schema,
         )
         return
@@ -63,7 +61,6 @@ def run_migrations_offline() -> None:
             dialect_opts={"paramstyle": "named"},
             compare_type=True,
             compare_server_default=True,
-            include_schemas=True,
             version_table_schema=database_schema,
         )
     else:
@@ -85,6 +82,14 @@ def do_run_migrations(connection: Connection) -> None:
     if database_schema is not None:
         connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{database_schema}"'))
         connection.commit()
+        if connection.dialect.name == "postgresql":
+            quoted_schema = connection.dialect.identifier_preparer.quote_schema(database_schema)
+            connection.exec_driver_sql(f"SET search_path TO {quoted_schema}")
+            connection.commit()
+            # Alembic autogenerate compares schema identity before applying SQLAlchemy's
+            # schema translation. Treat the isolated LifeOS schema as PostgreSQL's
+            # default so model tables declared without a schema match reflected tables.
+            connection.dialect.default_schema_name = database_schema
     _configure_migration_context(connection)
     with context.begin_transaction():
         context.run_migrations()
