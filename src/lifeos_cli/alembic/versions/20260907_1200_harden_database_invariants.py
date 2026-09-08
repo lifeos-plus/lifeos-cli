@@ -43,8 +43,7 @@ CONSTRAINTS: dict[str, tuple[tuple[str, str], ...]] = {
             "recurrence_details_valid",
             "(recurrence_frequency IS NULL AND recurrence_interval IS NULL AND "
             "recurrence_count IS NULL AND recurrence_until IS NULL AND recurrence_rule IS NULL) OR "
-            "(recurrence_frequency IS NOT NULL AND "
-            "(recurrence_interval IS NULL OR recurrence_interval > 0) AND "
+            "(recurrence_frequency IS NOT NULL AND recurrence_interval > 0 AND "
             "(recurrence_count IS NULL OR recurrence_count > 0))",
         ),
     ),

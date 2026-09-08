@@ -311,6 +311,8 @@ def validate_domain_row(
             )
             if frequency is None and any(value is not None for value in recurrence_values):
                 fail("recurrence details require recurrence_frequency.")
+            if frequency is not None and row.get("recurrence_interval") is None:
+                fail("recurrence_interval is required for recurring events.")
             if row.get("recurrence_rule") is not None and not isinstance(
                 row["recurrence_rule"], dict
             ):

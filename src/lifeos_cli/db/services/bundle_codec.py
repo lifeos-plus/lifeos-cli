@@ -31,7 +31,10 @@ class BundleArchiveReader:
 
     def read_entry(self, name: str) -> bytes:
         """Read one previously validated archive entry."""
-        return self._archive.read(name)
+        try:
+            return self._archive.read(name)
+        except RuntimeError as exc:
+            raise BundleCodecError(f"Unable to read bundle entry {name!r}: {exc}.") from exc
 
 
 class BundleArchiveWriter:
@@ -198,5 +201,5 @@ def open_bundle_archive(path: Path) -> Iterator[BundleArchiveReader]:
                 entry_names=tuple(name for name in names if name != "manifest.json"),
                 _archive=archive,
             )
-    except (BadZipFile, OSError, RuntimeError) as exc:
+    except (BadZipFile, OSError) as exc:
         raise BundleCodecError(f"Unable to read bundle archive: {exc}.") from exc
