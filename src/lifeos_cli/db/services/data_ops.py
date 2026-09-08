@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import date, datetime
@@ -10,7 +11,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, insert, select, text, update
+from sqlalchemy import Table, delete, insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -66,22 +67,26 @@ from lifeos_cli.db.services import (
     sleep as sleep_services,
 )
 from lifeos_cli.db.services.bundle_codec import (
+    MAX_BUNDLE_ENTRY_BYTES,
+    MAX_BUNDLE_TOTAL_BYTES,
     BundleArchiveReader,
     BundleCodecError,
     decode_jsonl,
-    encode_jsonl,
+    decode_jsonl_row,
+    encode_jsonl_row,
     open_bundle_archive,
     open_bundle_atomic,
-    sha256_hex,
 )
 from lifeos_cli.db.services.bundle_tables import (
     BundleTableError,
-    export_table_rows,
+    iter_export_table_rows,
+    prepare_table_entry_rows,
     prepare_table_rows,
     restore_table_rows,
     source_table_names,
     source_tables,
     validate_domain_row,
+    validate_prepared_tables,
 )
 from lifeos_cli.db.services.entity_associations import (
     get_target_ids_for_sources,
@@ -185,7 +190,7 @@ class DataBatchDeleteReport:
 class BundleExportReport:
     """Summary for a bundle export operation."""
 
-    resource_counts: dict[str, int]
+    table_counts: dict[str, int]
     output_path: Path
 
 
@@ -208,6 +213,7 @@ class BundlePayload:
     manifest: dict[str, Any]
     resources: dict[str, list[dict[str, Any]]]
     tables: dict[str, list[dict[str, Any]]] = dataclass_field(default_factory=dict)
+    tables_prepared: bool = False
 
 
 @dataclass(frozen=True)
@@ -1625,7 +1631,6 @@ async def run_post_import_hooks(session: AsyncSession, *, resources: set[str]) -
 
 
 def _bundle_manifest(
-    resource_counts: dict[str, int],
     table_counts: dict[str, int],
     entry_metadata: dict[str, dict[str, str | int]],
 ) -> dict[str, Any]:
@@ -1635,8 +1640,6 @@ def _bundle_manifest(
         "app_version": get_installed_package_version(),
         "database_schema": get_database_settings().database_schema,
         "timezone": get_preferences_settings().timezone,
-        "included_resources": list(resource_counts.keys()),
-        "resource_counts": resource_counts,
         "source_tables": list(table_counts.keys()),
         "table_counts": table_counts,
         "derived_tables": [
@@ -1669,54 +1672,100 @@ async def export_bundle(
     *,
     output_path: Path,
 ) -> BundleExportReport:
-    """Export portable resources and a lossless source-table snapshot atomically."""
+    """Export one lossless, versioned source-table snapshot atomically."""
     await _start_bundle_export_snapshot(session)
-    resource_counts: dict[str, int] = {}
     table_counts: dict[str, int] = {}
     entry_metadata: dict[str, dict[str, str | int]] = {}
+    expanded_size = 0
     with open_bundle_atomic(output_path) as writer:
-        for resource in BUNDLE_RESOURCE_ORDER:
-            rows = await export_resource_snapshot(session, resource=resource)
-            entry_name = f"resources/{resource}.jsonl"
-            content = encode_jsonl(rows)
-            writer.write_entry(entry_name, content)
-            resource_counts[resource] = len(rows)
-            entry_metadata[entry_name] = {
-                "sha256": sha256_hex(content),
-                "row_count": len(rows),
-            }
-
         for table in source_tables():
-            rows = await export_table_rows(session, table)
             entry_name = f"tables/{table.name}.jsonl"
-            content = encode_jsonl(rows)
-            writer.write_entry(entry_name, content)
-            table_counts[table.name] = len(rows)
+            digest = hashlib.sha256()
+            row_count = 0
+            entry_size = 0
+            with writer.open_entry(entry_name) as entry:
+                async for row in iter_export_table_rows(session, table):
+                    encoded_row = encode_jsonl_row(row)
+                    entry_size += len(encoded_row)
+                    expanded_size += len(encoded_row)
+                    if entry_size > MAX_BUNDLE_ENTRY_BYTES:
+                        raise DataOperationError(
+                            f"Bundle entry {entry_name} exceeds the supported expanded size."
+                        )
+                    if expanded_size > MAX_BUNDLE_TOTAL_BYTES:
+                        raise DataOperationError("Bundle exceeds the supported expanded size.")
+                    entry.write(encoded_row)
+                    digest.update(encoded_row)
+                    row_count += 1
+            table_counts[table.name] = row_count
             entry_metadata[entry_name] = {
-                "sha256": sha256_hex(content),
-                "row_count": len(rows),
+                "sha256": digest.hexdigest(),
+                "row_count": row_count,
             }
 
-        writer.write_manifest(_bundle_manifest(resource_counts, table_counts, entry_metadata))
-    return BundleExportReport(resource_counts=resource_counts, output_path=output_path)
+        manifest_size = writer.write_manifest(_bundle_manifest(table_counts, entry_metadata))
+        if expanded_size + manifest_size > MAX_BUNDLE_TOTAL_BYTES:
+            raise DataOperationError("Bundle exceeds the supported expanded size.")
+    return BundleExportReport(table_counts=table_counts, output_path=output_path)
 
 
-def read_bundle(path: Path, *, load_portable_resources: bool = True) -> BundlePayload:
+def read_bundle(path: Path) -> BundlePayload:
     """Read and validate a bundle zip file."""
     try:
         with open_bundle_archive(path) as decoded:
-            return _read_open_bundle(
-                decoded,
-                load_portable_resources=load_portable_resources,
-            )
+            return _read_open_bundle(decoded)
     except BundleCodecError as exc:
         raise DataOperationError(str(exc)) from exc
 
 
-def _read_open_bundle(
+def _prepare_v4_table_entry(
     decoded: BundleArchiveReader,
     *,
-    load_portable_resources: bool,
+    table: Table,
+    metadata: object,
+) -> list[dict[str, Any]]:
+    """Verify, then incrementally decode and prepare one table entry."""
+    entry_name = f"tables/{table.name}.jsonl"
+    if not isinstance(metadata, dict):
+        raise DataOperationError(f"Invalid manifest metadata for {entry_name}.")
+    checksum = metadata.get("sha256")
+    row_count = metadata.get("row_count")
+    if not isinstance(checksum, str):
+        raise DataOperationError(f"Invalid checksum metadata for bundle entry {entry_name}.")
+    if type(row_count) is not int or row_count < 0:
+        raise DataOperationError(f"Invalid row count metadata for bundle entry {entry_name}.")
+
+    digest = hashlib.sha256()
+    actual_row_count = 0
+    with decoded.open_entry(entry_name) as entry:
+        for line in entry:
+            digest.update(line)
+            if line.strip():
+                actual_row_count += 1
+    if checksum != digest.hexdigest():
+        raise DataOperationError(f"Checksum mismatch for bundle entry {entry_name}.")
+    if row_count != actual_row_count:
+        raise DataOperationError(f"Row count mismatch for bundle entry {entry_name}.")
+
+    with decoded.open_entry(entry_name) as entry:
+
+        def iter_rows():
+            for line_number, line in enumerate(entry, start=1):
+                if line.strip():
+                    yield decode_jsonl_row(
+                        line,
+                        entry_name=entry_name,
+                        line_number=line_number,
+                    )
+
+        try:
+            return prepare_table_entry_rows(table, iter_rows())
+        except BundleTableError as exc:
+            raise DataOperationError(f"Invalid source-table snapshot: {exc}") from exc
+
+
+def _read_open_bundle(
+    decoded: BundleArchiveReader,
 ) -> BundlePayload:
     """Validate and decode an already-open bundle archive."""
     resources: dict[str, list[dict[str, Any]]] = {}
@@ -1744,10 +1793,7 @@ def _read_open_bundle(
             "to linked notes."
         )
 
-    expected_entries = {
-        *(f"resources/{resource}.jsonl" for resource in BUNDLE_RESOURCE_ORDER),
-        *(f"tables/{table_name}.jsonl" for table_name in source_table_names()),
-    }
+    expected_entries = {f"tables/{table_name}.jsonl" for table_name in source_table_names()}
     manifest_entries = manifest.get("entries")
     if not isinstance(manifest_entries, dict):
         raise DataOperationError("Bundle manifest entries must be a JSON object.")
@@ -1772,52 +1818,32 @@ def _read_open_bundle(
         raise DataOperationError(
             "Bundle entry set is incomplete or invalid (" + "; ".join(details) + ")."
         )
-    if manifest.get("included_resources") != list(BUNDLE_RESOURCE_ORDER):
-        raise DataOperationError("Bundle manifest has an invalid included_resources list.")
     if manifest.get("source_tables") != list(source_table_names()):
         raise DataOperationError("Bundle manifest has an invalid source_tables list.")
-    resource_counts = manifest.get("resource_counts")
     table_counts = manifest.get("table_counts")
-    if not isinstance(resource_counts, dict) or not isinstance(table_counts, dict):
-        raise DataOperationError("Bundle manifest resource_counts and table_counts are required.")
+    if not isinstance(table_counts, dict):
+        raise DataOperationError("Bundle manifest table_counts are required.")
 
-    decoded_rows: dict[str, list[dict[str, Any]]] = {}
-    for entry_name in sorted(expected_entries):
-        metadata = manifest_entries[entry_name]
-        content = decoded.read_entry(entry_name)
-        if not isinstance(metadata, dict):
-            raise DataOperationError(f"Invalid manifest metadata for {entry_name}.")
-        checksum = metadata.get("sha256")
-        if not isinstance(checksum, str) or checksum != sha256_hex(content):
-            raise DataOperationError(f"Checksum mismatch for bundle entry {entry_name}.")
-        try:
-            rows = decode_jsonl(content, entry_name=entry_name)
-        except BundleCodecError as exc:
-            raise DataOperationError(str(exc)) from exc
-        row_count = metadata.get("row_count")
-        if type(row_count) is not int or row_count < 0 or row_count != len(rows):
-            raise DataOperationError(f"Row count mismatch for bundle entry {entry_name}.")
-        if load_portable_resources or entry_name.startswith("tables/"):
-            decoded_rows[entry_name] = rows
-
-    if load_portable_resources:
-        resources = {
-            resource: decoded_rows[f"resources/{resource}.jsonl"]
-            for resource in BUNDLE_RESOURCE_ORDER
-        }
-    tables = {
-        table_name: decoded_rows[f"tables/{table_name}.jsonl"]
-        for table_name in source_table_names()
-    }
-    expected_resource_counts = {
-        resource: manifest_entries[f"resources/{resource}.jsonl"]["row_count"]
-        for resource in BUNDLE_RESOURCE_ORDER
-    }
-    if resource_counts != expected_resource_counts:
-        raise DataOperationError("Bundle manifest resource_counts do not match archive entries.")
+    tables: dict[str, list[dict[str, Any]]] = {}
+    for table in source_tables():
+        entry_name = f"tables/{table.name}.jsonl"
+        tables[table.name] = _prepare_v4_table_entry(
+            decoded,
+            table=table,
+            metadata=manifest_entries[entry_name],
+        )
     if table_counts != {table_name: len(rows) for table_name, rows in tables.items()}:
         raise DataOperationError("Bundle manifest table_counts do not match archive entries.")
-    return BundlePayload(manifest=manifest, resources=resources, tables=tables)
+    try:
+        validate_prepared_tables(tables)
+    except BundleTableError as exc:
+        raise DataOperationError(f"Invalid source-table snapshot: {exc}") from exc
+    return BundlePayload(
+        manifest=manifest,
+        resources=resources,
+        tables=tables,
+        tables_prepared=True,
+    )
 
 
 async def truncate_supported_data(session: AsyncSession) -> None:
@@ -1846,6 +1872,7 @@ async def import_bundle(
     *,
     bundle_rows: dict[str, list[dict[str, Any]]],
     bundle_tables: dict[str, list[dict[str, Any]]] | None = None,
+    bundle_tables_prepared: bool = False,
     bundle_schema_version: int = BUNDLE_SCHEMA_VERSION,
     replace_existing: bool = False,
 ) -> BundleImportReport:
@@ -1857,10 +1884,13 @@ async def import_bundle(
         )
 
     if bundle_tables is not None:
-        try:
-            prepared_tables = prepare_table_rows(bundle_tables)
-        except BundleTableError as exc:
-            raise DataOperationError(f"Invalid source-table snapshot: {exc}") from exc
+        if bundle_tables_prepared:
+            prepared_tables = bundle_tables
+        else:
+            try:
+                prepared_tables = prepare_table_rows(bundle_tables)
+            except BundleTableError as exc:
+                raise DataOperationError(f"Invalid source-table snapshot: {exc}") from exc
         if replace_existing:
             await truncate_supported_data(session)
         created_count, updated_count = await restore_table_rows(

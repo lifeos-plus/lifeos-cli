@@ -18,6 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.backend_policy import backend_policy_for_drivername
+from lifeos_cli.db.base import Base
 from lifeos_cli.db.models.aggregated_timelog_stats_groupby_area import (
     AggregatedTimelogStatsGroupByArea,
 )
@@ -33,6 +34,7 @@ from lifeos_cli.db.models.timelog_template import TimelogTemplate
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import data_ops
 from lifeos_cli.db.services.bundle_codec import BundleCodecError, open_bundle_atomic
+from lifeos_cli.db.services.bundle_tables import BUNDLE_V4_TABLE_SPECS, DERIVED_TABLE_NAMES
 from lifeos_cli.db.types import UTCDateTime
 from tests.support import sqlite_session_factory
 
@@ -443,6 +445,22 @@ def test_atomic_bundle_writer_requires_manifest(tmp_path: Path) -> None:
     assert not bundle_path.exists()
 
 
+def test_bundle_export_rejects_output_that_its_reader_cannot_accept(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def scenario() -> None:
+        bundle_path = tmp_path / "oversized.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                monkeypatch.setattr(data_ops, "MAX_BUNDLE_TOTAL_BYTES", 1)
+                with pytest.raises(data_ops.DataOperationError, match="supported expanded size"):
+                    await data_ops.export_bundle(session, output_path=bundle_path)
+        assert not bundle_path.exists()
+
+    asyncio.run(scenario())
+
+
 def test_postgres_bundle_export_starts_repeatable_read_snapshot() -> None:
     session = FakePostgresSession(in_transaction=False)
 
@@ -508,7 +526,7 @@ def test_bundle_rejects_tampered_v4_content(tmp_path: Path) -> None:
                 await data_ops.export_bundle(session, output_path=source_path)
         with ZipFile(source_path, "r") as source:
             contents = {name: source.read(name) for name in source.namelist()}
-        contents["resources/note.jsonl"] = b'{"id":"tampered"}\n'
+        contents["tables/notes.jsonl"] = b'{"id":"tampered"}\n'
         with ZipFile(tampered_path, "w", compression=ZIP_DEFLATED) as target:
             for name, content in contents.items():
                 target.writestr(name, content)
@@ -567,11 +585,18 @@ def test_lossless_bundle_replace_preserves_unexposed_and_soft_deleted_rows(
                 await session.flush()
                 await data_ops.export_bundle(session, output_path=bundle_path)
 
+                with ZipFile(bundle_path) as archive:
+                    assert all(
+                        name == "manifest.json" or name.startswith("tables/")
+                        for name in archive.namelist()
+                    )
+
                 payload = data_ops.read_bundle(bundle_path)
                 report = await data_ops.import_bundle(
                     session,
                     bundle_rows=payload.resources,
                     bundle_tables=payload.tables,
+                    bundle_tables_prepared=payload.tables_prepared,
                     bundle_schema_version=payload.manifest["schema_version"],
                     replace_existing=True,
                 )
@@ -592,6 +617,20 @@ def test_lossless_bundle_replace_preserves_unexposed_and_soft_deleted_rows(
         assert stat.S_IMODE(bundle_path.stat().st_mode) == 0o600
 
     asyncio.run(scenario())
+
+
+def test_bundle_v4_contract_matches_current_authoritative_schema() -> None:
+    """Force a bundle version decision whenever an authoritative table shape changes."""
+    actual_tables = tuple(
+        table for table in Base.metadata.sorted_tables if table.name not in DERIVED_TABLE_NAMES
+    )
+
+    assert tuple(spec.name for spec in BUNDLE_V4_TABLE_SPECS) == tuple(
+        table.name for table in actual_tables
+    )
+    assert {spec.name: spec.columns for spec in BUNDLE_V4_TABLE_SPECS} == {
+        table.name: tuple(column.name for column in table.columns) for table in actual_tables
+    }
 
 
 def test_timelog_import_hook_removes_stale_derived_rows_without_source_timelogs() -> None:

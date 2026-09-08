@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import IO, Any
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 
 MAX_BUNDLE_ENTRY_BYTES = 256 * 1024 * 1024
@@ -29,12 +29,19 @@ class BundleArchiveReader:
     entry_names: tuple[str, ...]
     _archive: ZipFile
 
-    def read_entry(self, name: str) -> bytes:
-        """Read one previously validated archive entry."""
+    @contextmanager
+    def open_entry(self, name: str) -> Iterator[IO[bytes]]:
+        """Open one previously validated archive entry for incremental reads."""
         try:
-            return self._archive.read(name)
+            with self._archive.open(name, "r") as handle:
+                yield handle
         except RuntimeError as exc:
             raise BundleCodecError(f"Unable to read bundle entry {name!r}: {exc}.") from exc
+
+    def read_entry(self, name: str) -> bytes:
+        """Read one previously validated archive entry."""
+        with self.open_entry(name) as handle:
+            return handle.read()
 
 
 class BundleArchiveWriter:
@@ -45,8 +52,7 @@ class BundleArchiveWriter:
         self._names: set[str] = set()
         self._manifest_written = False
 
-    def write_entry(self, name: str, content: bytes) -> None:
-        """Write one unique non-manifest archive entry."""
+    def _reserve_entry_name(self, name: str) -> None:
         if self._manifest_written:
             raise BundleCodecError("Bundle entries cannot be written after the manifest.")
         _validate_entry_name(name)
@@ -54,21 +60,33 @@ class BundleArchiveWriter:
             raise BundleCodecError("manifest.json must be written with write_manifest().")
         if name in self._names:
             raise BundleCodecError(f"Duplicate bundle entry name: {name!r}.")
-        self._archive.writestr(name, content)
         self._names.add(name)
 
-    def write_manifest(self, manifest: dict[str, Any]) -> None:
-        """Write the archive manifest exactly once."""
+    @contextmanager
+    def open_entry(self, name: str) -> Iterator[IO[bytes]]:
+        """Open one unique archive entry for incremental binary writes."""
+        self._reserve_entry_name(name)
+        with self._archive.open(name, "w", force_zip64=True) as handle:
+            yield handle
+
+    def write_entry(self, name: str, content: bytes) -> None:
+        """Write one unique non-manifest archive entry."""
+        with self.open_entry(name) as handle:
+            handle.write(content)
+
+    def write_manifest(self, manifest: dict[str, Any]) -> int:
+        """Write the archive manifest exactly once and return its expanded size."""
         if self._manifest_written:
             raise BundleCodecError("Bundle manifest has already been written.")
         manifest_bytes = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
         self._archive.writestr("manifest.json", manifest_bytes)
         self._manifest_written = True
+        return len(manifest_bytes)
 
 
-def encode_jsonl(rows: list[dict[str, Any]]) -> bytes:
-    """Encode canonical JSONL bytes for hashing and archive storage."""
-    return "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows).encode("utf-8")
+def encode_jsonl_row(row: dict[str, Any]) -> bytes:
+    """Encode one canonical JSONL row for incremental hashing and writes."""
+    return (json.dumps(row, ensure_ascii=False) + "\n").encode("utf-8")
 
 
 def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -80,19 +98,31 @@ def _reject_duplicate_json_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return value
 
 
+def decode_jsonl_row(content: bytes, *, entry_name: str, line_number: int) -> dict[str, Any]:
+    """Decode one JSONL row and require an object value."""
+    try:
+        value = json.loads(
+            content.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_json_keys,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise BundleCodecError(
+            f"Invalid JSONL content in {entry_name} at line {line_number}: {exc}."
+        ) from exc
+    if not isinstance(value, dict):
+        raise BundleCodecError(
+            f"Bundle entry {entry_name} line {line_number} must be a JSON object."
+        )
+    return value
+
+
 def decode_jsonl(content: bytes, *, entry_name: str) -> list[dict[str, Any]]:
     """Decode one JSONL archive entry and require object rows."""
-    try:
-        values = [
-            json.loads(line, object_pairs_hook=_reject_duplicate_json_keys)
-            for line in content.decode("utf-8").splitlines()
-            if line.strip()
-        ]
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise BundleCodecError(f"Invalid JSONL content in {entry_name}: {exc}.") from exc
-    if not all(isinstance(value, dict) for value in values):
-        raise BundleCodecError(f"Every row in {entry_name} must be a JSON object.")
-    return values
+    return [
+        decode_jsonl_row(line, entry_name=entry_name, line_number=line_number)
+        for line_number, line in enumerate(content.splitlines(), start=1)
+        if line.strip()
+    ]
 
 
 def sha256_hex(content: bytes) -> str:

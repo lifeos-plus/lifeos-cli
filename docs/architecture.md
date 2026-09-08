@@ -73,14 +73,14 @@ Models opt into `SoftDeleteMixin`, which adds `deleted_at`. A global ORM listene
 ### Supported backends
 
 - SQLite (`sqlite+aiosqlite`) — local file storage, no schema concept; foreign keys are enabled per connection (`PRAGMA foreign_keys=ON`).
-- PostgreSQL (`postgresql+psycopg`) — schema-capable; configured schema names are applied through SQLAlchemy `schema_translate_map`.
+- PostgreSQL (`postgresql+psycopg`) — schema-capable; runtime connections apply the configured schema through SQLAlchemy `schema_translate_map`, while migrations align PostgreSQL's search and reflection schemas explicitly.
 
 `db/backend_policy.py` centralizes backend capabilities (schema support, local file storage, foreign-key enforcement, replace-existing strategy) so services do not branch on driver strings.
 
 ### Alembic strategy
 
 - Migrations live in `src/lifeos_cli/alembic` and use an async environment (`env.py`) that resolves the database URL from configuration.
-- When a schema is configured (PostgreSQL), the migration context applies `schema_translate_map` and sets `version_table_schema` so the Alembic version table follows the data schema.
+- When a schema is configured (PostgreSQL), the migration connection creates it when needed, sets it as `search_path` and as SQLAlchemy's reflected default schema, and sets `version_table_schema` so the Alembic version table follows the data schema.
 - `Base.metadata` uses an explicit naming convention so generated constraint names are stable and safe for PostgreSQL's 63-byte identifier limit.
 - Always audit and migrate existing data before adding constraints; do not assume a production database is clean.
 - CI exercises a full SQLite `base -> head -> base -> head` migration round trip and runs Alembic metadata drift checks at both heads.
@@ -88,7 +88,7 @@ Models opt into `SoftDeleteMixin`, which adds `deleted_at`. A global ORM listene
 
 ### Backup and restore
 
-Schema-v4 bundles separate portable resource projections from a lossless source-table snapshot. Derived timelog aggregate tables are intentionally excluded and recomputed after restore. Every required entry is covered by manifest row counts and SHA-256 digests. Archive parsing applies duplicate-name, path traversal, expanded-size, shape, domain, and reference guards before a replacement transaction mutates the database. Export uses a stable transaction snapshot, writes entries incrementally through an owner-only temporary file in the destination directory, fsyncs the completed file and rename, and then atomically publishes it.
+Schema-v4 bundles contain one lossless snapshot of the authoritative source tables; portable single-resource JSON/JSONL exports remain a separate interchange interface. The v4 table and column contract is frozen explicitly, so an authoritative schema change must make a deliberate compatibility decision instead of silently changing existing bundle semantics. Derived timelog aggregate tables are intentionally excluded and recomputed after restore. Every required entry is covered by manifest row counts and SHA-256 digests. Archive parsing applies duplicate-name, path traversal, expanded-size, shape, domain, and reference guards before a replacement transaction mutates the database. Export streams rows from the database directly into an owner-only temporary ZIP while computing integrity metadata, fsyncs the completed file and rename, and then atomically publishes it. Restore verifies each entry before incrementally decoding it, retains only the prepared typed snapshot needed for whole-database reference validation, and limits expanded entries to 256 MiB each and the complete archive to 1 GiB.
 
 ## 6. Web API Surface
 

@@ -183,8 +183,8 @@ async def handle_data_export_async(args: argparse.Namespace) -> int:
                     output_path=Path(args.output),
                 )
                 print(f"Exported bundle to {report.output_path}")
-                for resource, count in report.resource_counts.items():
-                    print(f"{resource}: {count}")
+                for table_name, count in report.table_counts.items():
+                    print(f"{table_name}: {count}")
                 return 0
 
             if args.format == "bundle":
@@ -321,10 +321,7 @@ async def handle_data_import_async(args: argparse.Namespace) -> int:
             if args.file is None:
                 print("Bundle import requires --file.", file=sys.stderr)
                 return 1
-            bundle_payload = data_ops.read_bundle(
-                Path(args.file),
-                load_portable_resources=False,
-            )
+            bundle_payload = data_ops.read_bundle(Path(args.file))
             if (
                 args.replace_existing
                 and bundle_payload.manifest.get("schema_version")
@@ -341,6 +338,7 @@ async def handle_data_import_async(args: argparse.Namespace) -> int:
                 if getattr(bundle_payload, "tables", None):
                     lossless_kwargs = {
                         "bundle_tables": bundle_payload.tables,
+                        "bundle_tables_prepared": bundle_payload.tables_prepared,
                         "bundle_schema_version": bundle_payload.manifest.get("schema_version", 0),
                     }
                 bundle_report = await data_ops.import_bundle(

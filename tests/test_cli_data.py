@@ -80,7 +80,7 @@ def test_main_data_export_all_uses_bundle_writer(
     ) -> data_ops.BundleExportReport:
         assert output_path == bundle_path
         return data_ops.BundleExportReport(
-            resource_counts={"note": 2, "timelog": 1},
+            table_counts={"notes": 2, "timelogs": 1},
             output_path=output_path,
         )
 
@@ -92,8 +92,8 @@ def test_main_data_export_all_uses_bundle_writer(
 
     assert exit_code == 0
     assert f"Exported bundle to {bundle_path}" in captured.out
-    assert "note: 2" in captured.out
-    assert "timelog: 1" in captured.out
+    assert "notes: 2" in captured.out
+    assert "timelogs: 1" in captured.out
 
 
 def test_main_data_import_bundle_uses_atomic_restore(
@@ -102,13 +102,8 @@ def test_main_data_import_bundle_uses_atomic_restore(
 ) -> None:
     session = FakeAsyncSession()
 
-    def fake_read_bundle(
-        path: Path,
-        *,
-        load_portable_resources: bool,
-    ) -> data_ops.BundlePayload:
+    def fake_read_bundle(path: Path) -> data_ops.BundlePayload:
         assert path == Path("backup.zip")
-        assert not load_portable_resources
         return data_ops.BundlePayload(
             manifest={"schema_version": data_ops.BUNDLE_SCHEMA_VERSION},
             resources={"note": [{"id": "11111111-1111-1111-1111-111111111111"}]},
