@@ -416,10 +416,9 @@ async def bump_template_usage(
             last_used_at=used_at,
             updated_at=used_at,
         )
-        .returning(TimelogTemplate.id)
+        .returning(TimelogTemplate)
     )
-    if result.scalar_one_or_none() is None:
+    template = result.scalar_one_or_none()
+    if template is None:
         raise TimelogTemplateNotFoundError(f"Timelog template {template_id} was not found")
-    template = await _get_template_model(session, template_id=template_id)
-    assert template is not None
     return await _build_template_view(session, template)
