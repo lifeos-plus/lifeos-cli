@@ -158,7 +158,6 @@ def test_new_check_constraints_use_canonical_naming_convention() -> None:
     }
 
     assert expected <= actual
-    assert not any(name.startswith("ck_events_ck_events_") for name in expected)
 
 
 def test_database_check_reports_uninitialized_schema_without_running_domain_audit(

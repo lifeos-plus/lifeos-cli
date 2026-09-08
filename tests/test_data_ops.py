@@ -18,8 +18,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.backend_policy import backend_policy_for_drivername
+from lifeos_cli.db.models.aggregated_timelog_stats_groupby_area import (
+    AggregatedTimelogStatsGroupByArea,
+)
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.models.body_measurement import BodyMeasurement
+from lifeos_cli.db.models.daily_timelog_stats_groupby_area import DailyTimelogStatsGroupByArea
 from lifeos_cli.db.models.finance import FinanceTree
 from lifeos_cli.db.models.habit import Habit
 from lifeos_cli.db.models.menstrual import MenstrualDay, MenstrualFactor
@@ -586,6 +590,46 @@ def test_lossless_bundle_replace_preserves_unexposed_and_soft_deleted_rows(
                 assert restored_note.deleted_at is not None
 
         assert stat.S_IMODE(bundle_path.stat().st_mode) == 0o600
+
+    asyncio.run(scenario())
+
+
+def test_timelog_import_hook_removes_stale_derived_rows_without_source_timelogs() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                area = Area(name="Work")
+                session.add(area)
+                await session.flush()
+                session.add_all(
+                    [
+                        DailyTimelogStatsGroupByArea(
+                            stat_date=date(2026, 9, 1),
+                            timezone="UTC",
+                            area_id=area.id,
+                            minutes=60,
+                            timelog_count=1,
+                        ),
+                        AggregatedTimelogStatsGroupByArea(
+                            granularity="month",
+                            period_start=date(2026, 9, 1),
+                            period_end=date(2026, 9, 30),
+                            timezone="UTC",
+                            area_id=area.id,
+                            minutes=60,
+                            timelog_count=1,
+                        ),
+                    ]
+                )
+                await session.flush()
+
+                await data_ops.run_post_import_hooks(session, resources={"timelog"})
+
+                daily_rows = await session.execute(select(DailyTimelogStatsGroupByArea))
+                assert not list(daily_rows.scalars())
+                assert not list(
+                    (await session.execute(select(AggregatedTimelogStatsGroupByArea))).scalars()
+                )
 
     asyncio.run(scenario())
 

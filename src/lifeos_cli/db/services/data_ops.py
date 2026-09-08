@@ -23,8 +23,10 @@ from lifeos_cli.application.package_metadata import get_installed_package_versio
 from lifeos_cli.config import get_database_settings, get_preferences_settings
 from lifeos_cli.db.base import Base
 from lifeos_cli.db.models import (
+    AggregatedTimelogStatsGroupByArea,
     Area,
     BodyMeasurement,
+    DailyTimelogStatsGroupByArea,
     Event,
     EventOccurrenceException,
     Habit,
@@ -1581,7 +1583,8 @@ async def batch_delete_resource(
     )
 
 
-async def _recompute_task_effort_and_timelog_stats(session: AsyncSession) -> None:
+async def _recompute_task_effort(session: AsyncSession) -> None:
+    """Rebuild task effort from authoritative timelog rows."""
     task_ids = list(
         (
             await session.execute(
@@ -1594,6 +1597,11 @@ async def _recompute_task_effort_and_timelog_stats(session: AsyncSession) -> Non
     for task_id in reversed(task_ids):
         await task_effort.recompute_totals_upwards(session, task_id)
 
+
+async def _rebuild_timelog_stats(session: AsyncSession) -> None:
+    """Replace every derived timelog aggregate from authoritative rows."""
+    await session.execute(delete(AggregatedTimelogStatsGroupByArea))
+    await session.execute(delete(DailyTimelogStatsGroupByArea))
     timelog_range = await timelog_stats.load_rebuildable_timelog_date_range(session)
     if timelog_range is None:
         return
@@ -1611,7 +1619,9 @@ async def _recompute_task_effort_and_timelog_stats(session: AsyncSession) -> Non
 async def run_post_import_hooks(session: AsyncSession, *, resources: set[str]) -> None:
     """Run derived-data maintenance after snapshot imports."""
     if {"task", "timelog"} & resources:
-        await _recompute_task_effort_and_timelog_stats(session)
+        await _recompute_task_effort(session)
+    if "timelog" in resources:
+        await _rebuild_timelog_stats(session)
 
 
 def _bundle_manifest(
