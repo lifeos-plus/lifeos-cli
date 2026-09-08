@@ -1836,7 +1836,11 @@ def _read_open_bundle(
             table=table,
             metadata=manifest_entries[entry_name],
         )
-    if table_counts != {table_name: len(rows) for table_name, rows in tables.items()}:
+    expected_table_counts = {table_name: len(rows) for table_name, rows in tables.items()}
+    if set(table_counts) != set(expected_table_counts) or any(
+        type(table_counts[table_name]) is not int or table_counts[table_name] != expected_count
+        for table_name, expected_count in expected_table_counts.items()
+    ):
         raise DataOperationError("Bundle manifest table_counts do not match archive entries.")
     try:
         validate_prepared_tables(tables)

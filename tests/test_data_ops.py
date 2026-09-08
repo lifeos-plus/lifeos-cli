@@ -566,6 +566,28 @@ def test_bundle_rejects_tampered_v4_content(tmp_path: Path) -> None:
     asyncio.run(scenario())
 
 
+def test_bundle_rejects_boolean_manifest_table_count(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        source_path = tmp_path / "source.zip"
+        malformed_path = tmp_path / "boolean-count.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await data_ops.export_bundle(session, output_path=source_path)
+        with ZipFile(source_path, "r") as source:
+            contents = {name: source.read(name) for name in source.namelist()}
+        manifest = json.loads(contents["manifest.json"])
+        manifest["table_counts"]["notes"] = False
+        contents["manifest.json"] = json.dumps(manifest).encode("utf-8")
+        with ZipFile(malformed_path, "w", compression=ZIP_DEFLATED) as target:
+            for name, content in contents.items():
+                target.writestr(name, content)
+
+        with pytest.raises(data_ops.DataOperationError, match="table_counts"):
+            data_ops.read_bundle(malformed_path)
+
+    asyncio.run(scenario())
+
+
 def test_legacy_bundle_cannot_replace_the_database() -> None:
     with pytest.raises(data_ops.DataOperationError, match="partial exports"):
         asyncio.run(
