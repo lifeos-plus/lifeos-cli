@@ -478,6 +478,35 @@ def test_bundle_export_includes_manifest_in_reader_size_limit(
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("suffix", ["", "-wal", "-shm", "-journal"])
+def test_bundle_export_does_not_overwrite_sqlite_storage_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    suffix: str,
+) -> None:
+    async def scenario() -> None:
+        database_path = tmp_path / "lifeos.db"
+        database_path.write_bytes(b"database remains intact")
+        output_path = Path(f"{database_path}{suffix}")
+        monkeypatch.setattr(
+            data_ops,
+            "get_database_settings",
+            lambda: SimpleNamespace(
+                database_url=f"sqlite+aiosqlite:///{database_path}",
+                database_schema=None,
+            ),
+        )
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                with pytest.raises(data_ops.DataOperationError, match="must not overwrite"):
+                    await data_ops.export_bundle(session, output_path=output_path)
+        assert database_path.read_bytes() == b"database remains intact"
+        if suffix:
+            assert not output_path.exists()
+
+    asyncio.run(scenario())
+
+
 def test_bundle_export_closes_row_stream_when_size_limit_fails(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

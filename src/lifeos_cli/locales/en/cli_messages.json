@@ -120,6 +120,7 @@
         "batch_update_one_resource_from_canonical_patch_rows": "Batch-update one resource from canonical patch rows",
         "batch_update_operates_on_stored_records_use_public_resource_commands_when_you": "Batch-update operates on stored records. Use public resource commands when you need domain-specific verbs or scopes.",
         "bundle_export_is_implied_when_target_is_all": "Bundle export is implied when the target is `all`.",
+        "bundle_output_must_not_be_the_configured_sqlite_database_or_sidecar": "Bundle output must not be the configured SQLite database or one of its sidecar files.",
         "bundle_import_export_preserves_record_identifiers_and_relationships_across_resources": "Bundle import/export preserves record identifiers and relationships across resources.",
         "bundle_import_is_implied_when_target_is_bundle": "Bundle import is implied when the target is `bundle`.",
         "continue_processing_later_rows_after_failure": "Continue processing later rows after a failure",

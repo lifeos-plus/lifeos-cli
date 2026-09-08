@@ -120,6 +120,7 @@
         "batch_update_one_resource_from_canonical_patch_rows": "从规范补丁行批量更新一个资源",
         "batch_update_operates_on_stored_records_use_public_resource_commands_when_you": "批量更新对存储的记录进行操作。当您需要特定于域的动词或范围时，请使用公共资源命令。",
         "bundle_export_is_implied_when_target_is_all": "当目标是 `all ` 时，暗示捆绑导出。",
+        "bundle_output_must_not_be_the_configured_sqlite_database_or_sidecar": "Bundle 输出不能是当前配置的 SQLite 数据库或其 sidecar 文件。",
         "bundle_import_export_preserves_record_identifiers_and_relationships_across_resources": "捆绑导入/导出保留跨资源的记录标识符和关系。",
         "bundle_import_is_implied_when_target_is_bundle": "当目标是 `bundle ` 时，暗示捆绑导入。",
         "continue_processing_later_rows_after_failure": "失败后继续处理后面的行",

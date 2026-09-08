@@ -21,7 +21,11 @@ from lifeos_cli.application.datetime_utils import (
     parse_iso_datetime_input,
 )
 from lifeos_cli.application.package_metadata import get_installed_package_version
-from lifeos_cli.config import get_database_settings, get_preferences_settings
+from lifeos_cli.config import (
+    get_database_settings,
+    get_preferences_settings,
+    sqlite_database_file_path,
+)
 from lifeos_cli.db.base import Base
 from lifeos_cli.db.models import (
     AggregatedTimelogStatsGroupByArea,
@@ -1672,12 +1676,35 @@ async def _start_bundle_export_snapshot(session: AsyncSession) -> None:
     await session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
 
 
+def _validate_bundle_output_path(output_path: Path) -> None:
+    settings = get_database_settings()
+    if settings.database_url is None:
+        return
+    database_path = sqlite_database_file_path(settings.database_url)
+    if database_path is None:
+        return
+    reserved_paths = (
+        database_path,
+        Path(f"{database_path}-wal"),
+        Path(f"{database_path}-shm"),
+        Path(f"{database_path}-journal"),
+    )
+    resolved_output = output_path.expanduser().resolve(strict=False)
+    if any(
+        resolved_output == reserved_path.resolve(strict=False) for reserved_path in reserved_paths
+    ):
+        raise DataOperationError(
+            "Bundle output must not overwrite the configured SQLite database or a sidecar file."
+        )
+
+
 async def export_bundle(
     session: AsyncSession,
     *,
     output_path: Path,
 ) -> BundleExportReport:
     """Export one lossless, versioned source-table snapshot atomically."""
+    _validate_bundle_output_path(output_path)
     await _start_bundle_export_snapshot(session)
     table_counts: dict[str, int] = {}
     entry_metadata: dict[str, dict[str, str | int]] = {}

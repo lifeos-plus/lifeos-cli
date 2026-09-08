@@ -137,7 +137,7 @@ def ensure_database_driver_available(database_url: str) -> None:
         ) from exc
 
 
-def _sqlite_database_file_path(parsed: URL) -> Path | None:
+def _sqlite_database_file_path_from_url(parsed: URL) -> Path | None:
     """Return the on-disk SQLite database path when one file is configured."""
     if not backend_policy_for_drivername(parsed.drivername).supports_local_file_storage:
         return None
@@ -149,9 +149,15 @@ def _sqlite_database_file_path(parsed: URL) -> Path | None:
     return Path(database_name).expanduser()
 
 
+def sqlite_database_file_path(database_url: str) -> Path | None:
+    """Return the configured SQLite file path, or ``None`` for non-file backends."""
+    _, parsed = _parse_database_url(database_url)
+    return _sqlite_database_file_path_from_url(parsed)
+
+
 def _normalize_sqlite_database_url(parsed: URL) -> str:
     """Render one SQLite URL with a normalized filesystem path when applicable."""
-    database_path = _sqlite_database_file_path(parsed)
+    database_path = _sqlite_database_file_path_from_url(parsed)
     if database_path is None:
         return parsed.render_as_string(hide_password=False)
     return parsed.set(database=str(database_path)).render_as_string(hide_password=False)
@@ -210,7 +216,7 @@ def _restrict_database_sidecar_permissions(database_path: Path) -> None:
 def ensure_database_url_storage_ready(database_url: str) -> None:
     """Create local storage prerequisites for file-backed database URLs."""
     _, parsed = _parse_database_url(database_url)
-    database_path = _sqlite_database_file_path(parsed)
+    database_path = _sqlite_database_file_path_from_url(parsed)
     if database_path is None:
         return
     database_path.parent.mkdir(parents=True, exist_ok=True)
