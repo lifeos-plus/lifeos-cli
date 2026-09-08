@@ -355,6 +355,10 @@ def _parse_column_value(column: Any, value: Any) -> Any:
     if python_type is str:
         if not isinstance(value, str):
             raise DataOperationError(f"Value for `{column.name}` must be a string.")
+        if "\x00" in value:
+            raise DataOperationError(
+                f"Value for `{column.name}` contains a null character unsupported by PostgreSQL."
+            )
         if column.type.length is not None and len(value) > column.type.length:
             raise DataOperationError(
                 f"Value for `{column.name}` exceeds the maximum length of {column.type.length}."

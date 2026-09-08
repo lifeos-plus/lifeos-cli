@@ -196,6 +196,18 @@ def test_snapshot_parser_rejects_unknown_fields() -> None:
         )
 
 
+def test_snapshot_parser_rejects_postgresql_unsupported_null_characters() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="unsupported by PostgreSQL"):
+        data_ops.prepare_snapshot_row(
+            "note",
+            1,
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "content": "invalid\x00content",
+            },
+        )
+
+
 def test_snapshot_parser_rejects_non_string_factor_names() -> None:
     with pytest.raises(data_ops.DataOperationError, match="factor_names.*must be a string"):
         data_ops.prepare_snapshot_row(
@@ -584,6 +596,21 @@ def test_bundle_rejects_boolean_manifest_table_count(tmp_path: Path) -> None:
 
         with pytest.raises(data_ops.DataOperationError, match="table_counts"):
             data_ops.read_bundle(malformed_path)
+
+    asyncio.run(scenario())
+
+
+def test_bundle_rejects_postgresql_unsupported_null_characters(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        bundle_path = tmp_path / "null-character.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                session.add(Note(content="invalid\x00content"))
+                await session.flush()
+                await data_ops.export_bundle(session, output_path=bundle_path)
+
+        with pytest.raises(data_ops.DataOperationError, match="unsupported by PostgreSQL"):
+            data_ops.read_bundle(bundle_path)
 
     asyncio.run(scenario())
 

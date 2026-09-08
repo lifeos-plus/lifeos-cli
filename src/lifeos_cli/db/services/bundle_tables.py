@@ -537,6 +537,8 @@ def _parse_value(table: Table, column: Any, value: Any, *, row_number: int) -> A
         if isinstance(column_type, String):
             if not isinstance(value, str):
                 raise ValueError("must be a string")
+            if "\x00" in value:
+                raise ValueError("contains a null character unsupported by PostgreSQL")
             if column_type.length is not None and len(value) > column_type.length:
                 raise ValueError(f"exceeds the maximum length of {column_type.length}")
             return value
