@@ -1873,20 +1873,20 @@ async def truncate_supported_data(session: AsyncSession) -> None:
 async def import_bundle(
     session: AsyncSession,
     *,
-    bundle_rows: dict[str, list[dict[str, Any]]],
-    bundle_tables: PreparedBundleTables | None = None,
-    bundle_schema_version: int = BUNDLE_SCHEMA_VERSION,
+    bundle: BundlePayload,
     replace_existing: bool = False,
 ) -> BundleImportReport:
     """Import a full bundle atomically."""
-    if bundle_schema_version == LEGACY_BUNDLE_SCHEMA_VERSION and replace_existing:
+    schema_version = bundle.manifest.get("schema_version")
+    if schema_version == LEGACY_BUNDLE_SCHEMA_VERSION and replace_existing:
         raise DataOperationError(
             "Legacy schema-v3 bundles are partial exports and cannot safely replace a database; "
             "import without --replace-existing or re-export with the current LifeOS version."
         )
-
-    if bundle_tables is not None:
-        prepared_tables = bundle_tables.rows
+    if schema_version == BUNDLE_SCHEMA_VERSION:
+        if bundle.tables is None or bundle.resources:
+            raise DataOperationError("Schema-v4 bundles require only a validated table snapshot.")
+        prepared_tables = bundle.tables.rows
         if replace_existing:
             await truncate_supported_data(session)
         created_count, updated_count = await restore_table_rows(
@@ -1903,9 +1903,8 @@ async def import_bundle(
             failures=(),
             imported_resources=tuple(source_table_names()),
         )
-
-    if replace_existing:
-        await truncate_supported_data(session)
+    if schema_version != LEGACY_BUNDLE_SCHEMA_VERSION or bundle.tables is not None:
+        raise DataOperationError(f"Unsupported or inconsistent bundle schema {schema_version!r}.")
 
     created_count = 0
     updated_count = 0
@@ -1913,7 +1912,7 @@ async def import_bundle(
     prepared_by_resource: dict[str, list[PreparedSnapshotRow]] = {}
 
     for resource in BUNDLE_RESOURCE_ORDER:
-        rows = bundle_rows.get(resource, [])
+        rows = bundle.resources.get(resource, [])
         if not rows:
             continue
         prepared_rows = [

@@ -111,12 +111,12 @@ def test_main_data_import_bundle_uses_atomic_restore(
     async def fake_import_bundle(
         session_obj: object,
         *,
-        bundle_rows: dict[str, list[dict[str, object]]],
+        bundle: data_ops.BundlePayload,
         replace_existing: bool,
     ) -> data_ops.BundleImportReport:
         assert session_obj is session
         assert replace_existing is True
-        assert bundle_rows["note"][0]["id"] == "11111111-1111-1111-1111-111111111111"
+        assert bundle.resources["note"][0]["id"] == "11111111-1111-1111-1111-111111111111"
         return data_ops.BundleImportReport(
             processed_count=1,
             created_count=1,
@@ -561,10 +561,10 @@ def test_main_data_import_bundle_reports_unique_constraint_violation_cleanly(
     async def fake_import_bundle(
         _session_obj: object,
         *,
-        bundle_rows: dict[str, list[dict[str, object]]],
+        bundle: data_ops.BundlePayload,
         replace_existing: bool = False,
     ) -> data_ops.BundleImportReport:
-        _ = (bundle_rows, replace_existing)
+        _ = (bundle, replace_existing)
         raise IntegrityError("stmt", {}, Exception("UNIQUE constraint failed"))
 
     monkeypatch.setattr(

@@ -332,9 +332,6 @@ def test_import_bundle_applies_base_rows_before_relations(
 ) -> None:
     call_order: list[tuple[str, str]] = []
 
-    async def fake_truncate(session: object) -> None:
-        call_order.append(("truncate", "-"))
-
     async def fake_apply(
         session: object,
         *,
@@ -353,7 +350,6 @@ def test_import_bundle_applies_base_rows_before_relations(
     async def fake_hooks(session: object, *, resources: set[str]) -> None:
         call_order.append(("hooks", ",".join(sorted(resources))))
 
-    monkeypatch.setattr(data_ops, "truncate_supported_data", fake_truncate)
     monkeypatch.setattr(data_ops, "_apply_snapshot_base_row", fake_apply)
     monkeypatch.setattr(data_ops, "_sync_snapshot_relations", fake_sync)
     monkeypatch.setattr(data_ops, "run_post_import_hooks", fake_hooks)
@@ -361,11 +357,13 @@ def test_import_bundle_applies_base_rows_before_relations(
     report = asyncio.run(
         data_ops.import_bundle(
             cast(AsyncSession, object()),
-            bundle_rows={
-                "person": [{"id": "11111111-1111-1111-1111-111111111111"}],
-                "tag": [{"id": "22222222-2222-2222-2222-222222222222"}],
-            },
-            replace_existing=True,
+            bundle=data_ops.BundlePayload(
+                manifest={"schema_version": data_ops.LEGACY_BUNDLE_SCHEMA_VERSION},
+                resources={
+                    "person": [{"id": "11111111-1111-1111-1111-111111111111"}],
+                    "tag": [{"id": "22222222-2222-2222-2222-222222222222"}],
+                },
+            ),
         )
     )
 
@@ -375,7 +373,6 @@ def test_import_bundle_applies_base_rows_before_relations(
     assert report.created_count == 2
     assert report.updated_count == 0
     assert report.imported_resources == ("person", "tag")
-    assert call_order[0] == ("truncate", "-")
     assert max(base_positions) < min(sync_positions)
     assert call_order[-1] == ("hooks", "person,tag")
 
@@ -574,9 +571,42 @@ def test_legacy_bundle_cannot_replace_the_database() -> None:
         asyncio.run(
             data_ops.import_bundle(
                 cast(AsyncSession, object()),
-                bundle_rows={},
-                bundle_schema_version=data_ops.LEGACY_BUNDLE_SCHEMA_VERSION,
+                bundle=data_ops.BundlePayload(
+                    manifest={"schema_version": data_ops.LEGACY_BUNDLE_SCHEMA_VERSION},
+                    resources={},
+                ),
                 replace_existing=True,
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        data_ops.BundlePayload(
+            manifest={"schema_version": data_ops.BUNDLE_SCHEMA_VERSION},
+            resources={},
+        ),
+        data_ops.BundlePayload(
+            manifest={"schema_version": data_ops.BUNDLE_SCHEMA_VERSION},
+            resources={"note": []},
+            tables=data_ops.PreparedBundleTables(rows={}),
+        ),
+        data_ops.BundlePayload(
+            manifest={"schema_version": data_ops.LEGACY_BUNDLE_SCHEMA_VERSION},
+            resources={},
+            tables=data_ops.PreparedBundleTables(rows={}),
+        ),
+    ],
+)
+def test_import_bundle_rejects_inconsistent_payload_contract(
+    payload: data_ops.BundlePayload,
+) -> None:
+    with pytest.raises(data_ops.DataOperationError, match="bundle schema|Schema-v4"):
+        asyncio.run(
+            data_ops.import_bundle(
+                cast(AsyncSession, object()),
+                bundle=payload,
             )
         )
 
@@ -626,9 +656,7 @@ def test_lossless_bundle_replace_preserves_unexposed_and_soft_deleted_rows(
                 payload = data_ops.read_bundle(bundle_path)
                 report = await data_ops.import_bundle(
                     session,
-                    bundle_rows=payload.resources,
-                    bundle_tables=payload.tables,
-                    bundle_schema_version=payload.manifest["schema_version"],
+                    bundle=payload,
                     replace_existing=True,
                 )
                 await session.flush()
