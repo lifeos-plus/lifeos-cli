@@ -5,6 +5,7 @@ from tests.cli_integration_support import (
     IntegrationContext,
     assert_ok,
     init_context,
+    run_alembic,
     run_lifeos,
 )
 
@@ -24,6 +25,10 @@ def test_real_cli_init_and_db_commands(integration_context: IntegrationContext) 
     upgrade_result = run_lifeos(integration_context, "db", "upgrade")
     assert_ok(upgrade_result)
     assert "Database migrations are up to date." in upgrade_result.stdout
+
+    schema_check_result = run_alembic(integration_context, "check")
+    assert_ok(schema_check_result)
+    assert "No new upgrade operations detected." in schema_check_result.stdout
 
     check_result = run_lifeos(integration_context, "db", "check")
     assert_ok(check_result)
