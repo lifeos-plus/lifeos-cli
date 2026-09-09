@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from functools import lru_cache
 
 from sqlalchemy import event
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -47,6 +48,9 @@ def _exclude_soft_deleted_rows_by_default(execute_state: ORMExecuteState) -> Non
 
 def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
     """Apply SQLite connection pragmas for reliability and concurrent access."""
+    # Own BEGIN explicitly: legacy sqlite3 transactions otherwise exclude SELECT,
+    # DDL and an initial SAVEPOINT from the surrounding transaction.
+    dbapi_connection.isolation_level = None
     cursor = dbapi_connection.cursor()
     try:
         cursor.execute("PRAGMA foreign_keys=ON")
@@ -56,6 +60,10 @@ def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
         cursor.close()
 
 
+def _begin_sqlite_transaction(connection: Connection) -> None:
+    connection.exec_driver_sql("BEGIN")
+
+
 def configure_async_engine(engine: AsyncEngine) -> AsyncEngine:
     """Apply backend-specific engine configuration."""
     policy = backend_policy_for_drivername(engine.sync_engine.url.drivername)
@@ -63,6 +71,7 @@ def configure_async_engine(engine: AsyncEngine) -> AsyncEngine:
         return engine
 
     event.listen(engine.sync_engine, "connect", _configure_sqlite_connection)
+    event.listen(engine.sync_engine, "begin", _begin_sqlite_transaction)
     return engine
 
 
