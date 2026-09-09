@@ -67,6 +67,7 @@ from lifeos_cli.db.services.timelog_support import (
     validate_tracking_method,
 )
 from lifeos_cli.db.services.visions import sync_vision_experience_for_task_ids
+from lifeos_cli.db.services.write_locks import lock_planning_writes
 
 
 @dataclass(frozen=True)
@@ -738,6 +739,7 @@ async def create_timelog(
     payload: TimelogCreateInput,
 ) -> TimelogView:
     """Create a new timelog."""
+    await lock_planning_writes(session)
     normalized_start_time = to_storage_timezone(payload.start_time)
     normalized_end_time = to_storage_timezone(payload.end_time)
     normalized_title = validate_timelog_title(payload.title)
@@ -859,6 +861,7 @@ async def update_timelog(
     timelog_id: UUID,
     changes: TimelogUpdateInput,
 ) -> TimelogView:
+    await lock_planning_writes(session)
     timelog = await _get_timelog_model(session, timelog_id=timelog_id)
     if timelog is None:
         raise TimelogNotFoundError(f"Timelog {timelog_id} was not found")
@@ -889,6 +892,7 @@ async def batch_update_timelogs(
     changes: TimelogBatchUpdateInput,
 ) -> TimelogBatchUpdateResult:
     """Update multiple active timelogs while preserving per-record errors."""
+    await lock_planning_writes(session)
     if changes.title is not None and changes.find_title_text is not None:
         raise TimelogValidationError("Use either title or title find/replace, not both.")
     if changes.find_title_text is not None and not changes.find_title_text.strip():
@@ -1039,6 +1043,7 @@ async def batch_update_timelogs(
 
 
 async def delete_timelog(session: AsyncSession, *, timelog_id: UUID) -> None:
+    await lock_planning_writes(session)
     timelog = await _get_timelog_model(session, timelog_id=timelog_id)
     if timelog is None:
         raise TimelogNotFoundError(f"Timelog {timelog_id} was not found")

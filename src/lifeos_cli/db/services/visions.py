@@ -30,6 +30,7 @@ from lifeos_cli.db.services.model_utils import (
 from lifeos_cli.db.services.read_models import VisionView, build_vision_view
 from lifeos_cli.db.services.task_effort import recompute_subtree_totals
 from lifeos_cli.db.services.validation_utils import DomainValidationError, choice_validator
+from lifeos_cli.db.services.write_locks import lock_planning_writes
 
 VALID_VISION_STATUSES = {"active", "archived", "fruit"}
 VISION_EXPERIENCE_RATE_MAX = MAX_VISION_EXPERIENCE_RATE_PER_HOUR
@@ -155,6 +156,7 @@ async def sync_vision_experience_for_vision_ids(
     unique_vision_ids = deduplicate_preserving_order(vision_ids)
     if not unique_vision_ids:
         return ()
+    await session.flush()
     rows = await session.execute(
         select(Vision).where(
             Vision.id.in_(unique_vision_ids),
@@ -333,6 +335,7 @@ async def update_vision(
     person_ids: list[UUID] | None = None,
     clear_person: bool = False,
 ) -> VisionView:
+    await lock_planning_writes(session)
     vision = await load_model_by_id(
         session,
         model_cls=Vision,
@@ -387,6 +390,7 @@ async def delete_vision(
     *,
     vision_id: UUID,
 ) -> None:
+    await lock_planning_writes(session)
     await soft_delete_model_by_id(
         session,
         model_cls=Vision,

@@ -753,7 +753,11 @@ async def create_finance_node(
     await session.flush()
     node.path = str(node.id) if parent is None else f"{parent.path}/{node.id}"
     if parent is not None:
-        parent.children_count += 1
+        await session.execute(
+            update(FinanceTreeNode)
+            .where(FinanceTreeNode.id == parent.id)
+            .values(children_count=FinanceTreeNode.children_count + 1)
+        )
     await session.flush()
     await session.refresh(node)
     return node
@@ -806,8 +810,13 @@ async def delete_finance_node(session: AsyncSession, *, node_id: UUID) -> None:
     node.soft_delete()
     if node.parent_id is not None:
         parent = await _get_node_model(session, node_id=node.parent_id)
-        if parent is not None and parent.children_count > 0:
-            parent.children_count -= 1
+        if parent is not None:
+            await session.execute(
+                update(FinanceTreeNode)
+                .where(FinanceTreeNode.id == parent.id, FinanceTreeNode.children_count > 0)
+                .values(children_count=FinanceTreeNode.children_count - 1)
+            )
+    await session.flush()
 
 
 def _validate_snapshot_time_fields(

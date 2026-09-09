@@ -39,6 +39,8 @@ async def run_db_check(args: argparse.Namespace) -> int:
         print(f"Storage issue: {issue}")
     for issue in report.association_issues:
         print(f"Association issue: {issue}")
+    for issue in report.hierarchy_issues:
+        print(f"Hierarchy issue: {issue}")
     for warning in report.association_warnings:
         print(f"Association warning: {warning}")
     if report.ok:

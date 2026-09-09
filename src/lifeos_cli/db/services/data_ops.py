@@ -98,6 +98,8 @@ from lifeos_cli.db.services.entity_associations import (
 )
 from lifeos_cli.db.services.entity_person import sync_entity_person
 from lifeos_cli.db.services.entity_tags import sync_entity_tags
+from lifeos_cli.db.services.hierarchy import validate_persisted_hierarchies
+from lifeos_cli.db.services.write_locks import lock_planning_writes
 
 SUPPORTED_DATA_RESOURCES = (
     "area",
@@ -1085,6 +1087,8 @@ async def import_resource_snapshot(
     rows: list[dict[str, Any]],
 ) -> DataImportReport:
     """Import canonical snapshot rows for one resource."""
+    if resource in {"task", "timelog", "vision"}:
+        await lock_planning_writes(session)
     prepared_rows = [
         prepare_snapshot_row(resource, index + 1, row) for index, row in enumerate(rows)
     ]
@@ -1093,6 +1097,8 @@ async def import_resource_snapshot(
         prepared_rows=prepared_rows,
     )
     await _sync_prepared_rows_relations(session, prepared_rows=prepared_rows)
+    if resource == "task":
+        await validate_persisted_hierarchies(session, finance=False)
     return DataImportReport(
         resource=resource,
         processed_count=len(rows),
@@ -1638,6 +1644,10 @@ async def _rebuild_timelog_stats(session: AsyncSession) -> None:
 
 async def run_post_import_hooks(session: AsyncSession, *, resources: set[str]) -> None:
     """Run derived-data maintenance after snapshot imports."""
+    if {"task", "timelog", "vision"} & resources:
+        await lock_planning_writes(session)
+    if "task" in resources:
+        await validate_persisted_hierarchies(session, finance=False)
     if {"task", "timelog"} & resources:
         await _recompute_task_effort(session)
     if "timelog" in resources:
@@ -1920,6 +1930,7 @@ async def import_bundle(
     if schema_version == BUNDLE_SCHEMA_VERSION:
         if bundle.tables is None or bundle.resources:
             raise DataOperationError("Schema-v4 bundles require only a validated table snapshot.")
+        await lock_planning_writes(session)
         prepared_tables = bundle.tables.rows
         if replace_existing:
             await truncate_supported_data(session)
@@ -1928,6 +1939,7 @@ async def import_bundle(
             prepared_tables,
             replace_existing=replace_existing,
         )
+        await validate_persisted_hierarchies(session, rebuild_finance_counts=True)
         await run_post_import_hooks(session, resources={"task", "timelog"})
         return BundleImportReport(
             processed_count=created_count + updated_count,
@@ -1939,6 +1951,8 @@ async def import_bundle(
         )
     if schema_version != LEGACY_BUNDLE_SCHEMA_VERSION or bundle.tables is not None:
         raise DataOperationError(f"Unsupported or inconsistent bundle schema {schema_version!r}.")
+    if {"task", "timelog", "vision"} & bundle.resources.keys():
+        await lock_planning_writes(session)
 
     created_count = 0
     updated_count = 0

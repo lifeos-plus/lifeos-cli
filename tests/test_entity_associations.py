@@ -270,6 +270,7 @@ def test_load_person_for_entities_hides_soft_deleted_person() -> None:
                 )
                 await session.flush()
                 person.soft_delete()
+                await session.flush()
 
                 loaded_person_map = await entity_person.load_person_for_entities(
                     session,

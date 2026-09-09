@@ -17,6 +17,10 @@ from lifeos_cli.config import (
     ensure_database_url_storage_ready,
     get_database_settings,
 )
+from lifeos_cli.db.services.hierarchy import (
+    HierarchyValidationError,
+    validate_persisted_hierarchies,
+)
 from lifeos_cli.db.services.integrity_audit import audit_referential_integrity
 from lifeos_cli.db.session import get_async_engine, get_async_session_factory
 
@@ -32,6 +36,7 @@ class DatabaseCheckReport:
     association_issues: tuple[str, ...]
     association_warnings: tuple[str, ...]
     repaired_count: int
+    hierarchy_issues: tuple[str, ...] = ()
 
     @property
     def ok(self) -> bool:
@@ -40,6 +45,7 @@ class DatabaseCheckReport:
             self.current_revision == self.head_revision
             and not self.storage_issues
             and not self.association_issues
+            and not self.hierarchy_issues
         )
 
 
@@ -85,9 +91,17 @@ async def check_database(*, repair: bool = False) -> DatabaseCheckReport:
     association_issues: tuple[str, ...] = ()
     association_warnings: tuple[str, ...] = ()
     repaired_count = 0
+    hierarchy_issues: list[str] = []
     if revision == head_revision:
         session = get_async_session_factory()()
         try:
+            for task_hierarchy in (True, False):
+                try:
+                    await validate_persisted_hierarchies(
+                        session, tasks=task_hierarchy, finance=not task_hierarchy
+                    )
+                except HierarchyValidationError as exc:
+                    hierarchy_issues.append(str(exc))
             audit = await audit_referential_integrity(
                 session,
                 repair=repair and not storage_issues,
@@ -117,6 +131,7 @@ async def check_database(*, repair: bool = False) -> DatabaseCheckReport:
         association_issues=association_issues,
         association_warnings=association_warnings,
         repaired_count=repaired_count,
+        hierarchy_issues=tuple(hierarchy_issues),
     )
 
 

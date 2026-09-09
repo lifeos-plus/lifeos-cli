@@ -15,6 +15,12 @@ from lifeos_cli.db.services import areas, person, tags, visions
 from tests.support import sqlite_session_factory
 
 
+@pytest.fixture(autouse=True)
+def isolated_planning_lock(monkeypatch: pytest.MonkeyPatch) -> None:
+    # PostgreSQL lock behavior is covered by the real integration suite.
+    monkeypatch.setattr(visions, "lock_planning_writes", AsyncMock())
+
+
 async def _identity_view(_: object, record: object, **kwargs: object) -> object:
     return record
 

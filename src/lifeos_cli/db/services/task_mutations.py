@@ -30,6 +30,7 @@ from lifeos_cli.db.services.task_support import (
     validate_task_status_change,
 )
 from lifeos_cli.db.services.visions import sync_vision_experience_for_vision_ids
+from lifeos_cli.db.services.write_locks import lock_planning_writes
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,7 @@ async def create_task(
     planning_cycle_start_date: date | None = None,
     person_ids: list[UUID] | None = None,
 ) -> TaskView:
+    await lock_planning_writes(session)
     await ensure_vision_exists(session, vision_id)
     await validate_parent_task(session, vision_id=vision_id, parent_task_id=parent_task_id)
     planning_cycle_type, planning_cycle_days, planning_cycle_start_date = validate_planning_cycle(
@@ -99,6 +101,7 @@ async def reorder_tasks(
     task_orders: list[tuple[UUID, int]],
 ) -> None:
     """Update display order for multiple active tasks."""
+    await lock_planning_writes(session)
     if not task_orders:
         return
 
@@ -143,6 +146,7 @@ async def move_task(
     new_display_order: int | None = None,
 ) -> TaskMoveResult:
     """Move a task to a new parent and optionally a new vision."""
+    await lock_planning_writes(session)
     task = await load_model_by_id(
         session,
         model_cls=Task,
@@ -232,6 +236,7 @@ async def update_task(
     person_ids: list[UUID] | None = None,
     clear_person: bool = False,
 ) -> TaskView:
+    await lock_planning_writes(session)
     task = await load_model_by_id(
         session,
         model_cls=Task,
@@ -333,6 +338,7 @@ async def update_task(
 
 
 async def delete_task(session: AsyncSession, *, task_id: UUID) -> None:
+    await lock_planning_writes(session)
     task = await load_model_by_id(
         session,
         model_cls=Task,

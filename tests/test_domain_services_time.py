@@ -30,6 +30,13 @@ from tests.support import (
 )
 
 
+@pytest.fixture(autouse=True)
+def isolated_planning_lock(monkeypatch: pytest.MonkeyPatch) -> None:
+    # These service tests use SQLite or minimal session doubles; PostgreSQL
+    # transaction coordination is exercised by the real integration suite.
+    monkeypatch.setattr(timelogs, "lock_planning_writes", AsyncMock())
+
+
 async def _identity_event_view(_: object, event: object) -> object:
     return event
 

@@ -16,6 +16,42 @@ from lifeos_cli.db.base import Base
 from lifeos_cli.db.models.event import Event
 
 
+def test_database_check_reports_hierarchy_errors_without_repairing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from lifeos_cli.config import clear_config_cache
+    from lifeos_cli.db.models import Task, Vision
+    from lifeos_cli.db.session import clear_session_cache, get_async_session_factory
+
+    monkeypatch.setenv("LIFEOS_DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path / 'check.db'}")
+    monkeypatch.delenv("LIFEOS_DATABASE_SCHEMA", raising=False)
+    clear_config_cache()
+    clear_session_cache()
+    maintenance.upgrade_database()
+
+    async def scenario() -> None:
+        async with get_async_session_factory()() as session:
+            vision = Vision(name="Check")
+            session.add(vision)
+            await session.flush()
+            task = Task(vision_id=vision.id, content="Corrupt")
+            session.add(task)
+            await session.flush()
+            task.parent_task_id = task.id
+            await session.commit()
+        report = await maintenance.check_database(repair=True)
+        assert not report.ok
+        assert any("circular" in issue for issue in report.hierarchy_issues)
+        assert report.repaired_count == 0
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        clear_session_cache()
+        clear_config_cache()
+
+
 def test_build_alembic_config_uses_packaged_migration_resources() -> None:
     with ExitStack() as stack:
         config = maintenance.build_alembic_config(

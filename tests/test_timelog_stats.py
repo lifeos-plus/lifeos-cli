@@ -419,6 +419,11 @@ def test_rebuild_timelog_stats_groupby_area_sorts_and_deduplicates_discrete_date
     captured_daily_dates: list[tuple[date, ...]] = []
     captured_aggregated_dates: list[tuple[date, ...]] = []
 
+    async def fake_lock(_: object) -> None:
+        return None
+
+    monkeypatch.setattr(timelog_stats, "lock_planning_writes", fake_lock)
+
     async def fake_recompute_daily(_: object, *, local_dates: tuple[date, ...]) -> None:
         captured_daily_dates.append(local_dates)
 

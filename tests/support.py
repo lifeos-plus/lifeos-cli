@@ -27,7 +27,7 @@ async def create_sqlite_session_factory() -> tuple[
     )
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
-    return engine, async_sessionmaker(engine, expire_on_commit=False, future=True)
+    return engine, async_sessionmaker(engine, autoflush=False, expire_on_commit=False, future=True)
 
 
 @asynccontextmanager

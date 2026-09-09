@@ -47,12 +47,16 @@ from lifeos_cli.db.services.habit_support import (
     VALID_HABIT_ACTION_STATUSES,
     VALID_HABIT_STATUSES,
 )
+from lifeos_cli.db.services.hierarchy import (
+    HierarchyValidationError,
+    validate_finance_node_hierarchy,
+    validate_task_hierarchy,
+)
 from lifeos_cli.db.services.recurrence_core import (
     VALID_RECURRENCE_FREQUENCIES,
     VALID_WEEKDAY_NAMES,
 )
 from lifeos_cli.db.services.task_support import (
-    MAX_TASK_DEPTH,
     VALID_PLANNING_CYCLE_TYPES,
     VALID_TASK_STATUSES,
 )
@@ -647,8 +651,11 @@ def _prepare_table_row(
 def validate_prepared_tables(prepared: Mapping[str, list[dict[str, Any]]]) -> None:
     """Validate cross-table references after every entry passes local checks."""
     _validate_snapshot_foreign_keys(prepared)
-    _validate_task_hierarchy(prepared["tasks"])
-    _validate_finance_node_hierarchy(prepared["finance_tree_nodes"])
+    try:
+        validate_task_hierarchy(prepared["tasks"])
+        validate_finance_node_hierarchy(prepared["finance_tree_nodes"])
+    except HierarchyValidationError as exc:
+        raise BundleTableError(str(exc)) from exc
 
 
 def validate_domain_row(
@@ -953,67 +960,6 @@ def _validate_snapshot_foreign_keys(prepared: Mapping[str, list[dict[str, Any]]]
     ]
     if len(active_defaults) > 1:
         raise BundleTableError("finance_trees contains more than one active default tree.")
-
-
-def _validate_task_hierarchy(rows: list[dict[str, Any]]) -> None:
-    tasks_by_id = {row["id"]: row for row in rows}
-    depth_by_id: dict[Any, int] = {}
-    for row_number, row in enumerate(rows, start=1):
-        parent_id = row["parent_task_id"]
-        if parent_id is None:
-            depth = 1
-        else:
-            parent = tasks_by_id[parent_id]
-            if parent["vision_id"] != row["vision_id"]:
-                raise BundleTableError(
-                    f"tasks row {row_number} has a parent from a different vision."
-                )
-            if row["deleted_at"] is None and parent["deleted_at"] is not None:
-                raise BundleTableError(
-                    f"tasks row {row_number} has an active link to a deleted parent."
-                )
-            depth = depth_by_id[parent_id] + 1
-        if depth > MAX_TASK_DEPTH:
-            raise BundleTableError(
-                f"tasks row {row_number} exceeds the maximum hierarchy depth of {MAX_TASK_DEPTH}."
-            )
-        depth_by_id[row["id"]] = depth
-
-
-def _validate_finance_node_hierarchy(rows: list[dict[str, Any]]) -> None:
-    nodes_by_id = {row["id"]: row for row in rows}
-    active_child_counts: dict[Any, int] = {}
-    for row in rows:
-        if row["parent_id"] is not None and row["deleted_at"] is None:
-            active_child_counts[row["parent_id"]] = active_child_counts.get(row["parent_id"], 0) + 1
-
-    for row_number, row in enumerate(rows, start=1):
-        parent_id = row["parent_id"]
-        if parent_id is None:
-            expected_depth = 0
-            expected_path = str(row["id"])
-        else:
-            parent = nodes_by_id[parent_id]
-            if parent["tree_id"] != row["tree_id"]:
-                raise BundleTableError(
-                    f"finance_tree_nodes row {row_number} has a parent from a different tree."
-                )
-            if row["deleted_at"] is None and parent["deleted_at"] is not None:
-                raise BundleTableError(
-                    f"finance_tree_nodes row {row_number} has an active link to a deleted parent."
-                )
-            expected_depth = parent["depth"] + 1
-            expected_path = f"{parent['path']}/{row['id']}"
-        if row["depth"] != expected_depth or row["path"] != expected_path:
-            raise BundleTableError(
-                f"finance_tree_nodes row {row_number} has inconsistent path or depth."
-            )
-        if row["deleted_at"] is None and row["children_count"] != active_child_counts.get(
-            row["id"], 0
-        ):
-            raise BundleTableError(
-                f"finance_tree_nodes row {row_number} has an inconsistent active child count."
-            )
 
 
 def _key_predicate(table: Table, row: Mapping[str, Any]) -> Any:

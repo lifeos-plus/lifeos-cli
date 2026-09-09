@@ -1013,6 +1013,7 @@ def test_finance_tree_count_respects_deleted_scope() -> None:
                     primary_currency="USD",
                 )
                 custom_tree.soft_delete()
+                await session.flush()
 
                 assert await finance.count_finance_trees(session) == 1
 

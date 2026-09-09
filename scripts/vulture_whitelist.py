@@ -14,6 +14,7 @@ def _keep(*_symbols: object) -> None:
 _keep(
     type_annotation_map,
     isolated_runtime_locale,
+    isolated_planning_lock,
     _use_stable_note_timezone,
     configured_time_preferences,
     configured_gregorian_time_preferences,

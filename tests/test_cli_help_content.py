@@ -6,6 +6,19 @@ from lifeos_cli.cli import build_parser
 from lifeos_cli.cli_support.parser import build_cli_brand_banner, get_cli_brand_banner_width
 
 
+@pytest.mark.parametrize(
+    ("command", "expected"),
+    [
+        (["data", "import", "--help"], "conflicting hierarchies roll back the import"),
+        (["db", "check", "--help"], "this is not an audit of every business invariant"),
+    ],
+)
+def test_database_help_explains_integrity_boundaries(command, expected, capsys) -> None:
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(command)
+    assert expected in " ".join(capsys.readouterr().out.split())
+
+
 def test_cli_top_level_help_describes_command_grammar(capsys) -> None:
     parser = build_parser()
 
