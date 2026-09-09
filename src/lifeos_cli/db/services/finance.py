@@ -451,10 +451,12 @@ async def get_finance_tree_with_nodes(
     tree_id: UUID,
 ) -> FinanceTree | None:
     """Load one finance tree with all nodes."""
+    await session.flush()
     stmt = (
         select(FinanceTree)
         .options(_finance_tree_nodes_loader())
         .where(FinanceTree.id == tree_id)
+        .execution_options(populate_existing=True)
         .limit(1)
     )
     stmt = stmt.where(FinanceTree.deleted_at.is_(None))
@@ -658,12 +660,20 @@ async def copy_finance_tree(
     return copy
 
 
+async def _lock_finance_tree(session: AsyncSession, tree_id: UUID) -> None:
+    # Coordinate structural writes before reading descendants, including soft deletes.
+    # SQLite ignores FOR UPDATE and relies on its transaction-level writer isolation.
+    await session.flush()
+    await session.execute(select(FinanceTree.id).where(FinanceTree.id == tree_id).with_for_update())
+
+
 async def delete_finance_tree(
     session: AsyncSession,
     *,
     tree_id: UUID,
 ) -> None:
     """Soft-delete a finance tree that has no active snapshots."""
+    await _lock_finance_tree(session, tree_id)
     tree = await get_finance_tree_with_nodes(session, tree_id=tree_id)
     if tree is None:
         raise FinanceTreeNotFoundError(f"Finance tree {tree_id} was not found")
@@ -680,6 +690,7 @@ async def _get_node_model(
     *,
     node_id: UUID,
 ) -> FinanceTreeNode | None:
+    await session.flush()
     stmt = (
         select(FinanceTreeNode)
         .options(
@@ -687,6 +698,7 @@ async def _get_node_model(
             _finance_node_children_loader(),
         )
         .where(FinanceTreeNode.id == node_id)
+        .execution_options(populate_existing=True)
         .limit(1)
     )
     stmt = stmt.where(FinanceTreeNode.deleted_at.is_(None))
@@ -725,6 +737,7 @@ async def create_finance_node(
     metadata: dict[str, Any] | None = None,
 ) -> FinanceTreeNode:
     """Create a finance tree node."""
+    await _lock_finance_tree(session, tree_id)
     tree = await get_finance_tree(session, tree_id=tree_id)
     if tree is None:
         raise FinanceTreeNotFoundError(f"Finance tree {tree_id} was not found")
@@ -799,6 +812,12 @@ async def update_finance_node(
 
 async def delete_finance_node(session: AsyncSession, *, node_id: UUID) -> None:
     """Soft-delete a finance node and its descendants."""
+    tree_id = await session.scalar(
+        select(FinanceTreeNode.tree_id).where(FinanceTreeNode.id == node_id)
+    )
+    if tree_id is None:
+        raise FinanceTreeNodeNotFoundError(f"Finance node {node_id} was not found")
+    await _lock_finance_tree(session, tree_id)
     node = await _get_node_model(session, node_id=node_id)
     if node is None:
         raise FinanceTreeNodeNotFoundError(f"Finance node {node_id} was not found")
@@ -1655,6 +1674,7 @@ async def create_finance_snapshot(
     note: str | None = None,
 ) -> FinanceSnapshot:
     """Create a finance snapshot and roll up aggregate nodes."""
+    await _lock_finance_tree(session, tree_id)
     tree = await get_finance_tree(session, tree_id=tree_id)
     if tree is None:
         raise FinanceTreeNotFoundError(f"Finance tree {tree_id} was not found")

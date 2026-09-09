@@ -110,7 +110,8 @@ def test_post_import_rebuild_synchronizes_vision_experience() -> None:
     asyncio.run(run())
 
 
-def test_resource_import_only_synchronizes_affected_visions(monkeypatch) -> None:
+@pytest.mark.parametrize("legacy_bundle", [False, True])
+def test_resource_import_only_synchronizes_affected_visions(monkeypatch, legacy_bundle) -> None:
     async def run() -> None:
         async with sqlite_session_factory() as factory:
             monkeypatch.setattr(db_session, "get_async_session_factory", lambda: factory)
@@ -123,20 +124,30 @@ def test_resource_import_only_synchronizes_affected_visions(monkeypatch) -> None
                 session.add(task)
                 await session.commit()
                 affected_id, manual_id, task_id = affected.id, manual.id, task.id
-            result = await _import_rows(
-                resource="timelog",
-                dry_run=False,
-                continue_on_error=False,
-                rows=[
-                    {
-                        "id": str(uuid4()),
-                        "title": "Import",
-                        "task_id": str(task_id),
-                        "start_time": "2026-09-09T10:00:00Z",
-                        "end_time": "2026-09-09T12:00:00Z",
-                    }
-                ],
-            )
+            rows = [
+                {
+                    "id": str(uuid4()),
+                    "title": "Import",
+                    "task_id": str(task_id),
+                    "start_time": "2026-09-09T10:00:00Z",
+                    "end_time": "2026-09-09T12:00:00Z",
+                }
+            ]
+            result: data_ops.BundleImportReport | data_ops.DataImportReport
+            if legacy_bundle:
+                async with factory() as session:
+                    result = await data_ops.import_bundle(
+                        session,
+                        bundle=data_ops.BundlePayload(
+                            manifest={"schema_version": data_ops.LEGACY_BUNDLE_SCHEMA_VERSION},
+                            resources={"timelog": rows},
+                        ),
+                    )
+                    await session.commit()
+            else:
+                result = await _import_rows(
+                    resource="timelog", rows=rows, dry_run=False, continue_on_error=False
+                )
             assert result.failed_count == 0
             async with factory() as session:
                 assert (

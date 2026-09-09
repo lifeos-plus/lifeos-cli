@@ -77,6 +77,8 @@ Models opt into `SoftDeleteMixin`, which adds `deleted_at`. A global ORM listene
 
 `db/backend_policy.py` centralizes backend capabilities (schema support, local file storage, foreign-key enforcement, replace-existing strategy) so services do not branch on driver strings.
 
+SQLite connections explicitly begin transactions so reads and nested savepoints share the caller's rollback boundary. PostgreSQL planning mutations share a per-schema transaction advisory lock because task effort, vision experience, and timelog aggregates overlap; finance node creation/deletion and snapshot creation lock their tree row before inspecting structure. These bounded locks protect cooperating application writes, not arbitrary external SQL. Upgrades and full restores require quiescent writers, and SQLite read-to-write conflicts must be rolled back rather than silently retried inside a stale transaction.
+
 ### Alembic strategy
 
 - Migrations live in `src/lifeos_cli/alembic` and use an async environment (`env.py`) that resolves the database URL from configuration.
@@ -84,7 +86,7 @@ Models opt into `SoftDeleteMixin`, which adds `deleted_at`. A global ORM listene
 - `Base.metadata` uses an explicit naming convention so generated constraint names are stable and safe for PostgreSQL's 63-byte identifier limit.
 - Always audit and migrate existing data before adding constraints; do not assume a production database is clean.
 - CI exercises a full SQLite `base -> head -> base -> head` migration round trip and runs Alembic metadata drift checks at both heads.
-- `lifeos db check` reports migration drift, backend-native integrity failures, and dangling polymorphic associations; repair is always an explicit opt-in.
+- `lifeos db check` reports migration revision mismatches, backend-native integrity failures, invalid task/finance hierarchies, and dangling polymorphic associations; repair is always an explicit opt-in and only removes dangling weak associations. Alembic metadata drift checks remain a separate validation gate.
 
 ### Backup and restore
 

@@ -367,7 +367,7 @@ def test_import_bundle_applies_base_rows_before_relations(
     ) -> None:
         call_order.append(("sync", prepared_row.resource))
 
-    async def fake_hooks(session: object, *, resources: set[str]) -> None:
+    async def fake_hooks(session: object, *, resources: set[str], vision_ids=()) -> None:
         call_order.append(("hooks", ",".join(sorted(resources))))
 
     monkeypatch.setattr(data_ops, "_apply_snapshot_base_row", fake_apply)

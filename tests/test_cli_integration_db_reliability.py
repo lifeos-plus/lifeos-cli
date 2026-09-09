@@ -123,6 +123,26 @@ def test_postgres_concurrent_planning_and_finance_writes(
             stored_parent = await session.get(FinanceTreeNode, parent_id)
             assert stored_parent is not None and stored_parent.children_count == 2
 
+        async with factory() as first, factory() as second:
+            await second.get(FinanceTreeNode, parent_id)
+            await finance.delete_finance_node(first, node_id=parent_id)
+            pending = asyncio.create_task(
+                finance.create_finance_node(
+                    second, tree_id=tree_id, parent_id=parent_id, name="Too late"
+                )
+            )
+            try:
+                with pytest.raises(TimeoutError):
+                    await asyncio.wait_for(asyncio.shield(pending), timeout=0.2)
+                await first.commit()
+                with pytest.raises(finance.FinanceTreeNodeNotFoundError):
+                    await asyncio.wait_for(pending, timeout=10)
+                await second.rollback()
+            finally:
+                if not pending.done():
+                    pending.cancel()
+                    await asyncio.gather(pending, return_exceptions=True)
+
     try:
         asyncio.run(scenario())
     finally:

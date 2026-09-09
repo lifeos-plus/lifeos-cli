@@ -1939,6 +1939,7 @@ async def import_bundle(
     updated_count = 0
     imported_resources: list[str] = []
     prepared_by_resource: dict[str, list[PreparedSnapshotRow]] = {}
+    affected_vision_ids: set[UUID] = set()
 
     for resource in BUNDLE_RESOURCE_ORDER:
         rows = bundle.resources.get(resource, [])
@@ -1948,6 +1949,9 @@ async def import_bundle(
             prepare_snapshot_row(resource, index + 1, row) for index, row in enumerate(rows)
         ]
         prepared_by_resource[resource] = prepared_rows
+        affected_vision_ids.update(
+            await _import_vision_ids(session, resource, [row.row_id for row in prepared_rows])
+        )
         created_delta, updated_delta = await _import_prepared_base_rows(
             session,
             prepared_rows=prepared_rows,
@@ -1957,12 +1961,22 @@ async def import_bundle(
         imported_resources.append(resource)
 
     for resource in imported_resources:
+        affected_vision_ids.update(
+            await _import_vision_ids(
+                session, resource, [row.row_id for row in prepared_by_resource[resource]]
+            )
+        )
         await _sync_prepared_rows_relations(
             session,
             prepared_rows=prepared_by_resource[resource],
         )
 
-    await run_post_import_hooks(session, resources=set(imported_resources))
+    explicit_vision_ids = {row.row_id for row in prepared_by_resource.get("vision", [])}
+    await run_post_import_hooks(
+        session,
+        resources=set(imported_resources) - {"vision"},
+        vision_ids=tuple(sorted(affected_vision_ids - explicit_vision_ids)),
+    )
     processed_count = created_count + updated_count
     return BundleImportReport(
         processed_count=processed_count,

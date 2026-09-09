@@ -40,6 +40,7 @@ from lifeos_cli.db.services.habit_support import (
 )
 from lifeos_cli.db.services.hierarchy import (
     HierarchyValidationError,
+    order_hierarchy,
     validate_finance_node_hierarchy,
     validate_task_hierarchy,
 )
@@ -791,31 +792,16 @@ def _sort_self_references(table: Table, rows: list[dict[str, Any]]) -> list[dict
         for foreign_key in column.foreign_keys
         if foreign_key.column.table is table
     ]
-    if not self_foreign_keys or len(table.primary_key.columns) != 1:
+    if not self_foreign_keys:
         return rows
-    primary_key = list(table.primary_key.columns)[0].name
-    pending = list(rows)
-    pending_ids = {row[primary_key] for row in pending}
-    emitted: set[Any] = set()
-    ordered: list[dict[str, Any]] = []
-    while pending:
-        ready = [
-            row
-            for row in pending
-            if all(
-                row[foreign_key.parent.name] is None
-                or row[foreign_key.parent.name] not in pending_ids
-                or row[foreign_key.parent.name] in emitted
-                for foreign_key in self_foreign_keys
-            )
-        ]
-        if not ready:
-            raise BundleTableError(f"{table.name} contains a circular self-reference.")
-        for row in ready:
-            ordered.append(row)
-            emitted.add(row[primary_key])
-            pending.remove(row)
-    return ordered
+    if len(self_foreign_keys) != 1 or list(table.primary_key.columns.keys()) != ["id"]:
+        raise BundleTableError(f"{table.name} has an unsupported hierarchy contract.")
+    try:
+        return order_hierarchy(
+            rows, parent_field=self_foreign_keys[0].parent.name, table_name=table.name
+        )
+    except HierarchyValidationError as exc:
+        raise BundleTableError(str(exc)) from exc
 
 
 def _validate_snapshot_foreign_keys(prepared: Mapping[str, list[dict[str, Any]]]) -> None:
