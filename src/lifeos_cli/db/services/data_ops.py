@@ -6,7 +6,7 @@ import hashlib
 from contextlib import aclosing
 from dataclasses import dataclass
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
@@ -28,10 +28,8 @@ from lifeos_cli.config import (
 )
 from lifeos_cli.db.base import Base
 from lifeos_cli.db.models import (
-    AggregatedTimelogStatsGroupByArea,
     Area,
     BodyMeasurement,
-    DailyTimelogStatsGroupByArea,
     Event,
     EventOccurrenceException,
     Habit,
@@ -99,6 +97,7 @@ from lifeos_cli.db.services.entity_associations import (
 from lifeos_cli.db.services.entity_person import sync_entity_person
 from lifeos_cli.db.services.entity_tags import sync_entity_tags
 from lifeos_cli.db.services.hierarchy import validate_persisted_hierarchies
+from lifeos_cli.db.services.snapshot_values import SnapshotValueError, parse_snapshot_value
 from lifeos_cli.db.services.write_locks import lock_planning_writes
 
 SUPPORTED_DATA_RESOURCES = (
@@ -318,60 +317,10 @@ def _serialize_scalar(value: Any) -> Any:
 
 
 def _parse_column_value(column: Any, value: Any) -> Any:
-    if value is None:
-        return None
-    python_type = getattr(column.type, "python_type", None)
-    if python_type is UUID:
-        if not isinstance(value, (UUID, str)):
-            raise DataOperationError(f"Value for `{column.name}` must be a UUID string.")
-        return value if isinstance(value, UUID) else UUID(value)
-    if python_type is datetime:
-        if not isinstance(value, (datetime, str)):
-            raise DataOperationError(
-                f"Value for `{column.name}` must be an ISO-8601 datetime string."
-            )
-        return (
-            normalize_storage_datetime(value)
-            if isinstance(value, datetime)
-            else _normalize_json_datetime(value)
-        )
-    if python_type is date:
-        if isinstance(value, datetime) or not isinstance(value, (date, str)):
-            raise DataOperationError(f"Value for `{column.name}` must be an ISO date string.")
-        return value if isinstance(value, date) else date.fromisoformat(value)
-    if python_type is bool:
-        if type(value) is not bool:
-            raise DataOperationError(f"Value for `{column.name}` must be a boolean.")
-        return value
-    if python_type is int:
-        if type(value) is not int:
-            raise DataOperationError(f"Value for `{column.name}` must be an integer.")
-        return value
-    if python_type is float:
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise DataOperationError(f"Value for `{column.name}` must be a number.")
-        return float(value)
-    if python_type is Decimal:
-        try:
-            decimal_value = value if isinstance(value, Decimal) else Decimal(str(value))
-        except (InvalidOperation, TypeError, ValueError) as exc:
-            raise DataOperationError(f"Invalid decimal value for `{column.name}`.") from exc
-        if not decimal_value.is_finite():
-            raise DataOperationError(f"Decimal value for `{column.name}` must be finite.")
-        return decimal_value
-    if python_type is str:
-        if not isinstance(value, str):
-            raise DataOperationError(f"Value for `{column.name}` must be a string.")
-        if "\x00" in value:
-            raise DataOperationError(
-                f"Value for `{column.name}` contains a null character unsupported by PostgreSQL."
-            )
-        if column.type.length is not None and len(value) > column.type.length:
-            raise DataOperationError(
-                f"Value for `{column.name}` exceeds the maximum length of {column.type.length}."
-            )
-        return value
-    return value
+    try:
+        return parse_snapshot_value(column, value, allow_native=True)
+    except SnapshotValueError as exc:
+        raise DataOperationError(str(exc)) from exc
 
 
 def _model_column_names(spec: DataResourceSpec) -> tuple[str, ...]:
@@ -904,13 +853,31 @@ async def _apply_snapshot_base_row(
         update(spec.model)
         .where(spec.model.id == prepared_row.row_id)
         .values(**prepared_row.direct_values)
+        .returning(*spec.model.__table__.columns)
     )
     result = await session.execute(update_stmt)
-    updated_count = int(getattr(result, "rowcount", 0) or 0)
-    if updated_count > 0:
-        return "updated"
-    await session.execute(insert(spec.model).values(**prepared_row.direct_values))
-    return "created"
+    stored_row = result.mappings().first()
+    outcome = "updated"
+    if stored_row is None:
+        stored_row = (
+            (
+                await session.execute(
+                    insert(spec.model)
+                    .values(**prepared_row.direct_values)
+                    .returning(*spec.model.__table__.columns)
+                )
+            )
+            .mappings()
+            .one()
+        )
+        outcome = "created"
+    try:
+        validate_domain_row(
+            spec.model.__table__.name, dict(stored_row), row_number=prepared_row.index
+        )
+    except BundleTableError as exc:
+        raise DataOperationError(str(exc)) from exc
+    return outcome
 
 
 async def _sync_snapshot_relations(
@@ -1626,20 +1593,7 @@ async def _recompute_task_effort(session: AsyncSession) -> None:
 
 async def _rebuild_timelog_stats(session: AsyncSession) -> None:
     """Replace every derived timelog aggregate from authoritative rows."""
-    await session.execute(delete(AggregatedTimelogStatsGroupByArea))
-    await session.execute(delete(DailyTimelogStatsGroupByArea))
-    timelog_range = await timelog_stats.load_rebuildable_timelog_date_range(session)
-    if timelog_range is None:
-        return
-    local_dates = timelog_stats.iter_date_range(*timelog_range)
-    await timelog_stats.recompute_daily_timelog_stats_groupby_area_for_dates(
-        session,
-        local_dates=local_dates,
-    )
-    await timelog_stats.recompute_aggregated_timelog_stats_groupby_area_for_dates(
-        session,
-        local_dates=local_dates,
-    )
+    await timelog_stats.rebuild_timelog_stats_groupby_area(session, rebuild_all=True)
 
 
 async def run_post_import_hooks(session: AsyncSession, *, resources: set[str]) -> None:
@@ -1650,6 +1604,9 @@ async def run_post_import_hooks(session: AsyncSession, *, resources: set[str]) -
         await validate_persisted_hierarchies(session, finance=False)
     if {"task", "timelog"} & resources:
         await _recompute_task_effort(session)
+    if {"task", "timelog", "vision"} & resources:
+        vision_ids = list((await session.scalars(select(Vision.id))).all())
+        await visions.sync_vision_experience_for_vision_ids(session, vision_ids=vision_ids)
     if "timelog" in resources:
         await _rebuild_timelog_stats(session)
 

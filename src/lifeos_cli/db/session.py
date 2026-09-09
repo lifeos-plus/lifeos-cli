@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from functools import lru_cache
+from functools import lru_cache, partial
 
 from sqlalchemy import event
 from sqlalchemy.engine import Connection
@@ -46,14 +46,16 @@ def _exclude_soft_deleted_rows_by_default(execute_state: ORMExecuteState) -> Non
     )
 
 
-def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
+def _configure_sqlite_connection(
+    dbapi_connection, _connection_record, *, foreign_keys: bool = True
+) -> None:
     """Apply SQLite connection pragmas for reliability and concurrent access."""
     # Own BEGIN explicitly: legacy sqlite3 transactions otherwise exclude SELECT,
     # DDL and an initial SAVEPOINT from the surrounding transaction.
     dbapi_connection.isolation_level = None
     cursor = dbapi_connection.cursor()
     try:
-        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute(f"PRAGMA foreign_keys={'ON' if foreign_keys else 'OFF'}")
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
     finally:
@@ -64,13 +66,18 @@ def _begin_sqlite_transaction(connection: Connection) -> None:
     connection.exec_driver_sql("BEGIN")
 
 
-def configure_async_engine(engine: AsyncEngine) -> AsyncEngine:
+def configure_async_engine(engine: AsyncEngine, *, sqlite_foreign_keys: bool = True) -> AsyncEngine:
     """Apply backend-specific engine configuration."""
     policy = backend_policy_for_drivername(engine.sync_engine.url.drivername)
     if not policy.enable_foreign_keys_on_connect:
         return engine
 
-    event.listen(engine.sync_engine, "connect", _configure_sqlite_connection)
+    listener = (
+        _configure_sqlite_connection
+        if sqlite_foreign_keys
+        else partial(_configure_sqlite_connection, foreign_keys=False)
+    )
+    event.listen(engine.sync_engine, "connect", listener)
     event.listen(engine.sync_engine, "begin", _begin_sqlite_transaction)
     return engine
 

@@ -58,6 +58,7 @@ def _configure_migration_context(connection: Connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
+        transactional_ddl=True,
         compare_type=True,
         compare_server_default=True,
         include_object=_include_application_object,
@@ -108,6 +109,13 @@ def do_run_migrations(connection: Connection) -> None:
     _configure_migration_context(connection)
     with context.begin_transaction():
         context.run_migrations()
+        if connection.dialect.name == "sqlite":
+            violations = connection.exec_driver_sql("PRAGMA foreign_key_check").fetchmany(10)
+            if violations:
+                raise RuntimeError(
+                    "Migration would leave foreign-key violations; all changes were rolled back: "
+                    f"{violations}"
+                )
 
 
 async def run_async_migrations() -> None:
@@ -117,11 +125,17 @@ async def run_async_migrations() -> None:
             config.get_section(config.config_ini_section, {}),
             prefix="sqlalchemy.",
             poolclass=pool.NullPool,
-        )
+        ),
+        # Alembic batch rebuilds DROP the old table. Enforced foreign keys would
+        # cascade-delete its dependents even though the replacement preserves IDs.
+        # Disable only on this private engine and validate before transactional DDL commits.
+        sqlite_foreign_keys=False,
     )
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-    await connectable.dispose()
+    try:
+        async with connectable.connect() as connection:
+            await connection.run_sync(do_run_migrations)
+    finally:
+        await connectable.dispose()
 
 
 def run_migrations_online() -> None:

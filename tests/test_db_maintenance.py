@@ -148,6 +148,81 @@ def test_full_sqlite_migration_chain_round_trips_without_metadata_drift(
         command.check(config)
 
 
+def test_sqlite_batch_migrations_preserve_referencing_rows(tmp_path: Path) -> None:
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from lifeos_cli.db.models import Task, Vision
+    from lifeos_cli.db.session import configure_async_engine
+
+    database_path = tmp_path / "populated-migration.db"
+    url = f"sqlite+aiosqlite:///{database_path}"
+
+    async def seed() -> None:
+        engine = configure_async_engine(create_async_engine(url))
+        try:
+            async with async_sessionmaker(engine)() as session:
+                vision = Vision(name="Keep parent")
+                session.add(vision)
+                await session.flush()
+                session.add(Task(vision_id=vision.id, content="Keep child"))
+                await session.commit()
+        finally:
+            await engine.dispose()
+
+    async def verify() -> None:
+        engine = configure_async_engine(create_async_engine(url))
+        try:
+            async with async_sessionmaker(engine)() as session:
+                assert (await session.scalars(select(Task.content))).all() == ["Keep child"]
+                assert (await session.scalars(select(Vision.name))).all() == ["Keep parent"]
+        finally:
+            await engine.dispose()
+
+    with ExitStack() as stack:
+        config = maintenance.build_alembic_config(sqlalchemy_url=url, stack=stack)
+        command.upgrade(config, "20260906_1200")
+        asyncio.run(seed())
+        for direction, revision in (
+            (command.upgrade, "head"),
+            (command.downgrade, "20260906_1200"),
+            (command.upgrade, "head"),
+        ):
+            direction(config, revision)
+            asyncio.run(verify())
+
+
+def test_sqlite_failed_migration_rolls_back_schema_and_revision(tmp_path: Path) -> None:
+    database_path = tmp_path / "invalid-foreign-key.db"
+    url = f"sqlite+aiosqlite:///{database_path}"
+    with ExitStack() as stack:
+        config = maintenance.build_alembic_config(sqlalchemy_url=url, stack=stack)
+        command.upgrade(config, "20260906_1200")
+        with closing(sqlite3.connect(database_path)) as connection, connection:
+            connection.execute(
+                "INSERT INTO tasks (id, vision_id, content, created_at, updated_at, "
+                "status, priority, display_order, actual_effort_self, actual_effort_total) "
+                "VALUES ('11111111111111111111111111111111', '22222222222222222222222222222222', "
+                "'Missing vision', '2026-09-08', '2026-09-08', 'todo', 0, 0, 0, 0)"
+            )
+            schema_before = connection.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'"
+            ).fetchone()
+        with pytest.raises(RuntimeError, match="foreign-key violations"):
+            command.upgrade(config, "head")
+        with closing(sqlite3.connect(database_path)) as connection:
+            assert connection.execute("SELECT version_num FROM alembic_version").fetchone() == (
+                "20260906_1200",
+            )
+            assert (
+                connection.execute(
+                    "SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'"
+                ).fetchone()
+                == schema_before
+            )
+            assert connection.execute("SELECT count(*) FROM tasks").fetchone() == (1,)
+
+
 def test_invariant_migration_rejects_existing_invalid_rows_with_actionable_error(
     tmp_path: Path,
 ) -> None:

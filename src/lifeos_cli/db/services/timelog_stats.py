@@ -721,6 +721,9 @@ async def rebuild_timelog_stats_groupby_area(
     if rebuild_all:
         if date_values or start_date is not None or end_date is not None:
             raise TimelogStatsValidationError("Use `--all` by itself, without date filters.")
+        # Full rebuild also removes stale periods that no longer have source rows.
+        await session.execute(delete(AggregatedTimelogStatsGroupByArea))
+        await session.execute(delete(DailyTimelogStatsGroupByArea))
         date_range = await load_rebuildable_timelog_date_range(session)
         if date_range is None:
             return ()

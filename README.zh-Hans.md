@@ -105,6 +105,8 @@ uv tool install --upgrade "lifeos-cli[web]"
 - SQLite 适合本地、单用户、低门槛使用场景。
 - PostgreSQL 仍然是支持 schema 的部署型后端。
 
+SQLite 运行时连接启用外键和显式事务。迁移在事务内重建表，并在提交前检查外键，以保留引用记录。PostgreSQL 在各应用 schema 内协调任务工时、愿景经验和时间统计的写入。数据库升级及完整恢复期间应停止其他写入，并在维护前保留已验证的备份。命令细节及诊断范围以 `lifeos db --help` 和 `lifeos data --help` 为准。
+
 初始化本地环境：
 
 ```bash

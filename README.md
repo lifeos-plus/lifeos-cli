@@ -105,6 +105,8 @@ To upgrade an existing installation, run `uv tool upgrade lifeos-cli`. If you or
 - SQLite is the low-friction option for local, single-user setups.
 - PostgreSQL remains the schema-capable backend for managed deployments.
 
+SQLite runtime connections enforce foreign keys and explicit transactions. Migrations use transactional table rebuilds with a foreign-key check before commit to preserve referencing rows. PostgreSQL coordinates writes to task effort, vision experience, and timelog aggregates within each application schema. Stop other writers during database upgrades and full restores, and retain a verified backup before maintenance. Command details and diagnostic scope are available through `lifeos db --help` and `lifeos data --help`.
+
 Initialize your local setup:
 
 ```bash

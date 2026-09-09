@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -11,11 +12,115 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from lifeos_cli.cli_support.resources.data.handlers import _import_rows
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.base import Base
-from lifeos_cli.db.models import Area, Task, Vision
+from lifeos_cli.db.models import Area, DailyTimelogStatsGroupByArea, Task, Timelog, Vision
 from lifeos_cli.db.models.finance import FinanceTreeNode
-from lifeos_cli.db.services import data_ops, finance, task_effort
+from lifeos_cli.db.models.sleep_segment import SleepSegment
+from lifeos_cli.db.services import data_ops, finance, task_effort, timelog_stats
 from lifeos_cli.db.services.hierarchy import HierarchyValidationError
 from tests.support import sqlite_session_factory
+
+
+def test_partial_import_validates_the_complete_persisted_row(monkeypatch) -> None:
+    async def run() -> None:
+        async with sqlite_session_factory() as factory:
+            monkeypatch.setattr(db_session, "get_async_session_factory", lambda: factory)
+            async with factory() as session:
+                start = datetime(2026, 9, 8, tzinfo=UTC)
+                segment = SleepSegment(
+                    start_at=start,
+                    end_at=start + timedelta(hours=8),
+                    sleep_date=start.date(),
+                    duration_minutes=480,
+                )
+                session.add(segment)
+                await session.commit()
+                segment_id = segment.id
+            report = await _import_rows(
+                resource="sleep",
+                rows=[{"id": str(segment_id), "duration_minutes": 5}],
+                dry_run=False,
+                continue_on_error=False,
+            )
+            assert report.failed_count == 1
+            async with factory() as session:
+                stored = await session.get(SleepSegment, segment_id)
+                assert stored is not None and stored.duration_minutes == 480
+
+    asyncio.run(run())
+
+
+def test_post_import_rebuild_synchronizes_vision_experience() -> None:
+    async def run() -> None:
+        async with sqlite_session_factory() as factory:
+            async with factory() as session:
+                vision = Vision(name="Experience", experience_rate_per_hour=60)
+                session.add(vision)
+                await session.flush()
+                task = Task(vision_id=vision.id, content="Work")
+                session.add(task)
+                await session.flush()
+                start = datetime(2026, 9, 8, tzinfo=UTC)
+                session.add(
+                    Timelog(
+                        title="Imported",
+                        task_id=task.id,
+                        start_time=start,
+                        end_time=start + timedelta(hours=2),
+                    )
+                )
+                await session.flush()
+                await data_ops.run_post_import_hooks(session, resources={"timelog"})
+                await session.refresh(vision)
+                assert vision.experience_points == 120
+                assert vision.stage == 1
+
+    asyncio.run(run())
+
+
+def test_full_stats_rebuild_removes_rows_without_remaining_timelogs() -> None:
+    async def run() -> None:
+        async with sqlite_session_factory() as factory:
+            async with factory() as session:
+                area = Area(name="Obsolete stats")
+                session.add(area)
+                await session.flush()
+                session.add(
+                    DailyTimelogStatsGroupByArea(
+                        area_id=area.id,
+                        stat_date=date(2026, 1, 1),
+                        timezone="UTC",
+                        minutes=60,
+                        timelog_count=1,
+                    )
+                )
+                await session.flush()
+                assert (
+                    await timelog_stats.rebuild_timelog_stats_groupby_area(
+                        session, rebuild_all=True
+                    )
+                    == ()
+                )
+                assert (
+                    await session.scalar(
+                        select(func.count()).select_from(DailyTimelogStatsGroupByArea)
+                    )
+                    == 0
+                )
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    "resource,payload",
+    [
+        ("person", {"nicknames": [float("inf")]}),
+        ("area", {"display_order": 2**40}),
+        ("body-measurement", {"weight_kg": "70.001"}),
+    ],
+)
+def test_resource_import_uses_portable_snapshot_value_validation(resource, payload) -> None:
+    with pytest.raises(data_ops.DataOperationError):
+        data_ops.prepare_snapshot_row(resource, 1, {"id": str(uuid4()), **payload})
 
 
 @pytest.mark.parametrize("dry_run", [True, False])
