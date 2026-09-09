@@ -156,7 +156,7 @@ def test_integration_tests_require_an_explicit_test_database_url() -> None:
     assert "LIFEOS_TEST_DATABASE_URL:-" in script_text
     assert "exit 3" in script_text
     assert "uv sync --extra dev --extra web --extra postgres --frozen" in script_text
-    assert "uv run pytest -m integration tests/test_cli_integration_*.py" in script_text
+    assert "uv run pytest -m integration" in script_text.splitlines()
     assert 'source "${SCRIPT_DIR}/load_local_env.sh"' in script_text
     assert 'load_local_env "${REPO_ROOT}/.env"' in script_text
     support_text = Path("tests/cli_integration_support.py").read_text()

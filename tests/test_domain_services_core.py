@@ -540,6 +540,9 @@ def test_sync_vision_experience_uses_root_task_effort(
     vision.experience_points = 0
     vision.experience_rate_per_hour = None
     session = SimpleNamespace(flush=AsyncMock(), refresh=AsyncMock(), commit=AsyncMock())
+    session.execute = AsyncMock(
+        return_value=SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [vision]))
+    )
     root_task = SimpleNamespace(parent_task_id=None, actual_effort_total=240)
 
     async def fake_load_vision(
@@ -575,7 +578,7 @@ def test_sync_vision_experience_uses_root_task_effort(
     assert synced.experience_rate_per_hour is None
     assert synced.experience_points == 480
     assert synced.stage == 3
-    session.flush.assert_awaited_once()
+    session.flush.assert_awaited()
     session.commit.assert_not_called()
 
 

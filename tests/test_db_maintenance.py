@@ -223,6 +223,49 @@ def test_sqlite_failed_migration_rolls_back_schema_and_revision(tmp_path: Path) 
             assert connection.execute("SELECT count(*) FROM tasks").fetchone() == (1,)
 
 
+def test_planning_migration_rejects_preexisting_null_loophole(tmp_path: Path) -> None:
+    from datetime import date
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from lifeos_cli.db.models import Task, Vision
+    from lifeos_cli.db.session import configure_async_engine
+
+    path = tmp_path / "incomplete-planning.db"
+    url = f"sqlite+aiosqlite:///{path}"
+
+    async def seed() -> None:
+        engine = configure_async_engine(create_async_engine(url))
+        try:
+            async with async_sessionmaker(engine)() as session:
+                vision = Vision(name="Historical")
+                session.add(vision)
+                await session.flush()
+                session.add(
+                    Task(
+                        vision_id=vision.id,
+                        content="Incomplete",
+                        planning_cycle_type="day",
+                        planning_cycle_start_date=date(2026, 9, 9),
+                    )
+                )
+                await session.commit()
+        finally:
+            await engine.dispose()
+
+    with ExitStack() as stack:
+        config = maintenance.build_alembic_config(sqlalchemy_url=url, stack=stack)
+        command.upgrade(config, "20260907_1200")
+        asyncio.run(seed())
+        with pytest.raises(RuntimeError, match="incomplete row"):
+            command.upgrade(config, "head")
+        with closing(sqlite3.connect(path)) as connection:
+            assert connection.execute("SELECT version_num FROM alembic_version").fetchone() == (
+                "20260907_1200",
+            )
+            assert connection.execute("SELECT count(*) FROM tasks").fetchone() == (1,)
+
+
 def test_invariant_migration_rejects_existing_invalid_rows_with_actionable_error(
     tmp_path: Path,
 ) -> None:

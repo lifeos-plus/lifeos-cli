@@ -241,7 +241,9 @@ def test_main_data_import_records_lookup_failures_without_crashing(
         _ = (resource, rows)
         raise LookupError("Unknown person IDs for entity type timelog: missing-person")
 
-    async def fake_run_post_import_hooks(_session_obj: object, *, resources: set[str]) -> None:
+    async def fake_run_post_import_hooks(
+        _session_obj: object, *, resources: set[str], vision_ids=()
+    ) -> None:
         _ = resources
         raise AssertionError("post-import hooks should not run after a stopping failure")
 
@@ -374,7 +376,9 @@ def test_main_data_import_upsert_resolves_natural_key_before_import(
             failures=(),
         )
 
-    async def fake_run_post_import_hooks(_session_obj: object, *, resources: set[str]) -> None:
+    async def fake_run_post_import_hooks(
+        _session_obj: object, *, resources: set[str], vision_ids=()
+    ) -> None:
         _ = resources
 
     monkeypatch.setattr(
@@ -458,7 +462,9 @@ def test_main_data_import_upsert_retries_concurrent_natural_key_winner(
             failures=(),
         )
 
-    async def fake_run_post_import_hooks(_session_obj: object, *, resources: set[str]) -> None:
+    async def fake_run_post_import_hooks(
+        _session_obj: object, *, resources: set[str], vision_ids=()
+    ) -> None:
         _ = resources
 
     monkeypatch.setattr(
@@ -520,7 +526,9 @@ def test_main_data_import_records_unique_constraint_failure_per_row(
             "stmt", {}, Exception("UNIQUE constraint failed: menstrual_factors.name")
         )
 
-    async def fake_run_post_import_hooks(_session_obj: object, *, resources: set[str]) -> None:
+    async def fake_run_post_import_hooks(
+        _session_obj: object, *, resources: set[str], vision_ids=()
+    ) -> None:
         _ = resources
 
     monkeypatch.setattr(

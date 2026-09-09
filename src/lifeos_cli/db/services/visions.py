@@ -126,6 +126,7 @@ async def _load_active_tasks_for_vision(session: AsyncSession, vision_id: UUID) 
         select(Task)
         .where(Task.vision_id == vision_id, Task.deleted_at.is_(None))
         .order_by(Task.display_order.asc(), Task.created_at.asc(), Task.id.asc())
+        .execution_options(populate_existing=True)
     )
     return list((await session.execute(stmt)).scalars())
 
@@ -156,9 +157,12 @@ async def sync_vision_experience_for_vision_ids(
     unique_vision_ids = deduplicate_preserving_order(vision_ids)
     if not unique_vision_ids:
         return ()
+    await lock_planning_writes(session)
     await session.flush()
     rows = await session.execute(
-        select(Vision).where(
+        select(Vision)
+        .execution_options(populate_existing=True)
+        .where(
             Vision.id.in_(unique_vision_ids),
             Vision.deleted_at.is_(None),
         )
@@ -408,6 +412,7 @@ async def add_experience_to_vision(
     experience_points: int,
 ) -> VisionView:
     """Add manual experience points to an active vision."""
+    await lock_planning_writes(session)
     vision = await load_model_by_id(
         session,
         model_cls=Vision,
@@ -429,6 +434,7 @@ async def sync_vision_experience(
     vision_id: UUID,
 ) -> VisionView:
     """Synchronize vision experience points from root task actual effort."""
+    await lock_planning_writes(session)
     vision = await load_model_by_id(
         session,
         model_cls=Vision,
@@ -436,12 +442,7 @@ async def sync_vision_experience(
     )
     if vision is None:
         raise VisionNotFoundError(f"Vision {vision_id} was not found")
-    tasks = await _load_active_tasks_for_vision(session, vision.id)
-    vision.sync_experience_with_actual_effort(
-        experience_rate_per_hour=resolve_experience_rate_for_vision(vision),
-        tasks=tasks,
-    )
-    await session.flush()
+    await sync_vision_experience_for_vision_ids(session, vision_ids=[vision.id])
     await session.refresh(vision)
     return await _build_vision_view(session, vision)
 
@@ -452,6 +453,7 @@ async def recompute_vision_task_efforts(
     vision_id: UUID,
 ) -> VisionEffortRecomputeResult:
     """Recompute task effort totals for every active root task in a vision."""
+    await lock_planning_writes(session)
     vision = await load_model_by_id(
         session,
         model_cls=Vision,
@@ -527,6 +529,7 @@ async def harvest_vision(
     vision_id: UUID,
 ) -> VisionView:
     """Harvest a mature active vision into fruit status."""
+    await lock_planning_writes(session)
     vision = await load_model_by_id(
         session,
         model_cls=Vision,

@@ -205,11 +205,15 @@ async def _load_overlapping_area_timelogs(
     window_start: datetime,
     window_end: datetime,
 ) -> list[Timelog]:
-    stmt = select(Timelog).where(
-        Timelog.deleted_at.is_(None),
-        Timelog.area_id.is_not(None),
-        Timelog.end_time > window_start,
-        Timelog.start_time < window_end,
+    stmt = (
+        select(Timelog)
+        .execution_options(populate_existing=True)
+        .where(
+            Timelog.deleted_at.is_(None),
+            Timelog.area_id.is_not(None),
+            Timelog.end_time > window_start,
+            Timelog.start_time < window_end,
+        )
     )
     return list((await session.execute(stmt)).scalars())
 
@@ -355,6 +359,7 @@ async def recompute_daily_timelog_stats_groupby_area_for_dates(
 ) -> None:
     """Recompute persisted daily timelog stats grouped by area for local dates."""
     await lock_planning_writes(session)
+    await session.flush()
     timezone_name = get_preferences_settings().timezone
     unique_dates = tuple(sorted(set(local_dates)))
     if not unique_dates:

@@ -7,17 +7,48 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from lifeos_cli.cli_support.resources.data.handlers import _import_rows
 from lifeos_cli.db import session as db_session
 from lifeos_cli.db.base import Base
-from lifeos_cli.db.models import Area, DailyTimelogStatsGroupByArea, Task, Timelog, Vision
+from lifeos_cli.db.models import Area, DailyTimelogStatsGroupByArea, Event, Task, Timelog, Vision
 from lifeos_cli.db.models.finance import FinanceTreeNode
 from lifeos_cli.db.models.sleep_segment import SleepSegment
 from lifeos_cli.db.services import data_ops, finance, task_effort, timelog_stats
 from lifeos_cli.db.services.hierarchy import HierarchyValidationError
 from tests.support import sqlite_session_factory
+
+
+@pytest.mark.parametrize("resource", ["task", "event"])
+def test_database_rejects_null_required_planning_fields(resource: str) -> None:
+    async def run() -> None:
+        async with sqlite_session_factory() as factory:
+            async with factory() as session:
+                vision = Vision(name="Required fields")
+                session.add(vision)
+                await session.flush()
+                record: Task | Event
+                if resource == "task":
+                    record = Task(
+                        vision_id=vision.id,
+                        content="Incomplete",
+                        planning_cycle_type="day",
+                        planning_cycle_start_date=date(2026, 9, 9),
+                    )
+                else:
+                    record = Event(
+                        title="Incomplete",
+                        start_time=datetime(2026, 9, 9, tzinfo=UTC),
+                        recurrence_frequency="daily",
+                    )
+                with pytest.raises(IntegrityError, match="required"):
+                    async with session.begin_nested():
+                        session.add(record)
+                        await session.flush()
+
+    asyncio.run(run())
 
 
 def test_partial_import_validates_the_complete_persisted_row(monkeypatch) -> None:
@@ -69,10 +100,57 @@ def test_post_import_rebuild_synchronizes_vision_experience() -> None:
                     )
                 )
                 await session.flush()
-                await data_ops.run_post_import_hooks(session, resources={"timelog"})
+                await data_ops.run_post_import_hooks(
+                    session, resources={"timelog"}, vision_ids=(vision.id,)
+                )
                 await session.refresh(vision)
                 assert vision.experience_points == 120
                 assert vision.stage == 1
+
+    asyncio.run(run())
+
+
+def test_resource_import_only_synchronizes_affected_visions(monkeypatch) -> None:
+    async def run() -> None:
+        async with sqlite_session_factory() as factory:
+            monkeypatch.setattr(db_session, "get_async_session_factory", lambda: factory)
+            async with factory() as session:
+                affected = Vision(name="Affected", experience_rate_per_hour=60)
+                manual = Vision(name="Unrelated", experience_points=777)
+                session.add_all([affected, manual])
+                await session.flush()
+                task = Task(vision_id=affected.id, content="Imported work")
+                session.add(task)
+                await session.commit()
+                affected_id, manual_id, task_id = affected.id, manual.id, task.id
+            result = await _import_rows(
+                resource="timelog",
+                dry_run=False,
+                continue_on_error=False,
+                rows=[
+                    {
+                        "id": str(uuid4()),
+                        "title": "Import",
+                        "task_id": str(task_id),
+                        "start_time": "2026-09-09T10:00:00Z",
+                        "end_time": "2026-09-09T12:00:00Z",
+                    }
+                ],
+            )
+            assert result.failed_count == 0
+            async with factory() as session:
+                assert (
+                    await session.scalar(
+                        select(Vision.experience_points).where(Vision.id == affected_id)
+                    )
+                    == 120
+                )
+                assert (
+                    await session.scalar(
+                        select(Vision.experience_points).where(Vision.id == manual_id)
+                    )
+                    == 777
+                )
 
     asyncio.run(run())
 
@@ -241,6 +319,7 @@ def test_bundle_merge_rebuilds_finance_counts_from_final_state(tmp_path: Path) -
     async def run() -> None:
         async with sqlite_session_factory() as factory:
             async with factory() as session:
+                session.add(Vision(name="Manual snapshot experience", experience_points=777))
                 tree = await finance.create_finance_tree(
                     session, name="Review", primary_currency="USD"
                 )
@@ -262,6 +341,7 @@ def test_bundle_merge_rebuilds_finance_counts_from_final_state(tmp_path: Path) -
             async with factory() as session:
                 stored_parent = await session.get(FinanceTreeNode, parent_id)
                 assert stored_parent is not None and stored_parent.children_count == 1
+                assert await session.scalar(select(Vision.experience_points)) == 777
                 assert (
                     await session.scalar(
                         select(func.count())

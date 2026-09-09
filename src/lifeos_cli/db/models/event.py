@@ -56,6 +56,10 @@ class Event(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
             name="recurrence_details_valid",
         ),
         Index("ix_events_status_start_time", "status", "start_time"),
+        CheckConstraint(
+            "recurrence_frequency IS NULL OR recurrence_interval IS NOT NULL",
+            name="recurrence_interval_required",
+        ),
         Index("ix_events_event_type", "event_type"),
         Index("ix_events_area_id", "area_id"),
         Index("ix_events_task_id", "task_id"),

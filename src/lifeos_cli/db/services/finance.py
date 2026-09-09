@@ -13,6 +13,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 
 from lifeos_cli.application.time_preferences import to_storage_timezone
 from lifeos_cli.db.base import utc_now
@@ -753,11 +754,13 @@ async def create_finance_node(
     await session.flush()
     node.path = str(node.id) if parent is None else f"{parent.path}/{node.id}"
     if parent is not None:
-        await session.execute(
+        count = await session.scalar(
             update(FinanceTreeNode)
             .where(FinanceTreeNode.id == parent.id)
             .values(children_count=FinanceTreeNode.children_count + 1)
+            .returning(FinanceTreeNode.children_count)
         )
+        set_committed_value(parent, "children_count", count)
     await session.flush()
     await session.refresh(node)
     return node
@@ -811,11 +814,14 @@ async def delete_finance_node(session: AsyncSession, *, node_id: UUID) -> None:
     if node.parent_id is not None:
         parent = await _get_node_model(session, node_id=node.parent_id)
         if parent is not None:
-            await session.execute(
+            count = await session.scalar(
                 update(FinanceTreeNode)
                 .where(FinanceTreeNode.id == parent.id, FinanceTreeNode.children_count > 0)
                 .values(children_count=FinanceTreeNode.children_count - 1)
+                .returning(FinanceTreeNode.children_count)
             )
+            if count is not None:
+                set_committed_value(parent, "children_count", count)
     await session.flush()
 
 

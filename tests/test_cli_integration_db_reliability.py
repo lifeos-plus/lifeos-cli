@@ -5,12 +5,13 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from lifeos_cli.config import clear_config_cache
-from lifeos_cli.db.models import Area, DailyTimelogStatsGroupByArea, Task, Vision
+from lifeos_cli.db.models import Area, DailyTimelogStatsGroupByArea, Task, Timelog, Vision
 from lifeos_cli.db.models.finance import FinanceTreeNode
 from lifeos_cli.db.services import finance, timelogs
-from lifeos_cli.db.services.timelog_support import TimelogCreateInput
+from lifeos_cli.db.services.timelog_support import TimelogCreateInput, TimelogUpdateInput
 from lifeos_cli.db.session import clear_session_cache, get_async_session_factory
 from tests.cli_integration_support import INTEGRATION_PYTESTMARK, IntegrationContext, init_context
 
@@ -40,6 +41,17 @@ def test_postgres_concurrent_planning_and_finance_writes(
             parent = await finance.create_finance_node(session, tree_id=tree.id, name="Parent")
             await session.commit()
             task_id, area_id, tree_id, parent_id = task.id, area.id, tree.id, parent.id
+            with pytest.raises(IntegrityError, match="planning_cycle_days_required"):
+                async with session.begin_nested():
+                    session.add(
+                        Task(
+                            vision_id=vision.id,
+                            content="Incomplete",
+                            planning_cycle_type="day",
+                            planning_cycle_start_date=datetime(2026, 9, 9).date(),
+                        )
+                    )
+                    await session.flush()
 
         start = datetime(2026, 9, 8, 12, tzinfo=UTC)
 
@@ -77,6 +89,25 @@ def test_postgres_concurrent_planning_and_finance_writes(
             )
 
         async with factory() as first, factory() as second:
+            cached_timelog = await second.scalar(select(Timelog).order_by(Timelog.start_time))
+            assert cached_timelog is not None
+            await timelogs.update_timelog(
+                first,
+                timelog_id=cached_timelog.id,
+                changes=TimelogUpdateInput(end_time=start + timedelta(minutes=90)),
+            )
+            await first.commit()
+            await add_timelog(second, 2)
+            await second.commit()
+            assert cached_timelog.end_time == start + timedelta(minutes=90)
+        async with factory() as session:
+            fresh_task = await session.get(Task, task_id)
+            assert fresh_task is not None and fresh_task.actual_effort_total == 210
+            assert (
+                await session.scalar(select(func.sum(DailyTimelogStatsGroupByArea.minutes))) == 210
+            )
+
+        async with factory() as first, factory() as second:
             # Keep a stale parent in the second identity map before the first write.
             stale_parent = await second.get(FinanceTreeNode, parent_id)
             await finance.create_finance_node(
@@ -87,7 +118,7 @@ def test_postgres_concurrent_planning_and_finance_writes(
                 second, tree_id=tree_id, parent_id=parent_id, name="Second"
             )
             await second.commit()
-            assert stale_parent is not None
+            assert stale_parent is not None and stale_parent.children_count == 2
         async with factory() as session:
             stored_parent = await session.get(FinanceTreeNode, parent_id)
             assert stored_parent is not None and stored_parent.children_count == 2

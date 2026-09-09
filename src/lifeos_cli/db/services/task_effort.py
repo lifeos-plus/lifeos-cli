@@ -48,9 +48,13 @@ async def recompute_task_self_minutes(session: AsyncSession, task_id: UUID) -> i
     if task is None:
         return 0
 
-    stmt = select(Timelog).where(
-        Timelog.task_id == task_id,
-        Timelog.deleted_at.is_(None),
+    stmt = (
+        select(Timelog)
+        .execution_options(populate_existing=True)
+        .where(
+            Timelog.task_id == task_id,
+            Timelog.deleted_at.is_(None),
+        )
     )
     timelogs = list((await session.execute(stmt)).scalars())
     total_minutes = sum(_timelog_minutes(timelog) for timelog in timelogs)

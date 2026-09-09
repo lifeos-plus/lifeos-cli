@@ -138,6 +138,7 @@ async def _get_timelog_model(
         )
         .where(Timelog.id == timelog_id)
         .limit(1)
+        .execution_options(populate_existing=True)
     )
     stmt = stmt.where(Timelog.deleted_at.is_(None))
     return (await session.execute(stmt)).scalar_one_or_none()
@@ -394,9 +395,13 @@ async def _load_batch_timelog_models(
     unique_ids = deduplicate_preserving_order(timelog_ids)
     if not unique_ids:
         return {}
-    stmt = select(Timelog).where(
-        Timelog.id.in_(unique_ids),
-        Timelog.deleted_at.is_(None),
+    stmt = (
+        select(Timelog)
+        .execution_options(populate_existing=True)
+        .where(
+            Timelog.id.in_(unique_ids),
+            Timelog.deleted_at.is_(None),
+        )
     )
     return {timelog.id: timelog for timelog in (await session.execute(stmt)).scalars()}
 

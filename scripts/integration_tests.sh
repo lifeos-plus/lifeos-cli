@@ -13,4 +13,5 @@ if [ -z "${LIFEOS_TEST_DATABASE_URL:-}" ]; then
 fi
 
 uv sync --extra dev --extra web --extra postgres --frozen
-uv run pytest -m integration tests/test_cli_integration_*.py
+# Select by the shared marker so database service integration tests participate too.
+uv run pytest -m integration

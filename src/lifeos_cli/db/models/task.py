@@ -33,6 +33,10 @@ class Task(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
             name="planning_cycle_complete",
         ),
         CheckConstraint(
+            "planning_cycle_type IS NULL OR planning_cycle_days IS NOT NULL",
+            name="planning_cycle_days_required",
+        ),
+        CheckConstraint(
             "actual_effort_self >= 0 AND actual_effort_total >= 0 AND "
             "(estimated_effort IS NULL OR estimated_effort >= 0)",
             name="effort_nonnegative",

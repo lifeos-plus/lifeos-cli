@@ -167,6 +167,7 @@ class DataImportReport:
     updated_count: int
     failed_count: int
     failures: tuple[DataOperationFailure, ...]
+    affected_vision_ids: tuple[UUID, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1047,6 +1048,22 @@ async def _sync_prepared_rows_relations(
         await _sync_snapshot_relations(session, prepared_row=prepared_row)
 
 
+async def _import_vision_ids(
+    session: AsyncSession, resource: str, row_ids: list[UUID]
+) -> set[UUID]:
+    if resource == "task":
+        statement = select(Task.__table__.c.vision_id).where(Task.__table__.c.id.in_(row_ids))
+    elif resource == "timelog":
+        statement = (
+            select(Task.__table__.c.vision_id)
+            .join(Timelog.__table__, Timelog.__table__.c.task_id == Task.__table__.c.id)
+            .where(Timelog.__table__.c.id.in_(row_ids))
+        )
+    else:
+        return set()
+    return set((await session.scalars(statement)).all())
+
+
 async def import_resource_snapshot(
     session: AsyncSession,
     *,
@@ -1059,6 +1076,8 @@ async def import_resource_snapshot(
     prepared_rows = [
         prepare_snapshot_row(resource, index + 1, row) for index, row in enumerate(rows)
     ]
+    row_ids = [row.row_id for row in prepared_rows]
+    affected_vision_ids = await _import_vision_ids(session, resource, row_ids)
     created_count, updated_count = await _import_prepared_base_rows(
         session,
         prepared_rows=prepared_rows,
@@ -1066,6 +1085,7 @@ async def import_resource_snapshot(
     await _sync_prepared_rows_relations(session, prepared_rows=prepared_rows)
     if resource == "task":
         await validate_persisted_hierarchies(session, finance=False)
+    affected_vision_ids.update(await _import_vision_ids(session, resource, row_ids))
     return DataImportReport(
         resource=resource,
         processed_count=len(rows),
@@ -1073,6 +1093,7 @@ async def import_resource_snapshot(
         updated_count=updated_count,
         failed_count=0,
         failures=(),
+        affected_vision_ids=tuple(sorted(affected_vision_ids)),
     )
 
 
@@ -1596,7 +1617,9 @@ async def _rebuild_timelog_stats(session: AsyncSession) -> None:
     await timelog_stats.rebuild_timelog_stats_groupby_area(session, rebuild_all=True)
 
 
-async def run_post_import_hooks(session: AsyncSession, *, resources: set[str]) -> None:
+async def run_post_import_hooks(
+    session: AsyncSession, *, resources: set[str], vision_ids: tuple[UUID, ...] = ()
+) -> None:
     """Run derived-data maintenance after snapshot imports."""
     if {"task", "timelog", "vision"} & resources:
         await lock_planning_writes(session)
@@ -1604,9 +1627,10 @@ async def run_post_import_hooks(session: AsyncSession, *, resources: set[str]) -
         await validate_persisted_hierarchies(session, finance=False)
     if {"task", "timelog"} & resources:
         await _recompute_task_effort(session)
-    if {"task", "timelog", "vision"} & resources:
-        vision_ids = list((await session.scalars(select(Vision.id))).all())
-        await visions.sync_vision_experience_for_vision_ids(session, vision_ids=vision_ids)
+    # Explicit vision snapshots also contain manual experience. Preserve them,
+    # and only refresh affected existing visions for task/timelog resource imports.
+    if vision_ids and "vision" not in resources:
+        await visions.sync_vision_experience_for_vision_ids(session, vision_ids=list(vision_ids))
     if "timelog" in resources:
         await _rebuild_timelog_stats(session)
 

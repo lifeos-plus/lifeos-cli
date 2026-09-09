@@ -220,6 +220,7 @@ async def _import_rows(
     updated_count = 0
     processed_count = 0
     failures: list[data_ops.DataOperationFailure] = []
+    affected_vision_ids: set[UUID] = set()
     try:
         for index, row in enumerate(rows, start=1):
             processed_count = index
@@ -262,6 +263,7 @@ async def _import_rows(
                         )
                 created_count += report.created_count
                 updated_count += report.updated_count
+                affected_vision_ids.update(report.affected_vision_ids)
             except (
                 data_ops.DataOperationError,
                 LookupError,
@@ -280,7 +282,9 @@ async def _import_rows(
                 if not continue_on_error:
                     break
         if not failures or continue_on_error:
-            await data_ops.run_post_import_hooks(session, resources={resource})
+            await data_ops.run_post_import_hooks(
+                session, resources={resource}, vision_ids=tuple(sorted(affected_vision_ids))
+            )
         if dry_run or failures and not continue_on_error:
             await session.rollback()
         else:
