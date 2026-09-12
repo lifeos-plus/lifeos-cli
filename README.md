@@ -109,6 +109,8 @@ SQLite runtime connections enforce foreign keys and explicit transactions. Migra
 
 Do not back up a running SQLite database by compressing its main file alone. Use an online database snapshot or LifeOS bundle export, then compress/encrypt the completed artifact and verify restoration; see [backup safety](SECURITY.md). Database diagnostics report task effort drift and recoverable soft-deleted references without treating manual vision experience as disposable cache.
 
+SQLite Web mutations acquire the writer before reading; read-only requests remain concurrent. If bounded lock waiting is exhausted, the API rolls back and returns `503` with `Retry-After`, not a raw lock-error `500`. This does not provide automatic replay or exactly-once delivery for arbitrary requests.
+
 Initialize your local setup:
 
 ```bash

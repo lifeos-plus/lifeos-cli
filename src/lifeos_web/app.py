@@ -14,11 +14,13 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from lifeos_web.db_errors import is_lock_contention_error
 from lifeos_web.deps import LIFEOS_SESSION_STATE_KEY
 from lifeos_web.routers import (
     areas,
@@ -56,7 +58,8 @@ RATE_LIMIT_PER_MINUTE_ENV = "LIFEOS_WEB_RATE_LIMIT_PER_MINUTE"
 
 def _header_value(scope: Scope, name: bytes) -> str | None:
     """Return one decoded HTTP header value from the ASGI scope."""
-    for header_name, value in scope.get("headers") or []:
+    headers: list[tuple[bytes, bytes]] = scope.get("headers") or []
+    for header_name, value in headers:
         if header_name == name:
             return value.decode("latin-1")
     return None
@@ -114,7 +117,9 @@ class OriginValidationMiddleware:
             await self.app(scope, receive, send)
             return
         host = _header_value(scope, b"host")
-        same_origin = bool(host) and _normalize_netloc(origin) == host.lower()
+        same_origin = False
+        if host:
+            same_origin = _normalize_netloc(origin) == host.lower()
         if origin in self.allowed_origins or same_origin:
             await self.app(scope, receive, send)
             return
@@ -287,7 +292,10 @@ class CommitSessionMiddleware:
             await self.app(scope, receive, send)
             return
 
+        response_started = False
+
         async def send_with_commit(message: Message) -> None:
+            nonlocal response_started
             if message["type"] == "http.response.start":
                 status = message.get("status", 200)
                 session = scope.setdefault("state", {}).get(LIFEOS_SESSION_STATE_KEY)
@@ -296,9 +304,23 @@ class CommitSessionMiddleware:
                         await session.commit()
                     else:
                         await session.rollback()
+                response_started = True
             await send(message)
 
-        await self.app(scope, receive, send_with_commit)
+        try:
+            await self.app(scope, receive, send_with_commit)
+        except OperationalError as exc:
+            if response_started or not is_lock_contention_error(exc):
+                raise
+            session = scope.setdefault("state", {}).get(LIFEOS_SESSION_STATE_KEY)
+            if session is not None:
+                await session.rollback()
+            response = JSONResponse(
+                {"detail": "The database is busy; please retry."},
+                status_code=503,
+                headers={"Retry-After": "1"},
+            )
+            await response(scope, receive, send)
 
 
 def create_app(
@@ -334,6 +356,7 @@ def create_app(
         RateLimitMiddleware,
         limit_per_minute=rate_limit_per_minute,
     )
+    app.add_middleware(CommitSessionMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(DEFAULT_CORS_ORIGINS),
@@ -341,7 +364,6 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.add_middleware(CommitSessionMiddleware)
     app.include_router(health.router)
     app.include_router(tasks.router, prefix=API_PREFIX)
     app.include_router(visions.router, prefix=API_PREFIX)

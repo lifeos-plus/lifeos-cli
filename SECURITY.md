@@ -54,6 +54,8 @@ SQLite migration connections temporarily disable foreign-key enforcement before 
 
 Never copy or compress only the main file of a running SQLite database as a backup: committed data may still reside in WAL, and a raw file copy is not a consistent snapshot. Use SQLite's [Online Backup API](https://www.sqlite.org/backup.html), the SQLite shell backup command, or LifeOS bundle export, then compress/encrypt the completed artifact. Keep the previous verified backup until a restore rehearsal succeeds; a passing integrity check alone does not establish freshness or completeness.
 
+Web database lock contention returns a generic `503` with `Retry-After` only before the response starts, after rollback. Responses do not include database exception text, SQL, parameters, or local database paths; unrelated operational failures are not mislabeled as retryable lock contention. SQLite Web writes reserve the writer before reading, while read-only requests retain concurrent WAL snapshots.
+
 ## Supported Branches
 
 Security fixes should land on the active `main` branch first.

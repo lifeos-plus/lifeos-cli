@@ -81,6 +81,8 @@ Soft deletion is not a cascading ownership or authorization boundary: deleting a
 
 SQLite connections explicitly begin transactions so reads and nested savepoints share the caller's rollback boundary. PostgreSQL planning mutations share a per-schema transaction advisory lock because task effort, vision experience, and timelog aggregates overlap; finance node creation/deletion and snapshot creation lock their tree row before inspecting structure. These bounded locks protect cooperating application writes, not arbitrary external SQL. Upgrades and full restores require quiescent writers, and SQLite read-to-write conflicts must be rolled back rather than silently retried inside a stale transaction.
 
+Web requests using mutating HTTP methods declare SQLite write intent at session creation: their first database operation uses `BEGIN IMMEDIATE`, so competing writers wait under the existing busy timeout before taking a snapshot. GET/HEAD/OPTIONS retain deferred transactions and can read during WAL writes. The per-session engine facade preserves this choice after rollback without mutating the shared engine. The commit-before-response middleware rolls back recognized lock conflicts from transaction acquisition, execution, or commit and returns `503` with `Retry-After: 1` before response headers; unrelated database errors remain errors. Error classification is shared with the bounded area-order retry, but arbitrary request bodies are not replayed automatically because transaction failure alone does not establish business-operation retry safety.
+
 ### Alembic strategy
 
 - Migrations live in `src/lifeos_cli/alembic` and use an async environment (`env.py`) that resolves the database URL from configuration.

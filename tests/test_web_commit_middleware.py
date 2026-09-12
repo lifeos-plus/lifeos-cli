@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import sqlite3
+
+from sqlalchemy.exc import OperationalError
 
 from starlette.types import Message, Receive, Scope, Send
 
@@ -113,3 +116,39 @@ def test_create_app_registers_commit_middleware() -> None:
 
 def test_middleware_is_async_callable() -> None:
     assert inspect.iscoroutinefunction(CommitSessionMiddleware.__call__)
+
+
+def test_commit_lock_failure_rolls_back_before_503_without_replaying_app() -> None:
+    class LockedSession(FakeSession):
+        async def commit(self) -> None:
+            await super().commit()
+            raise OperationalError(
+                "sensitive SQL", {}, sqlite3.OperationalError("database is locked")
+            )
+
+    async def run() -> None:
+        session = LockedSession()
+        messages: list[Message] = []
+        calls = 0
+
+        async def app(scope, receive, send):
+            nonlocal calls
+            calls += 1
+            await send({"type": "http.response.start", "status": 200})
+            await send({"type": "http.response.body", "body": b"success"})
+
+        async def send(message):
+            assert session.rollbacks == 1
+            messages.append(message)
+
+        async def receive():
+            return {"type": "http.request", "body": b""}
+
+        await CommitSessionMiddleware(app)(
+            {"type": "http", "state": {"lifeos_session": session}}, receive, send
+        )
+        assert calls == session.commits == 1
+        assert messages[0]["status"] == 503
+        assert b"sensitive" not in messages[1]["body"]
+
+    asyncio.run(run())

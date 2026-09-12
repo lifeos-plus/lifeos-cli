@@ -22,7 +22,11 @@ async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
     immediately readable data. The session is never committed here
     (``commit_on_exit=False``); requests must go through ``create_app`` so the
     ``CommitSessionMiddleware`` is registered as the sole commit point.
+    Unsafe HTTP methods declare SQLite write intent before any database access;
+    GET/HEAD/OPTIONS keep deferred snapshots and do not reserve the writer.
     """
-    async with session_scope(commit_on_exit=False) as session:
+    async with session_scope(
+        commit_on_exit=False, sqlite_write=request.method not in {"GET", "HEAD", "OPTIONS"}
+    ) as session:
         request.state[LIFEOS_SESSION_STATE_KEY] = session
         yield session

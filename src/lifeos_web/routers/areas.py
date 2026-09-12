@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import math
 from typing import Annotated
 from uuid import UUID
@@ -15,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.services import areas as area_services
+from lifeos_web.db_errors import is_lock_contention_error as _is_lock_contention_error
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.areas import AreaListMeta, AreaResponse
 from lifeos_web.router_utils import soft_delete
@@ -22,19 +22,8 @@ from lifeos_web.schemas import ListResponse, Pagination
 
 router = APIRouter(prefix="/areas", tags=["areas"])
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
-logger = logging.getLogger(__name__)
 
 ORDER_WRITE_RETRY_BACKOFF_SECONDS = (0.1, 0.3, 0.9)
-_LOCK_CONTENTION_SQLSTATES = frozenset({"40001", "40P01", "55P03"})
-_LOCK_CONTENTION_MARKERS = (
-    "database is locked",
-    "database schema is locked",
-    "database table is locked",
-    "lock timeout",
-    "deadlock detected",
-    "could not serialize access",
-    "could not obtain lock",
-)
 
 
 class AreaCreate(BaseModel):
@@ -111,25 +100,6 @@ async def set_area_order(order: list[UUID], session: SessionDep) -> None:
         await _persist_area_order(session, order=order)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except OperationalError as exc:
-        if not _is_lock_contention_error(exc):
-            raise
-        logger.warning("Area order write failed after retries: %s", exc)
-        raise HTTPException(
-            status_code=503,
-            detail="The database is busy; please retry.",
-            headers={"Retry-After": "1"},
-        ) from exc
-
-
-def _is_lock_contention_error(exc: OperationalError) -> bool:
-    """Return whether an OperationalError is a database lock conflict."""
-    original = exc.orig
-    sqlstate = getattr(original, "sqlstate", None) or getattr(original, "pgcode", None)
-    if sqlstate in _LOCK_CONTENTION_SQLSTATES:
-        return True
-    details = f"{exc} {original}".lower()
-    return any(marker in details for marker in _LOCK_CONTENTION_MARKERS)
 
 
 async def _persist_area_order(

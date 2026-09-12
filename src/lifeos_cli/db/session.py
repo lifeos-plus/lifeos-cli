@@ -63,7 +63,10 @@ def _configure_sqlite_connection(
 
 
 def _begin_sqlite_transaction(connection: Connection) -> None:
-    connection.exec_driver_sql("BEGIN")
+    statement = (
+        "BEGIN IMMEDIATE" if connection.get_execution_options().get("sqlite_write") else "BEGIN"
+    )
+    connection.exec_driver_sql(statement)
 
 
 def configure_async_engine(engine: AsyncEngine, *, sqlite_foreign_keys: bool = True) -> AsyncEngine:
@@ -122,6 +125,7 @@ def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
 async def session_scope(
     *,
     commit_on_exit: bool = True,
+    sqlite_write: bool = False,
 ) -> AsyncIterator[AsyncSession]:
     """Open an async session and roll back automatically on failure.
 
@@ -129,8 +133,15 @@ async def session_scope(
     that finalize the transaction elsewhere (for example the Web response
     middleware committing before the response is sent) pass
     ``commit_on_exit=False`` so there is exactly one commit point.
+    Web mutations pass ``sqlite_write=True`` to reserve SQLite's writer before
+    the first read, retaining bounded busy waiting instead of snapshot upgrades.
     """
-    session = get_async_session_factory()()
+    factory = get_async_session_factory()
+    if sqlite_write and factory.kw["bind"].dialect.name == "sqlite":
+        # Preserve write intent after rollback without changing the shared engine.
+        session = factory(bind=factory.kw["bind"].execution_options(sqlite_write=True))
+    else:
+        session = factory()
     try:
         yield session
         if commit_on_exit:
