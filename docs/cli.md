@@ -88,10 +88,7 @@ Check database connectivity and migrations:
 ```bash
 lifeos db ping
 lifeos db upgrade
-lifeos db check
 ```
-
-`db check` verifies the Alembic revision, SQLite storage and foreign-key integrity when applicable, and polymorphic association endpoints once the schema is current. `db check --repair` only removes hard-dangling weak links from a current, storage-healthy schema; links to soft-deleted records remain recoverable.
 
 ## Runtime Preferences
 
@@ -126,10 +123,6 @@ The current command tree is organized around a few stable families:
 command shape.
 
 `data import --mode upsert --key <field>` supports idempotent natural-key sync for `area.name`, `vision.name`, `person.name`, and `habit.title`: each row is matched against existing active records, updated when one match exists, and inserted otherwise (a fresh id is generated when the row has none). Ambiguous keys and missing key values are reported as row-level failures.
-
-`data export all` writes a schema-v4 bundle atomically with owner-only (`0600`) permissions. It contains a lossless snapshot of every authoritative table, including finance data, timelog templates, relationships, and soft-deleted history; use a single-resource JSON/JSONL export when a portable interchange projection is needed. PostgreSQL exports use a `REPEATABLE READ` snapshot so the table entries describe one database state, and rows stream directly into the archive while their checksums and counts are computed. The v4 table/column list, types, nullability, and key relationships are frozen, so future database shape changes require an explicit bundle compatibility decision. Restore computes integrity metadata while incrementally decoding each entry, then validates the complete prepared snapshot, including row shapes, domain invariants, foreign keys, and weak endpoints, before `--replace-existing` can clear any table. Expanded entries are limited to 256 MiB each and the complete archive to 1 GiB. Legacy schema-v3 bundles remain available for merge import but cannot replace a database because those archives were partial.
-
-Bundles are not encrypted. Store them on an encrypted volume or encrypt them with your backup system before copying them to shared or remote storage; file mode `0600` only protects access on systems that enforce POSIX permissions.
 
 Use `lifeos <resource> --help` to enter one family and then follow the resource-level help into the action or namespace you need.
 

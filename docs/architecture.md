@@ -62,13 +62,13 @@ These associations cannot use ordinary foreign keys for the polymorphic side; re
 
 ### Transactions
 
-`db/session.session_scope()` is the single transaction boundary used by both the CLI and Web routers. It opens one async session, commits on success, and rolls back on failure. The async engine and session factory are cached at the process level (`get_async_engine`, `get_async_session_factory`); use `clear_session_cache()` to dispose the engine after configuration changes.
+`db/session.session_scope()` owns session lifetime and rollback; CLI scopes also commit on success. Web scopes defer finalization to the response middleware. Engines and session factories are process-cached; `clear_session_cache()` disposes the engine after configuration changes.
 
 ### Soft Deletes
 
 Models opt into `SoftDeleteMixin`, which adds `deleted_at`. A global ORM listener excludes soft-deleted rows from every default SELECT; code that needs the deleted rows explicitly passes the `INCLUDE_SOFT_DELETED_EXECUTION_OPTION` execution option. Soft-deleted records are kept so restores can recover the original relationships.
 
-Soft deletion is not a cascading ownership or authorization boundary: deleting a vision preserves its task rows. Normal task lists hide tasks under deleted visions, while explicit task-ID access remains available for recovery and reassignment. Active events referencing deleted tasks, occurrence exceptions referencing deleted master events, and weak links to deleted endpoints remain recoverable history rather than repair targets. Database checks warn about these references; they never silently delete or restore them. Deployments requiring access isolation need an authorization layer, not soft-delete filtering.
+Soft deletion preserves recoverable relationships, not access isolation: deleting a vision hides its tasks from lists but permits explicit task-ID access. References to deleted records are warnings, not automatic repair targets.
 
 ## 5. Database Backends and Migrations
 
@@ -79,9 +79,9 @@ Soft deletion is not a cascading ownership or authorization boundary: deleting a
 
 `db/backend_policy.py` centralizes backend capabilities (schema support, local file storage, foreign-key enforcement, replace-existing strategy) so services do not branch on driver strings.
 
-SQLite connections explicitly begin transactions so reads and nested savepoints share the caller's rollback boundary. PostgreSQL planning mutations share a per-schema transaction advisory lock because task effort, vision experience, and timelog aggregates overlap; finance node creation/deletion and snapshot creation lock their tree row before inspecting structure. These bounded locks protect cooperating application writes, not arbitrary external SQL. Upgrades and full restores require quiescent writers, and SQLite read-to-write conflicts must be rolled back rather than silently retried inside a stale transaction.
+SQLite uses explicit transactions for correct snapshot/savepoint rollback. PostgreSQL planning writes share a per-schema transaction advisory lock; finance structural writes lock the tree row before reading. These locks protect cooperating application writes, not external SQL.
 
-Web requests using mutating HTTP methods declare SQLite write intent at session creation: their first database operation uses `BEGIN IMMEDIATE`, so competing writers wait under the existing busy timeout before taking a snapshot. GET/HEAD/OPTIONS retain deferred transactions and can read during WAL writes. The per-session engine facade preserves this choice after rollback without mutating the shared engine. The commit-before-response middleware rolls back recognized lock conflicts from transaction acquisition, execution, or commit and returns `503` with `Retry-After: 1` before response headers; unrelated database errors remain errors. Error classification is shared with the bounded area-order retry, but arbitrary request bodies are not replayed automatically because transaction failure alone does not establish business-operation retry safety.
+Web database transactions and lock errors belong at the request boundary: SQLite writers use `BEGIN IMMEDIATE`; read-only requests keep deferred snapshots. The legacy finance asset-list GET declares write intent for initialization; formatting queries remain read-only. Middleware commits before response headers, or rolls back known lock conflicts and returns a sanitized `503` with `Retry-After: 1`. Routers neither commit nor retry independently. CLI scopes retain their own policy. Experience-rate preferences acquire the SQLite writer before changing configuration, but file and database updates are not atomic; a later database failure requires retrying the setting or explicitly synchronizing experience.
 
 ### Alembic strategy
 
@@ -89,17 +89,21 @@ Web requests using mutating HTTP methods declare SQLite write intent at session 
 - When a schema is configured (PostgreSQL), the migration connection creates it when needed, sets it as `search_path` and as SQLAlchemy's reflected default schema, and sets `version_table_schema` so the Alembic version table follows the data schema.
 - `Base.metadata` uses an explicit naming convention so generated constraint names are stable and safe for PostgreSQL's 63-byte identifier limit.
 - Always audit and migrate existing data before adding constraints; do not assume a production database is clean.
-- CI exercises a full SQLite `base -> head -> base -> head` migration round trip and runs Alembic metadata drift checks at both heads.
-- `lifeos db check` reports revision mismatches, backend integrity failures, invalid task/finance hierarchies, dangling weak associations, and task effort drift. An explicit effort rebuild shares the same source-based calculator as import maintenance and does not depend on creation order or unrelated soft-deleted cross-vision history. Vision experience differences are warnings because manual additions are supported; explicit per-vision synchronization remains the replacement operation. Weak-link repair and task-effort rebuild are separate opt-ins. Alembic metadata drift and other aggregate families remain separate validation gates.
+- Test fresh and populated migrations on both backends, including SQLite upgrade/downgrade rollback and metadata drift. SQLite table rebuilds temporarily disable FK enforcement on private migration connections and check FKs before commit.
+- Migration preflights must reject FALSE and UNKNOWN: use `(condition) IS NOT TRUE`. CHECK constraints need explicit `IS NOT NULL` guards for required nullable-field combinations and missing-member regression tests.
 
 ### Backup and restore
 
-Schema-v4 bundles contain one lossless snapshot of the authoritative source tables; portable single-resource JSON/JSONL exports remain a separate interchange interface. The v4 table/column list and schema semantics (types, nullability, and key relationships) are frozen explicitly, so an authoritative schema change must make a deliberate compatibility decision instead of silently changing existing bundle behavior. Derived timelog aggregate tables are intentionally excluded and recomputed after restore. Every required entry is covered by manifest row counts and SHA-256 digests. Archive parsing applies duplicate-name, path traversal, expanded-size, shape, domain, and reference guards before a replacement transaction mutates the database. Export streams rows from the database directly into an owner-only temporary ZIP while computing integrity metadata, fsyncs the completed file and rename, and then atomically publishes it. Restore computes integrity metadata while incrementally decoding each entry, retains only the prepared typed snapshot needed for whole-database reference validation, and limits expanded entries to 256 MiB each and the complete archive to 1 GiB.
+Schema-v4 freezes the authoritative table contract, including soft-deleted history; derived timelog aggregates are rebuilt. Export streams a consistent snapshot into an owner-only, atomically published archive. Restore validates manifest digests/counts, archive limits, typed rows, and references before replacement. Legacy v3 supports merge only; bundles are not encrypted. Command contracts and limits belong in CLI help.
+
+Stop other writers during upgrades and full restores and retain a verified backup. Never copy/compress only a running SQLite main file: use an online backup or bundle export, then encrypt as needed and rehearse restoration. Integrity checks alone do not prove freshness or completeness.
+
+Diagnostics cover revision, storage, relationships, hierarchies, and task effort drift; repairs are explicit. Manual vision experience and recoverable soft-deleted references must not be treated as disposable cache. See `lifeos db --help` and `lifeos data --help` for scope and options.
 
 ## 6. Web API Surface
 
 - `lifeos web serve` starts uvicorn against `create_app()`. The API binds `127.0.0.1` by default and warns on stderr when bound beyond loopback, because the Web API has no authentication.
-- Routers are grouped by domain under `lifeos_web/routers` and mounted under `/api/v1`. Every router depends on `get_db_session`, which yields one `session_scope()` transaction per request.
+- Routers live under `lifeos_web/routers` and `/api/v1`; database dependencies register sessions with the shared request boundary.
 - `lifeos_web/serialization` converts ORM read models to JSON-safe payloads; `lifeos_web/response_schemas` declares the explicit success contracts.
 - The OpenAPI document is served at `/api/v1/openapi.json` and exported by `scripts/export_web_openapi.py`; release workflows upload it as an asset so `lifeos-web` can pin a schema version (`npm run api:check` prevents drift).
 

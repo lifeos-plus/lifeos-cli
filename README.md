@@ -105,14 +105,6 @@ To upgrade an existing installation, run `uv tool upgrade lifeos-cli`. If you or
 - SQLite is the low-friction option for local, single-user setups.
 - PostgreSQL remains the schema-capable backend for managed deployments.
 
-SQLite runtime connections enforce foreign keys and explicit transactions. Migrations use transactional table rebuilds with a foreign-key check before commit to preserve referencing rows. PostgreSQL coordinates writes to task effort, vision experience, and timelog aggregates within each application schema. Stop other writers during database upgrades and full restores, and retain a verified backup before maintenance. Command details and diagnostic scope are available through `lifeos db --help` and `lifeos data --help`.
-
-Do not back up a running SQLite database by compressing its main file alone. Use an online database snapshot or LifeOS bundle export, then compress/encrypt the completed artifact and verify restoration; see [backup safety](SECURITY.md). Database diagnostics report task effort drift and recoverable soft-deleted references without treating manual vision experience as disposable cache.
-
-SQLite Web mutations acquire the writer before reading; read-only requests remain concurrent. If bounded lock waiting is exhausted, the API rolls back and returns `503` with `Retry-After`, not a raw lock-error `500`. This does not provide automatic replay or exactly-once delivery for arbitrary requests.
-
-Web database transactions and contention responses are owned by the request boundary, including area ordering and preference-dependent recalculation; routers do not retry or commit independently. The legacy finance asset-list GET initializes missing built-in assets and explicitly declares write intent; finance formatting reads do not initialize assets. Experience-rate preferences acquire the SQLite writer before changing configuration, but the configuration file and database are not an atomic resource: a later database failure can leave derived experience stale; retry the preference update or use the derived-data repair command. CLI workflows retain their explicit transaction scopes and are not covered by the HTTP error policy.
-
 Initialize your local setup:
 
 ```bash

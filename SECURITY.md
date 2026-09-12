@@ -50,11 +50,7 @@ The configured database URL can be stored in `~/.lifeos/config.toml`, which keep
 
 Local SQLite database files are created with owner-only permissions (`0600`), matching the config file policy, so other local users cannot read personal LifeOS data on shared machines. The database directory is restricted to `0700`, and the resolved database file must be owned by the current user before connecting; symlinks to another user's file are rejected. Interactive `lifeos init` prompts for the database URL with hidden input so embedded passwords are not echoed to the terminal; non-interactive or scripted setups should pass `LIFEOS_DATABASE_URL` or `--database-url`.
 
-SQLite migration connections temporarily disable foreign-key enforcement before beginning transactional table rebuilds; runtime connections keep enforcement enabled. Migrations check all foreign keys before committing and roll back on violations. Run upgrades and full restores without concurrent writers and retain a verified backup; integrity diagnostics are not a replacement for backups.
-
-Never copy or compress only the main file of a running SQLite database as a backup: committed data may still reside in WAL, and a raw file copy is not a consistent snapshot. Use SQLite's [Online Backup API](https://www.sqlite.org/backup.html), the SQLite shell backup command, or LifeOS bundle export, then compress/encrypt the completed artifact. Keep the previous verified backup until a restore rehearsal succeeds; a passing integrity check alone does not establish freshness or completeness.
-
-Web database lock contention returns a generic `503` with `Retry-After` only before the response starts, after rollback. Responses do not include database exception text, SQL, parameters, or local database paths; unrelated operational failures are not mislabeled as retryable lock contention. SQLite Web writes reserve the writer before reading, while read-only requests retain concurrent WAL snapshots.
+Database maintenance and backup precautions are documented in [Database Backends and Migrations](docs/architecture.md#5-database-backends-and-migrations).
 
 ## Supported Branches
 
