@@ -561,7 +561,29 @@ def test_area_order_unknown_id_returns_404(http_client) -> None:
     assert response.status_code == 404
 
 
-def test_area_order_database_locked_retries_then_503(
+def test_experience_preference_lock_does_not_change_config(http_client, monkeypatch) -> None:
+    from lifeos_web.routers import preferences
+
+    writes = []
+    monkeypatch.setattr(
+        preferences, "set_runtime_config_value", lambda **kwargs: writes.append(kwargs)
+    )
+    database_path = str(db_session.get_async_engine().url).removeprefix("sqlite+aiosqlite:///")
+    holder = sqlite3.connect(database_path)
+    try:
+        holder.execute("BEGIN IMMEDIATE")
+        response = http_client.put(
+            "/api/v1/preferences/visions.experience_rate_per_hour", json={"value": 120}
+        )
+        assert response.status_code == 503
+        assert response.headers["retry-after"] == "1"
+        assert writes == []
+    finally:
+        holder.rollback()
+        holder.close()
+
+
+def test_area_order_database_locked_returns_503_without_replay(
     http_client,
     monkeypatch,
 ) -> None:
@@ -571,11 +593,6 @@ def test_area_order_database_locked_retries_then_503(
         "/api/v1/areas/",
         json={"name": "Locked retry area"},
     ).json()["id"]
-    monkeypatch.setattr(
-        routers.areas,
-        "ORDER_WRITE_RETRY_BACKOFF_SECONDS",
-        (0.0, 0.0, 0.0),
-    )
     attempts = {"count": 0}
 
     async def flaky_reorder(session, *, order):
@@ -596,7 +613,7 @@ def test_area_order_database_locked_retries_then_503(
 
     assert response.status_code == 503
     assert response.headers.get("retry-after") == "1"
-    assert attempts["count"] == len(routers.areas.ORDER_WRITE_RETRY_BACKOFF_SECONDS) + 1
+    assert attempts["count"] == 1
 
 
 def test_area_order_non_lock_operational_error_is_not_mapped_to_503(
@@ -629,7 +646,7 @@ def test_area_order_non_lock_operational_error_is_not_mapped_to_503(
 
 @pytest.mark.parametrize("sqlstate", ["40001", "40P01", "55P03"])
 def test_area_order_postgres_lock_sqlstates_are_retryable(sqlstate: str) -> None:
-    from lifeos_web import routers
+    from lifeos_web.db_errors import is_lock_contention_error
 
     class PostgreSQLLockError(Exception):
         def __init__(self, code: str) -> None:
@@ -639,7 +656,7 @@ def test_area_order_postgres_lock_sqlstates_are_retryable(sqlstate: str) -> None
     original = PostgreSQLLockError(sqlstate)
     error = OperationalError("UPDATE areas", {}, original)
 
-    assert routers.areas._is_lock_contention_error(error)
+    assert is_lock_contention_error(error)
 
 
 def test_area_order_recovers_after_transient_lock(
@@ -652,11 +669,6 @@ def test_area_order_recovers_after_transient_lock(
         "/api/v1/areas/",
         json={"name": "Recovered area"},
     ).json()["id"]
-    monkeypatch.setattr(
-        routers.areas,
-        "ORDER_WRITE_RETRY_BACKOFF_SECONDS",
-        (0.0,),
-    )
     original_reorder = routers.areas.area_services.reorder_areas
     attempts = {"count": 0}
 
@@ -678,6 +690,9 @@ def test_area_order_recovers_after_transient_lock(
 
     response = http_client.put("/api/v1/areas/order", json=[area_id])
 
+    assert response.status_code == 503
+    assert attempts["count"] == 1
+    response = http_client.put("/api/v1/areas/order", json=[area_id])
     assert response.status_code == 204
     assert attempts["count"] == 2
     assert http_client.get("/api/v1/areas/order").json() == [area_id]
@@ -687,8 +702,6 @@ def test_area_order_database_locked_by_raw_connection_returns_503(
     http_client,
     monkeypatch,
 ) -> None:
-    from lifeos_web import routers
-
     first_id = http_client.post(
         "/api/v1/areas/",
         json={"name": "Raw locked area A"},
@@ -697,7 +710,6 @@ def test_area_order_database_locked_by_raw_connection_returns_503(
         "/api/v1/areas/",
         json={"name": "Raw locked area B"},
     ).json()["id"]
-    monkeypatch.setattr(routers.areas, "ORDER_WRITE_RETRY_BACKOFF_SECONDS", ())
 
     database_url = str(db_session.get_async_engine().url)
     database_path = database_url.removeprefix("sqlite+aiosqlite:///")

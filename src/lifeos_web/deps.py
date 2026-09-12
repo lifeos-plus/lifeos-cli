@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,8 +26,21 @@ async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
     Unsafe HTTP methods declare SQLite write intent before any database access;
     GET/HEAD/OPTIONS keep deferred snapshots and do not reserve the writer.
     """
-    async with session_scope(
-        commit_on_exit=False, sqlite_write=request.method not in {"GET", "HEAD", "OPTIONS"}
+    async with request_session(
+        request, sqlite_write=request.method not in {"GET", "HEAD", "OPTIONS"}
     ) as session:
+        yield session
+
+
+async def get_write_db_session(request: Request) -> AsyncIterator[AsyncSession]:
+    """Declare write intent for legacy reads that initialize persistent data."""
+    async with request_session(request, sqlite_write=True) as session:
+        yield session
+
+
+@asynccontextmanager
+async def request_session(request: Request, *, sqlite_write: bool) -> AsyncIterator[AsyncSession]:
+    """Register a request transaction with the sole response commit boundary."""
+    async with session_scope(commit_on_exit=False, sqlite_write=sqlite_write) as session:
         request.state[LIFEOS_SESSION_STATE_KEY] = session
         yield session

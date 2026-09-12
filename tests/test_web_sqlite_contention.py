@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date
+from datetime import UTC, date
 
 import httpx2 as httpx
 from sqlalchemy import select, update
@@ -16,6 +16,53 @@ from lifeos_cli.db.models import Task, Vision
 from lifeos_web.app import create_app
 from lifeos_web.db_errors import is_lock_contention_error
 from lifeos_web.routers import tasks
+
+
+def test_finance_bootstrap_is_serialized_and_formatting_is_read_only(tmp_path, monkeypatch) -> None:
+    from datetime import datetime
+
+    from lifeos_cli.db.models.finance import FinanceAsset
+    from lifeos_cli.db.services import finance as finance_services
+    from lifeos_web.routers.finance import _finance_asset_decimal_places
+
+    async def scenario() -> None:
+        engine = db_session.configure_async_engine(
+            create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'finance.db'}")
+        )
+        factory = async_sessionmaker(engine, autoflush=False, expire_on_commit=False)
+        monkeypatch.setattr(db_session, "get_async_session_factory", lambda: factory)
+        try:
+            async with engine.begin() as connection:
+                await connection.run_sync(Base.metadata.create_all)
+            async with factory() as session:
+                assert await _finance_asset_decimal_places(session) == {}
+                assert not list((await session.scalars(select(FinanceAsset))).all())
+            app = create_app(allowed_hosts=["testserver"])
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app, raise_app_exceptions=False),
+                base_url="http://testserver",
+            ) as client:
+                responses = await asyncio.gather(
+                    *(client.get("/api/v1/finance/assets") for _ in range(3))
+                )
+                assert [response.status_code for response in responses] == [200, 200, 200]
+                assert responses[0].json() == responses[1].json() == responses[2].json()
+            async with factory() as session:
+                assets = list((await session.scalars(select(FinanceAsset))).all())
+                assert len(assets) == len(finance_services.DEFAULT_FINANCE_ASSETS)
+                deleted = assets[0]
+                deleted.deleted_at = datetime.now(UTC)
+                deleted_code = deleted.code
+                await session.commit()
+            async with factory() as session:
+                await finance_services.ensure_default_finance_assets(session)
+                await session.commit()
+                codes = list((await session.scalars(select(FinanceAsset.code))).all())
+                assert deleted_code not in codes
+        finally:
+            await engine.dispose()
+
+    asyncio.run(scenario())
 
 
 def test_lock_classification_uses_extended_codes_not_sql_text() -> None:

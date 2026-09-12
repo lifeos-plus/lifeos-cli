@@ -111,6 +111,8 @@ Do not back up a running SQLite database by compressing its main file alone. Use
 
 SQLite Web mutations acquire the writer before reading; read-only requests remain concurrent. If bounded lock waiting is exhausted, the API rolls back and returns `503` with `Retry-After`, not a raw lock-error `500`. This does not provide automatic replay or exactly-once delivery for arbitrary requests.
 
+Web database transactions and contention responses are owned by the request boundary, including area ordering and preference-dependent recalculation; routers do not retry or commit independently. The legacy finance asset-list GET initializes missing built-in assets and explicitly declares write intent; finance formatting reads do not initialize assets. Experience-rate preferences acquire the SQLite writer before changing configuration, but the configuration file and database are not an atomic resource: a later database failure can leave derived experience stale; retry the preference update or use the derived-data repair command. CLI workflows retain their explicit transaction scopes and are not covered by the HTTP error policy.
+
 Initialize your local setup:
 
 ```bash

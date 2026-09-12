@@ -195,6 +195,7 @@ async def sync_vision_experience_for_task_ids(
 
 async def sync_default_rate_vision_experience(session: AsyncSession) -> tuple[UUID, ...]:
     """Synchronize visions that inherit the global default experience rate."""
+    await lock_planning_writes(session)
     rows = await session.execute(
         select(Vision.id).where(
             Vision.experience_rate_per_hour.is_(None),

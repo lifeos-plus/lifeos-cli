@@ -216,7 +216,15 @@ def format_asset_amount(
 
 async def ensure_default_finance_assets(session: AsyncSession) -> None:
     """Create built-in assets only when the code has never existed."""
-    existing_codes = set((await session.execute(select(FinanceAsset.code))).scalars().all())
+    existing_codes = set(
+        (
+            await session.execute(
+                select(FinanceAsset.code).execution_options(include_soft_deleted=True)
+            )
+        )
+        .scalars()
+        .all()
+    )
     for code, name, display_order in DEFAULT_FINANCE_ASSETS:
         if code in existing_codes:
             continue
@@ -237,8 +245,10 @@ async def list_finance_assets(
     *,
     limit: int = 200,
     offset: int = 0,
+    initialize_defaults: bool = True,
 ) -> list[FinanceAsset]:
-    await ensure_default_finance_assets(session)
+    if initialize_defaults:
+        await ensure_default_finance_assets(session)
     stmt = select(FinanceAsset)
     stmt = stmt.where(FinanceAsset.deleted_at.is_(None))
     stmt = stmt.order_by(FinanceAsset.display_order.asc(), FinanceAsset.code.asc())

@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
 import math
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.services import areas as area_services
-from lifeos_web.db_errors import is_lock_contention_error as _is_lock_contention_error
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.areas import AreaListMeta, AreaResponse
 from lifeos_web.router_utils import soft_delete
@@ -22,8 +19,6 @@ from lifeos_web.schemas import ListResponse, Pagination
 
 router = APIRouter(prefix="/areas", tags=["areas"])
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
-
-ORDER_WRITE_RETRY_BACKOFF_SECONDS = (0.1, 0.3, 0.9)
 
 
 class AreaCreate(BaseModel):
@@ -97,27 +92,9 @@ async def get_area_order(session: SessionDep) -> list[str]:
 async def set_area_order(order: list[UUID], session: SessionDep) -> None:
     """Persist area display order from the frontend area sorter."""
     try:
-        await _persist_area_order(session, order=order)
+        await area_services.reorder_areas(session, order=order)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-async def _persist_area_order(
-    session: AsyncSession,
-    *,
-    order: list[UUID],
-) -> None:
-    """Persist the area order, retrying transient database lock conflicts."""
-    for attempt in range(len(ORDER_WRITE_RETRY_BACKOFF_SECONDS) + 1):
-        try:
-            await area_services.reorder_areas(session, order=order)
-            return
-        except OperationalError as exc:
-            last_attempt = attempt == len(ORDER_WRITE_RETRY_BACKOFF_SECONDS)
-            if last_attempt or not _is_lock_contention_error(exc):
-                raise
-            await session.rollback()
-            await asyncio.sleep(ORDER_WRITE_RETRY_BACKOFF_SECONDS[attempt])
 
 
 @router.delete("/order", status_code=204)
