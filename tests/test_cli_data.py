@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
-from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
@@ -80,7 +79,7 @@ def test_main_data_export_all_uses_bundle_writer(
     ) -> data_ops.BundleExportReport:
         assert output_path == bundle_path
         return data_ops.BundleExportReport(
-            resource_counts={"note": 2, "timelog": 1},
+            table_counts={"notes": 2, "timelogs": 1},
             output_path=output_path,
         )
 
@@ -92,8 +91,8 @@ def test_main_data_export_all_uses_bundle_writer(
 
     assert exit_code == 0
     assert f"Exported bundle to {bundle_path}" in captured.out
-    assert "note: 2" in captured.out
-    assert "timelog: 1" in captured.out
+    assert "notes: 2" in captured.out
+    assert "timelogs: 1" in captured.out
 
 
 def test_main_data_import_bundle_uses_atomic_restore(
@@ -105,19 +104,19 @@ def test_main_data_import_bundle_uses_atomic_restore(
     def fake_read_bundle(path: Path) -> data_ops.BundlePayload:
         assert path == Path("backup.zip")
         return data_ops.BundlePayload(
-            manifest={"schema_version": 3},
+            manifest={"schema_version": data_ops.BUNDLE_SCHEMA_VERSION},
             resources={"note": [{"id": "11111111-1111-1111-1111-111111111111"}]},
         )
 
     async def fake_import_bundle(
         session_obj: object,
         *,
-        bundle_rows: dict[str, list[dict[str, object]]],
+        bundle: data_ops.BundlePayload,
         replace_existing: bool,
     ) -> data_ops.BundleImportReport:
         assert session_obj is session
         assert replace_existing is True
-        assert bundle_rows["note"][0]["id"] == "11111111-1111-1111-1111-111111111111"
+        assert bundle.resources["note"][0]["id"] == "11111111-1111-1111-1111-111111111111"
         return data_ops.BundleImportReport(
             processed_count=1,
             created_count=1,
@@ -242,7 +241,9 @@ def test_main_data_import_records_lookup_failures_without_crashing(
         _ = (resource, rows)
         raise LookupError("Unknown person IDs for entity type timelog: missing-person")
 
-    async def fake_run_post_import_hooks(_session_obj: object, *, resources: set[str]) -> None:
+    async def fake_run_post_import_hooks(
+        _session_obj: object, *, resources: set[str], vision_ids=()
+    ) -> None:
         _ = resources
         raise AssertionError("post-import hooks should not run after a stopping failure")
 
@@ -375,7 +376,9 @@ def test_main_data_import_upsert_resolves_natural_key_before_import(
             failures=(),
         )
 
-    async def fake_run_post_import_hooks(_session_obj: object, *, resources: set[str]) -> None:
+    async def fake_run_post_import_hooks(
+        _session_obj: object, *, resources: set[str], vision_ids=()
+    ) -> None:
         _ = resources
 
     monkeypatch.setattr(
@@ -459,7 +462,9 @@ def test_main_data_import_upsert_retries_concurrent_natural_key_winner(
             failures=(),
         )
 
-    async def fake_run_post_import_hooks(_session_obj: object, *, resources: set[str]) -> None:
+    async def fake_run_post_import_hooks(
+        _session_obj: object, *, resources: set[str], vision_ids=()
+    ) -> None:
         _ = resources
 
     monkeypatch.setattr(
@@ -521,7 +526,9 @@ def test_main_data_import_records_unique_constraint_failure_per_row(
             "stmt", {}, Exception("UNIQUE constraint failed: menstrual_factors.name")
         )
 
-    async def fake_run_post_import_hooks(_session_obj: object, *, resources: set[str]) -> None:
+    async def fake_run_post_import_hooks(
+        _session_obj: object, *, resources: set[str], vision_ids=()
+    ) -> None:
         _ = resources
 
     monkeypatch.setattr(
@@ -562,10 +569,10 @@ def test_main_data_import_bundle_reports_unique_constraint_violation_cleanly(
     async def fake_import_bundle(
         _session_obj: object,
         *,
-        bundle_rows: dict[str, list[dict[str, object]]],
+        bundle: data_ops.BundlePayload,
         replace_existing: bool = False,
     ) -> data_ops.BundleImportReport:
-        _ = (bundle_rows, replace_existing)
+        _ = (bundle, replace_existing)
         raise IntegrityError("stmt", {}, Exception("UNIQUE constraint failed"))
 
     monkeypatch.setattr(
@@ -573,7 +580,11 @@ def test_main_data_import_bundle_reports_unique_constraint_violation_cleanly(
         "get_async_session_factory",
         _make_session_factory_getter(session),
     )
-    monkeypatch.setattr(data_ops, "read_bundle", lambda _path: SimpleNamespace(resources={}))
+    monkeypatch.setattr(
+        data_ops,
+        "read_bundle",
+        lambda _path, **_kwargs: data_ops.BundlePayload(manifest={}, resources={}),
+    )
     monkeypatch.setattr(data_ops, "import_bundle", fake_import_bundle)
 
     exit_code = cli.main(

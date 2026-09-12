@@ -3185,7 +3185,7 @@ def test_web_vision_experience_preference_persists_to_cli_config(
     )
     sync_calls: list[str] = []
 
-    async def fake_sync_dependents(key: str) -> None:
+    async def fake_sync_dependents(key: str, session) -> None:
         sync_calls.append(key)
 
     monkeypatch.setattr(

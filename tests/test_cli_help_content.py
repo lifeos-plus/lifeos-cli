@@ -6,6 +6,19 @@ from lifeos_cli.cli import build_parser
 from lifeos_cli.cli_support.parser import build_cli_brand_banner, get_cli_brand_banner_width
 
 
+@pytest.mark.parametrize(
+    ("command", "expected"),
+    [
+        (["data", "import", "--help"], "conflicting hierarchies roll back the import"),
+        (["db", "check", "--help"], "this is not an audit of every business invariant"),
+    ],
+)
+def test_database_help_explains_integrity_boundaries(command, expected, capsys) -> None:
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(command)
+    assert expected in " ".join(capsys.readouterr().out.split())
+
+
 def test_cli_top_level_help_describes_command_grammar(capsys) -> None:
     parser = build_parser()
 
@@ -448,6 +461,7 @@ def test_cli_task_move_and_reorder_help_explain_boundary(capsys) -> None:
     captured = capsys.readouterr()
 
     assert "Use `reorder` when only sibling display order changes" in captured.out
+    assert "soft-deleted descendants" in captured.out
     assert "Use `--old-parent-task-id` as an optimistic guard" in captured.out
 
     with pytest.raises(SystemExit):
@@ -514,6 +528,15 @@ def test_cli_db_help_explains_ping_upgrade_boundary(capsys) -> None:
     captured = capsys.readouterr()
 
     assert "Use this before `db upgrade`" in captured.out
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["db", "check", "--help"])
+
+    captured = capsys.readouterr()
+
+    assert "weak association references" in captured.out
+    assert "--rebuild-task-effort" in captured.out
+    assert "only removes hard-dangling weak links" in captured.out
 
     with pytest.raises(SystemExit):
         parser.parse_args(["db", "upgrade", "--help"])

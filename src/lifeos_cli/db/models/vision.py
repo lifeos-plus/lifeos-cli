@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy import CheckConstraint, ForeignKey, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
@@ -18,6 +18,20 @@ class Vision(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
     """High-level container composed of one or more task trees."""
 
     __tablename__ = "visions"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active', 'archived', 'fruit')",
+            name="status_valid",
+        ),
+        CheckConstraint(
+            "stage >= 0 AND experience_points >= 0",
+            name="progress_nonnegative",
+        ),
+        CheckConstraint(
+            "experience_rate_per_hour IS NULL OR experience_rate_per_hour > 0",
+            name="experience_rate_positive",
+        ),
+    )
 
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

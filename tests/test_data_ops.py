@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
+import stat
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -16,13 +19,30 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.backend_policy import backend_policy_for_drivername
+from lifeos_cli.db.base import Base
+from lifeos_cli.db.models.aggregated_timelog_stats_groupby_area import (
+    AggregatedTimelogStatsGroupByArea,
+)
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.models.body_measurement import BodyMeasurement
+from lifeos_cli.db.models.daily_timelog_stats_groupby_area import DailyTimelogStatsGroupByArea
+from lifeos_cli.db.models.finance import FinanceTree
 from lifeos_cli.db.models.habit import Habit
 from lifeos_cli.db.models.menstrual import MenstrualDay, MenstrualFactor
+from lifeos_cli.db.models.note import Note
 from lifeos_cli.db.models.person import Person
+from lifeos_cli.db.models.timelog_template import TimelogTemplate
 from lifeos_cli.db.models.vision import Vision
 from lifeos_cli.db.services import data_ops
+from lifeos_cli.db.services.bundle_codec import BundleCodecError, open_bundle_atomic
+from lifeos_cli.db.services.bundle_tables import (
+    BUNDLE_V4_TABLE_SPECS,
+    DERIVED_TABLE_NAMES,
+    BundleTableError,
+    source_table_names,
+    validate_domain_row,
+    validate_prepared_tables,
+)
 from lifeos_cli.db.types import UTCDateTime
 from tests.support import sqlite_session_factory
 
@@ -39,6 +59,35 @@ class RecordingSession:
 
     async def execute(self, statement: object) -> None:
         self.statements.append(statement)
+
+
+class FakePostgresConnection:
+    def __init__(self, isolation_level: str) -> None:
+        self.isolation_level = isolation_level
+
+    async def get_isolation_level(self) -> str:
+        return self.isolation_level
+
+
+class FakePostgresSession:
+    def __init__(self, *, in_transaction: bool, isolation_level: str = "READ COMMITTED") -> None:
+        self._in_transaction = in_transaction
+        self.connection_options: dict[str, str] | None = None
+        self._connection = FakePostgresConnection(isolation_level)
+
+    def get_bind(self) -> object:
+        return SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+
+    def in_transaction(self) -> bool:
+        return self._in_transaction
+
+    async def connection(
+        self,
+        *,
+        execution_options: dict[str, str] | None = None,
+    ) -> FakePostgresConnection:
+        self.connection_options = execution_options
+        return self._connection
 
 
 def test_batch_update_resource_parses_typed_timelog_fields(
@@ -95,6 +144,109 @@ def test_serialize_datetime_snapshot_values_uses_explicit_utc() -> None:
     serialized = data_ops._serialize_scalar(value)
 
     assert serialized == "2026-06-14T01:00:00Z"
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        (
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "duration_days": -5,
+            },
+            "duration_days must be between 1 and 10000",
+        ),
+        (
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "status": "not-a-status",
+            },
+            "status must be one of",
+        ),
+        (
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "target_per_cycle": -2,
+            },
+            "target_per_cycle must be greater than zero",
+        ),
+    ],
+)
+def test_habit_snapshot_import_rejects_domain_invalid_rows(
+    payload: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(data_ops.DataOperationError, match=message):
+        data_ops.prepare_snapshot_row("habit", 1, payload)
+
+
+def test_snapshot_parser_does_not_coerce_string_booleans() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="must be a boolean"):
+        data_ops.prepare_snapshot_row(
+            "area",
+            1,
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "is_active": "false",
+            },
+        )
+
+
+def test_snapshot_parser_rejects_unknown_fields() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="unknown fields: typo_field"):
+        data_ops.prepare_snapshot_row(
+            "note",
+            1,
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "typo_field": "silently ignored before strict validation",
+            },
+        )
+
+
+def test_snapshot_parser_rejects_postgresql_unsupported_null_characters() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="unsupported by PostgreSQL"):
+        data_ops.prepare_snapshot_row(
+            "note",
+            1,
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "content": "invalid\x00content",
+            },
+        )
+
+
+def test_snapshot_parser_rejects_non_string_factor_names() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="factor_names.*must be a string"):
+        data_ops.prepare_snapshot_row(
+            "menstrual",
+            1,
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "factor_names": [123],
+            },
+        )
+
+
+def test_snapshot_parser_rejects_invalid_event_occurrence_action() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="action must be `skip`"):
+        data_ops.prepare_snapshot_row(
+            "event",
+            1,
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "occurrence_exceptions": [
+                    {
+                        "id": "22222222-2222-2222-2222-222222222222",
+                        "action": "delete",
+                        "instance_start": "2026-09-08T09:00:00Z",
+                        "created_at": "2026-09-08T08:00:00Z",
+                        "updated_at": "2026-09-08T08:00:00Z",
+                        "deleted_at": None,
+                    }
+                ],
+            },
+        )
 
 
 def test_batch_update_resource_parses_extended_note_relation_fields(
@@ -200,9 +352,6 @@ def test_import_bundle_applies_base_rows_before_relations(
 ) -> None:
     call_order: list[tuple[str, str]] = []
 
-    async def fake_truncate(session: object) -> None:
-        call_order.append(("truncate", "-"))
-
     async def fake_apply(
         session: object,
         *,
@@ -218,10 +367,9 @@ def test_import_bundle_applies_base_rows_before_relations(
     ) -> None:
         call_order.append(("sync", prepared_row.resource))
 
-    async def fake_hooks(session: object, *, resources: set[str]) -> None:
+    async def fake_hooks(session: object, *, resources: set[str], vision_ids=()) -> None:
         call_order.append(("hooks", ",".join(sorted(resources))))
 
-    monkeypatch.setattr(data_ops, "truncate_supported_data", fake_truncate)
     monkeypatch.setattr(data_ops, "_apply_snapshot_base_row", fake_apply)
     monkeypatch.setattr(data_ops, "_sync_snapshot_relations", fake_sync)
     monkeypatch.setattr(data_ops, "run_post_import_hooks", fake_hooks)
@@ -229,11 +377,13 @@ def test_import_bundle_applies_base_rows_before_relations(
     report = asyncio.run(
         data_ops.import_bundle(
             cast(AsyncSession, object()),
-            bundle_rows={
-                "person": [{"id": "11111111-1111-1111-1111-111111111111"}],
-                "tag": [{"id": "22222222-2222-2222-2222-222222222222"}],
-            },
-            replace_existing=True,
+            bundle=data_ops.BundlePayload(
+                manifest={"schema_version": data_ops.LEGACY_BUNDLE_SCHEMA_VERSION},
+                resources={
+                    "person": [{"id": "11111111-1111-1111-1111-111111111111"}],
+                    "tag": [{"id": "22222222-2222-2222-2222-222222222222"}],
+                },
+            ),
         )
     )
 
@@ -243,7 +393,6 @@ def test_import_bundle_applies_base_rows_before_relations(
     assert report.created_count == 2
     assert report.updated_count == 0
     assert report.imported_resources == ("person", "tag")
-    assert call_order[0] == ("truncate", "-")
     assert max(base_positions) < min(sync_positions)
     assert call_order[-1] == ("hooks", "person,tag")
 
@@ -291,6 +440,115 @@ def test_read_bundle_rejects_missing_manifest(tmp_path: Path) -> None:
         data_ops.read_bundle(bundle_path)
 
 
+def test_atomic_bundle_writer_removes_partial_output_on_failure(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "partial.zip"
+
+    with pytest.raises(RuntimeError, match="interrupted"):
+        with open_bundle_atomic(bundle_path) as writer:
+            writer.write_entry("resources/note.jsonl", b"{}\n")
+            raise RuntimeError("interrupted")
+
+    assert not bundle_path.exists()
+    assert not list(tmp_path.glob(".partial.zip.*.tmp"))
+
+
+def test_atomic_bundle_writer_requires_manifest(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "missing-manifest.zip"
+
+    with pytest.raises(BundleCodecError, match="missing its manifest"):
+        with open_bundle_atomic(bundle_path) as writer:
+            writer.write_entry("resources/note.jsonl", b"{}\n")
+
+    assert not bundle_path.exists()
+
+
+def test_bundle_export_includes_manifest_in_reader_size_limit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def scenario() -> None:
+        bundle_path = tmp_path / "oversized.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                monkeypatch.setattr(data_ops, "MAX_BUNDLE_TOTAL_BYTES", 1)
+                with pytest.raises(data_ops.DataOperationError, match="supported expanded size"):
+                    await data_ops.export_bundle(session, output_path=bundle_path)
+        assert not bundle_path.exists()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("suffix", ["", "-wal", "-shm", "-journal"])
+def test_bundle_export_does_not_overwrite_sqlite_storage_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    suffix: str,
+) -> None:
+    async def scenario() -> None:
+        database_path = tmp_path / "lifeos.db"
+        database_path.write_bytes(b"database remains intact")
+        output_path = Path(f"{database_path}{suffix}")
+        monkeypatch.setattr(
+            data_ops,
+            "get_database_settings",
+            lambda: SimpleNamespace(
+                database_url=f"sqlite+aiosqlite:///{database_path}",
+                database_schema=None,
+            ),
+        )
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                with pytest.raises(data_ops.DataOperationError, match="must not overwrite"):
+                    await data_ops.export_bundle(session, output_path=output_path)
+        assert database_path.read_bytes() == b"database remains intact"
+        if suffix:
+            assert not output_path.exists()
+
+    asyncio.run(scenario())
+
+
+def test_bundle_export_closes_row_stream_when_size_limit_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stream_closed = False
+
+    async def oversized_rows(_session: object, _table: object):
+        nonlocal stream_closed
+        try:
+            yield {"oversized": "row"}
+        finally:
+            stream_closed = True
+
+    async def scenario() -> None:
+        bundle_path = tmp_path / "oversized-row.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                monkeypatch.setattr(data_ops, "MAX_BUNDLE_TOTAL_BYTES", 1)
+                monkeypatch.setattr(data_ops, "iter_export_table_rows", oversized_rows)
+                with pytest.raises(data_ops.DataOperationError, match="supported expanded size"):
+                    await data_ops.export_bundle(session, output_path=bundle_path)
+        assert not bundle_path.exists()
+
+    asyncio.run(scenario())
+    assert stream_closed
+
+
+def test_postgres_bundle_export_starts_repeatable_read_snapshot() -> None:
+    session = FakePostgresSession(in_transaction=False)
+
+    asyncio.run(data_ops._start_bundle_export_snapshot(cast(AsyncSession, session)))
+
+    assert session.connection_options == {"isolation_level": "REPEATABLE READ"}
+
+
+def test_postgres_bundle_export_rejects_read_committed_transaction() -> None:
+    session = FakePostgresSession(in_transaction=True)
+
+    with pytest.raises(data_ops.DataOperationError, match="requires a fresh session"):
+        asyncio.run(data_ops._start_bundle_export_snapshot(cast(AsyncSession, session)))
+
+
 def test_read_bundle_rejects_legacy_schema_version(tmp_path: Path) -> None:
     bundle_path = tmp_path / "legacy-bundle.zip"
     with ZipFile(bundle_path, "w", compression=ZIP_DEFLATED) as archive:
@@ -302,6 +560,28 @@ def test_read_bundle_rejects_legacy_schema_version(tmp_path: Path) -> None:
             "Older bundle schemas are not supported after habit-action notes moved to linked notes"
         ),
     ):
+        data_ops.read_bundle(bundle_path)
+
+
+@pytest.mark.parametrize("schema_version", [4.0, True, "4", None])
+def test_read_bundle_requires_integer_schema_version(
+    tmp_path: Path,
+    schema_version: object,
+) -> None:
+    bundle_path = tmp_path / "invalid-version.zip"
+    with ZipFile(bundle_path, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", json.dumps({"schema_version": schema_version}))
+
+    with pytest.raises(data_ops.DataOperationError, match="schema_version must be an integer"):
+        data_ops.read_bundle(bundle_path)
+
+
+def test_read_bundle_rejects_nonfinite_json_numbers(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "nonfinite-json.zip"
+    with ZipFile(bundle_path, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", '{"schema_version": NaN}')
+
+    with pytest.raises(data_ops.DataOperationError, match="non-finite number"):
         data_ops.read_bundle(bundle_path)
 
 
@@ -318,6 +598,396 @@ def test_read_bundle_maps_legacy_person_entry_name(tmp_path: Path) -> None:
 
     assert payload.resources["person"] == [{"id": "11111111-1111-1111-1111-111111111111"}]
     assert "people" not in payload.resources
+
+
+def test_bundle_rejects_a_missing_v4_entry(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "incomplete.zip"
+    with ZipFile(bundle_path, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "manifest.json",
+            json.dumps({"schema_version": data_ops.BUNDLE_SCHEMA_VERSION, "entries": {}}),
+        )
+
+    with pytest.raises(data_ops.DataOperationError, match="entry set is incomplete"):
+        data_ops.read_bundle(bundle_path)
+
+
+def test_bundle_rejects_tampered_v4_content(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        source_path = tmp_path / "source.zip"
+        tampered_path = tmp_path / "tampered.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                session.add(Note(content="original"))
+                await session.flush()
+                await data_ops.export_bundle(session, output_path=source_path)
+        with ZipFile(source_path, "r") as source:
+            contents = {name: source.read(name) for name in source.namelist()}
+        contents["tables/notes.jsonl"] = contents["tables/notes.jsonl"].replace(
+            b'"original"',
+            b'"tampered"',
+        )
+        with ZipFile(tampered_path, "w", compression=ZIP_DEFLATED) as target:
+            for name, content in contents.items():
+                target.writestr(name, content)
+
+        with pytest.raises(data_ops.DataOperationError, match="Checksum mismatch"):
+            data_ops.read_bundle(tampered_path)
+
+    asyncio.run(scenario())
+
+
+def test_bundle_rejects_boolean_manifest_entry_row_count(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        source_path = tmp_path / "source.zip"
+        malformed_path = tmp_path / "boolean-count.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await data_ops.export_bundle(session, output_path=source_path)
+        with ZipFile(source_path, "r") as source:
+            contents = {name: source.read(name) for name in source.namelist()}
+        manifest = json.loads(contents["manifest.json"])
+        manifest["entries"]["tables/notes.jsonl"]["row_count"] = False
+        contents["manifest.json"] = json.dumps(manifest).encode("utf-8")
+        with ZipFile(malformed_path, "w", compression=ZIP_DEFLATED) as target:
+            for name, content in contents.items():
+                target.writestr(name, content)
+
+        with pytest.raises(data_ops.DataOperationError, match="row count metadata"):
+            data_ops.read_bundle(malformed_path)
+
+    asyncio.run(scenario())
+
+
+def test_bundle_export_rejects_postgresql_unsupported_null_characters(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        bundle_path = tmp_path / "null-character.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                session.add(Note(content="invalid\x00content"))
+                await session.flush()
+                with pytest.raises(data_ops.DataOperationError, match="unsupported by PostgreSQL"):
+                    await data_ops.export_bundle(session, output_path=bundle_path)
+        assert not bundle_path.exists()
+
+    asyncio.run(scenario())
+
+
+def test_bundle_export_rejects_nonportable_integer_and_json_values(tmp_path: Path) -> None:
+    async def scenario() -> None:
+        for name, tree in (
+            ("integer", FinanceTree(name="Integer", display_order=2**31)),
+            ("json", FinanceTree(name="JSON", metadata_json={"nested": "invalid\x00value"})),
+        ):
+            bundle_path = tmp_path / f"{name}.zip"
+            async with sqlite_session_factory() as session_factory:
+                async with session_factory() as session:
+                    session.add(tree)
+                    await session.flush()
+                    with pytest.raises(data_ops.DataOperationError):
+                        await data_ops.export_bundle(session, output_path=bundle_path)
+            assert not bundle_path.exists()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("table_name", "row", "message"),
+    [
+        (
+            "associations",
+            {
+                "source_model": "event",
+                "target_model": "tag",
+                "link_type": "is_about",
+            },
+            "target_model",
+        ),
+        (
+            "associations",
+            {
+                "source_model": "event",
+                "target_model": "person",
+                "link_type": "invalid",
+            },
+            "link_type",
+        ),
+        ("tag_associations", {"entity_type": "habit_action"}, "entity_type"),
+        ("tasks", {"actual_effort_self": -1}, "actual_effort_self"),
+        ("finance_tree_nodes", {"children_count": -1}, "children_count"),
+    ],
+)
+def test_bundle_domain_validation_covers_database_invariants_before_restore(
+    table_name: str,
+    row: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(BundleTableError, match=message):
+        validate_domain_row(table_name, row, row_number=1)
+
+
+def _empty_prepared_bundle_tables() -> dict[str, list[dict[str, Any]]]:
+    return {table_name: [] for table_name in source_table_names()}
+
+
+def test_bundle_validation_rejects_cross_vision_task_hierarchy() -> None:
+    first_vision_id = uuid4()
+    second_vision_id = uuid4()
+    parent_id = uuid4()
+    child_id = uuid4()
+    prepared = _empty_prepared_bundle_tables()
+    prepared["visions"] = [
+        {"id": first_vision_id, "area_id": None},
+        {"id": second_vision_id, "area_id": None},
+    ]
+    prepared["tasks"] = [
+        {
+            "id": parent_id,
+            "vision_id": first_vision_id,
+            "parent_task_id": None,
+            "deleted_at": None,
+        },
+        {
+            "id": child_id,
+            "vision_id": second_vision_id,
+            "parent_task_id": parent_id,
+            "deleted_at": None,
+        },
+    ]
+
+    with pytest.raises(BundleTableError, match="different vision"):
+        validate_prepared_tables(prepared)
+
+
+def test_bundle_validation_rejects_inconsistent_finance_node_hierarchy() -> None:
+    tree_id = uuid4()
+    root_id = uuid4()
+    child_id = uuid4()
+    prepared = _empty_prepared_bundle_tables()
+    prepared["finance_trees"] = [{"id": tree_id, "is_default": False, "deleted_at": None}]
+    prepared["finance_tree_nodes"] = [
+        {
+            "id": root_id,
+            "tree_id": tree_id,
+            "parent_id": None,
+            "path": str(root_id),
+            "depth": 0,
+            "children_count": 1,
+            "deleted_at": None,
+        },
+        {
+            "id": child_id,
+            "tree_id": tree_id,
+            "parent_id": root_id,
+            "path": "incorrect",
+            "depth": 1,
+            "children_count": 0,
+            "deleted_at": None,
+        },
+    ]
+
+    with pytest.raises(BundleTableError, match="inconsistent path or depth"):
+        validate_prepared_tables(prepared)
+
+
+def test_legacy_bundle_cannot_replace_the_database() -> None:
+    with pytest.raises(data_ops.DataOperationError, match="partial exports"):
+        asyncio.run(
+            data_ops.import_bundle(
+                cast(AsyncSession, object()),
+                bundle=data_ops.BundlePayload(
+                    manifest={"schema_version": data_ops.LEGACY_BUNDLE_SCHEMA_VERSION},
+                    resources={},
+                ),
+                replace_existing=True,
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        data_ops.BundlePayload(
+            manifest={"schema_version": data_ops.BUNDLE_SCHEMA_VERSION},
+            resources={},
+        ),
+        data_ops.BundlePayload(
+            manifest={"schema_version": data_ops.BUNDLE_SCHEMA_VERSION},
+            resources={"note": []},
+            tables=data_ops.PreparedBundleTables(rows={}),
+        ),
+        data_ops.BundlePayload(
+            manifest={"schema_version": data_ops.LEGACY_BUNDLE_SCHEMA_VERSION},
+            resources={},
+            tables=data_ops.PreparedBundleTables(rows={}),
+        ),
+    ],
+)
+def test_import_bundle_rejects_inconsistent_payload_contract(
+    payload: data_ops.BundlePayload,
+) -> None:
+    with pytest.raises(data_ops.DataOperationError, match="bundle schema|Schema-v4"):
+        asyncio.run(
+            data_ops.import_bundle(
+                cast(AsyncSession, object()),
+                bundle=payload,
+            )
+        )
+
+
+def test_lossless_bundle_replace_preserves_unexposed_and_soft_deleted_rows(
+    tmp_path: Path,
+) -> None:
+    async def scenario() -> None:
+        finance_tree_id = uuid4()
+        template_id = uuid4()
+        deleted_note_id = uuid4()
+        bundle_path = tmp_path / "lossless.zip"
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                session.add_all(
+                    [
+                        FinanceTree(
+                            id=finance_tree_id,
+                            name="Private balance sheet",
+                            primary_currency="USD",
+                            display_order=0,
+                            is_default=True,
+                        ),
+                        TimelogTemplate(
+                            id=template_id,
+                            title="Deep work",
+                            title_normalized="deep work",
+                            position=0,
+                            usage_count=7,
+                        ),
+                        Note(
+                            id=deleted_note_id,
+                            content="soft-deleted history",
+                            deleted_at=datetime(2026, 1, 1, tzinfo=UTC),
+                        ),
+                    ]
+                )
+                await session.flush()
+                await data_ops.export_bundle(session, output_path=bundle_path)
+
+                with ZipFile(bundle_path) as archive:
+                    assert all(
+                        name == "manifest.json" or name.startswith("tables/")
+                        for name in archive.namelist()
+                    )
+
+                payload = data_ops.read_bundle(bundle_path)
+                report = await data_ops.import_bundle(
+                    session,
+                    bundle=payload,
+                    replace_existing=True,
+                )
+                await session.flush()
+                session.expunge_all()
+
+                assert report.failed_count == 0
+                assert await session.get(FinanceTree, finance_tree_id) is not None
+                restored_template = await session.get(TimelogTemplate, template_id)
+                assert restored_template is not None
+                assert restored_template.usage_count == 7
+                restored_note = (
+                    await session.execute(select(Note).execution_options(include_soft_deleted=True))
+                ).scalar_one()
+                assert restored_note.id == deleted_note_id
+                assert restored_note.deleted_at is not None
+
+        assert stat.S_IMODE(bundle_path.stat().st_mode) == 0o600
+
+    asyncio.run(scenario())
+
+
+def test_bundle_v4_contract_matches_current_authoritative_schema() -> None:
+    """Force a bundle version decision whenever an authoritative table shape changes."""
+    actual_tables = tuple(
+        table for table in Base.metadata.sorted_tables if table.name not in DERIVED_TABLE_NAMES
+    )
+
+    assert tuple(spec.name for spec in BUNDLE_V4_TABLE_SPECS) == tuple(
+        table.name for table in actual_tables
+    )
+    assert {spec.name: spec.columns for spec in BUNDLE_V4_TABLE_SPECS} == {
+        table.name: tuple(column.name for column in table.columns) for table in actual_tables
+    }
+    schema_shape = []
+    for spec in BUNDLE_V4_TABLE_SPECS:
+        table = Base.metadata.tables[spec.name]
+        columns = []
+        for column_name in spec.columns:
+            column = table.c[column_name]
+            column_type = column.type
+            columns.append(
+                {
+                    "name": column_name,
+                    "type": f"{type(column_type).__module__}.{type(column_type).__qualname__}",
+                    "length": getattr(column_type, "length", None),
+                    "precision": getattr(column_type, "precision", None),
+                    "scale": getattr(column_type, "scale", None),
+                    "timezone": getattr(column_type, "timezone", None),
+                    "none_as_null": getattr(column_type, "none_as_null", None),
+                    "nullable": column.nullable,
+                    "primary_key": column.primary_key,
+                    "foreign_keys": sorted(
+                        f"{foreign_key.column.table.name}.{foreign_key.column.name}"
+                        for foreign_key in column.foreign_keys
+                    ),
+                }
+            )
+        schema_shape.append({"table": spec.name, "columns": columns})
+    fingerprint = hashlib.sha256(
+        json.dumps(schema_shape, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+    expected_fingerprint = (
+        "d6edbf508005a514d13b48f3d99e3367"  # pragma: allowlist secret
+        "8058c46cf5e9495f8a1660b2ee923b0b"  # pragma: allowlist secret
+    )
+    assert fingerprint == expected_fingerprint
+
+
+def test_timelog_import_hook_removes_stale_derived_rows_without_source_timelogs() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                area = Area(name="Work")
+                session.add(area)
+                await session.flush()
+                session.add_all(
+                    [
+                        DailyTimelogStatsGroupByArea(
+                            stat_date=date(2026, 9, 1),
+                            timezone="UTC",
+                            area_id=area.id,
+                            minutes=60,
+                            timelog_count=1,
+                        ),
+                        AggregatedTimelogStatsGroupByArea(
+                            granularity="month",
+                            period_start=date(2026, 9, 1),
+                            period_end=date(2026, 9, 30),
+                            timezone="UTC",
+                            area_id=area.id,
+                            minutes=60,
+                            timelog_count=1,
+                        ),
+                    ]
+                )
+                await session.flush()
+
+                await data_ops.run_post_import_hooks(session, resources={"timelog"})
+
+                daily_rows = await session.execute(select(DailyTimelogStatsGroupByArea))
+                assert not list(daily_rows.scalars())
+                assert not list(
+                    (await session.execute(select(AggregatedTimelogStatsGroupByArea))).scalars()
+                )
+
+    asyncio.run(scenario())
 
 
 def test_validate_upsert_key_rejects_unsupported_resources_and_fields() -> None:

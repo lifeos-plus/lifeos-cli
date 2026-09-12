@@ -6,6 +6,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
@@ -167,6 +168,7 @@ def test_audit_flags_invalid_tag_entity_type() -> None:
                 tag = Tag(name="review", entity_type="note")
                 session.add(tag)
                 await session.flush()
+                await session.execute(text("PRAGMA ignore_check_constraints=ON"))
                 await session.execute(
                     tag_associations.insert().values(
                         entity_type="bogus",
@@ -174,6 +176,7 @@ def test_audit_flags_invalid_tag_entity_type() -> None:
                         tag_id=tag.id,
                     )
                 )
+                await session.execute(text("PRAGMA ignore_check_constraints=OFF"))
                 await session.flush()
 
                 report = await audit_referential_integrity(session)

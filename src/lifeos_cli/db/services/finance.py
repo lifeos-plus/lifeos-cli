@@ -9,9 +9,11 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 
 from lifeos_cli.application.time_preferences import to_storage_timezone
 from lifeos_cli.db.base import utc_now
@@ -214,7 +216,15 @@ def format_asset_amount(
 
 async def ensure_default_finance_assets(session: AsyncSession) -> None:
     """Create built-in assets only when the code has never existed."""
-    existing_codes = set((await session.execute(select(FinanceAsset.code))).scalars().all())
+    existing_codes = set(
+        (
+            await session.execute(
+                select(FinanceAsset.code).execution_options(include_soft_deleted=True)
+            )
+        )
+        .scalars()
+        .all()
+    )
     for code, name, display_order in DEFAULT_FINANCE_ASSETS:
         if code in existing_codes:
             continue
@@ -235,8 +245,10 @@ async def list_finance_assets(
     *,
     limit: int = 200,
     offset: int = 0,
+    initialize_defaults: bool = True,
 ) -> list[FinanceAsset]:
-    await ensure_default_finance_assets(session)
+    if initialize_defaults:
+        await ensure_default_finance_assets(session)
     stmt = select(FinanceAsset)
     stmt = stmt.where(FinanceAsset.deleted_at.is_(None))
     stmt = stmt.order_by(FinanceAsset.display_order.asc(), FinanceAsset.code.asc())
@@ -449,10 +461,12 @@ async def get_finance_tree_with_nodes(
     tree_id: UUID,
 ) -> FinanceTree | None:
     """Load one finance tree with all nodes."""
+    await session.flush()
     stmt = (
         select(FinanceTree)
         .options(_finance_tree_nodes_loader())
         .where(FinanceTree.id == tree_id)
+        .execution_options(populate_existing=True)
         .limit(1)
     )
     stmt = stmt.where(FinanceTree.deleted_at.is_(None))
@@ -492,15 +506,14 @@ async def count_finance_trees(
 async def _clear_other_defaults(
     session: AsyncSession,
     *,
-    default_tree: FinanceTree,
+    default_tree_id: UUID | None = None,
 ) -> None:
-    stmt = select(FinanceTree).where(
-        FinanceTree.deleted_at.is_(None),
-        FinanceTree.is_default.is_(True),
+    stmt = update(FinanceTree).where(
+        FinanceTree.deleted_at.is_(None), FinanceTree.is_default.is_(True)
     )
-    for tree in (await session.execute(stmt)).scalars():
-        if tree is not default_tree:
-            tree.is_default = False
+    if default_tree_id is not None:
+        stmt = stmt.where(FinanceTree.id != default_tree_id)
+    await session.execute(stmt.values(is_default=False))
 
 
 async def create_finance_tree(
@@ -514,6 +527,8 @@ async def create_finance_tree(
 ) -> FinanceTree:
     resolved_name = validate_tree_name(name)
     await _ensure_tree_name_available(session, name=resolved_name)
+    if is_default:
+        await _clear_other_defaults(session)
     tree = FinanceTree(
         name=resolved_name,
         primary_currency=normalize_currency_code(primary_currency),
@@ -522,8 +537,6 @@ async def create_finance_tree(
         metadata_json=metadata,
     )
     session.add(tree)
-    if is_default:
-        await _clear_other_defaults(session, default_tree=tree)
     await session.flush()
     await session.refresh(tree)
     return tree
@@ -559,9 +572,9 @@ async def update_finance_tree(
     if display_order is not None:
         tree.display_order = display_order
     if is_default is not None:
-        tree.is_default = is_default
         if is_default:
-            await _clear_other_defaults(session, default_tree=tree)
+            await _clear_other_defaults(session, default_tree_id=tree.id)
+        tree.is_default = is_default
     if update_metadata:
         tree.metadata_json = metadata
 
@@ -657,12 +670,20 @@ async def copy_finance_tree(
     return copy
 
 
+async def _lock_finance_tree(session: AsyncSession, tree_id: UUID) -> None:
+    # Coordinate structural writes before reading descendants, including soft deletes.
+    # SQLite ignores FOR UPDATE and relies on its transaction-level writer isolation.
+    await session.flush()
+    await session.execute(select(FinanceTree.id).where(FinanceTree.id == tree_id).with_for_update())
+
+
 async def delete_finance_tree(
     session: AsyncSession,
     *,
     tree_id: UUID,
 ) -> None:
     """Soft-delete a finance tree that has no active snapshots."""
+    await _lock_finance_tree(session, tree_id)
     tree = await get_finance_tree_with_nodes(session, tree_id=tree_id)
     if tree is None:
         raise FinanceTreeNotFoundError(f"Finance tree {tree_id} was not found")
@@ -679,6 +700,7 @@ async def _get_node_model(
     *,
     node_id: UUID,
 ) -> FinanceTreeNode | None:
+    await session.flush()
     stmt = (
         select(FinanceTreeNode)
         .options(
@@ -686,6 +708,7 @@ async def _get_node_model(
             _finance_node_children_loader(),
         )
         .where(FinanceTreeNode.id == node_id)
+        .execution_options(populate_existing=True)
         .limit(1)
     )
     stmt = stmt.where(FinanceTreeNode.deleted_at.is_(None))
@@ -724,6 +747,7 @@ async def create_finance_node(
     metadata: dict[str, Any] | None = None,
 ) -> FinanceTreeNode:
     """Create a finance tree node."""
+    await _lock_finance_tree(session, tree_id)
     tree = await get_finance_tree(session, tree_id=tree_id)
     if tree is None:
         raise FinanceTreeNotFoundError(f"Finance tree {tree_id} was not found")
@@ -753,7 +777,13 @@ async def create_finance_node(
     await session.flush()
     node.path = str(node.id) if parent is None else f"{parent.path}/{node.id}"
     if parent is not None:
-        parent.children_count += 1
+        count = await session.scalar(
+            update(FinanceTreeNode)
+            .where(FinanceTreeNode.id == parent.id)
+            .values(children_count=FinanceTreeNode.children_count + 1)
+            .returning(FinanceTreeNode.children_count)
+        )
+        set_committed_value(parent, "children_count", count)
     await session.flush()
     await session.refresh(node)
     return node
@@ -792,6 +822,12 @@ async def update_finance_node(
 
 async def delete_finance_node(session: AsyncSession, *, node_id: UUID) -> None:
     """Soft-delete a finance node and its descendants."""
+    tree_id = await session.scalar(
+        select(FinanceTreeNode.tree_id).where(FinanceTreeNode.id == node_id)
+    )
+    if tree_id is None:
+        raise FinanceTreeNodeNotFoundError(f"Finance node {node_id} was not found")
+    await _lock_finance_tree(session, tree_id)
     node = await _get_node_model(session, node_id=node_id)
     if node is None:
         raise FinanceTreeNodeNotFoundError(f"Finance node {node_id} was not found")
@@ -806,8 +842,16 @@ async def delete_finance_node(session: AsyncSession, *, node_id: UUID) -> None:
     node.soft_delete()
     if node.parent_id is not None:
         parent = await _get_node_model(session, node_id=node.parent_id)
-        if parent is not None and parent.children_count > 0:
-            parent.children_count -= 1
+        if parent is not None:
+            count = await session.scalar(
+                update(FinanceTreeNode)
+                .where(FinanceTreeNode.id == parent.id, FinanceTreeNode.children_count > 0)
+                .values(children_count=FinanceTreeNode.children_count - 1)
+                .returning(FinanceTreeNode.children_count)
+            )
+            if count is not None:
+                set_committed_value(parent, "children_count", count)
+    await session.flush()
 
 
 def _validate_snapshot_time_fields(
@@ -1640,6 +1684,7 @@ async def create_finance_snapshot(
     note: str | None = None,
 ) -> FinanceSnapshot:
     """Create a finance snapshot and roll up aggregate nodes."""
+    await _lock_finance_tree(session, tree_id)
     tree = await get_finance_tree(session, tree_id=tree_id)
     if tree is None:
         raise FinanceTreeNotFoundError(f"Finance tree {tree_id} was not found")
@@ -1858,22 +1903,29 @@ async def ensure_default_finance_tree(
     existing = (await session.execute(stmt)).scalar_one_or_none()
     if existing is not None:
         return existing
-    tree = await create_finance_tree(
-        session,
-        name="Finance",
-        primary_currency=primary_currency,
-        is_default=True,
-    )
-    await create_finance_node(
-        session,
-        tree_id=tree.id,
-        name="Assets",
-        display_order=0,
-    )
-    await create_finance_node(
-        session,
-        tree_id=tree.id,
-        name="Liabilities",
-        display_order=1,
-    )
-    return tree
+    try:
+        async with session.begin_nested():
+            tree = await create_finance_tree(
+                session,
+                name="Finance",
+                primary_currency=primary_currency,
+                is_default=True,
+            )
+            await create_finance_node(
+                session,
+                tree_id=tree.id,
+                name="Assets",
+                display_order=0,
+            )
+            await create_finance_node(
+                session,
+                tree_id=tree.id,
+                name="Liabilities",
+                display_order=1,
+            )
+        return tree
+    except IntegrityError:
+        concurrent_default = (await session.execute(stmt)).scalar_one_or_none()
+        if concurrent_default is not None:
+            return concurrent_default
+        raise

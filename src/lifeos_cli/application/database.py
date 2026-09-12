@@ -9,12 +9,24 @@ import sys
 from typing import Literal
 
 from lifeos_cli.config import ConfigurationError
-from lifeos_cli.db.maintenance import ping_database, upgrade_database
+from lifeos_cli.db.maintenance import (
+    DatabaseCheckReport,
+    check_database,
+    ping_database,
+    upgrade_database,
+)
 
 
 async def ping_configured_database() -> None:
     """Ping the configured database."""
     await ping_database()
+
+
+async def check_configured_database(
+    *, repair: bool = False, rebuild_effort: bool = False
+) -> DatabaseCheckReport:
+    """Run operational checks against the configured database."""
+    return await check_database(repair=repair, rebuild_effort=rebuild_effort)
 
 
 def upgrade_configured_database() -> None:

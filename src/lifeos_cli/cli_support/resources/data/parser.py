@@ -85,6 +85,11 @@ def build_data_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
                 "lifeos data export person --format json --output person.json",
                 "lifeos data export all --output lifeos-bundle.zip",
             ),
+            notes=(
+                _(
+                    "resources.data.parser.bundle_output_must_not_be_the_configured_sqlite_database_or_sidecar"
+                ),
+            ),
         ),
     )
     export_parser.add_argument("target", choices=EXPORT_TARGET_CHOICES)

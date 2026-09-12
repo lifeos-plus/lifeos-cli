@@ -20,7 +20,7 @@ from lifeos_cli.db.models.finance import (
     FinanceTreeNode,
 )
 from lifeos_cli.db.services import finance as finance_services
-from lifeos_web.deps import get_db_session
+from lifeos_web.deps import get_db_session, get_write_db_session
 from lifeos_web.response_schemas.common import EmptyMeta
 from lifeos_web.response_schemas.finance import (
     FinanceAssetResponse,
@@ -235,7 +235,7 @@ def _summary_payload(
 
 
 async def _finance_asset_decimal_places(session: AsyncSession) -> dict[str, int]:
-    assets = await finance_services.list_finance_assets(session)
+    assets = await finance_services.list_finance_assets(session, initialize_defaults=False)
     return {asset.code: asset.decimal_places for asset in assets}
 
 
@@ -370,7 +370,7 @@ def _snapshot_payload(
 
 @router.get("/assets", response_model=ListResponse[FinanceAssetResponse, EmptyMeta])
 async def list_assets(
-    session: SessionDep,
+    session: Annotated[AsyncSession, Depends(get_write_db_session)],
     page: int = Query(1, ge=1),
     size: int = Query(200, ge=1, le=500),
 ) -> ListResponse:

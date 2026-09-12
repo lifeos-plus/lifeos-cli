@@ -15,6 +15,12 @@ from lifeos_cli.db.services import areas, person, tags, visions
 from tests.support import sqlite_session_factory
 
 
+@pytest.fixture(autouse=True)
+def isolated_planning_lock(monkeypatch: pytest.MonkeyPatch) -> None:
+    # PostgreSQL lock behavior is covered by the real integration suite.
+    monkeypatch.setattr(visions, "lock_planning_writes", AsyncMock())
+
+
 async def _identity_view(_: object, record: object, **kwargs: object) -> object:
     return record
 
@@ -534,6 +540,9 @@ def test_sync_vision_experience_uses_root_task_effort(
     vision.experience_points = 0
     vision.experience_rate_per_hour = None
     session = SimpleNamespace(flush=AsyncMock(), refresh=AsyncMock(), commit=AsyncMock())
+    session.execute = AsyncMock(
+        return_value=SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [vision]))
+    )
     root_task = SimpleNamespace(parent_task_id=None, actual_effort_total=240)
 
     async def fake_load_vision(
@@ -569,7 +578,7 @@ def test_sync_vision_experience_uses_root_task_effort(
     assert synced.experience_rate_per_hour is None
     assert synced.experience_points == 480
     assert synced.stage == 3
-    session.flush.assert_awaited_once()
+    session.flush.assert_awaited()
     session.commit.assert_not_called()
 
 

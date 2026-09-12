@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from collections.abc import AsyncIterator
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.configuration import set_runtime_config_value
 from lifeos_cli.config import (
@@ -17,8 +19,8 @@ from lifeos_cli.config import (
     clear_config_cache,
     get_preferences_settings,
 )
-from lifeos_cli.db import session as db_session
 from lifeos_cli.db.services import visions as vision_services
+from lifeos_web.deps import request_session
 from lifeos_web.response_schemas.preferences import PreferenceResponse
 
 router = APIRouter(prefix="/preferences", tags=["preferences"])
@@ -218,11 +220,22 @@ def _preference_response(key: str) -> dict[str, Any]:
     return {"key": key, "value": value, "meta": meta}
 
 
-async def _sync_config_preference_dependents(key: str) -> None:
+async def _preference_session(key: str, request: Request) -> AsyncIterator[AsyncSession | None]:
+    if key != "visions.experience_rate_per_hour":
+        yield None
+        return
+    async with request_session(request, sqlite_write=True) as session:
+        # Acquire the SQLite writer before changing the authoritative config file.
+        await session.connection()
+        yield session
+
+
+async def _sync_config_preference_dependents(key: str, session: AsyncSession | None) -> None:
     if key != "visions.experience_rate_per_hour":
         return
-    async with db_session.session_scope() as session:
-        await vision_services.sync_default_rate_vision_experience(session)
+    if session is None:
+        raise RuntimeError("Experience preferences require a request database session")
+    await vision_services.sync_default_rate_vision_experience(session)
 
 
 @router.get("/{key}", response_model=PreferenceResponse, response_model_exclude_unset=True)
@@ -232,7 +245,11 @@ async def get_preference(key: str) -> dict[str, Any]:
 
 
 @router.put("/{key}", response_model=PreferenceResponse, response_model_exclude_unset=True)
-async def set_preference(key: str, payload: PreferenceUpdate) -> dict[str, Any]:
+async def set_preference(
+    key: str,
+    payload: PreferenceUpdate,
+    session: Annotated[AsyncSession | None, Depends(_preference_session)] = None,
+) -> dict[str, Any]:
     """Persist local Web preference values."""
     config_key = _CONFIG_KEY_MAP.get(key)
     if config_key is not None:
@@ -245,7 +262,7 @@ async def set_preference(key: str, payload: PreferenceUpdate) -> dict[str, Any]:
         except ConfigurationError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         _set_process_config_override(key, payload.value)
-        await _sync_config_preference_dependents(key)
+        await _sync_config_preference_dependents(key, session)
         response = _preference_response(key)
         if payload.module:
             response["meta"]["module"] = payload.module

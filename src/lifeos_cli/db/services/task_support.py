@@ -161,6 +161,18 @@ async def validate_parent_task(
         current_parent_id = ancestor_parent_by_id[current_id]
     if current_id == child_task_id:
         raise CircularTaskReferenceError("This would create a circular task reference")
+    if child_task_id is not None:
+        subtree = await load_task_subtree(
+            session, root_task_id=child_task_id, include_soft_deleted=True
+        )
+        subtree_depths: dict[UUID, int] = {}
+        for task in subtree:
+            parent_depth = subtree_depths.get(task.parent_task_id, 0) if task.parent_task_id else 0
+            subtree_depths[task.id] = parent_depth + 1
+        if depth + max(subtree_depths.values(), default=1) > MAX_TASK_DEPTH:
+            raise InvalidTaskDepthError(
+                f"Task hierarchy depth cannot exceed {MAX_TASK_DEPTH} levels"
+            )
     return parent_task
 
 
@@ -274,8 +286,10 @@ async def validate_task_status_change(
     return normalized_status
 
 
-async def load_task_subtree(session: AsyncSession, *, root_task_id: UUID) -> list[Task]:
-    """Load an active task subtree in breadth-first order."""
+async def load_task_subtree(
+    session: AsyncSession, *, root_task_id: UUID, include_soft_deleted: bool = False
+) -> list[Task]:
+    """Load an active root's subtree, optionally including its soft-deleted history."""
     root_task = await load_parent_task(session, root_task_id)
     if root_task is None:
         return []
@@ -288,10 +302,14 @@ async def load_task_subtree(session: AsyncSession, *, root_task_id: UUID) -> lis
     child_step = (
         select(Task.id, (descendants_cte.c.depth + 1).label("depth"))
         .join(descendants_cte, Task.parent_task_id == descendants_cte.c.id)
-        .where(Task.deleted_at.is_(None), descendants_cte.c.depth < MAX_TASK_DEPTH)
+        .where(descendants_cte.c.depth < MAX_TASK_DEPTH)
     )
+    if not include_soft_deleted:
+        child_step = child_step.where(Task.deleted_at.is_(None))
     descendants_cte = descendants_cte.union_all(child_step)
     stmt = select(Task).join(descendants_cte, Task.id == descendants_cte.c.id)
+    if include_soft_deleted:
+        stmt = stmt.execution_options(include_soft_deleted=True)
     descendant_tasks = list((await session.execute(stmt)).scalars())
 
     children_by_parent: dict[UUID | None, list[Task]] = {}
@@ -302,8 +320,12 @@ async def load_task_subtree(session: AsyncSession, *, root_task_id: UUID) -> lis
 
     subtree: list[Task] = []
     queue = deque([root_task])
+    visited: set[UUID] = set()
     while queue:
         task = queue.popleft()
+        if task.id in visited:
+            raise CircularTaskReferenceError("Task subtree contains a circular reference")
+        visited.add(task.id)
         subtree.append(task)
         queue.extend(children_by_parent.get(task.id, []))
     return subtree

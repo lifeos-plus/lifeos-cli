@@ -9,12 +9,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from lifeos_cli.db.models.menstrual import MenstrualDay, MenstrualFactor
+from lifeos_cli.db.models.menstrual import MENSTRUAL_FLOW_AMOUNTS, MenstrualDay, MenstrualFactor
 from lifeos_cli.db.services.batching import BatchDeleteResult, batch_delete_records
 from lifeos_cli.db.services.collection_utils import deduplicate_preserving_order
 from lifeos_cli.db.services.validation_utils import DomainValidationError, validate_choice
 
-MENSTRUAL_FLOW_AMOUNTS = ("low", "medium", "high")
 MAX_SYMPTOMS_PER_DAY = 20
 MAX_SYMPTOM_LENGTH = 50
 MAX_FACTOR_NAME_LENGTH = 100

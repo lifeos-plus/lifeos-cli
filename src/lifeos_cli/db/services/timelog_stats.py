@@ -26,6 +26,7 @@ from lifeos_cli.db.models.aggregated_timelog_stats_groupby_area import (
 from lifeos_cli.db.models.area import Area
 from lifeos_cli.db.models.daily_timelog_stats_groupby_area import DailyTimelogStatsGroupByArea
 from lifeos_cli.db.models.timelog import Timelog
+from lifeos_cli.db.services.write_locks import lock_planning_writes
 
 
 class TimelogStatsValidationError(RuntimeError):
@@ -204,11 +205,15 @@ async def _load_overlapping_area_timelogs(
     window_start: datetime,
     window_end: datetime,
 ) -> list[Timelog]:
-    stmt = select(Timelog).where(
-        Timelog.deleted_at.is_(None),
-        Timelog.area_id.is_not(None),
-        Timelog.end_time > window_start,
-        Timelog.start_time < window_end,
+    stmt = (
+        select(Timelog)
+        .execution_options(populate_existing=True)
+        .where(
+            Timelog.deleted_at.is_(None),
+            Timelog.area_id.is_not(None),
+            Timelog.end_time > window_start,
+            Timelog.start_time < window_end,
+        )
     )
     return list((await session.execute(stmt)).scalars())
 
@@ -353,6 +358,8 @@ async def recompute_daily_timelog_stats_groupby_area_for_dates(
     local_dates: tuple[date, ...],
 ) -> None:
     """Recompute persisted daily timelog stats grouped by area for local dates."""
+    await lock_planning_writes(session)
+    await session.flush()
     timezone_name = get_preferences_settings().timezone
     unique_dates = tuple(sorted(set(local_dates)))
     if not unique_dates:
@@ -499,6 +506,7 @@ async def recompute_aggregated_timelog_stats_groupby_area_for_dates(
     local_dates: tuple[date, ...],
 ) -> None:
     """Recompute persisted week/month/year timelog stats grouped by area."""
+    await lock_planning_writes(session)
     unique_dates = tuple(sorted(set(local_dates)))
     if not unique_dates:
         return
@@ -714,9 +722,13 @@ async def rebuild_timelog_stats_groupby_area(
     rebuild_all: bool = False,
 ) -> tuple[date, ...]:
     """Rebuild persisted timelog stats grouped by area for a selected local scope."""
+    await lock_planning_writes(session)
     if rebuild_all:
         if date_values or start_date is not None or end_date is not None:
             raise TimelogStatsValidationError("Use `--all` by itself, without date filters.")
+        # Full rebuild also removes stale periods that no longer have source rows.
+        await session.execute(delete(AggregatedTimelogStatsGroupByArea))
+        await session.execute(delete(DailyTimelogStatsGroupByArea))
         date_range = await load_rebuildable_timelog_date_range(session)
         if date_range is None:
             return ()

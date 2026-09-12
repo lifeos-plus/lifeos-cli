@@ -31,7 +31,35 @@ class Event(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
             "event_type IN ('appointment', 'timeblock', 'deadline')",
             name="ck_events_event_type_valid",
         ),
+        CheckConstraint(
+            "status IN ('planned', 'cancelled', 'completed')",
+            name="status_valid",
+        ),
+        CheckConstraint(
+            "priority BETWEEN 0 AND 5",
+            name="priority_valid",
+        ),
+        CheckConstraint(
+            "end_time IS NULL OR end_time >= start_time",
+            name="time_range_valid",
+        ),
+        CheckConstraint(
+            "recurrence_frequency IS NULL OR recurrence_frequency IN "
+            "('daily', 'weekly', 'monthly', 'yearly')",
+            name="recurrence_frequency_valid",
+        ),
+        CheckConstraint(
+            "(recurrence_frequency IS NULL AND recurrence_interval IS NULL AND "
+            "recurrence_count IS NULL AND recurrence_until IS NULL AND recurrence_rule IS NULL) OR "
+            "(recurrence_frequency IS NOT NULL AND recurrence_interval > 0 AND "
+            "(recurrence_count IS NULL OR recurrence_count > 0))",
+            name="recurrence_details_valid",
+        ),
         Index("ix_events_status_start_time", "status", "start_time"),
+        CheckConstraint(
+            "recurrence_frequency IS NULL OR recurrence_interval IS NOT NULL",
+            name="recurrence_interval_required",
+        ),
         Index("ix_events_event_type", "event_type"),
         Index("ix_events_area_id", "area_id"),
         Index("ix_events_task_id", "task_id"),
@@ -53,7 +81,10 @@ class Event(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
     recurrence_until: Mapped[datetime | None] = mapped_column(
         UTCDateTime(), nullable=True, index=True
     )
-    recurrence_rule: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    recurrence_rule: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(none_as_null=True),
+        nullable=True,
+    )
     area_id: Mapped[UUID | None] = mapped_column(
         Uuid,
         ForeignKey("areas.id", ondelete="SET NULL"),

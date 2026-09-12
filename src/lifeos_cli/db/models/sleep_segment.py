@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Date, Index, Integer
+from sqlalchemy import CheckConstraint, Date, Index, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
@@ -16,6 +16,11 @@ class SleepSegment(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base)
 
     __tablename__ = "sleep_segments"
     __table_args__ = (
+        CheckConstraint("end_at > start_at", name="time_range_valid"),
+        CheckConstraint(
+            "duration_minutes BETWEEN 1 AND 2880",
+            name="duration_valid",
+        ),
         Index("ix_sleep_segments_sleep_date", "sleep_date"),
         Index("ix_sleep_segments_start_at", "start_at"),
     )

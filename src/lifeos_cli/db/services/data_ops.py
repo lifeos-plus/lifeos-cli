@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import json
+import hashlib
+from contextlib import aclosing
 from dataclasses import dataclass
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
-from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 
-from sqlalchemy import delete, insert, select, text, update
+from sqlalchemy import Table, delete, insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,11 @@ from lifeos_cli.application.datetime_utils import (
     parse_iso_datetime_input,
 )
 from lifeos_cli.application.package_metadata import get_installed_package_version
-from lifeos_cli.config import get_database_settings, get_preferences_settings
+from lifeos_cli.config import (
+    get_database_settings,
+    get_preferences_settings,
+    sqlite_database_file_path,
+)
 from lifeos_cli.db.base import Base
 from lifeos_cli.db.models import (
     Area,
@@ -64,12 +68,37 @@ from lifeos_cli.db.services import (
 from lifeos_cli.db.services import (
     sleep as sleep_services,
 )
+from lifeos_cli.db.services.bundle_codec import (
+    MAX_BUNDLE_ENTRY_BYTES,
+    MAX_BUNDLE_TOTAL_BYTES,
+    BundleArchiveReader,
+    BundleCodecError,
+    decode_jsonl,
+    decode_jsonl_row,
+    encode_jsonl_row,
+    open_bundle_archive,
+    open_bundle_atomic,
+)
+from lifeos_cli.db.services.bundle_tables import (
+    DERIVED_TABLE_NAMES,
+    BundleTableError,
+    iter_export_table_rows,
+    prepare_table_entry_rows,
+    restore_table_rows,
+    source_table_names,
+    source_tables,
+    validate_domain_row,
+    validate_prepared_tables,
+)
 from lifeos_cli.db.services.entity_associations import (
     get_target_ids_for_sources,
     set_association_links,
 )
 from lifeos_cli.db.services.entity_person import sync_entity_person
 from lifeos_cli.db.services.entity_tags import sync_entity_tags
+from lifeos_cli.db.services.hierarchy import validate_persisted_hierarchies
+from lifeos_cli.db.services.snapshot_values import SnapshotValueError, parse_snapshot_value
+from lifeos_cli.db.services.write_locks import lock_planning_writes
 
 SUPPORTED_DATA_RESOURCES = (
     "area",
@@ -88,7 +117,8 @@ SUPPORTED_DATA_RESOURCES = (
     "note",
 )
 BUNDLE_RESOURCE_ORDER = SUPPORTED_DATA_RESOURCES
-BUNDLE_SCHEMA_VERSION = 3
+BUNDLE_SCHEMA_VERSION = 4
+LEGACY_BUNDLE_SCHEMA_VERSION = 3
 
 # Resource keys used by bundles written before the person resource was
 # standardized to singular naming. Old archives stay importable by mapping
@@ -137,6 +167,7 @@ class DataImportReport:
     updated_count: int
     failed_count: int
     failures: tuple[DataOperationFailure, ...]
+    affected_vision_ids: tuple[UUID, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -165,7 +196,7 @@ class DataBatchDeleteReport:
 class BundleExportReport:
     """Summary for a bundle export operation."""
 
-    resource_counts: dict[str, int]
+    table_counts: dict[str, int]
     output_path: Path
 
 
@@ -182,11 +213,19 @@ class BundleImportReport:
 
 
 @dataclass(frozen=True)
+class PreparedBundleTables:
+    """Typed and fully validated source-table rows ready for atomic restore."""
+
+    rows: dict[str, list[dict[str, Any]]]
+
+
+@dataclass(frozen=True)
 class BundlePayload:
-    """Manifest and resource rows loaded from one bundle archive."""
+    """Validated manifest and data loaded from one bundle archive."""
 
     manifest: dict[str, Any]
     resources: dict[str, list[dict[str, Any]]]
+    tables: PreparedBundleTables | None = None
 
 
 @dataclass(frozen=True)
@@ -279,32 +318,10 @@ def _serialize_scalar(value: Any) -> Any:
 
 
 def _parse_column_value(column: Any, value: Any) -> Any:
-    if value is None:
-        return None
-    python_type = getattr(column.type, "python_type", None)
-    if python_type is UUID:
-        return value if isinstance(value, UUID) else UUID(str(value))
-    if python_type is datetime:
-        return value if isinstance(value, datetime) else _normalize_json_datetime(str(value))
-    if python_type is date:
-        return value if isinstance(value, date) else date.fromisoformat(str(value))
-    if python_type is bool:
-        return bool(value)
-    if python_type is int:
-        return int(value)
-    if python_type is float:
-        return float(value)
-    if python_type is Decimal:
-        try:
-            decimal_value = value if isinstance(value, Decimal) else Decimal(str(value))
-        except (InvalidOperation, TypeError, ValueError) as exc:
-            raise DataOperationError(f"Invalid decimal value for `{column.name}`.") from exc
-        if not decimal_value.is_finite():
-            raise DataOperationError(f"Decimal value for `{column.name}` must be finite.")
-        return decimal_value
-    if python_type is str:
-        return str(value)
-    return value
+    try:
+        return parse_snapshot_value(column, value, allow_native=True)
+    except SnapshotValueError as exc:
+        raise DataOperationError(str(exc)) from exc
 
 
 def _model_column_names(spec: DataResourceSpec) -> tuple[str, ...]:
@@ -346,28 +363,63 @@ def _parse_event_occurrence_exceptions(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         raise DataOperationError("Expected `occurrence_exceptions` to be a JSON array.")
     parsed: list[dict[str, Any]] = []
-    for item in value:
+    expected_fields = {"id", "action", "instance_start", "created_at", "updated_at", "deleted_at"}
+    seen_ids: set[UUID] = set()
+    seen_active_instances: set[datetime] = set()
+    for item_number, item in enumerate(value, start=1):
         if not isinstance(item, dict):
             raise DataOperationError("Each event occurrence exception must be a JSON object.")
-        try:
-            parsed.append(
-                {
-                    "id": UUID(str(item["id"])),
-                    "action": str(item["action"]),
-                    "instance_start": _normalize_json_datetime(str(item["instance_start"])),
-                    "created_at": _normalize_json_datetime(str(item["created_at"])),
-                    "updated_at": _normalize_json_datetime(str(item["updated_at"])),
-                    "deleted_at": (
-                        None
-                        if item.get("deleted_at") is None
-                        else _normalize_json_datetime(str(item["deleted_at"]))
-                    ),
-                }
-            )
-        except KeyError as exc:
+        actual_fields = set(item)
+        if actual_fields != expected_fields:
+            missing = sorted(expected_fields - actual_fields)
+            unknown = sorted(actual_fields - expected_fields)
+            details = []
+            if missing:
+                details.append("missing " + ", ".join(missing))
+            if unknown:
+                details.append("unknown " + ", ".join(unknown))
             raise DataOperationError(
-                f"Each event occurrence exception must include `{exc.args[0]}`."
-            ) from exc
+                f"Event occurrence exception {item_number} has an invalid shape "
+                f"({'; '.join(details)})."
+            )
+        for field in ("id", "action", "instance_start", "created_at", "updated_at"):
+            if not isinstance(item[field], str):
+                raise DataOperationError(
+                    f"Event occurrence exception {item_number} field `{field}` must be a string."
+                )
+        if item["deleted_at"] is not None and not isinstance(item["deleted_at"], str):
+            raise DataOperationError(
+                f"Event occurrence exception {item_number} field `deleted_at` "
+                "must be a string or null."
+            )
+        if item["action"] != "skip":
+            raise DataOperationError(
+                f"Event occurrence exception {item_number} action must be `skip`."
+            )
+        exception_id = UUID(item["id"])
+        instance_start = _normalize_json_datetime(item["instance_start"])
+        deleted_at = (
+            None if item["deleted_at"] is None else _normalize_json_datetime(item["deleted_at"])
+        )
+        if exception_id in seen_ids:
+            raise DataOperationError("Event occurrence exception ids must be unique per event.")
+        if deleted_at is None and instance_start in seen_active_instances:
+            raise DataOperationError(
+                "Active event occurrence instance timestamps must be unique per event."
+            )
+        seen_ids.add(exception_id)
+        if deleted_at is None:
+            seen_active_instances.add(instance_start)
+        parsed.append(
+            {
+                "id": exception_id,
+                "action": item["action"],
+                "instance_start": instance_start,
+                "created_at": _normalize_json_datetime(item["created_at"]),
+                "updated_at": _normalize_json_datetime(item["updated_at"]),
+                "deleted_at": deleted_at,
+            }
+        )
     return parsed
 
 
@@ -395,7 +447,9 @@ def _parse_string_array(value: Any, *, field_name: str) -> list[str]:
         return []
     if not isinstance(value, list):
         raise DataOperationError(f"Expected `{field_name}` to be a JSON array.")
-    return [str(item) for item in value]
+    if any(not isinstance(item, str) for item in value):
+        raise DataOperationError(f"Every `{field_name}` value must be a string.")
+    return list(value)
 
 
 def prepare_snapshot_row(resource: str, index: int, payload: dict[str, Any]) -> PreparedSnapshotRow:
@@ -404,12 +458,40 @@ def prepare_snapshot_row(resource: str, index: int, payload: dict[str, Any]) -> 
         raise DataOperationError(f"Unsupported data resource {resource!r}.")
     spec = RESOURCE_SPECS[resource]
     table = spec.model.__table__
+    allowed_fields = set(_model_column_names(spec))
+    if spec.tag_entity_type:
+        allowed_fields.add("tag_ids")
+    if spec.person_entity_type or resource == "note":
+        allowed_fields.add("person_ids")
+    if resource == "note":
+        allowed_fields.update(
+            {
+                "task_ids",
+                "vision_ids",
+                "event_ids",
+                "timelog_ids",
+                "habit_action_ids",
+            }
+        )
+    if resource == "event":
+        allowed_fields.add("occurrence_exceptions")
+    if resource == "menstrual":
+        allowed_fields.add("factor_names")
+    unknown_fields = sorted(set(payload) - allowed_fields)
+    if unknown_fields:
+        raise DataOperationError(
+            f"{resource} row {index} contains unknown fields: {', '.join(unknown_fields)}."
+        )
     direct_values: dict[str, Any] = {}
     for column_name in _model_column_names(spec):
         if column_name not in payload:
             continue
         column = table.c[column_name]
         direct_values[column_name] = _parse_column_value(column, payload[column_name])
+    try:
+        validate_domain_row(table.name, direct_values, row_number=index)
+    except BundleTableError as exc:
+        raise DataOperationError(str(exc)) from exc
     if "id" not in direct_values:
         raise DataOperationError("Each imported row must include `id`.")
     row_id = direct_values["id"]
@@ -772,13 +854,31 @@ async def _apply_snapshot_base_row(
         update(spec.model)
         .where(spec.model.id == prepared_row.row_id)
         .values(**prepared_row.direct_values)
+        .returning(*spec.model.__table__.columns)
     )
     result = await session.execute(update_stmt)
-    updated_count = int(getattr(result, "rowcount", 0) or 0)
-    if updated_count > 0:
-        return "updated"
-    await session.execute(insert(spec.model).values(**prepared_row.direct_values))
-    return "created"
+    stored_row = result.mappings().first()
+    outcome = "updated"
+    if stored_row is None:
+        stored_row = (
+            (
+                await session.execute(
+                    insert(spec.model)
+                    .values(**prepared_row.direct_values)
+                    .returning(*spec.model.__table__.columns)
+                )
+            )
+            .mappings()
+            .one()
+        )
+        outcome = "created"
+    try:
+        validate_domain_row(
+            spec.model.__table__.name, dict(stored_row), row_number=prepared_row.index
+        )
+    except BundleTableError as exc:
+        raise DataOperationError(str(exc)) from exc
+    return outcome
 
 
 async def _sync_snapshot_relations(
@@ -948,6 +1048,22 @@ async def _sync_prepared_rows_relations(
         await _sync_snapshot_relations(session, prepared_row=prepared_row)
 
 
+async def _import_vision_ids(
+    session: AsyncSession, resource: str, row_ids: list[UUID]
+) -> set[UUID]:
+    if resource == "task":
+        statement = select(Task.__table__.c.vision_id).where(Task.__table__.c.id.in_(row_ids))
+    elif resource == "timelog":
+        statement = (
+            select(Task.__table__.c.vision_id)
+            .join(Timelog.__table__, Timelog.__table__.c.task_id == Task.__table__.c.id)
+            .where(Timelog.__table__.c.id.in_(row_ids))
+        )
+    else:
+        return set()
+    return set((await session.scalars(statement)).all())
+
+
 async def import_resource_snapshot(
     session: AsyncSession,
     *,
@@ -955,14 +1071,21 @@ async def import_resource_snapshot(
     rows: list[dict[str, Any]],
 ) -> DataImportReport:
     """Import canonical snapshot rows for one resource."""
+    if resource in {"task", "timelog", "vision"}:
+        await lock_planning_writes(session)
     prepared_rows = [
         prepare_snapshot_row(resource, index + 1, row) for index, row in enumerate(rows)
     ]
+    row_ids = [row.row_id for row in prepared_rows]
+    affected_vision_ids = await _import_vision_ids(session, resource, row_ids)
     created_count, updated_count = await _import_prepared_base_rows(
         session,
         prepared_rows=prepared_rows,
     )
     await _sync_prepared_rows_relations(session, prepared_rows=prepared_rows)
+    if resource == "task":
+        await validate_persisted_hierarchies(session, finance=False)
+    affected_vision_ids.update(await _import_vision_ids(session, resource, row_ids))
     return DataImportReport(
         resource=resource,
         processed_count=len(rows),
@@ -970,6 +1093,7 @@ async def import_resource_snapshot(
         updated_count=updated_count,
         failed_count=0,
         failures=(),
+        affected_vision_ids=tuple(sorted(affected_vision_ids)),
     )
 
 
@@ -1473,49 +1597,86 @@ async def batch_delete_resource(
     )
 
 
-async def _recompute_task_effort_and_timelog_stats(session: AsyncSession) -> None:
-    task_ids = list(
-        (
-            await session.execute(
-                select(Task.id).where(Task.deleted_at.is_(None)).order_by(Task.created_at.asc())
-            )
-        ).scalars()
-    )
-    for task_id in task_ids:
-        await task_effort.recompute_task_self_minutes(session, task_id)
-    for task_id in reversed(task_ids):
-        await task_effort.recompute_totals_upwards(session, task_id)
-
-    timelog_range = await timelog_stats.load_rebuildable_timelog_date_range(session)
-    if timelog_range is None:
-        return
-    local_dates = timelog_stats.iter_date_range(*timelog_range)
-    await timelog_stats.recompute_daily_timelog_stats_groupby_area_for_dates(
-        session,
-        local_dates=local_dates,
-    )
-    await timelog_stats.recompute_aggregated_timelog_stats_groupby_area_for_dates(
-        session,
-        local_dates=local_dates,
-    )
+async def _recompute_task_effort(session: AsyncSession) -> None:
+    """Rebuild task effort from authoritative timelog rows."""
+    await task_effort.rebuild_task_efforts(session)
 
 
-async def run_post_import_hooks(session: AsyncSession, *, resources: set[str]) -> None:
+async def _rebuild_timelog_stats(session: AsyncSession) -> None:
+    """Replace every derived timelog aggregate from authoritative rows."""
+    await timelog_stats.rebuild_timelog_stats_groupby_area(session, rebuild_all=True)
+
+
+async def run_post_import_hooks(
+    session: AsyncSession, *, resources: set[str], vision_ids: tuple[UUID, ...] = ()
+) -> None:
     """Run derived-data maintenance after snapshot imports."""
+    if {"task", "timelog", "vision"} & resources:
+        await lock_planning_writes(session)
+    if "task" in resources:
+        await validate_persisted_hierarchies(session, finance=False)
     if {"task", "timelog"} & resources:
-        await _recompute_task_effort_and_timelog_stats(session)
+        await _recompute_task_effort(session)
+    # Explicit vision snapshots also contain manual experience. Preserve them,
+    # and only refresh affected existing visions for task/timelog resource imports.
+    if vision_ids and "vision" not in resources:
+        await visions.sync_vision_experience_for_vision_ids(session, vision_ids=list(vision_ids))
+    if "timelog" in resources:
+        await _rebuild_timelog_stats(session)
 
 
-def _bundle_manifest(resource_counts: dict[str, int]) -> dict[str, Any]:
+def _bundle_manifest(
+    entry_metadata: dict[str, dict[str, str | int]],
+) -> dict[str, Any]:
     return {
         "schema_version": BUNDLE_SCHEMA_VERSION,
         "exported_at": datetime.now().astimezone().isoformat(),
         "app_version": get_installed_package_version(),
         "database_schema": get_database_settings().database_schema,
         "timezone": get_preferences_settings().timezone,
-        "included_resources": list(resource_counts.keys()),
-        "resource_counts": resource_counts,
+        "source_tables": list(source_table_names()),
+        "derived_tables": sorted(DERIVED_TABLE_NAMES),
+        "entries": entry_metadata,
     }
+
+
+async def _start_bundle_export_snapshot(session: AsyncSession) -> None:
+    """Use one stable PostgreSQL snapshot for the bundle's many SELECTs."""
+    bind = session.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    if session.in_transaction():
+        connection = await session.connection()
+        isolation_level = (await connection.get_isolation_level()).upper()
+        if isolation_level not in {"REPEATABLE READ", "SERIALIZABLE"}:
+            raise DataOperationError(
+                "PostgreSQL bundle export requires a fresh session or an existing "
+                "REPEATABLE READ/SERIALIZABLE transaction."
+            )
+        return
+    await session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+
+
+def _validate_bundle_output_path(output_path: Path) -> None:
+    settings = get_database_settings()
+    if settings.database_url is None:
+        return
+    database_path = sqlite_database_file_path(settings.database_url)
+    if database_path is None:
+        return
+    reserved_paths = (
+        database_path,
+        Path(f"{database_path}-wal"),
+        Path(f"{database_path}-shm"),
+        Path(f"{database_path}-journal"),
+    )
+    resolved_output = output_path.expanduser().resolve(strict=False)
+    if any(
+        resolved_output == reserved_path.resolve(strict=False) for reserved_path in reserved_paths
+    ):
+        raise DataOperationError(
+            "Bundle output must not overwrite the configured SQLite database or a sidecar file."
+        )
 
 
 async def export_bundle(
@@ -1523,64 +1684,184 @@ async def export_bundle(
     *,
     output_path: Path,
 ) -> BundleExportReport:
-    """Export all supported resources into one bundle zip file."""
-    resource_counts: dict[str, int] = {}
-    with ZipFile(output_path, "w", compression=ZIP_DEFLATED) as archive:
-        for resource in BUNDLE_RESOURCE_ORDER:
-            rows = await export_resource_snapshot(
-                session,
-                resource=resource,
-            )
-            archive.writestr(
-                f"{resource}.jsonl",
-                "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows),
-            )
-            resource_counts[resource] = len(rows)
-        archive.writestr(
-            "manifest.json",
-            json.dumps(_bundle_manifest(resource_counts), ensure_ascii=False, indent=2),
-        )
-    return BundleExportReport(resource_counts=resource_counts, output_path=output_path)
+    """Export one lossless, versioned source-table snapshot atomically."""
+    _validate_bundle_output_path(output_path)
+    await _start_bundle_export_snapshot(session)
+    table_counts: dict[str, int] = {}
+    entry_metadata: dict[str, dict[str, str | int]] = {}
+    expanded_size = 0
+    try:
+        with open_bundle_atomic(output_path) as writer:
+            for table in source_tables():
+                entry_name = f"tables/{table.name}.jsonl"
+                digest = hashlib.sha256()
+                row_count = 0
+                entry_size = 0
+                with writer.open_entry(entry_name) as entry:
+                    async with aclosing(iter_export_table_rows(session, table)) as rows:
+                        async for row in rows:
+                            encoded_row = encode_jsonl_row(row)
+                            entry_size += len(encoded_row)
+                            expanded_size += len(encoded_row)
+                            if entry_size > MAX_BUNDLE_ENTRY_BYTES:
+                                raise DataOperationError(
+                                    f"Bundle entry {entry_name} exceeds the supported "
+                                    "expanded size."
+                                )
+                            if expanded_size > MAX_BUNDLE_TOTAL_BYTES:
+                                raise DataOperationError(
+                                    "Bundle exceeds the supported expanded size."
+                                )
+                            entry.write(encoded_row)
+                            digest.update(encoded_row)
+                            row_count += 1
+                table_counts[table.name] = row_count
+                entry_metadata[entry_name] = {
+                    "sha256": digest.hexdigest(),
+                    "row_count": row_count,
+                }
+
+            manifest_size = writer.write_manifest(_bundle_manifest(entry_metadata))
+            if expanded_size + manifest_size > MAX_BUNDLE_TOTAL_BYTES:
+                raise DataOperationError("Bundle exceeds the supported expanded size.")
+    except (BundleCodecError, BundleTableError) as exc:
+        raise DataOperationError(f"Unable to export a valid bundle: {exc}") from exc
+    return BundleExportReport(table_counts=table_counts, output_path=output_path)
 
 
 def read_bundle(path: Path) -> BundlePayload:
     """Read and validate a bundle zip file."""
-    resources: dict[str, list[dict[str, Any]]] = {}
     try:
-        with ZipFile(path, "r") as archive:
-            if "manifest.json" not in archive.namelist():
-                raise DataOperationError("Bundle archive is missing manifest.json.")
-            manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
-            if not isinstance(manifest, dict):
-                raise DataOperationError("Bundle manifest must be a JSON object.")
-            schema_version = manifest.get("schema_version")
-            if schema_version != BUNDLE_SCHEMA_VERSION:
-                raise DataOperationError(
-                    "Unsupported bundle schema version "
-                    f"{schema_version!r}. Expected {BUNDLE_SCHEMA_VERSION}. "
-                    "Older bundle schemas are not supported after habit-action notes moved "
-                    "to linked notes."
-                )
-            for resource in BUNDLE_RESOURCE_ORDER:
-                entry_name = f"{resource}.jsonl"
-                legacy_key = LEGACY_BUNDLE_RESOURCE_KEYS.get(resource)
-                legacy_entry_name = f"{legacy_key}.jsonl" if legacy_key else None
-                if entry_name not in archive.namelist() and legacy_entry_name in archive.namelist():
-                    entry_name = legacy_entry_name
-                if entry_name not in archive.namelist():
-                    resources[resource] = []
-                    continue
-                raw_text = archive.read(entry_name).decode("utf-8")
-                resources[resource] = [
-                    json.loads(line) for line in raw_text.splitlines() if line.strip()
-                ]
-    except BadZipFile as exc:
-        raise DataOperationError(f"Unable to read bundle archive: {exc}.") from exc
-    except OSError as exc:
-        raise DataOperationError(f"Unable to read bundle archive: {exc}.") from exc
-    except json.JSONDecodeError as exc:
-        raise DataOperationError(f"Invalid bundle JSON content: {exc.msg}.") from exc
-    return BundlePayload(manifest=manifest, resources=resources)
+        with open_bundle_archive(path) as decoded:
+            return _read_open_bundle(decoded)
+    except BundleCodecError as exc:
+        raise DataOperationError(str(exc)) from exc
+
+
+def _get_bundle_schema_version(manifest: dict[str, Any]) -> int:
+    schema_version = manifest.get("schema_version")
+    if type(schema_version) is not int:
+        raise DataOperationError("Bundle manifest schema_version must be an integer.")
+    return schema_version
+
+
+def _prepare_v4_table_entry(
+    decoded: BundleArchiveReader,
+    *,
+    table: Table,
+    metadata: object,
+) -> list[dict[str, Any]]:
+    """Incrementally verify, decode, and prepare one table entry."""
+    entry_name = f"tables/{table.name}.jsonl"
+    if not isinstance(metadata, dict):
+        raise DataOperationError(f"Invalid manifest metadata for {entry_name}.")
+    checksum = metadata.get("sha256")
+    row_count = metadata.get("row_count")
+    if not isinstance(checksum, str):
+        raise DataOperationError(f"Invalid checksum metadata for bundle entry {entry_name}.")
+    if type(row_count) is not int or row_count < 0:
+        raise DataOperationError(f"Invalid row count metadata for bundle entry {entry_name}.")
+
+    digest = hashlib.sha256()
+    actual_row_count = 0
+    with decoded.open_entry(entry_name) as entry:
+
+        def iter_rows():
+            nonlocal actual_row_count
+            for line_number, line in enumerate(entry, start=1):
+                digest.update(line)
+                if line.strip():
+                    actual_row_count += 1
+                    yield decode_jsonl_row(
+                        line,
+                        entry_name=entry_name,
+                        line_number=line_number,
+                    )
+
+        try:
+            prepared_rows = prepare_table_entry_rows(table, iter_rows())
+        except BundleTableError as exc:
+            raise DataOperationError(f"Invalid source-table snapshot: {exc}") from exc
+    if checksum != digest.hexdigest():
+        raise DataOperationError(f"Checksum mismatch for bundle entry {entry_name}.")
+    if row_count != actual_row_count:
+        raise DataOperationError(f"Row count mismatch for bundle entry {entry_name}.")
+    return prepared_rows
+
+
+def _read_open_bundle(
+    decoded: BundleArchiveReader,
+) -> BundlePayload:
+    """Validate and decode an already-open bundle archive."""
+    resources: dict[str, list[dict[str, Any]]] = {}
+    manifest = decoded.manifest
+    archive_entries = set(decoded.entry_names)
+    schema_version = _get_bundle_schema_version(manifest)
+    if schema_version == LEGACY_BUNDLE_SCHEMA_VERSION:
+        for resource in BUNDLE_RESOURCE_ORDER:
+            entry_name = f"{resource}.jsonl"
+            legacy_key = LEGACY_BUNDLE_RESOURCE_KEYS.get(resource)
+            legacy_entry_name = f"{legacy_key}.jsonl" if legacy_key else None
+            if entry_name not in archive_entries and legacy_entry_name in archive_entries:
+                entry_name = legacy_entry_name
+            content = decoded.read_entry(entry_name) if entry_name in archive_entries else b""
+            try:
+                resources[resource] = decode_jsonl(content, entry_name=entry_name)
+            except BundleCodecError as exc:
+                raise DataOperationError(str(exc)) from exc
+        return BundlePayload(manifest=manifest, resources=resources)
+    if schema_version != BUNDLE_SCHEMA_VERSION:
+        raise DataOperationError(
+            "Unsupported bundle schema version "
+            f"{schema_version!r}. Expected {BUNDLE_SCHEMA_VERSION}. "
+            "Older bundle schemas are not supported after habit-action notes moved "
+            "to linked notes."
+        )
+
+    expected_entries = {f"tables/{table_name}.jsonl" for table_name in source_table_names()}
+    manifest_entries = manifest.get("entries")
+    if not isinstance(manifest_entries, dict):
+        raise DataOperationError("Bundle manifest entries must be a JSON object.")
+    tracked_entries = set(manifest_entries)
+    if archive_entries != expected_entries or tracked_entries != expected_entries:
+        missing = sorted(expected_entries - archive_entries)
+        unexpected = sorted(archive_entries - expected_entries)
+        untracked = sorted(archive_entries - tracked_entries)
+        missing_from_archive = sorted(tracked_entries - archive_entries)
+        details = []
+        if missing:
+            details.append("missing required archive entries: " + ", ".join(missing))
+        if unexpected:
+            details.append("unexpected archive entries: " + ", ".join(unexpected))
+        if untracked:
+            details.append("untracked archive entries: " + ", ".join(untracked))
+        if missing_from_archive:
+            details.append("manifest-only entries: " + ", ".join(missing_from_archive))
+        unlisted = sorted(expected_entries - tracked_entries)
+        if unlisted:
+            details.append("entries absent from manifest: " + ", ".join(unlisted))
+        raise DataOperationError(
+            "Bundle entry set is incomplete or invalid (" + "; ".join(details) + ")."
+        )
+    if manifest.get("source_tables") != list(source_table_names()):
+        raise DataOperationError("Bundle manifest has an invalid source_tables list.")
+    tables: dict[str, list[dict[str, Any]]] = {}
+    for table in source_tables():
+        entry_name = f"tables/{table.name}.jsonl"
+        tables[table.name] = _prepare_v4_table_entry(
+            decoded,
+            table=table,
+            metadata=manifest_entries[entry_name],
+        )
+    try:
+        validate_prepared_tables(tables)
+    except BundleTableError as exc:
+        raise DataOperationError(f"Invalid source-table snapshot: {exc}") from exc
+    return BundlePayload(
+        manifest=manifest,
+        resources=resources,
+        tables=PreparedBundleTables(rows=tables),
+    )
 
 
 async def truncate_supported_data(session: AsyncSession) -> None:
@@ -1607,26 +1888,60 @@ async def truncate_supported_data(session: AsyncSession) -> None:
 async def import_bundle(
     session: AsyncSession,
     *,
-    bundle_rows: dict[str, list[dict[str, Any]]],
+    bundle: BundlePayload,
     replace_existing: bool = False,
 ) -> BundleImportReport:
     """Import a full bundle atomically."""
-    if replace_existing:
-        await truncate_supported_data(session)
+    schema_version = _get_bundle_schema_version(bundle.manifest)
+    if schema_version == LEGACY_BUNDLE_SCHEMA_VERSION and replace_existing:
+        raise DataOperationError(
+            "Legacy schema-v3 bundles are partial exports and cannot safely replace a database; "
+            "import without --replace-existing or re-export with the current LifeOS version."
+        )
+    if schema_version == BUNDLE_SCHEMA_VERSION:
+        if bundle.tables is None or bundle.resources:
+            raise DataOperationError("Schema-v4 bundles require only a validated table snapshot.")
+        await lock_planning_writes(session)
+        prepared_tables = bundle.tables.rows
+        if replace_existing:
+            await truncate_supported_data(session)
+        created_count, updated_count = await restore_table_rows(
+            session,
+            prepared_tables,
+            replace_existing=replace_existing,
+        )
+        await validate_persisted_hierarchies(session, rebuild_finance_counts=True)
+        await run_post_import_hooks(session, resources={"task", "timelog"})
+        return BundleImportReport(
+            processed_count=created_count + updated_count,
+            created_count=created_count,
+            updated_count=updated_count,
+            failed_count=0,
+            failures=(),
+            imported_resources=tuple(source_table_names()),
+        )
+    if schema_version != LEGACY_BUNDLE_SCHEMA_VERSION or bundle.tables is not None:
+        raise DataOperationError(f"Unsupported or inconsistent bundle schema {schema_version!r}.")
+    if {"task", "timelog", "vision"} & bundle.resources.keys():
+        await lock_planning_writes(session)
 
     created_count = 0
     updated_count = 0
     imported_resources: list[str] = []
     prepared_by_resource: dict[str, list[PreparedSnapshotRow]] = {}
+    affected_vision_ids: set[UUID] = set()
 
     for resource in BUNDLE_RESOURCE_ORDER:
-        rows = bundle_rows.get(resource, [])
+        rows = bundle.resources.get(resource, [])
         if not rows:
             continue
         prepared_rows = [
             prepare_snapshot_row(resource, index + 1, row) for index, row in enumerate(rows)
         ]
         prepared_by_resource[resource] = prepared_rows
+        affected_vision_ids.update(
+            await _import_vision_ids(session, resource, [row.row_id for row in prepared_rows])
+        )
         created_delta, updated_delta = await _import_prepared_base_rows(
             session,
             prepared_rows=prepared_rows,
@@ -1636,12 +1951,22 @@ async def import_bundle(
         imported_resources.append(resource)
 
     for resource in imported_resources:
+        affected_vision_ids.update(
+            await _import_vision_ids(
+                session, resource, [row.row_id for row in prepared_by_resource[resource]]
+            )
+        )
         await _sync_prepared_rows_relations(
             session,
             prepared_rows=prepared_by_resource[resource],
         )
 
-    await run_post_import_hooks(session, resources=set(imported_resources))
+    explicit_vision_ids = {row.row_id for row in prepared_by_resource.get("vision", [])}
+    await run_post_import_hooks(
+        session,
+        resources=set(imported_resources) - {"vision"},
+        vision_ids=tuple(sorted(affected_vision_ids - explicit_vision_ids)),
+    )
     processed_count = created_count + updated_count
     return BundleImportReport(
         processed_count=processed_count,

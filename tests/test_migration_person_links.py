@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from contextlib import ExitStack
+from contextlib import ExitStack, closing
 from pathlib import Path
 from uuid import UUID
 
@@ -21,7 +21,7 @@ _TIMESTAMP = "2026-08-12 00:00:00+00:00"
 
 
 def _table_names(database_path: Path) -> set[str]:
-    with sqlite3.connect(database_path) as connection:
+    with closing(sqlite3.connect(database_path)) as connection:
         rows = connection.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
     return {row[0] for row in rows}
 
@@ -29,7 +29,7 @@ def _table_names(database_path: Path) -> set[str]:
 def _association_rows(
     database_path: Path,
 ) -> list[tuple[str, UUID, str, UUID, str]]:
-    with sqlite3.connect(database_path) as connection:
+    with closing(sqlite3.connect(database_path)) as connection:
         return [
             (source_model, UUID(source_id), target_model, UUID(target_id), link_type)
             for source_model, source_id, target_model, target_id, link_type in connection.execute(
@@ -43,7 +43,7 @@ def _person_association_rows(
     database_path: Path,
     table_name: str,
 ) -> list[tuple[str, UUID, UUID]]:
-    with sqlite3.connect(database_path) as connection:
+    with closing(sqlite3.connect(database_path)) as connection:
         rows = [
             (entity_type, UUID(entity_id), UUID(person_id))
             for entity_type, entity_id, person_id in connection.execute(
@@ -64,7 +64,7 @@ def test_person_links_migration_roundtrip(tmp_path: Path) -> None:
         )
         command.upgrade(alembic_config, _PREVIOUS_REVISION)
 
-        with sqlite3.connect(database_path) as connection:
+        with closing(sqlite3.connect(database_path)) as connection, connection:
             connection.execute(
                 "INSERT INTO people (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
                 (_PERSON_ID.replace("-", ""), "Alice", _TIMESTAMP, _TIMESTAMP),

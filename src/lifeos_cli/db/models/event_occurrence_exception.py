@@ -5,11 +5,13 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Index, String, Uuid, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Uuid, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lifeos_cli.db.base import Base, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
 from lifeos_cli.db.types import UTCDateTime
+
+EVENT_OCCURRENCE_ACTIONS = frozenset({"skip"})
 
 
 class EventOccurrenceException(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Base):
@@ -17,6 +19,7 @@ class EventOccurrenceException(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDelete
 
     __tablename__ = "event_occurrence_exceptions"
     __table_args__ = (
+        CheckConstraint("action IN ('skip')", name="action_valid"),
         Index("ix_event_occurrence_exceptions_master_event_id", "master_event_id"),
         Index("ix_event_occurrence_exceptions_instance_start", "instance_start"),
         Index(

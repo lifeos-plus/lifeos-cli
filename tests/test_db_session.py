@@ -72,7 +72,8 @@ def test_configure_async_engine_enables_sqlite_foreign_keys_only_for_sqlite(
 
     assert db_session.configure_async_engine(sqlite_engine) is sqlite_engine
     assert listened == [
-        (sqlite_engine.sync_engine, "connect", db_session._configure_sqlite_connection)
+        (sqlite_engine.sync_engine, "connect", db_session._configure_sqlite_connection),
+        (sqlite_engine.sync_engine, "begin", db_session._begin_sqlite_transaction),
     ]
 
     listened.clear()

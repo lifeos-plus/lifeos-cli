@@ -33,23 +33,35 @@ database_schema = normalize_database_schema(
 target_metadata = Base.metadata
 
 
+def _include_application_object(
+    _object: object,
+    name: str | None,
+    type_: str,
+    _reflected: bool,
+    _compare_to: object | None,
+) -> bool:
+    """Exclude Alembic's own revision table from application schema comparison."""
+    return type_ != "table" or name != "alembic_version"
+
+
 def _configure_migration_context(connection: Connection) -> None:
     if database_schema is not None:
-        connection = connection.execution_options(schema_translate_map={None: database_schema})
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
             compare_server_default=True,
-            include_schemas=True,
+            include_object=_include_application_object,
             version_table_schema=database_schema,
         )
         return
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
+        transactional_ddl=True,
         compare_type=True,
         compare_server_default=True,
+        include_object=_include_application_object,
     )
 
 
@@ -63,7 +75,7 @@ def run_migrations_offline() -> None:
             dialect_opts={"paramstyle": "named"},
             compare_type=True,
             compare_server_default=True,
-            include_schemas=True,
+            include_object=_include_application_object,
             version_table_schema=database_schema,
         )
     else:
@@ -74,6 +86,7 @@ def run_migrations_offline() -> None:
             dialect_opts={"paramstyle": "named"},
             compare_type=True,
             compare_server_default=True,
+            include_object=_include_application_object,
         )
 
     with context.begin_transaction():
@@ -85,9 +98,24 @@ def do_run_migrations(connection: Connection) -> None:
     if database_schema is not None:
         connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{database_schema}"'))
         connection.commit()
+        if connection.dialect.name == "postgresql":
+            quoted_schema = connection.dialect.identifier_preparer.quote_schema(database_schema)
+            connection.exec_driver_sql(f"SET search_path TO {quoted_schema}")
+            connection.commit()
+            # Alembic autogenerate compares schema identity before applying SQLAlchemy's
+            # schema translation. Treat the isolated LifeOS schema as PostgreSQL's
+            # default so model tables declared without a schema match reflected tables.
+            connection.dialect.default_schema_name = database_schema
     _configure_migration_context(connection)
     with context.begin_transaction():
         context.run_migrations()
+        if connection.dialect.name == "sqlite":
+            violations = connection.exec_driver_sql("PRAGMA foreign_key_check").fetchmany(10)
+            if violations:
+                raise RuntimeError(
+                    "Migration would leave foreign-key violations; all changes were rolled back: "
+                    f"{violations}"
+                )
 
 
 async def run_async_migrations() -> None:
@@ -97,11 +125,17 @@ async def run_async_migrations() -> None:
             config.get_section(config.config_ini_section, {}),
             prefix="sqlalchemy.",
             poolclass=pool.NullPool,
-        )
+        ),
+        # Alembic batch rebuilds DROP the old table. Enforced foreign keys would
+        # cascade-delete its dependents even though the replacement preserves IDs.
+        # Disable only on this private engine and validate before transactional DDL commits.
+        sqlite_foreign_keys=False,
     )
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-    await connectable.dispose()
+    try:
+        async with connectable.connect() as connection:
+            await connection.run_sync(do_run_migrations)
+    finally:
+        await connectable.dispose()
 
 
 def run_migrations_online() -> None:

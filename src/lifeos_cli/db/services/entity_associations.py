@@ -142,6 +142,8 @@ async def set_association_links(
             )
         )
 
+    await session.flush()
+
 
 async def get_target_ids_for_sources(
     session: AsyncSession,

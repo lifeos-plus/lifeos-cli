@@ -62,32 +62,48 @@ These associations cannot use ordinary foreign keys for the polymorphic side; re
 
 ### Transactions
 
-`db/session.session_scope()` is the single transaction boundary used by both the CLI and Web routers. It opens one async session, commits on success, and rolls back on failure. The async engine and session factory are cached at the process level (`get_async_engine`, `get_async_session_factory`); use `clear_session_cache()` to dispose the engine after configuration changes.
+`db/session.session_scope()` owns session lifetime and rollback; CLI scopes also commit on success. Web scopes defer finalization to the response middleware. Engines and session factories are process-cached; `clear_session_cache()` disposes the engine after configuration changes.
 
 ### Soft Deletes
 
 Models opt into `SoftDeleteMixin`, which adds `deleted_at`. A global ORM listener excludes soft-deleted rows from every default SELECT; code that needs the deleted rows explicitly passes the `INCLUDE_SOFT_DELETED_EXECUTION_OPTION` execution option. Soft-deleted records are kept so restores can recover the original relationships.
+
+Soft deletion preserves recoverable relationships, not access isolation: deleting a vision hides its tasks from lists but permits explicit task-ID access. References to deleted records are warnings, not automatic repair targets.
 
 ## 5. Database Backends and Migrations
 
 ### Supported backends
 
 - SQLite (`sqlite+aiosqlite`) — local file storage, no schema concept; foreign keys are enabled per connection (`PRAGMA foreign_keys=ON`).
-- PostgreSQL (`postgresql+psycopg`) — schema-capable; configured schema names are applied through SQLAlchemy `schema_translate_map`.
+- PostgreSQL (`postgresql+psycopg`) — schema-capable; runtime connections apply the configured schema through SQLAlchemy `schema_translate_map`, while migrations align PostgreSQL's search and reflection schemas explicitly.
 
 `db/backend_policy.py` centralizes backend capabilities (schema support, local file storage, foreign-key enforcement, replace-existing strategy) so services do not branch on driver strings.
+
+SQLite uses explicit transactions for correct snapshot/savepoint rollback. PostgreSQL planning writes share a per-schema transaction advisory lock; finance structural writes lock the tree row before reading. These locks protect cooperating application writes, not external SQL.
+
+Web database transactions and lock errors belong at the request boundary: SQLite writers use `BEGIN IMMEDIATE`; read-only requests keep deferred snapshots. The legacy finance asset-list GET declares write intent for initialization; formatting queries remain read-only. Middleware commits before response headers, or rolls back known lock conflicts and returns a sanitized `503` with `Retry-After: 1`. Routers neither commit nor retry independently. CLI scopes retain their own policy. Experience-rate preferences acquire the SQLite writer before changing configuration, but file and database updates are not atomic; a later database failure requires retrying the setting or explicitly synchronizing experience.
 
 ### Alembic strategy
 
 - Migrations live in `src/lifeos_cli/alembic` and use an async environment (`env.py`) that resolves the database URL from configuration.
-- When a schema is configured (PostgreSQL), the migration context applies `schema_translate_map` and sets `version_table_schema` so the Alembic version table follows the data schema.
+- When a schema is configured (PostgreSQL), the migration connection creates it when needed, sets it as `search_path` and as SQLAlchemy's reflected default schema, and sets `version_table_schema` so the Alembic version table follows the data schema.
 - `Base.metadata` uses an explicit naming convention so generated constraint names are stable and safe for PostgreSQL's 63-byte identifier limit.
 - Always audit and migrate existing data before adding constraints; do not assume a production database is clean.
+- Test fresh and populated migrations on both backends, including SQLite upgrade/downgrade rollback and metadata drift. SQLite table rebuilds temporarily disable FK enforcement on private migration connections and check FKs before commit.
+- Migration preflights must reject FALSE and UNKNOWN: use `(condition) IS NOT TRUE`. CHECK constraints need explicit `IS NOT NULL` guards for required nullable-field combinations and missing-member regression tests.
+
+### Backup and restore
+
+Schema-v4 freezes the authoritative table contract, including soft-deleted history; derived timelog aggregates are rebuilt. Export streams a consistent snapshot into an owner-only, atomically published archive. Restore validates manifest digests/counts, archive limits, typed rows, and references before replacement. Legacy v3 supports merge only; bundles are not encrypted. Command contracts and limits belong in CLI help.
+
+Stop other writers during upgrades and full restores and retain a verified backup. Never copy/compress only a running SQLite main file: use an online backup or bundle export, then encrypt as needed and rehearse restoration. Integrity checks alone do not prove freshness or completeness.
+
+Diagnostics cover revision, storage, relationships, hierarchies, and task effort drift; repairs are explicit. Manual vision experience and recoverable soft-deleted references must not be treated as disposable cache. See `lifeos db --help` and `lifeos data --help` for scope and options.
 
 ## 6. Web API Surface
 
 - `lifeos web serve` starts uvicorn against `create_app()`. The API binds `127.0.0.1` by default and warns on stderr when bound beyond loopback, because the Web API has no authentication.
-- Routers are grouped by domain under `lifeos_web/routers` and mounted under `/api/v1`. Every router depends on `get_db_session`, which yields one `session_scope()` transaction per request.
+- Routers live under `lifeos_web/routers` and `/api/v1`; database dependencies register sessions with the shared request boundary.
 - `lifeos_web/serialization` converts ORM read models to JSON-safe payloads; `lifeos_web/response_schemas` declares the explicit success contracts.
 - The OpenAPI document is served at `/api/v1/openapi.json` and exported by `scripts/export_web_openapi.py`; release workflows upload it as an asset so `lifeos-web` can pin a schema version (`npm run api:check` prevents drift).
 

@@ -99,6 +99,21 @@ def run_lifeos(
     )
 
 
+def run_alembic(
+    context: IntegrationContext,
+    *args: str,
+) -> subprocess.CompletedProcess[str]:
+    """Run Alembic against the isolated integration schema."""
+    return subprocess.run(
+        ["uv", "run", "alembic", *args],
+        cwd=REPO_ROOT,
+        env=context.env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
 def assert_ok(result: subprocess.CompletedProcess[str]) -> None:
     assert result.returncode == 0, result.stderr
 

@@ -28,6 +28,12 @@ from lifeos_cli.db.services import (
 from tests.support import create_sqlite_session_factory, sqlite_session_factory
 
 
+@pytest.fixture(autouse=True)
+def isolated_planning_lock(monkeypatch: pytest.MonkeyPatch) -> None:
+    # PostgreSQL lock behavior is covered by the real integration suite.
+    monkeypatch.setattr(task_mutations, "lock_planning_writes", AsyncMock())
+
+
 def test_batch_delete_habit_actions_reports_window_errors_per_record(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

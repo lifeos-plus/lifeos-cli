@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from contextlib import ExitStack
+from contextlib import ExitStack, closing
 from pathlib import Path
 from uuid import UUID
 
@@ -49,7 +49,7 @@ def test_body_measurement_unique_migration_deduplicates_active_rows(tmp_path: Pa
         )
         command.upgrade(alembic_config, _PREVIOUS_REVISION)
 
-        with sqlite3.connect(database_path) as connection:
+        with closing(sqlite3.connect(database_path)) as connection, connection:
             _insert_measurement(
                 connection,
                 row_id=older_id,
@@ -75,7 +75,7 @@ def test_body_measurement_unique_migration_deduplicates_active_rows(tmp_path: Pa
 
         command.upgrade(alembic_config, _MIGRATION_REVISION)
 
-        with sqlite3.connect(database_path) as connection:
+        with closing(sqlite3.connect(database_path)) as connection, connection:
             rows = connection.execute(
                 "SELECT id, deleted_at FROM body_measurements ORDER BY id"
             ).fetchall()
@@ -102,7 +102,7 @@ def test_body_measurement_unique_migration_deduplicates_active_rows(tmp_path: Pa
 
         command.downgrade(alembic_config, _PREVIOUS_REVISION)
 
-        with sqlite3.connect(database_path) as connection:
+        with closing(sqlite3.connect(database_path)) as connection, connection:
             assert (
                 connection.execute(
                     "SELECT 1 FROM sqlite_master WHERE type = 'index' "

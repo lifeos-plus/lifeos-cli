@@ -183,8 +183,8 @@ async def handle_data_export_async(args: argparse.Namespace) -> int:
                     output_path=Path(args.output),
                 )
                 print(f"Exported bundle to {report.output_path}")
-                for resource, count in report.resource_counts.items():
-                    print(f"{resource}: {count}")
+                for table_name, count in report.table_counts.items():
+                    print(f"{table_name}: {count}")
                 return 0
 
             if args.format == "bundle":
@@ -220,6 +220,7 @@ async def _import_rows(
     updated_count = 0
     processed_count = 0
     failures: list[data_ops.DataOperationFailure] = []
+    affected_vision_ids: set[UUID] = set()
     try:
         for index, row in enumerate(rows, start=1):
             processed_count = index
@@ -262,6 +263,7 @@ async def _import_rows(
                         )
                 created_count += report.created_count
                 updated_count += report.updated_count
+                affected_vision_ids.update(report.affected_vision_ids)
             except (
                 data_ops.DataOperationError,
                 LookupError,
@@ -280,7 +282,9 @@ async def _import_rows(
                 if not continue_on_error:
                     break
         if not failures or continue_on_error:
-            await data_ops.run_post_import_hooks(session, resources={resource})
+            await data_ops.run_post_import_hooks(
+                session, resources={resource}, vision_ids=tuple(sorted(affected_vision_ids))
+            )
         if dry_run or failures and not continue_on_error:
             await session.rollback()
         else:
@@ -322,11 +326,21 @@ async def handle_data_import_async(args: argparse.Namespace) -> int:
                 print("Bundle import requires --file.", file=sys.stderr)
                 return 1
             bundle_payload = data_ops.read_bundle(Path(args.file))
+            if (
+                args.replace_existing
+                and bundle_payload.manifest.get("schema_version")
+                == data_ops.LEGACY_BUNDLE_SCHEMA_VERSION
+            ):
+                raise data_ops.DataOperationError(
+                    "Legacy schema-v3 bundles are partial exports and cannot safely replace "
+                    "a database; import without --replace-existing or re-export with the "
+                    "current LifeOS version."
+                )
             session = db_session.get_async_session_factory()()
             try:
                 bundle_report = await data_ops.import_bundle(
                     session,
-                    bundle_rows=bundle_payload.resources,
+                    bundle=bundle_payload,
                     replace_existing=args.replace_existing,
                 )
                 if args.dry_run:
