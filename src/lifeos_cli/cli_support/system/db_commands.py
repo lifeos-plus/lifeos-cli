@@ -29,7 +29,9 @@ async def run_db_ping(_: argparse.Namespace) -> int:
 
 async def run_db_check(args: argparse.Namespace) -> int:
     """Run schema, storage, and weak-reference integrity checks."""
-    report = await check_configured_database(repair=args.repair)
+    report = await check_configured_database(
+        repair=args.repair, rebuild_effort=args.rebuild_task_effort
+    )
     print(f"Database dialect: {report.dialect}")
     print(f"Migration revision: {report.current_revision or 'none'}")
     print(f"Expected revision: {report.head_revision}")
@@ -41,6 +43,12 @@ async def run_db_check(args: argparse.Namespace) -> int:
         print(f"Association issue: {issue}")
     for issue in report.hierarchy_issues:
         print(f"Hierarchy issue: {issue}")
+    for issue in report.derived_issues:
+        print(f"Derived issue: {issue}")
+    for warning in report.data_warnings:
+        print(f"Data warning: {warning}")
+    if report.rebuilt_task_count:
+        print(f"Rebuilt task effort: {report.rebuilt_task_count}")
     for warning in report.association_warnings:
         print(f"Association warning: {warning}")
     if report.ok:
@@ -125,6 +133,11 @@ def build_db_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPars
         help=_("system.db_commands.remove_hard_dangling_weak_links"),
     )
     check_parser.set_defaults(handler=make_sync_handler(run_db_check))
+    check_parser.add_argument(
+        "--rebuild-task-effort",
+        action="store_true",
+        help=_("system.db_commands.rebuild_task_effort"),
+    )
 
     upgrade_parser = add_documented_parser(
         db_subparsers,

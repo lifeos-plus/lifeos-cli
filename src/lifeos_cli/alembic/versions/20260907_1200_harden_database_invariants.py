@@ -183,7 +183,8 @@ def _assert_existing_rows_valid(schema_name: str | None) -> None:
         qualified_table = f'"{schema_name}"."{table_name}"' if schema_name else f'"{table_name}"'
         for constraint_name, condition in constraints:
             invalid_count = connection.execute(
-                sa.text(f"SELECT COUNT(*) FROM {qualified_table} WHERE NOT ({condition})")
+                # UNKNOWN must fail preflight too; NOT NULL does not match a WHERE clause.
+                sa.text(f"SELECT COUNT(*) FROM {qualified_table} WHERE ({condition}) IS NOT TRUE")
             ).scalar_one()
             if invalid_count:
                 raise RuntimeError(

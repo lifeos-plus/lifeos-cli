@@ -21,6 +21,47 @@ from lifeos_cli.db.services.hierarchy import HierarchyValidationError
 from tests.support import sqlite_session_factory
 
 
+def test_soft_deleted_owners_are_warned_without_cascading_or_hiding_id_access() -> None:
+    from lifeos_cli.db.models.event_occurrence_exception import EventOccurrenceException
+    from lifeos_cli.db.services import task_mutations, task_queries, visions
+    from lifeos_cli.db.services.derived_audit import audit_soft_deleted_references
+
+    async def run() -> None:
+        async with sqlite_session_factory() as factory:
+            async with factory() as session:
+                old, target = Vision(name="Deleted owner"), Vision(name="Recovery")
+                session.add_all([old, target])
+                await session.flush()
+                hidden = await task_mutations.create_task(
+                    session, vision_id=old.id, content="Hidden"
+                )
+                deleted = await task_mutations.create_task(
+                    session, vision_id=old.id, content="Deleted"
+                )
+                await task_mutations.delete_task(session, task_id=deleted.id)
+                start = datetime(2026, 9, 12, tzinfo=UTC)
+                event = Event(title="Preserved", task_id=deleted.id, start_time=start)
+                master = Event(title="Master", start_time=start)
+                master.soft_delete()
+                session.add_all([event, master])
+                await session.flush()
+                exception = EventOccurrenceException(
+                    master_event_id=master.id, instance_start=start
+                )
+                session.add(exception)
+                await visions.delete_vision(session, vision_id=old.id)
+                await session.flush()
+                warnings = await audit_soft_deleted_references(session)
+                assert len(warnings) == 3
+                assert await task_queries.list_tasks(session) == []
+                assert await task_queries.get_task(session, task_id=hidden.id) is not None
+                await task_mutations.move_task(session, task_id=hidden.id, new_vision_id=target.id)
+                assert len(await task_queries.list_tasks(session)) == 1
+                assert event.deleted_at is None and exception.deleted_at is None
+
+    asyncio.run(run())
+
+
 def test_move_task_preserves_soft_deleted_hierarchy_and_bundle(tmp_path: Path) -> None:
     from lifeos_cli.db.services import task_mutations, task_support
     from lifeos_cli.db.services.hierarchy import validate_persisted_hierarchies

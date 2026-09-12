@@ -40,7 +40,7 @@
 │           args: target [required]; --file; --stdin; --format; --dry-run; --continue-on-error; --replace-existing; --mode; --key; --error-file
 ├── db  —  Run database maintenance commands
 │   ├── check  —  Check database integrity
-│   │       args: --repair
+│   │       args: --repair; --rebuild-task-effort
 │   ├── ping  —  Check database connectivity
 │   └── upgrade  —  Apply migrations
 ├── event  —  Manage planned schedule events

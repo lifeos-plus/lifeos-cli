@@ -17,11 +17,14 @@ from lifeos_cli.config import (
     ensure_database_url_storage_ready,
     get_database_settings,
 )
+from lifeos_cli.db.services.derived_audit import audit_derived_data, audit_soft_deleted_references
 from lifeos_cli.db.services.hierarchy import (
     HierarchyValidationError,
     validate_persisted_hierarchies,
 )
 from lifeos_cli.db.services.integrity_audit import audit_referential_integrity
+from lifeos_cli.db.services.task_effort import rebuild_task_efforts
+from lifeos_cli.db.services.write_locks import lock_planning_writes
 from lifeos_cli.db.session import get_async_engine, get_async_session_factory
 
 
@@ -37,6 +40,9 @@ class DatabaseCheckReport:
     association_warnings: tuple[str, ...]
     repaired_count: int
     hierarchy_issues: tuple[str, ...] = ()
+    derived_issues: tuple[str, ...] = ()
+    data_warnings: tuple[str, ...] = ()
+    rebuilt_task_count: int = 0
 
     @property
     def ok(self) -> bool:
@@ -46,6 +52,7 @@ class DatabaseCheckReport:
             and not self.storage_issues
             and not self.association_issues
             and not self.hierarchy_issues
+            and not self.derived_issues
         )
 
 
@@ -56,7 +63,9 @@ async def ping_database() -> None:
         await connection.execute(text("SELECT 1"))
 
 
-async def check_database(*, repair: bool = False) -> DatabaseCheckReport:
+async def check_database(
+    *, repair: bool = False, rebuild_effort: bool = False
+) -> DatabaseCheckReport:
     """Check migration state, backend integrity, and polymorphic references."""
     settings = get_database_settings()
     database_url = settings.require_database_url()
@@ -92,9 +101,13 @@ async def check_database(*, repair: bool = False) -> DatabaseCheckReport:
     association_warnings: tuple[str, ...] = ()
     repaired_count = 0
     hierarchy_issues: list[str] = []
+    derived_issues: tuple[str, ...] = ()
+    data_warnings: tuple[str, ...] = ()
+    rebuilt_task_count = 0
     if revision == head_revision:
         session = get_async_session_factory()()
         try:
+            await lock_planning_writes(session)
             for task_hierarchy in (True, False):
                 try:
                     await validate_persisted_hierarchies(
@@ -106,7 +119,15 @@ async def check_database(*, repair: bool = False) -> DatabaseCheckReport:
                 session,
                 repair=repair and not storage_issues,
             )
-            if repair and not storage_issues:
+            data_warnings = await audit_soft_deleted_references(session)
+            try:
+                if rebuild_effort and not storage_issues:
+                    rebuilt_task_count = await rebuild_task_efforts(session)
+                derived_issues, experience_warnings = await audit_derived_data(session)
+                data_warnings += experience_warnings
+            except HierarchyValidationError as exc:
+                derived_issues = (f"Effort audit/rebuild blocked: {exc}",)
+            if (repair or rebuild_effort) and not storage_issues:
                 repaired_count = audit.repaired_count
                 audit = await audit_referential_integrity(session, repair=False)
                 await session.commit()
@@ -132,6 +153,9 @@ async def check_database(*, repair: bool = False) -> DatabaseCheckReport:
         association_warnings=association_warnings,
         repaired_count=repaired_count,
         hierarchy_issues=tuple(hierarchy_issues),
+        derived_issues=derived_issues,
+        data_warnings=data_warnings,
+        rebuilt_task_count=rebuilt_task_count,
     )
 
 

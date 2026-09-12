@@ -16,6 +16,73 @@ from lifeos_cli.db.base import Base
 from lifeos_cli.db.models.event import Event
 
 
+def test_check_rebuilds_effort_without_overwriting_history_or_manual_experience(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import select
+
+    from lifeos_cli.config import clear_config_cache
+    from lifeos_cli.db.models import Task, Timelog, Vision
+    from lifeos_cli.db.session import clear_session_cache, get_async_session_factory
+
+    monkeypatch.setenv("LIFEOS_DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path / 'effort.db'}")
+    monkeypatch.delenv("LIFEOS_DATABASE_SCHEMA", raising=False)
+    clear_config_cache()
+    clear_session_cache()
+    maintenance.upgrade_database()
+
+    async def scenario() -> None:
+        factory = get_async_session_factory()
+        async with factory() as session:
+            vision = Vision(name="Manual", experience_points=777)
+            session.add(vision)
+            await session.flush()
+            parent = Task(vision_id=vision.id, content="Parent", actual_effort_total=380)
+            session.add(parent)
+            await session.flush()
+            child = Task(vision_id=vision.id, parent_task_id=parent.id, content="Child")
+            archived = Task(vision_id=vision.id, parent_task_id=parent.id, content="History")
+            archived.soft_delete()
+            session.add_all([child, archived])
+            await session.flush()
+            start = datetime(2026, 9, 12, tzinfo=UTC)
+            session.add(
+                Timelog(
+                    title="Source",
+                    task_id=child.id,
+                    start_time=start,
+                    end_time=start + timedelta(minutes=265),
+                )
+            )
+            await session.commit()
+            parent_id, child_id, vision_id = parent.id, child.id, vision.id
+        report = await maintenance.check_database(repair=True)
+        assert not report.ok and len(report.derived_issues) == 2
+        assert report.rebuilt_task_count == 0
+        assert any("Manual experience" in item for item in report.data_warnings)
+        report = await maintenance.check_database(rebuild_effort=True)
+        assert report.ok and not report.derived_issues and report.rebuilt_task_count == 2
+        async with factory() as session:
+            assert (
+                await session.scalar(select(Vision.experience_points).where(Vision.id == vision_id))
+                == 777
+            )
+            for task_id in (parent_id, child_id):
+                assert (
+                    await session.scalar(select(Task.actual_effort_total).where(Task.id == task_id))
+                    == 265
+                )
+        assert (await maintenance.check_database(rebuild_effort=True)).rebuilt_task_count == 0
+
+    try:
+        asyncio.run(scenario())
+    finally:
+        clear_session_cache()
+        clear_config_cache()
+
+
 def test_database_check_reports_hierarchy_errors_without_repairing(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -223,7 +290,10 @@ def test_sqlite_failed_migration_rolls_back_schema_and_revision(tmp_path: Path) 
             assert connection.execute("SELECT count(*) FROM tasks").fetchone() == (1,)
 
 
-def test_planning_migration_rejects_preexisting_null_loophole(tmp_path: Path) -> None:
+@pytest.mark.parametrize("initial_revision", ["20260906_1200", "20260907_1200"])
+def test_planning_migration_rejects_preexisting_null_loophole(
+    tmp_path: Path, initial_revision: str
+) -> None:
     from datetime import date
 
     from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -255,13 +325,13 @@ def test_planning_migration_rejects_preexisting_null_loophole(tmp_path: Path) ->
 
     with ExitStack() as stack:
         config = maintenance.build_alembic_config(sqlalchemy_url=url, stack=stack)
-        command.upgrade(config, "20260907_1200")
+        command.upgrade(config, initial_revision)
         asyncio.run(seed())
-        with pytest.raises(RuntimeError, match="incomplete row"):
+        with pytest.raises(RuntimeError, match="Repair the rows"):
             command.upgrade(config, "head")
         with closing(sqlite3.connect(path)) as connection:
             assert connection.execute("SELECT version_num FROM alembic_version").fetchone() == (
-                "20260907_1200",
+                initial_revision,
             )
             assert connection.execute("SELECT count(*) FROM tasks").fetchone() == (1,)
 

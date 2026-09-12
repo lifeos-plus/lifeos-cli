@@ -535,6 +535,7 @@ def test_cli_db_help_explains_ping_upgrade_boundary(capsys) -> None:
     captured = capsys.readouterr()
 
     assert "weak association references" in captured.out
+    assert "--rebuild-task-effort" in captured.out
     assert "only removes hard-dangling weak links" in captured.out
 
     with pytest.raises(SystemExit):

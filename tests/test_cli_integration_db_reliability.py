@@ -11,7 +11,9 @@ from lifeos_cli.config import clear_config_cache
 from lifeos_cli.db.models import Area, DailyTimelogStatsGroupByArea, Task, Timelog, Vision
 from lifeos_cli.db.models.finance import FinanceTreeNode
 from lifeos_cli.db.services import finance, task_mutations, timelogs
+from lifeos_cli.db.services.derived_audit import audit_derived_data
 from lifeos_cli.db.services.hierarchy import validate_persisted_hierarchies
+from lifeos_cli.db.services.task_effort import rebuild_task_efforts
 from lifeos_cli.db.services.timelog_support import TimelogCreateInput, TimelogUpdateInput
 from lifeos_cli.db.session import clear_session_cache, get_async_session_factory
 from tests.cli_integration_support import INTEGRATION_PYTESTMARK, IntegrationContext, init_context
@@ -170,6 +172,13 @@ def test_postgres_concurrent_planning_and_finance_writes(
             assert stored["vision_id"] == target.id
             assert stored["deleted_at"] is not None
             await validate_persisted_hierarchies(session, finance=False)
+            root.actual_effort_total = 999
+            await session.flush()
+            issues, _ = await audit_derived_data(session)
+            assert len(issues) == 1
+            assert await rebuild_task_efforts(session) == 1
+            issues, _ = await audit_derived_data(session)
+            assert not issues
             await session.commit()
 
     try:

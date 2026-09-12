@@ -82,6 +82,8 @@ Static-analysis governance:
 
 ## Change Expectations
 
+Database invariant preflights must reject SQL UNKNOWN as well as FALSE: use `WHERE (condition) IS NOT TRUE`, not `WHERE NOT (condition)`. CHECK constraints also accept UNKNOWN, so nullable field groups must express required presence explicitly with `IS NOT NULL` and have regression tests for every omitted member. Test fresh and populated migration paths on both supported backends; do not infer NULL safety from a successful schema drift check.
+
 - Keep code, comments, commit messages, and canonical repository docs in English.
 - Localized Markdown companions are allowed when the English source stays canonical, the documents are cross-linked, and the localized copy is updated together with the source.
 - Keep issue and PR collaboration in Simplified Chinese for this repository.

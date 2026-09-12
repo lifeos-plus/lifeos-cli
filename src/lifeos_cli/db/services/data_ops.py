@@ -1599,17 +1599,7 @@ async def batch_delete_resource(
 
 async def _recompute_task_effort(session: AsyncSession) -> None:
     """Rebuild task effort from authoritative timelog rows."""
-    task_ids = list(
-        (
-            await session.execute(
-                select(Task.id).where(Task.deleted_at.is_(None)).order_by(Task.created_at.asc())
-            )
-        ).scalars()
-    )
-    for task_id in task_ids:
-        await task_effort.recompute_task_self_minutes(session, task_id)
-    for task_id in reversed(task_ids):
-        await task_effort.recompute_totals_upwards(session, task_id)
+    await task_effort.rebuild_task_efforts(session)
 
 
 async def _rebuild_timelog_stats(session: AsyncSession) -> None:

@@ -107,6 +107,8 @@ To upgrade an existing installation, run `uv tool upgrade lifeos-cli`. If you or
 
 SQLite runtime connections enforce foreign keys and explicit transactions. Migrations use transactional table rebuilds with a foreign-key check before commit to preserve referencing rows. PostgreSQL coordinates writes to task effort, vision experience, and timelog aggregates within each application schema. Stop other writers during database upgrades and full restores, and retain a verified backup before maintenance. Command details and diagnostic scope are available through `lifeos db --help` and `lifeos data --help`.
 
+Do not back up a running SQLite database by compressing its main file alone. Use an online database snapshot or LifeOS bundle export, then compress/encrypt the completed artifact and verify restoration; see [backup safety](SECURITY.md). Database diagnostics report task effort drift and recoverable soft-deleted references without treating manual vision experience as disposable cache.
+
 Initialize your local setup:
 
 ```bash

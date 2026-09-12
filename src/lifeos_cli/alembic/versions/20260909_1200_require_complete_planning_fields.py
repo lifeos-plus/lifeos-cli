@@ -31,7 +31,7 @@ def upgrade() -> None:
         if not op.get_context().as_sql:
             qualified = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
             count = connection.execute(
-                sa.text(f"SELECT COUNT(*) FROM {qualified} WHERE NOT ({condition})")
+                sa.text(f"SELECT COUNT(*) FROM {qualified} WHERE ({condition}) IS NOT TRUE")
             ).scalar_one()
             if count:
                 raise RuntimeError(

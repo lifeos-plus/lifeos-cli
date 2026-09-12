@@ -68,6 +68,8 @@ These associations cannot use ordinary foreign keys for the polymorphic side; re
 
 Models opt into `SoftDeleteMixin`, which adds `deleted_at`. A global ORM listener excludes soft-deleted rows from every default SELECT; code that needs the deleted rows explicitly passes the `INCLUDE_SOFT_DELETED_EXECUTION_OPTION` execution option. Soft-deleted records are kept so restores can recover the original relationships.
 
+Soft deletion is not a cascading ownership or authorization boundary: deleting a vision preserves its task rows. Normal task lists hide tasks under deleted visions, while explicit task-ID access remains available for recovery and reassignment. Active events referencing deleted tasks, occurrence exceptions referencing deleted master events, and weak links to deleted endpoints remain recoverable history rather than repair targets. Database checks warn about these references; they never silently delete or restore them. Deployments requiring access isolation need an authorization layer, not soft-delete filtering.
+
 ## 5. Database Backends and Migrations
 
 ### Supported backends
@@ -86,7 +88,7 @@ SQLite connections explicitly begin transactions so reads and nested savepoints 
 - `Base.metadata` uses an explicit naming convention so generated constraint names are stable and safe for PostgreSQL's 63-byte identifier limit.
 - Always audit and migrate existing data before adding constraints; do not assume a production database is clean.
 - CI exercises a full SQLite `base -> head -> base -> head` migration round trip and runs Alembic metadata drift checks at both heads.
-- `lifeos db check` reports migration revision mismatches, backend-native integrity failures, invalid task/finance hierarchies, and dangling polymorphic associations; repair is always an explicit opt-in and only removes dangling weak associations. Alembic metadata drift checks remain a separate validation gate.
+- `lifeos db check` reports revision mismatches, backend integrity failures, invalid task/finance hierarchies, dangling weak associations, and task effort drift. An explicit effort rebuild shares the same source-based calculator as import maintenance and does not depend on creation order or unrelated soft-deleted cross-vision history. Vision experience differences are warnings because manual additions are supported; explicit per-vision synchronization remains the replacement operation. Weak-link repair and task-effort rebuild are separate opt-ins. Alembic metadata drift and other aggregate families remain separate validation gates.
 
 ### Backup and restore
 

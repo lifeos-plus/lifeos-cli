@@ -107,6 +107,8 @@ uv tool install --upgrade "lifeos-cli[web]"
 
 SQLite 运行时连接启用外键和显式事务。迁移在事务内重建表，并在提交前检查外键，以保留引用记录。PostgreSQL 在各应用 schema 内协调任务工时、愿景经验和时间统计的写入。数据库升级及完整恢复期间应停止其他写入，并在维护前保留已验证的备份。命令细节及诊断范围以 `lifeos db --help` 和 `lifeos data --help` 为准。
 
+不要仅压缩运行中 SQLite 的主库文件作为备份。应先生成在线数据库快照或导出 LifeOS bundle，再压缩、加密完整产物并验证恢复；参见[备份安全说明](SECURITY.md)。数据库诊断报告 task 工时漂移和可恢复的软删引用，不将手工 vision experience 当作可丢弃的缓存。
+
 初始化本地环境：
 
 ```bash

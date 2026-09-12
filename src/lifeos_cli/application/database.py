@@ -22,9 +22,11 @@ async def ping_configured_database() -> None:
     await ping_database()
 
 
-async def check_configured_database(*, repair: bool = False) -> DatabaseCheckReport:
+async def check_configured_database(
+    *, repair: bool = False, rebuild_effort: bool = False
+) -> DatabaseCheckReport:
     """Run operational checks against the configured database."""
-    return await check_database(repair=repair)
+    return await check_database(repair=repair, rebuild_effort=rebuild_effort)
 
 
 def upgrade_configured_database() -> None:

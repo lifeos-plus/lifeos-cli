@@ -10,7 +10,56 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.models.task import Task
 from lifeos_cli.db.models.timelog import Timelog
+from lifeos_cli.db.services.hierarchy import order_hierarchy
 from lifeos_cli.db.services.write_locks import lock_planning_writes
+
+
+async def expected_task_efforts(session: AsyncSession) -> dict[UUID, tuple[int, int]]:
+    """Calculate active effort from sources, independent of persisted aggregates."""
+    table = Task.__table__
+    rows = [
+        dict(row)
+        for row in (
+            await session.execute(select(table).where(table.c.deleted_at.is_(None)))
+        ).mappings()
+    ]
+    ids = {row["id"] for row in rows}
+    for row in rows:
+        if row["parent_task_id"] not in ids:
+            row["parent_task_id"] = None
+    ordered = order_hierarchy(rows, parent_field="parent_task_id", table_name="tasks")
+    direct = dict.fromkeys(ids, 0)
+    logs = (await session.scalars(select(Timelog).execution_options(populate_existing=True))).all()
+    for log in logs:
+        if log.task_id in direct:
+            direct[log.task_id] += _timelog_minutes(log)
+    totals = dict(direct)
+    for row in reversed(ordered):
+        if row["parent_task_id"] is not None:
+            totals[row["parent_task_id"]] += totals[row["id"]]
+    return {task_id: (direct[task_id], totals[task_id]) for task_id in ids}
+
+
+async def rebuild_task_efforts(session: AsyncSession) -> int:
+    """Repair active task aggregates without changing manual vision experience."""
+    from sqlalchemy import update
+
+    await lock_planning_writes(session)
+    await session.flush()
+    expected = await expected_task_efforts(session)
+    repaired = 0
+    for task_id, (direct, total) in expected.items():
+        result = await session.execute(
+            update(Task)
+            .where(
+                Task.id == task_id,
+                (Task.actual_effort_self != direct) | (Task.actual_effort_total != total),
+            )
+            .values(actual_effort_self=direct, actual_effort_total=total)
+            .returning(Task.id)
+        )
+        repaired += len(result.all())
+    return repaired
 
 
 def _timelog_minutes(timelog: Timelog) -> int:

@@ -52,6 +52,8 @@ Local SQLite database files are created with owner-only permissions (`0600`), ma
 
 SQLite migration connections temporarily disable foreign-key enforcement before beginning transactional table rebuilds; runtime connections keep enforcement enabled. Migrations check all foreign keys before committing and roll back on violations. Run upgrades and full restores without concurrent writers and retain a verified backup; integrity diagnostics are not a replacement for backups.
 
+Never copy or compress only the main file of a running SQLite database as a backup: committed data may still reside in WAL, and a raw file copy is not a consistent snapshot. Use SQLite's [Online Backup API](https://www.sqlite.org/backup.html), the SQLite shell backup command, or LifeOS bundle export, then compress/encrypt the completed artifact. Keep the previous verified backup until a restore rehearsal succeeds; a passing integrity check alone does not establish freshness or completeness.
+
 ## Supported Branches
 
 Security fixes should land on the active `main` branch first.
