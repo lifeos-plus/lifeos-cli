@@ -10,7 +10,8 @@ from sqlalchemy.exc import IntegrityError
 from lifeos_cli.config import clear_config_cache
 from lifeos_cli.db.models import Area, DailyTimelogStatsGroupByArea, Task, Timelog, Vision
 from lifeos_cli.db.models.finance import FinanceTreeNode
-from lifeos_cli.db.services import finance, timelogs
+from lifeos_cli.db.services import finance, task_mutations, timelogs
+from lifeos_cli.db.services.hierarchy import validate_persisted_hierarchies
 from lifeos_cli.db.services.timelog_support import TimelogCreateInput, TimelogUpdateInput
 from lifeos_cli.db.session import clear_session_cache, get_async_session_factory
 from tests.cli_integration_support import INTEGRATION_PYTESTMARK, IntegrationContext, init_context
@@ -142,6 +143,34 @@ def test_postgres_concurrent_planning_and_finance_writes(
                 if not pending.done():
                     pending.cancel()
                     await asyncio.gather(pending, return_exceptions=True)
+
+        async with factory() as session:
+            root = await session.get(Task, task_id)
+            assert root is not None
+            archived = await task_mutations.create_task(
+                session, vision_id=root.vision_id, content="History", parent_task_id=task_id
+            )
+            await task_mutations.delete_task(session, task_id=archived.id)
+            target = Vision(name="Moved")
+            session.add(target)
+            await session.flush()
+            result = await task_mutations.move_task(
+                session, task_id=task_id, new_vision_id=target.id
+            )
+            assert result.updated_descendants == ()
+            stored = (
+                (
+                    await session.execute(
+                        select(Task.__table__).where(Task.__table__.c.id == archived.id)
+                    )
+                )
+                .mappings()
+                .one()
+            )
+            assert stored["vision_id"] == target.id
+            assert stored["deleted_at"] is not None
+            await validate_persisted_hierarchies(session, finance=False)
+            await session.commit()
 
     try:
         asyncio.run(scenario())
