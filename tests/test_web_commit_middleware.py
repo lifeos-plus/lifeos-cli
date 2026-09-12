@@ -7,7 +7,6 @@ import inspect
 import sqlite3
 
 from sqlalchemy.exc import OperationalError
-
 from starlette.types import Message, Receive, Scope, Send
 
 from lifeos_web.app import CommitSessionMiddleware, create_app
