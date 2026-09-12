@@ -671,7 +671,7 @@
       "parser_structure": {
         "expected_current_parent_task_identifier": "Expected current parent task identifier",
         "move_task": "Move a task",
-        "move_task_to_new_parent_and_optionally_new_vision": "Move a task to a new parent and optionally a new vision. Vision changes also propagate to soft-deleted descendants without restoring them; returned descendants remain active-only.",
+        "move_task_to_new_parent_and_optionally_new_vision": "Move a task to a new parent and optionally a new vision. Vision changes also propagate to soft-deleted descendants without restoring them; returned descendants remain active-only. The depth limit applies to the entire subtree, including soft-deleted descendants.",
         "move_task_to_root_level": "Move the task to the root level",
         "reorder_tasks": "Reorder tasks",
         "target_display_order": "Target display order",

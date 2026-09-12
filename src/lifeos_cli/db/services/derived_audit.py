@@ -1,5 +1,8 @@
 """Read-only diagnostics for aggregates and recoverable soft-deleted references."""
 
+from collections import defaultdict
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,9 +16,13 @@ async def audit_derived_data(session: AsyncSession) -> tuple[tuple[str, ...], tu
     """Report effort errors and non-destructive experience/reference warnings."""
     expected = await expected_task_efforts(session)
     tasks = list((await session.scalars(select(Task))).all())
+    projected_by_vision: dict[UUID, list[Task]] = defaultdict(list)
     issues = []
     for task in tasks:
         direct, total = expected[task.id]
+        projected_by_vision[task.vision_id].append(
+            Task(parent_task_id=task.parent_task_id, actual_effort_total=total)
+        )
         if (task.actual_effort_self, task.actual_effort_total) != (direct, total):
             issues.append(
                 f"Task {task.id}: effort self/total "
@@ -23,13 +30,9 @@ async def audit_derived_data(session: AsyncSession) -> tuple[tuple[str, ...], tu
             )
     warnings = []
     for vision in (await session.scalars(select(Vision))).all():
-        projected = [
-            Task(parent_task_id=task.parent_task_id, actual_effort_total=expected[task.id][1])
-            for task in tasks
-            if task.vision_id == vision.id
-        ]
         points = vision.calculate_task_experience(
-            experience_rate_per_hour=resolve_experience_rate_for_vision(vision), tasks=projected
+            experience_rate_per_hour=resolve_experience_rate_for_vision(vision),
+            tasks=projected_by_vision[vision.id],
         )
         if vision.experience_points != points:
             warnings.append(

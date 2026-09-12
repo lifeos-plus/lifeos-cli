@@ -21,6 +21,50 @@ from lifeos_cli.db.services.hierarchy import HierarchyValidationError
 from tests.support import sqlite_session_factory
 
 
+@pytest.mark.parametrize("archived", [False, True])
+def test_move_rejects_excessive_subtree_depth_before_writing(archived: bool) -> None:
+    from lifeos_cli.db.services import task_mutations, task_support
+    from lifeos_cli.db.services.hierarchy import validate_persisted_hierarchies
+
+    async def run() -> None:
+        async with sqlite_session_factory() as factory:
+            async with factory() as session:
+                vision = Vision(name="Depth")
+                session.add(vision)
+                await session.flush()
+                parent_id = None
+                ancestors = []
+                for index in range(task_support.MAX_TASK_DEPTH - 1):
+                    parent = await task_mutations.create_task(
+                        session, vision_id=vision.id, content=str(index), parent_task_id=parent_id
+                    )
+                    parent_id = parent.id
+                    ancestors.append(parent_id)
+                root = await task_mutations.create_task(
+                    session, vision_id=vision.id, content="Root"
+                )
+                child = await task_mutations.create_task(
+                    session, vision_id=vision.id, content="Child", parent_task_id=root.id
+                )
+                if archived:
+                    await task_mutations.delete_task(session, task_id=child.id)
+                await session.commit()
+                with pytest.raises(task_support.InvalidTaskDepthError):
+                    await task_mutations.move_task(
+                        session, task_id=root.id, new_parent_task_id=parent_id
+                    )
+                await session.commit()
+                stored = await session.get(Task, root.id)
+                assert stored is not None and stored.parent_task_id is None
+                await validate_persisted_hierarchies(session, finance=False)
+                await task_mutations.move_task(
+                    session, task_id=root.id, new_parent_task_id=ancestors[-2]
+                )
+                await validate_persisted_hierarchies(session, finance=False)
+
+    asyncio.run(run())
+
+
 def test_soft_deleted_owners_are_warned_without_cascading_or_hiding_id_access() -> None:
     from lifeos_cli.db.models.event_occurrence_exception import EventOccurrenceException
     from lifeos_cli.db.services import task_mutations, task_queries, visions

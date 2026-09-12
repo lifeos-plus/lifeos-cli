@@ -20,7 +20,9 @@ async def expected_task_efforts(session: AsyncSession) -> dict[UUID, tuple[int, 
     rows = [
         dict(row)
         for row in (
-            await session.execute(select(table).where(table.c.deleted_at.is_(None)))
+            await session.execute(
+                select(table.c.id, table.c.parent_task_id).where(table.c.deleted_at.is_(None))
+            )
         ).mappings()
     ]
     ids = {row["id"] for row in rows}
