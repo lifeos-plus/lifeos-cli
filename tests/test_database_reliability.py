@@ -21,6 +21,69 @@ from lifeos_cli.db.services.hierarchy import HierarchyValidationError
 from tests.support import sqlite_session_factory
 
 
+def test_move_task_preserves_soft_deleted_hierarchy_and_bundle(tmp_path: Path) -> None:
+    from lifeos_cli.db.services import task_mutations, task_support
+    from lifeos_cli.db.services.hierarchy import validate_persisted_hierarchies
+
+    async def run() -> None:
+        async with sqlite_session_factory() as factory:
+            async with factory() as session:
+                old, new = Vision(name="Old"), Vision(name="New")
+                session.add_all([old, new])
+                await session.flush()
+                root = await task_mutations.create_task(session, vision_id=old.id, content="Root")
+                active = await task_mutations.create_task(
+                    session, vision_id=old.id, content="Active", parent_task_id=root.id
+                )
+                archived = await task_mutations.create_task(
+                    session, vision_id=old.id, content="Archived", parent_task_id=root.id
+                )
+                grandchild = await task_mutations.create_task(
+                    session, vision_id=old.id, content="History", parent_task_id=archived.id
+                )
+                await task_mutations.delete_task(session, task_id=archived.id)
+                await session.commit()
+                historical = {
+                    row["id"]: (row["parent_task_id"], row["deleted_at"])
+                    for row in (await session.execute(select(Task.__table__))).mappings()
+                }
+                for target in (new.id, old.id, new.id):
+                    result = await task_mutations.move_task(
+                        session, task_id=root.id, new_vision_id=target
+                    )
+                    assert {task.id for task in result.updated_descendants} == {active.id}
+                    await validate_persisted_hierarchies(session, finance=False)
+                    rows = (await session.execute(select(Task.__table__))).mappings().all()
+                    assert {row["vision_id"] for row in rows} == {target}
+                    assert {
+                        row["id"]: (row["parent_task_id"], row["deleted_at"]) for row in rows
+                    } == historical
+                    assert {
+                        task.id
+                        for task in await task_support.load_task_subtree(
+                            session, root_task_id=root.id
+                        )
+                    } == {root.id, active.id}
+                    await session.commit()
+                assert historical[grandchild.id][1] is not None
+            path = tmp_path / "moved.zip"
+            async with factory() as session:
+                await data_ops.export_bundle(session, output_path=path)
+            bundle = data_ops.read_bundle(path)
+            async with sqlite_session_factory() as restored_factory:
+                async with restored_factory() as session:
+                    await data_ops.import_bundle(session, bundle=bundle)
+                    await validate_persisted_hierarchies(session, finance=False)
+                    rows = (await session.execute(select(Task.__table__))).mappings().all()
+                    assert len(rows) == 4
+                    assert {row["vision_id"] for row in rows} == {new.id}
+                    assert {
+                        row["id"]: (row["parent_task_id"], row["deleted_at"]) for row in rows
+                    } == historical
+
+    asyncio.run(run())
+
+
 @pytest.mark.parametrize("resource", ["task", "event"])
 def test_database_rejects_null_required_planning_fields(resource: str) -> None:
     async def run() -> None:

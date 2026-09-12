@@ -125,14 +125,15 @@ async def _update_descendant_visions(
     root_task_id: UUID,
     new_vision_id: UUID,
 ) -> tuple[Task, ...]:
-    """Update descendant vision ownership after moving a task subtree."""
-    subtree = await load_task_subtree(session, root_task_id=root_task_id)
+    """Move persisted descendants, preserving the active-only response contract."""
+    subtree = await load_task_subtree(session, root_task_id=root_task_id, include_soft_deleted=True)
     updated_descendants: list[Task] = []
     for descendant in subtree[1:]:
         if descendant.vision_id == new_vision_id:
             continue
         descendant.vision_id = new_vision_id
-        updated_descendants.append(descendant)
+        if descendant.deleted_at is None:
+            updated_descendants.append(descendant)
     return tuple(updated_descendants)
 
 

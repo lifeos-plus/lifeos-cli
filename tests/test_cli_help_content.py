@@ -461,6 +461,7 @@ def test_cli_task_move_and_reorder_help_explain_boundary(capsys) -> None:
     captured = capsys.readouterr()
 
     assert "Use `reorder` when only sibling display order changes" in captured.out
+    assert "soft-deleted descendants" in captured.out
     assert "Use `--old-parent-task-id` as an optimistic guard" in captured.out
 
     with pytest.raises(SystemExit):

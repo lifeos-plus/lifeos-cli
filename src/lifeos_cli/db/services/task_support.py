@@ -274,8 +274,10 @@ async def validate_task_status_change(
     return normalized_status
 
 
-async def load_task_subtree(session: AsyncSession, *, root_task_id: UUID) -> list[Task]:
-    """Load an active task subtree in breadth-first order."""
+async def load_task_subtree(
+    session: AsyncSession, *, root_task_id: UUID, include_soft_deleted: bool = False
+) -> list[Task]:
+    """Load an active root's subtree, optionally including its soft-deleted history."""
     root_task = await load_parent_task(session, root_task_id)
     if root_task is None:
         return []
@@ -288,10 +290,14 @@ async def load_task_subtree(session: AsyncSession, *, root_task_id: UUID) -> lis
     child_step = (
         select(Task.id, (descendants_cte.c.depth + 1).label("depth"))
         .join(descendants_cte, Task.parent_task_id == descendants_cte.c.id)
-        .where(Task.deleted_at.is_(None), descendants_cte.c.depth < MAX_TASK_DEPTH)
+        .where(descendants_cte.c.depth < MAX_TASK_DEPTH)
     )
+    if not include_soft_deleted:
+        child_step = child_step.where(Task.deleted_at.is_(None))
     descendants_cte = descendants_cte.union_all(child_step)
     stmt = select(Task).join(descendants_cte, Task.id == descendants_cte.c.id)
+    if include_soft_deleted:
+        stmt = stmt.execution_options(include_soft_deleted=True)
     descendant_tasks = list((await session.execute(stmt)).scalars())
 
     children_by_parent: dict[UUID | None, list[Task]] = {}

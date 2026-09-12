@@ -671,7 +671,7 @@
       "parser_structure": {
         "expected_current_parent_task_identifier": "预期当前父 `task` 标识符",
         "move_task": "移动 `task`",
-        "move_task_to_new_parent_and_optionally_new_vision": "将 `task` 转移给新父母，也可以选择转移新的 `vision`。",
+        "move_task_to_new_parent_and_optionally_new_vision": "将 `task` 移至新的父 `task`，也可切换所属 `vision`。切换 `vision` 会同步软删后代，但不会恢复它们；返回的后代仍仅包含活动记录。",
         "move_task_to_root_level": "将 `task` 移至根级别",
         "reorder_tasks": "重排 `task`",
         "target_display_order": "目标显示顺序",
