@@ -1310,6 +1310,14 @@ def test_timelog_duration_filters_reject_inverted_range() -> None:
         )
 
 
+def test_timelog_duration_filters_reject_out_of_range_minutes() -> None:
+    with pytest.raises(timelogs.TimelogValidationError):
+        timelogs._apply_timelog_duration_filters(
+            select(Timelog),
+            filters=timelogs.TimelogQueryFilters(max_duration_minutes=2**63),
+        )
+
+
 def test_list_timelogs_filters_by_inclusive_duration_minutes() -> None:
     async def scenario() -> None:
         async with sqlite_session_factory() as session_factory:

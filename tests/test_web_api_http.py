@@ -331,6 +331,13 @@ def test_timelog_list_filters_by_duration_minutes(http_client) -> None:
     )
     assert inverted_response.status_code == 400
 
+    oversized_response = http_client.get(
+        "/api/v1/timelogs/",
+        params={"max_duration_minutes": 2**63},
+    )
+    assert oversized_response.status_code == 400
+    assert "or less" in oversized_response.json()["detail"]
+
 
 def test_note_create_list_and_delete(http_client) -> None:
     create_response = http_client.post(

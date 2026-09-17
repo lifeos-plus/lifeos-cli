@@ -1489,6 +1489,21 @@ def test_web_timelog_rejects_negative_duration_minutes() -> None:
     assert "must be zero or greater" in str(getattr(exc_info.value, "detail", ""))
 
 
+def test_web_timelog_rejects_out_of_range_duration_minutes() -> None:
+    from lifeos_web.routers import timelogs
+
+    with pytest.raises(Exception) as exc_info:
+        asyncio.run(
+            timelogs.list_timelogs(
+                cast(AsyncSession, object()),
+                max_duration_minutes=2**63,
+            )
+        )
+
+    assert getattr(exc_info.value, "status_code", None) == 400
+    assert "or less" in str(getattr(exc_info.value, "detail", ""))
+
+
 def test_web_timelog_rejects_partial_date_filter() -> None:
     from lifeos_web.routers import timelogs
 

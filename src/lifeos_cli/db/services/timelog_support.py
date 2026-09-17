@@ -15,6 +15,11 @@ from lifeos_cli.db.services.validation_utils import DomainValidationError, choic
 
 VALID_TIMELOG_TRACKING_METHODS = {"manual", "automatic", "imported"}
 
+# Duration bounds are compared against whole seconds, and SQLite only accepts
+# signed 64-bit integer parameters. Keep the minute bound inside that range so
+# oversized filters fail validation instead of surfacing a driver overflow.
+MAX_DURATION_MINUTES = (2**63 - 1) // 60
+
 
 class TimelogNotFoundError(LookupError):
     """Raised when a timelog cannot be found."""
@@ -173,6 +178,8 @@ def validate_duration_minutes(value: int | None, *, label: str) -> int | None:
         return None
     if value < 0:
         raise TimelogValidationError(f"{label} must be zero or greater")
+    if value > MAX_DURATION_MINUTES:
+        raise TimelogValidationError(f"{label} must be {MAX_DURATION_MINUTES} or less")
     return value
 
 
