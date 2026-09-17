@@ -130,6 +130,8 @@ class TimelogQueryFilters:
     end_date: date | None = None
     window_start: datetime | None = None
     window_end: datetime | None = None
+    min_duration_minutes: int | None = None
+    max_duration_minutes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -163,6 +165,35 @@ validate_tracking_method = choice_validator(
     label="tracking method",
     doc="Validate and normalize a tracking method.",
 )
+
+
+def validate_duration_minutes(value: int | None, *, label: str) -> int | None:
+    """Validate one optional inclusive duration bound expressed in minutes."""
+    if value is None:
+        return None
+    if value < 0:
+        raise TimelogValidationError(f"{label} must be zero or greater")
+    return value
+
+
+def validate_duration_range(
+    min_duration_minutes: int | None,
+    max_duration_minutes: int | None,
+) -> tuple[int | None, int | None]:
+    """Validate an inclusive timelog duration range expressed in minutes."""
+    minimum = validate_duration_minutes(
+        min_duration_minutes,
+        label="Minimum duration in minutes",
+    )
+    maximum = validate_duration_minutes(
+        max_duration_minutes,
+        label="Maximum duration in minutes",
+    )
+    if minimum is not None and maximum is not None and minimum > maximum:
+        raise TimelogValidationError(
+            "Minimum duration in minutes must be less than or equal to maximum duration in minutes"
+        )
+    return minimum, maximum
 
 
 def validate_energy_level(energy_level: int | None) -> int | None:

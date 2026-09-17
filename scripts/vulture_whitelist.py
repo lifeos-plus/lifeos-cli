@@ -24,6 +24,8 @@ _keep(
     inherit_cache,
     _compile_add_days_default,
     _compile_add_days_sqlite,
+    _compile_seconds_between_default,
+    _compile_seconds_between_sqlite,
     _clear_sqlite_runtime,
     _exclude_soft_deleted_rows_by_default,
     related_type,

@@ -61,6 +61,7 @@ from lifeos_cli.db.services.timelog_support import (
     TimelogValidationError,
     ensure_timelog_area_exists,
     ensure_timelog_task_exists,
+    validate_duration_range,
     validate_energy_level,
     validate_timelog_time_range,
     validate_timelog_title,
@@ -68,6 +69,7 @@ from lifeos_cli.db.services.timelog_support import (
 )
 from lifeos_cli.db.services.visions import sync_vision_experience_for_task_ids
 from lifeos_cli.db.services.write_locks import lock_planning_writes
+from lifeos_cli.db.sql_expressions import SecondsBetween
 
 
 @dataclass(frozen=True)
@@ -637,6 +639,7 @@ def _apply_timelog_filters(stmt: Any, *, filters: TimelogQueryFilters) -> Any:
     stmt = _apply_timelog_area_task_filters(stmt, filters=filters)
     stmt = _apply_timelog_association_filters(stmt, filters=filters)
     stmt = _apply_timelog_window_filters(stmt, filters=filters)
+    stmt = _apply_timelog_duration_filters(stmt, filters=filters)
     return stmt
 
 
@@ -720,6 +723,21 @@ def _apply_timelog_window_filters(stmt: Any, *, filters: TimelogQueryFilters) ->
         stmt = stmt.where(Timelog.end_time >= filters.window_start)
     if filters.window_end is not None:
         stmt = stmt.where(Timelog.start_time <= filters.window_end)
+    return stmt
+
+
+def _apply_timelog_duration_filters(stmt: Any, *, filters: TimelogQueryFilters) -> Any:
+    minimum, maximum = validate_duration_range(
+        filters.min_duration_minutes,
+        filters.max_duration_minutes,
+    )
+    if minimum is None and maximum is None:
+        return stmt
+    duration_seconds = SecondsBetween(Timelog.start_time, Timelog.end_time)
+    if minimum is not None:
+        stmt = stmt.where(duration_seconds >= minimum * 60)
+    if maximum is not None:
+        stmt = stmt.where(duration_seconds <= maximum * 60)
     return stmt
 
 

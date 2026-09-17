@@ -234,7 +234,7 @@ def test_cli_timelog_search_help_supports_zh_hans_locale(
 
     captured = capsys.readouterr()
 
-    assert "搜索 `timelog`，可选使用关键词、时间窗口、关系和方法过滤器。" in captured.out
+    assert "搜索 `timelog`，可选使用关键词、时间窗口、关系、时长和方法过滤器。" in captured.out
     assert 'lifeos timelog search --query "洗"' in captured.out
     assert "复用 `timelog list` 的过滤器和制表符分隔摘要输出" in captured.out
     assert "`--query` 不搜索 task 或 area 名称" in captured.out

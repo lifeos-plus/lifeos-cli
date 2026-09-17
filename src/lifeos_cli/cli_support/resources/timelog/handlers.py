@@ -325,6 +325,8 @@ async def handle_timelog_list_async(args: argparse.Namespace) -> int:
                     end_date=query.end_date,
                     window_start=query.window_start,
                     window_end=query.window_end,
+                    min_duration_minutes=args.min_duration_minutes,
+                    max_duration_minutes=args.max_duration_minutes,
                 ),
                 limit=args.limit,
                 offset=args.offset,

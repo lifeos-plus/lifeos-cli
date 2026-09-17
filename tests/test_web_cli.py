@@ -1408,6 +1408,87 @@ def test_web_timelog_rejects_with_task_with_other_task_filters() -> None:
     )
 
 
+def test_web_timelog_duration_minutes_filters_map_to_lifeos_filters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from lifeos_web.routers import timelogs
+
+    captured: dict[str, TimelogListInput | TimelogQueryFilters] = {}
+
+    async def fake_count_timelogs(_session: object, *, filters: TimelogQueryFilters) -> int:
+        captured["count_filters"] = filters
+        return 0
+
+    async def fake_list_timelogs(_session: object, *, query: TimelogListInput) -> list[object]:
+        captured["list_query"] = query
+        return []
+
+    monkeypatch.setattr(
+        timelogs.timelog_services,
+        "count_timelogs",
+        fake_count_timelogs,
+    )
+    monkeypatch.setattr(
+        timelogs.timelog_services,
+        "list_timelogs",
+        fake_list_timelogs,
+    )
+
+    response = asyncio.run(
+        timelogs.list_timelogs(
+            cast(AsyncSession, object()),
+            page=1,
+            size=50,
+            min_duration_minutes=30,
+            max_duration_minutes=90,
+        )
+    )
+
+    count_filters = captured["count_filters"]
+    list_query = captured["list_query"]
+    assert isinstance(count_filters, TimelogQueryFilters)
+    assert isinstance(list_query, TimelogListInput)
+    assert count_filters.min_duration_minutes == 30
+    assert count_filters.max_duration_minutes == 90
+    assert list_query.filters.min_duration_minutes == 30
+    assert list_query.filters.max_duration_minutes == 90
+    assert response.meta["min_duration_minutes"] == 30
+    assert response.meta["max_duration_minutes"] == 90
+
+
+def test_web_timelog_rejects_inverted_duration_minutes_range() -> None:
+    from lifeos_web.routers import timelogs
+
+    with pytest.raises(Exception) as exc_info:
+        asyncio.run(
+            timelogs.list_timelogs(
+                cast(AsyncSession, object()),
+                min_duration_minutes=90,
+                max_duration_minutes=30,
+            )
+        )
+
+    assert getattr(exc_info.value, "status_code", None) == 400
+    assert "less than or equal to maximum duration in minutes" in str(
+        getattr(exc_info.value, "detail", "")
+    )
+
+
+def test_web_timelog_rejects_negative_duration_minutes() -> None:
+    from lifeos_web.routers import timelogs
+
+    with pytest.raises(Exception) as exc_info:
+        asyncio.run(
+            timelogs.list_timelogs(
+                cast(AsyncSession, object()),
+                min_duration_minutes=-1,
+            )
+        )
+
+    assert getattr(exc_info.value, "status_code", None) == 400
+    assert "must be zero or greater" in str(getattr(exc_info.value, "detail", ""))
+
+
 def test_web_timelog_rejects_partial_date_filter() -> None:
     from lifeos_web.routers import timelogs
 

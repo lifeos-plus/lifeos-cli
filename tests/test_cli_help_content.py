@@ -841,9 +841,10 @@ def test_cli_timelog_search_help_documents_keyword_advanced_query_entrypoint(
 
     captured = capsys.readouterr()
 
-    assert "Search timelogs with optional keyword, time-window, relation, and method filters." in (
-        captured.out
-    )
+    assert (
+        "Search timelogs with optional keyword, time-window, relation, duration, "
+        "and method filters."
+    ) in (captured.out)
     assert (
         'lifeos timelog search --query "洗" --start-time 2026-06-16T16:00:00.000Z '
         "--end-time 2026-06-17T15:59:59.999Z --limit 500 --count"
@@ -852,6 +853,8 @@ def test_cli_timelog_search_help_documents_keyword_advanced_query_entrypoint(
         captured.out
     )
     assert "`--query` does not search task or area names." in captured.out
+    assert "--min-duration-minutes MIN_DURATION_MINUTES" in captured.out
+    assert "--max-duration-minutes MAX_DURATION_MINUTES" in captured.out
     assert "--limit LIMIT" in captured.out
     assert "--count" in captured.out
 

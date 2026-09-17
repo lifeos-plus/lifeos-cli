@@ -687,6 +687,39 @@ def test_cli_parser_supports_timelog_search_advanced_filters() -> None:
     assert args.count is True
 
 
+def test_cli_parser_supports_timelog_duration_minutes_filters() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "timelog",
+            "list",
+            "--min-duration-minutes",
+            "30",
+            "--max-duration-minutes",
+            "90",
+        ]
+    )
+
+    assert args.resource == "timelog"
+    assert args.timelog_command == "list"
+    assert args.min_duration_minutes == 30
+    assert args.max_duration_minutes == 90
+
+    search_args = parser.parse_args(
+        [
+            "timelog",
+            "search",
+            "--query",
+            "deep work",
+            "--max-duration-minutes",
+            "45",
+        ]
+    )
+
+    assert search_args.min_duration_minutes is None
+    assert search_args.max_duration_minutes == 45
+
+
 def test_cli_parser_requires_query_for_timelog_search() -> None:
     parser = build_parser()
 
