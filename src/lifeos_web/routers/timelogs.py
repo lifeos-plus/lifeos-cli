@@ -18,6 +18,8 @@ from lifeos_cli.db.services.timelog_support import (
     TimelogListInput,
     TimelogQueryFilters,
     TimelogUpdateInput,
+    TimelogValidationError,
+    validate_duration_range,
 )
 from lifeos_cli.db.services.validation_utils import DATE_RANGE_TOGETHER_MESSAGE
 from lifeos_web.deps import get_db_session
@@ -97,6 +99,8 @@ async def list_timelogs(
     task_id: UUID | None = None,
     without_task: bool = False,
     with_task: bool = False,
+    min_duration_minutes: int | None = None,
+    max_duration_minutes: int | None = None,
 ) -> ListResponse:
     """List timelogs for the local Web UI."""
     if (start_date is None) != (end_date is None):
@@ -121,6 +125,10 @@ async def list_timelogs(
             status_code=400,
             detail="Use only one of task_id, without_task, or with_task.",
         )
+    try:
+        validate_duration_range(min_duration_minutes, max_duration_minutes)
+    except TimelogValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     normalized_window_start = to_storage_timezone(window_start) if window_start else None
     normalized_window_end = to_storage_timezone(window_end) if window_end else None
@@ -137,6 +145,8 @@ async def list_timelogs(
         with_task=with_task,
         window_start=normalized_window_start,
         window_end=normalized_window_end,
+        min_duration_minutes=min_duration_minutes,
+        max_duration_minutes=max_duration_minutes,
     )
     total_count = await timelog_services.count_timelogs(session, filters=filters)
     rows = await timelog_services.list_timelogs(
@@ -171,6 +181,8 @@ async def list_timelogs(
             "task_id": str(task_id) if task_id else None,
             "without_task": without_task,
             "with_task": with_task,
+            "min_duration_minutes": min_duration_minutes,
+            "max_duration_minutes": max_duration_minutes,
             "limit": size,
             "returned_count": len(items),
             "total_count": total_count,

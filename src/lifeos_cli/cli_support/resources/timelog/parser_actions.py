@@ -177,6 +177,7 @@ def build_timelog_list_parser(
                 "lifeos timelog list --date 2026-04-10",
                 "lifeos timelog list --date 2026-04-10 --date 2026-04-16",
                 "lifeos timelog list --start-date 2026-04-10 --end-date 2026-04-16",
+                "lifeos timelog list --min-duration-minutes 30 --max-duration-minutes 90",
                 "lifeos timelog list --tracking-method manual "
                 "--start-time 2026-04-10T00:00:00 "
                 "--end-time 2026-04-10T23:59:59",
@@ -187,6 +188,9 @@ def build_timelog_list_parser(
                 help_message("notes.dateSelection.dateOrRange"),
                 _(
                     "resources.timelog.parser_actions.use_start_time_end_time_as_overlap_window_not_exact_field_matches"
+                ),
+                _(
+                    "resources.timelog.parser_actions.use_min_and_max_duration_minutes_as_inclusive_completed_length_bounds"
                 ),
                 _(
                     "resources.timelog.parser_actions.use_query_for_lightweight_text_filtering_across_titles_and_notes"
@@ -224,6 +228,8 @@ def build_timelog_search_parser(
                 "--start-time 2026-06-16T16:00:00.000Z "
                 "--end-time 2026-06-17T15:59:59.999Z --limit 500 --count",
                 'lifeos timelog search --query "deep work" --area-name Work --without-task',
+                'lifeos timelog search --query "deep work" '
+                "--min-duration-minutes 30 --max-duration-minutes 90",
                 'lifeos timelog search --query "plan" --start-date 2026-04-10 '
                 "--end-date 2026-04-16 --task-id <task-id>",
             ),
@@ -233,6 +239,9 @@ def build_timelog_search_parser(
                     "resources.timelog.parser_actions.use_start_time_end_time_as_overlap_window_not_exact_field_matches"
                 ),
                 _("resources.timelog.parser_actions.search_requires_a_query_keyword"),
+                _(
+                    "resources.timelog.parser_actions.use_min_and_max_duration_minutes_as_inclusive_completed_length_bounds"
+                ),
                 _(
                     "resources.timelog.parser_actions.use_query_for_lightweight_text_filtering_across_titles_and_notes"
                 ),
@@ -301,6 +310,16 @@ def _add_timelog_query_arguments(
     )
     parser.add_argument("--person-id", type=UUID, help=_("common.messages.filter_by_linked_person"))
     parser.add_argument("--tag-id", type=UUID, help=_("common.messages.filter_by_linked_tag"))
+    parser.add_argument(
+        "--min-duration-minutes",
+        type=int,
+        help=_("resources.timelog.parser_actions.filter_by_minimum_duration_minutes"),
+    )
+    parser.add_argument(
+        "--max-duration-minutes",
+        type=int,
+        help=_("resources.timelog.parser_actions.filter_by_maximum_duration_minutes"),
+    )
     parser.add_argument(
         "--with-counts",
         action="store_true",

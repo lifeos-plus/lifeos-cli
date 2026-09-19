@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from lifeos_cli.config import clear_config_cache
 from lifeos_cli.db.models.area import Area
@@ -1278,6 +1278,217 @@ def test_timelog_with_task_filter_requires_linked_task() -> None:
     )
 
     assert "timelogs.task_id IS NOT NULL" in str(statement)
+
+
+def test_timelog_duration_filters_compile_for_both_backends() -> None:
+    from sqlalchemy.dialects import postgresql, sqlite
+
+    statement = timelogs._apply_timelog_duration_filters(
+        select(Timelog),
+        filters=timelogs.TimelogQueryFilters(
+            min_duration_minutes=30,
+            max_duration_minutes=90,
+        ),
+    )
+
+    postgres_compiled = statement.compile(dialect=postgresql.dialect())
+    sqlite_sql = str(statement.compile(dialect=sqlite.dialect()))
+
+    assert "EXTRACT(EPOCH FROM" in str(postgres_compiled)
+    assert "julianday" in sqlite_sql
+    assert sorted(postgres_compiled.params.values()) == [1800, 5400]
+
+
+def test_timelog_duration_filters_reject_inverted_range() -> None:
+    with pytest.raises(timelogs.TimelogValidationError):
+        timelogs._apply_timelog_duration_filters(
+            select(Timelog),
+            filters=timelogs.TimelogQueryFilters(
+                min_duration_minutes=90,
+                max_duration_minutes=30,
+            ),
+        )
+
+
+@pytest.mark.parametrize("value", [-4321, 2881])
+def test_timelog_duration_filters_reject_out_of_range_minimums(value: int) -> None:
+    with pytest.raises(timelogs.TimelogValidationError):
+        timelogs._apply_timelog_duration_filters(
+            select(Timelog),
+            filters=timelogs.TimelogQueryFilters(min_duration_minutes=value),
+        )
+
+
+@pytest.mark.parametrize("value", [-1, 4321])
+def test_timelog_duration_filters_reject_out_of_range_maximums(value: int) -> None:
+    with pytest.raises(timelogs.TimelogValidationError):
+        timelogs._apply_timelog_duration_filters(
+            select(Timelog),
+            filters=timelogs.TimelogQueryFilters(max_duration_minutes=value),
+        )
+
+
+def test_timelog_duration_filters_accept_documented_bounds() -> None:
+    both_bounds = timelogs._apply_timelog_duration_filters(
+        select(Timelog),
+        filters=timelogs.TimelogQueryFilters(
+            min_duration_minutes=-4320,
+            max_duration_minutes=4320,
+        ),
+    )
+    upper_minimum = timelogs._apply_timelog_duration_filters(
+        select(Timelog),
+        filters=timelogs.TimelogQueryFilters(min_duration_minutes=2880),
+    )
+    zero_maximum = timelogs._apply_timelog_duration_filters(
+        select(Timelog),
+        filters=timelogs.TimelogQueryFilters(max_duration_minutes=0),
+    )
+
+    assert "timelogs.start_time" in str(both_bounds)
+    assert "timelogs.start_time" in str(upper_minimum)
+    assert "timelogs.start_time" in str(zero_maximum)
+
+
+def test_list_timelogs_filters_by_inclusive_duration_minutes() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                session.add_all(
+                    [
+                        Timelog(
+                            title="Untimed",
+                            start_time=utc_datetime(2026, 4, 10, 8, 0),
+                            end_time=utc_datetime(2026, 4, 10, 8, 0),
+                        ),
+                        Timelog(
+                            title="Short",
+                            start_time=utc_datetime(2026, 4, 10, 9, 0),
+                            end_time=utc_datetime(2026, 4, 10, 9, 15),
+                        ),
+                        Timelog(
+                            title="Medium",
+                            start_time=utc_datetime(2026, 4, 10, 10, 0),
+                            end_time=utc_datetime(2026, 4, 10, 10, 45),
+                        ),
+                        Timelog(
+                            title="Exact",
+                            start_time=utc_datetime(2026, 4, 10, 11, 0),
+                            end_time=utc_datetime(2026, 4, 10, 12, 0),
+                        ),
+                        Timelog(
+                            title="Long",
+                            start_time=utc_datetime(2026, 4, 10, 13, 0),
+                            end_time=utc_datetime(2026, 4, 10, 15, 0),
+                        ),
+                    ]
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                bounded_filters = timelogs.TimelogQueryFilters(
+                    min_duration_minutes=30,
+                    max_duration_minutes=60,
+                )
+                bounded = await timelogs.list_timelogs(
+                    session,
+                    query=timelogs.TimelogListInput(filters=bounded_filters),
+                )
+                assert sorted(row.title for row in bounded) == ["Exact", "Medium"]
+                assert await timelogs.count_timelogs(session, filters=bounded_filters) == 2
+
+                minimum = await timelogs.list_timelogs(
+                    session,
+                    query=timelogs.TimelogListInput(
+                        filters=timelogs.TimelogQueryFilters(min_duration_minutes=60)
+                    ),
+                )
+                assert sorted(row.title for row in minimum) == ["Exact", "Long"]
+
+                maximum = await timelogs.list_timelogs(
+                    session,
+                    query=timelogs.TimelogListInput(
+                        filters=timelogs.TimelogQueryFilters(max_duration_minutes=15)
+                    ),
+                )
+                assert sorted(row.title for row in maximum) == ["Short", "Untimed"]
+
+                anomaly_window = await timelogs.list_timelogs(
+                    session,
+                    query=timelogs.TimelogListInput(
+                        filters=timelogs.TimelogQueryFilters(
+                            min_duration_minutes=-1,
+                            max_duration_minutes=0,
+                        )
+                    ),
+                )
+                assert [row.title for row in anomaly_window] == ["Untimed"]
+
+    asyncio.run(scenario())
+
+
+def test_list_timelogs_filters_by_negative_minimum_duration() -> None:
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                await session.execute(text("PRAGMA ignore_check_constraints = ON"))
+                session.add_all(
+                    [
+                        Timelog(
+                            title="Reversed minor",
+                            start_time=utc_datetime(2026, 4, 10, 10, 0),
+                            end_time=utc_datetime(2026, 4, 10, 9, 59, 30),
+                        ),
+                        Timelog(
+                            title="Reversed severe",
+                            start_time=utc_datetime(2026, 4, 10, 10, 30),
+                            end_time=utc_datetime(2026, 4, 10, 9, 30),
+                        ),
+                        Timelog(
+                            title="Untimed",
+                            start_time=utc_datetime(2026, 4, 10, 11, 0),
+                            end_time=utc_datetime(2026, 4, 10, 11, 0),
+                        ),
+                        Timelog(
+                            title="Normal",
+                            start_time=utc_datetime(2026, 4, 10, 12, 0),
+                            end_time=utc_datetime(2026, 4, 10, 12, 30),
+                        ),
+                    ]
+                )
+                await session.commit()
+
+            async with session_factory() as session:
+                narrow_window = await timelogs.list_timelogs(
+                    session,
+                    query=timelogs.TimelogListInput(
+                        filters=timelogs.TimelogQueryFilters(
+                            min_duration_minutes=-1,
+                            max_duration_minutes=0,
+                        )
+                    ),
+                )
+                assert sorted(row.title for row in narrow_window) == [
+                    "Reversed minor",
+                    "Untimed",
+                ]
+
+                wide_window = await timelogs.list_timelogs(
+                    session,
+                    query=timelogs.TimelogListInput(
+                        filters=timelogs.TimelogQueryFilters(
+                            min_duration_minutes=-61,
+                            max_duration_minutes=0,
+                        )
+                    ),
+                )
+                assert sorted(row.title for row in wide_window) == [
+                    "Reversed minor",
+                    "Reversed severe",
+                    "Untimed",
+                ]
+
+    asyncio.run(scenario())
 
 
 def test_update_timelog_can_clear_optional_fields(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -831,6 +831,25 @@ def test_cli_event_timelog_list_help_shows_shared_date_range_text(
     assert "use `--start-date/--end-date` for local-date ranges" in captured.out
 
 
+def test_cli_help_documents_shared_list_pagination_contract(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["timelog", "list", "--help"])
+
+    normalized_output = " ".join(capsys.readouterr().out.split())
+
+    assert "Maximum number of results to return (1-500, default: 100)" in normalized_output
+    assert "Number of results to skip (0 or greater, default: 0)" in normalized_output
+    assert "Filter by minimum duration in minutes (-4320 to 2880, inclusive)" in normalized_output
+    assert "Filter by maximum duration in minutes (0-4320, inclusive)" in normalized_output
+    assert "surfaces anomalous records whose end time precedes their start time" in (
+        normalized_output
+    )
+
+
 def test_cli_timelog_search_help_documents_keyword_advanced_query_entrypoint(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -841,9 +860,10 @@ def test_cli_timelog_search_help_documents_keyword_advanced_query_entrypoint(
 
     captured = capsys.readouterr()
 
-    assert "Search timelogs with optional keyword, time-window, relation, and method filters." in (
-        captured.out
-    )
+    assert (
+        "Search timelogs with optional keyword, time-window, relation, duration, "
+        "and method filters."
+    ) in (captured.out)
     assert (
         'lifeos timelog search --query "洗" --start-time 2026-06-16T16:00:00.000Z '
         "--end-time 2026-06-17T15:59:59.999Z --limit 500 --count"
@@ -852,6 +872,8 @@ def test_cli_timelog_search_help_documents_keyword_advanced_query_entrypoint(
         captured.out
     )
     assert "`--query` does not search task or area names." in captured.out
+    assert "--min-duration-minutes MIN_DURATION_MINUTES" in captured.out
+    assert "--max-duration-minutes MAX_DURATION_MINUTES" in captured.out
     assert "--limit LIMIT" in captured.out
     assert "--count" in captured.out
 

@@ -248,9 +248,9 @@
 │   ├── delete  —  Delete a timelog
 │   │       args: timelog_ids [required]
 │   ├── list  —  List timelogs
-│   │       args: --title-contains; --notes-contains; --query; --tracking-method; --area-id; --area-name; --without-area; --task-id; --without-task; --person-id; --tag-id; --with-counts; --date; --start-date; --end-date; --start-time; --end-time; --count; --limit; --offset; --json
+│   │       args: --title-contains; --notes-contains; --query; --tracking-method; --area-id; --area-name; --without-area; --task-id; --without-task; --person-id; --tag-id; --min-duration-minutes; --max-duration-minutes; --with-counts; --date; --start-date; --end-date; --start-time; --end-time; --count; --limit; --offset; --json
 │   ├── search  —  Search timelogs
-│   │       args: --title-contains; --notes-contains; --query; --tracking-method; --area-id; --area-name; --without-area; --task-id; --without-task; --person-id; --tag-id; --with-counts; --date; --start-date; --end-date; --start-time; --end-time; --count; --limit; --offset; --json
+│   │       args: --title-contains; --notes-contains; --query; --tracking-method; --area-id; --area-name; --without-area; --task-id; --without-task; --person-id; --tag-id; --min-duration-minutes; --max-duration-minutes; --with-counts; --date; --start-date; --end-date; --start-time; --end-time; --count; --limit; --offset; --json
 │   ├── show  —  Show a timelog
 │   │       args: timelog_id [required]; --json
 │   ├── stats  —  Query timelog stats grouped by area

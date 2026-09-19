@@ -15,6 +15,16 @@ from lifeos_cli.db.services.validation_utils import DomainValidationError, choic
 
 VALID_TIMELOG_TRACKING_METHODS = {"manual", "automatic", "imported"}
 
+# Duration filters are expressed in whole minutes and stay inside the range that
+# is meaningful for a single recorded activity: a minimum bound above two days
+# cannot match a plausible record, while the wider three-day window keeps room to
+# surface anomalies. The minimum bound also reaches negative minutes on purpose so
+# callers can screen for records whose end time precedes their start time.
+MIN_DURATION_LOWER_BOUND = -(3 * 24 * 60)
+MIN_DURATION_UPPER_BOUND = 2 * 24 * 60
+MAX_DURATION_LOWER_BOUND = 0
+MAX_DURATION_UPPER_BOUND = 3 * 24 * 60
+
 
 class TimelogNotFoundError(LookupError):
     """Raised when a timelog cannot be found."""
@@ -130,6 +140,8 @@ class TimelogQueryFilters:
     end_date: date | None = None
     window_start: datetime | None = None
     window_end: datetime | None = None
+    min_duration_minutes: int | None = None
+    max_duration_minutes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -163,6 +175,44 @@ validate_tracking_method = choice_validator(
     label="tracking method",
     doc="Validate and normalize a tracking method.",
 )
+
+
+def validate_min_duration_minutes(value: int | None) -> int | None:
+    """Validate the optional inclusive minimum duration bound in minutes."""
+    if value is None:
+        return None
+    if value < MIN_DURATION_LOWER_BOUND or value > MIN_DURATION_UPPER_BOUND:
+        raise TimelogValidationError(
+            "Minimum duration in minutes must be between "
+            f"{MIN_DURATION_LOWER_BOUND} and {MIN_DURATION_UPPER_BOUND}"
+        )
+    return value
+
+
+def validate_max_duration_minutes(value: int | None) -> int | None:
+    """Validate the optional inclusive maximum duration bound in minutes."""
+    if value is None:
+        return None
+    if value < MAX_DURATION_LOWER_BOUND or value > MAX_DURATION_UPPER_BOUND:
+        raise TimelogValidationError(
+            "Maximum duration in minutes must be between "
+            f"{MAX_DURATION_LOWER_BOUND} and {MAX_DURATION_UPPER_BOUND}"
+        )
+    return value
+
+
+def validate_duration_range(
+    min_duration_minutes: int | None,
+    max_duration_minutes: int | None,
+) -> tuple[int | None, int | None]:
+    """Validate an inclusive timelog duration range expressed in minutes."""
+    minimum = validate_min_duration_minutes(min_duration_minutes)
+    maximum = validate_max_duration_minutes(max_duration_minutes)
+    if minimum is not None and maximum is not None and minimum > maximum:
+        raise TimelogValidationError(
+            "Minimum duration in minutes must be less than or equal to maximum duration in minutes"
+        )
+    return minimum, maximum
 
 
 def validate_energy_level(energy_level: int | None) -> int | None:

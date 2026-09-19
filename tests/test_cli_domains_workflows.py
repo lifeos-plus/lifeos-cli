@@ -354,6 +354,50 @@ def test_main_timelog_search_reuses_list_filters(
     clear_config_cache()
 
 
+def test_main_timelog_list_passes_duration_minutes_filters(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    clear_config_cache()
+    monkeypatch.setenv("LIFEOS_TIMEZONE", "UTC")
+
+    async def fake_list_timelogs(_session: object, **kwargs: object) -> list[object]:
+        query = cast(timelogs.TimelogListInput, kwargs["query"])
+        assert query.filters.min_duration_minutes == 30
+        assert query.filters.max_duration_minutes == 90
+        return []
+
+    async def fake_count_timelogs(_session: object, **kwargs: object) -> int:
+        filters = cast(timelogs.TimelogQueryFilters, kwargs["filters"])
+        assert filters.min_duration_minutes == 30
+        assert filters.max_duration_minutes == 90
+        return 0
+
+    monkeypatch.setattr(db_session, "session_scope", make_session_scope())
+    monkeypatch.setattr(timelogs, "list_timelogs", fake_list_timelogs)
+    monkeypatch.setattr(timelogs, "count_timelogs", fake_count_timelogs)
+
+    exit_code = cli.main(
+        [
+            "timelog",
+            "list",
+            "--min-duration-minutes",
+            "30",
+            "--max-duration-minutes",
+            "90",
+            "--count",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out.splitlines() == [
+        "No timelogs found.",
+        "Total timelogs: 0",
+    ]
+    clear_config_cache()
+
+
 def test_main_timelog_list_can_include_relationship_counts(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],

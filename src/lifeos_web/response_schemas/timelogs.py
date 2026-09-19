@@ -49,6 +49,8 @@ class TimelogListMeta(ResponseModel):
     task_id: str | None
     without_task: bool
     with_task: bool
+    min_duration_minutes: int | None
+    max_duration_minutes: int | None
     limit: int
     returned_count: int
     total_count: int
