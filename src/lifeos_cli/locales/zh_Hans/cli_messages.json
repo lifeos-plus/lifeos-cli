@@ -68,10 +68,10 @@
       "when_results_exist_list_command_prints_header_row_followed_by_tab_separated": "当存在结果时，`list` 命令会先输出一行表头，随后按制表符分隔输出列：{columns}。"
     },
     "parser": {
-      "maximum_number_of_results_to_return": "返回结果的最大数量",
+      "maximum_number_of_results_to_return": "返回结果的最大数量（1-500，默认 100）",
       "noun_identifiers_to_action_verb": "用于{action_verb}的{noun}标识符",
       "noun_identifiers_to_delete": "要删除的{noun}标识符",
-      "number_of_results_to_skip": "要跳过的结果数量",
+      "number_of_results_to_skip": "要跳过的结果数量（0 或更大，默认 0）",
       "output_as_json": "改为输出结构化 JSON，而不是默认的文本输出"
     }
   },
@@ -748,8 +748,8 @@
         "delete_timelog": "删除 `timelog`",
         "end_time": "结束时间",
         "filter_by_exact_linked_area_name": "按精确链接的 `area` 名称过滤",
-        "filter_by_maximum_duration_minutes": "按最大时长过滤，单位为分钟，含边界值",
-        "filter_by_minimum_duration_minutes": "按最小时长过滤，单位为分钟，含边界值",
+        "filter_by_maximum_duration_minutes": "按最大时长过滤，单位为分钟，可接受 0 到 4320，含边界值",
+        "filter_by_minimum_duration_minutes": "按最小时长过滤，单位为分钟，可接受 -4320 到 2880，含边界值",
         "filter_by_notes_substring": "按 `note` 子字符串过滤",
         "filter_by_tracking_method": "按跟踪方法过滤",
         "filter_timelogs_without_linked_area": "过滤没有链接 `area` 的 `timelog`",
@@ -782,7 +782,7 @@
         "updated_timelog_title": "更新了 `timelog` 标题",
         "updated_tracking_method": "更新了追踪方法",
         "use_query_for_lightweight_text_filtering_across_titles_and_notes": "使用 `--query` 跨标题和备注做轻量级文本过滤。",
-        "use_min_and_max_duration_minutes_as_inclusive_completed_length_bounds": "`--min-duration-minutes` 与 `--max-duration-minutes` 按每条 `timelog` 的已完成时长过滤，单位为分钟，边界均包含在内；只提供其中一个参数即可做单边过滤。",
+        "use_min_and_max_duration_minutes_as_inclusive_completed_length_bounds": "`--min-duration-minutes` 与 `--max-duration-minutes` 按每条 `timelog` 的已完成时长过滤，单位为分钟，边界均包含在内；最小值为负数时可筛查结束时间早于开始时间的异常记录，也可只提供其中一个参数。",
         "use_repeated_person_id_to_keep_actual_human_effort_agent_effort_and": "使用重复的 `--person-id` 来区分实际的人类工作量、代理工作量和共享工作量。",
         "use_area_and_task_flags_for_structured_relation_filters": "使用 area 和 task 参数做结构化关系过滤；`--query` 不搜索 task 或 area 名称。",
         "use_this_command_as_primary_query_entrypoint_for_timelogs": "使用此命令浏览通用 `timelog`；使用 `search` 处理关键词和高级查询工作流。",

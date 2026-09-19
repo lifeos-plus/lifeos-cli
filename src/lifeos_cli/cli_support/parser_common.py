@@ -12,24 +12,57 @@ from lifeos_cli.cli_support.help_utils import (
 from lifeos_cli.cli_support.time_args import parse_date_value
 from lifeos_cli.i18n import cli_message as _
 
+DEFAULT_LIST_LIMIT = 100
+MAX_LIST_LIMIT = 500
+DEFAULT_LIST_OFFSET = 0
+
+
+def _parse_list_limit(value: str) -> int:
+    """Validate one list page size against the shared pagination contract."""
+    try:
+        limit = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("limit must be an integer") from exc
+    if limit < 1 or limit > MAX_LIST_LIMIT:
+        raise argparse.ArgumentTypeError(
+            f"limit must be between 1 and {MAX_LIST_LIMIT} (default {DEFAULT_LIST_LIMIT})"
+        )
+    return limit
+
+
+def _parse_list_offset(value: str) -> int:
+    """Validate one list page offset against the shared pagination contract."""
+    try:
+        offset = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("offset must be an integer") from exc
+    if offset < 0:
+        raise argparse.ArgumentTypeError("offset must be zero or greater")
+    return offset
+
 
 def add_limit_offset_arguments(
     parser: argparse.ArgumentParser,
     *,
     row_noun: str = "rows",
 ) -> None:
-    """Add standard pagination flags."""
+    """Add standard pagination flags.
+
+    Keep the page size bounded so oversized requests fail at argument parsing
+    instead of reaching a backend whose statement parameter limit produces an
+    opaque database error.
+    """
     del row_noun
     parser.add_argument(
         "--limit",
-        type=int,
-        default=100,
+        type=_parse_list_limit,
+        default=DEFAULT_LIST_LIMIT,
         help=_("common.parser.maximum_number_of_results_to_return"),
     )
     parser.add_argument(
         "--offset",
-        type=int,
-        default=0,
+        type=_parse_list_offset,
+        default=DEFAULT_LIST_OFFSET,
         help=_("common.parser.number_of_results_to_skip"),
     )
 

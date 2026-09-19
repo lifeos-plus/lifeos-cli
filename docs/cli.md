@@ -63,6 +63,16 @@ also accept `--json`; `config show --json` keeps database passwords masked unles
 
 The `--json` shape follows the Web API serialization conventions where the two surfaces overlap, so callers that already consume the API can reuse their field handling.
 
+## Read Limits and Pagination
+
+`list` and `search` commands share one pagination contract wherever they expose `--limit` and `--offset`:
+
+- `--limit` defaults to 100 and accepts 1-500; `--offset` defaults to 0 and accepts 0 or greater
+- `--count` reports the total number of matches and ignores both flags
+- page through larger result sets with `--offset` instead of raising `--limit`
+
+The Web API serves the same data with different parameter names for the same ceiling: `size` defaults to 50 per route and is capped at 500, with `page` for navigation. Keep a single request at or below 500 rows on both surfaces.
+
 ## Installation and Initialization
 
 Install the published CLI:

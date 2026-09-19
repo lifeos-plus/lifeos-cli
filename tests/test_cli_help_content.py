@@ -831,6 +831,25 @@ def test_cli_event_timelog_list_help_shows_shared_date_range_text(
     assert "use `--start-date/--end-date` for local-date ranges" in captured.out
 
 
+def test_cli_help_documents_shared_list_pagination_contract(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["timelog", "list", "--help"])
+
+    normalized_output = " ".join(capsys.readouterr().out.split())
+
+    assert "Maximum number of results to return (1-500, default: 100)" in normalized_output
+    assert "Number of results to skip (0 or greater, default: 0)" in normalized_output
+    assert "Filter by minimum duration in minutes (-4320 to 2880, inclusive)" in normalized_output
+    assert "Filter by maximum duration in minutes (0-4320, inclusive)" in normalized_output
+    assert "surfaces anomalous records whose end time precedes their start time" in (
+        normalized_output
+    )
+
+
 def test_cli_timelog_search_help_documents_keyword_advanced_query_entrypoint(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

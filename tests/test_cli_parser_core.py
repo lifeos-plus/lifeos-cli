@@ -720,6 +720,59 @@ def test_cli_parser_supports_timelog_duration_minutes_filters() -> None:
     assert search_args.max_duration_minutes == 45
 
 
+def test_cli_parser_accepts_negative_timelog_minimum_duration() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "timelog",
+            "list",
+            "--min-duration-minutes",
+            "-1",
+            "--max-duration-minutes",
+            "0",
+        ]
+    )
+
+    assert args.min_duration_minutes == -1
+    assert args.max_duration_minutes == 0
+
+
+def test_cli_parser_applies_shared_list_pagination_defaults() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["timelog", "list"])
+
+    assert args.limit == 100
+    assert args.offset == 0
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "501", "abc"])
+def test_cli_parser_rejects_out_of_contract_list_limits(value: str) -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["timelog", "list", "--limit", value])
+
+    assert exc_info.value.code == 2
+
+
+@pytest.mark.parametrize("value", ["-1", "abc"])
+def test_cli_parser_rejects_out_of_contract_list_offsets(value: str) -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["timelog", "list", "--offset", value])
+
+    assert exc_info.value.code == 2
+
+
+def test_cli_parser_accepts_boundary_list_limits() -> None:
+    parser = build_parser()
+
+    assert parser.parse_args(["timelog", "list", "--limit", "1"]).limit == 1
+    assert parser.parse_args(["timelog", "list", "--limit", "500"]).limit == 500
+    assert parser.parse_args(["note", "list", "--limit", "500"]).limit == 500
+
+
 def test_cli_parser_requires_query_for_timelog_search() -> None:
     parser = build_parser()
 

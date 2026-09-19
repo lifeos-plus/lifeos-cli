@@ -278,6 +278,7 @@ def test_timelog_create_list_detail_and_not_found(http_client) -> None:
 
 def test_timelog_list_filters_by_duration_minutes(http_client) -> None:
     for title, start_time, end_time in (
+        ("Duration untimed", "2026-08-14T00:00:00.000Z", "2026-08-14T00:00:00.000Z"),
         ("Duration short", "2026-08-14T01:00:00.000Z", "2026-08-14T01:15:00.000Z"),
         ("Duration medium", "2026-08-14T02:00:00.000Z", "2026-08-14T02:45:00.000Z"),
         ("Duration exact", "2026-08-14T03:00:00.000Z", "2026-08-14T04:00:00.000Z"),
@@ -323,7 +324,22 @@ def test_timelog_list_filters_by_duration_minutes(http_client) -> None:
         params={"max_duration_minutes": 30, "size": 500},
     )
     assert maximum_response.status_code == 200
-    assert {item["title"] for item in maximum_response.json()["items"]} == {"Duration short"}
+    assert {item["title"] for item in maximum_response.json()["items"]} == {
+        "Duration short",
+        "Duration untimed",
+    }
+
+    anomaly_response = http_client.get(
+        "/api/v1/timelogs/",
+        params={
+            "min_duration_minutes": -1,
+            "max_duration_minutes": 0,
+            "size": 500,
+        },
+    )
+    assert anomaly_response.status_code == 200
+    assert {item["title"] for item in anomaly_response.json()["items"]} == {"Duration untimed"}
+    assert anomaly_response.json()["meta"]["min_duration_minutes"] == -1
 
     inverted_response = http_client.get(
         "/api/v1/timelogs/",
@@ -331,12 +347,19 @@ def test_timelog_list_filters_by_duration_minutes(http_client) -> None:
     )
     assert inverted_response.status_code == 400
 
-    oversized_response = http_client.get(
+    negative_maximum_response = http_client.get(
         "/api/v1/timelogs/",
-        params={"max_duration_minutes": 2**63},
+        params={"max_duration_minutes": -1},
     )
-    assert oversized_response.status_code == 400
-    assert "or less" in oversized_response.json()["detail"]
+    assert negative_maximum_response.status_code == 400
+    assert "between 0 and 4320" in negative_maximum_response.json()["detail"]
+
+    oversized_minimum_response = http_client.get(
+        "/api/v1/timelogs/",
+        params={"min_duration_minutes": 2881},
+    )
+    assert oversized_minimum_response.status_code == 400
+    assert "between -4320 and 2880" in oversized_minimum_response.json()["detail"]
 
 
 def test_note_create_list_and_delete(http_client) -> None:

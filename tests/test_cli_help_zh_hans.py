@@ -240,6 +240,24 @@ def test_cli_timelog_search_help_supports_zh_hans_locale(
     assert "`--query` 不搜索 task 或 area 名称" in captured.out
 
 
+def test_cli_zh_hans_help_documents_shared_list_pagination_contract(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("LIFEOS_LANGUAGE", "zh-Hans")
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["timelog", "list", "--help"])
+
+    normalized_output = " ".join(capsys.readouterr().out.split())
+
+    assert "返回结果的最大数量（1-500，默认 100）" in normalized_output
+    assert "要跳过的结果数量（0 或更大，默认 0）" in normalized_output
+    assert "按最小时长过滤，单位为分钟，可接受 -4320 到 2880，含边界值" in normalized_output
+    assert "按最大时长过滤，单位为分钟，可接受 0 到 4320，含边界值" in normalized_output
+
+
 @pytest.mark.parametrize(
     ("argv", "expected"),
     [
