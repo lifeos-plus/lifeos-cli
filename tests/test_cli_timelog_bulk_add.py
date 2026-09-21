@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -46,6 +46,40 @@ def test_parse_bulk_timelog_text_handles_time_ranges_with_rollover(
     assert drafts[0].start_time.isoformat() == "2026-04-10T23:00:00-04:00"
     assert drafts[0].end_time.isoformat() == "2026-04-11T00:30:00-04:00"
     assert drafts[0].warnings == ("end crossed midnight into the next day",)
+    clear_config_cache()
+
+
+def test_parse_bulk_timelog_text_keeps_zero_length_end_only_entries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_timezone(monkeypatch)
+    drafts = parse_bulk_timelog_text(
+        "0800 Meditation",
+        first_start_time=datetime.fromisoformat("2026-04-10T08:00:00"),
+    )
+
+    assert len(drafts) == 1
+    assert drafts[0].start_time.isoformat() == "2026-04-10T08:00:00-04:00"
+    assert drafts[0].end_time.isoformat() == "2026-04-10T08:00:00-04:00"
+    assert drafts[0].end_time - drafts[0].start_time == timedelta(0)
+    assert drafts[0].warnings == ()
+    clear_config_cache()
+
+
+def test_parse_bulk_timelog_text_keeps_zero_length_ranges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_timezone(monkeypatch)
+    drafts = parse_bulk_timelog_text(
+        "10:00-10:00 Meditation",
+        first_start_time=datetime.fromisoformat("2026-04-10T06:30:00"),
+    )
+
+    assert len(drafts) == 1
+    assert drafts[0].start_time.isoformat() == "2026-04-10T10:00:00-04:00"
+    assert drafts[0].end_time.isoformat() == "2026-04-10T10:00:00-04:00"
+    assert drafts[0].end_time - drafts[0].start_time == timedelta(0)
+    assert drafts[0].warnings == ()
     clear_config_cache()
 
 

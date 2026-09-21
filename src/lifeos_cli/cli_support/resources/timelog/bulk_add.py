@@ -175,10 +175,9 @@ def parse_bulk_timelog_text(
             start_time = cursor
 
         end_minutes = _parse_time_token(parsed.end_token, field_name="end", line_number=line_number)
-        end_time = _resolve_time_on_or_after(
-            start_time + timedelta(microseconds=1),
-            end_minutes,
-        )
+        # Align the end to the start cursor itself so a zero-length entry stays a
+        # zero-minute record instead of rolling a full day into a 24h span.
+        end_time = _resolve_time_on_or_after(start_time, end_minutes)
         if end_time.date() != start_time.date():
             warnings.append("end crossed midnight into the next day")
 
