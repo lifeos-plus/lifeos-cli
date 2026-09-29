@@ -69,6 +69,7 @@ Dependency maintenance policy:
 - Dependabot security updates remain eligible independently of the routine version-update policy.
 - `bash ./scripts/dependency_health.sh` remains the explicit maintainer audit flow for Python outdated packages and dependency-related health checks.
 - `bash ./scripts/doctor.sh` rejects known vulnerabilities in the locked project and every optional Python extra during PR and `main` validation.
+- Keep `sqlalchemy[asyncio]` declared with the extra: SQLAlchemy 2.1 moved `greenlet` behind `[asyncio]`, and every supported backend here runs the asyncio engine (`sqlite+aiosqlite`, `postgresql+psycopg`). A plain `sqlalchemy` requirement resolves to 2.1 without `greenlet` and breaks `lifeos web serve` on a fresh install.
 - Frontend dependency maintenance and validation are handled by the `lifeos-web` repository.
 - The `open-pull-requests-limit` setting limits concurrent Dependabot version-update PRs; it is not a dependency version ceiling.
 
