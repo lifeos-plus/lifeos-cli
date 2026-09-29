@@ -32,6 +32,8 @@ Routine dependency version updates are intentionally limited to weekly minor upd
 
 Pull request and `main` validation audits the locked Python project with every optional extra and rejects any known vulnerability reported by `pip-audit`. Frontend validation rejects high- and critical-severity `npm audit` findings. The weekly frontend audit may prepare a non-force lockfile fix, but it still fails when high- or critical-severity findings remain after that attempt.
 
+The distribution declares `sqlalchemy[asyncio]` so every install keeps the `greenlet` dependency the asyncio database layer needs; SQLAlchemy 2.1 dropped it from the default dependency set. Keep the extra when the SQLAlchemy range or lock changes.
+
 ## Local Web Service Exposure
 
 The local Web API (`lifeos web serve`) has no authentication and holds access to the same personal LifeOS data as the CLI. It defaults to binding `127.0.0.1` (loopback) and prints a warning on stderr when started with a non-loopback `--host` such as `0.0.0.0`. Keep the loopback default for personal use; if you must bind beyond loopback, treat it as an intentional exposure and restrict access at the network layer (for example a firewall or an isolated network). Do not rely on the warning as a security boundary.
