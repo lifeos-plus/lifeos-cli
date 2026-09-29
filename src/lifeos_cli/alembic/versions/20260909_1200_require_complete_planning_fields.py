@@ -30,7 +30,7 @@ def upgrade() -> None:
     for table_name, name, condition in CONSTRAINTS:
         if not op.get_context().as_sql:
             qualified = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
-            count = connection.execute(
+            count: int = connection.execute(
                 sa.text(f"SELECT COUNT(*) FROM {qualified} WHERE ({condition}) IS NOT TRUE")
             ).scalar_one()
             if count:

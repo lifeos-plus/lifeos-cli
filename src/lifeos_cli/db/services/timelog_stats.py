@@ -472,7 +472,8 @@ async def _recompute_aggregated_period(
                 window_start=excluded_window[0],
                 window_end=excluded_window[1],
             )
-        if minutes > 0:
+        # The query above filters out NULL area ids; narrow for the typed dict.
+        if minutes > 0 and area_id is not None:
             count_by_area[area_id] += 1
 
     area_ids = set(minutes_by_area) | set(count_by_area)

@@ -89,7 +89,9 @@ async def check_database(
 
         revision = await connection.run_sync(current_revision)
         if dialect == "sqlite":
-            quick_check = (await connection.execute(text("PRAGMA quick_check"))).scalars().all()
+            quick_check: list[str] = list(
+                (await connection.execute(text("PRAGMA quick_check"))).scalars().all()
+            )
             storage_issues.extend(str(value) for value in quick_check if str(value).lower() != "ok")
             foreign_key_rows = (await connection.execute(text("PRAGMA foreign_key_check"))).all()
             storage_issues.extend(

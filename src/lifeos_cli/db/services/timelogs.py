@@ -860,7 +860,7 @@ async def list_timelogs(
         .offset(query.offset)
         .limit(query.limit)
     )
-    timelogs = list((await session.execute(stmt)).scalars())
+    timelogs: list[Timelog] = list((await session.execute(stmt)).scalars())
     return await _build_timelog_views(session, timelogs)
 
 

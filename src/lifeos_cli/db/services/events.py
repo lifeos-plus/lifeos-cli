@@ -725,7 +725,7 @@ async def list_event_occurrences(
     )
     master_stmt = master_stmt.where(Event.deleted_at.is_(None))
     master_stmt = _apply_event_query_filters(master_stmt, filters=normalized_filters)
-    masters = list((await session.execute(master_stmt)).scalars())
+    masters: list[Event] = list((await session.execute(master_stmt)).scalars())
     master_ids = [event.id for event in masters if event_is_recurring(event)]
     skip_map = await _load_skip_exceptions(session, master_event_ids=master_ids)
 
@@ -736,7 +736,7 @@ async def list_event_occurrences(
     )
     override_stmt = override_stmt.where(Event.deleted_at.is_(None))
     override_stmt = _apply_event_query_filters(override_stmt, filters=normalized_filters)
-    overrides = list((await session.execute(override_stmt)).scalars())
+    overrides: list[Event] = list((await session.execute(override_stmt)).scalars())
     override_keys = {
         (
             override.recurrence_parent_event_id,
@@ -854,7 +854,7 @@ async def list_events(
         .offset(query.offset)
         .limit(query.limit)
     )
-    events = list((await session.execute(stmt)).scalars())
+    events: list[Event] = list((await session.execute(stmt)).scalars())
     return list(await _build_event_views(session, events))
 
 

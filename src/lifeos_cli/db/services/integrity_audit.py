@@ -63,7 +63,7 @@ async def _load_endpoint_sets(
     """Return ``(existing ids incl. soft-deleted, soft-deleted ids)`` for one model."""
     stmt = select(model.id).execution_options(**_SOFT_DELETED_EXECUTION_OPTIONS)
     rows = await session.execute(stmt)
-    existing_ids = set(rows.scalars().all())
+    existing_ids: set[UUID] = set(rows.scalars().all())
     if not hasattr(model, "deleted_at"):
         return existing_ids, set()
     deleted_rows = await session.execute(
