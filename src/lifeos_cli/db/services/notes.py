@@ -112,7 +112,7 @@ def _note_query(
     timelog_id: UUID | None = None,
     vision_id: UUID | None = None,
     habit_action_id: UUID | None = None,
-) -> Select[tuple[Note]]:
+) -> Select[Note]:
     stmt = select(Note)
     stmt = stmt.where(Note.deleted_at.is_(None))
     if tag_id is not None:

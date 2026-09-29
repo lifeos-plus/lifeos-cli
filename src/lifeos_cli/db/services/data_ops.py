@@ -591,7 +591,9 @@ async def find_upsert_match_id(
     filters = [column == key_value]
     if "deleted_at" in table.c:
         filters.append(table.c.deleted_at.is_(None))
-    matches = (await session.execute(select(table.c.id).where(*filters))).scalars().all()
+    matches: list[UUID] = list(
+        (await session.execute(select(table.c.id).where(*filters))).scalars().all()
+    )
     if len(matches) > 1:
         raise DataOperationError(
             f"Row {index} upsert key `{key_field}` is ambiguous: "
@@ -714,7 +716,7 @@ async def export_resource_snapshot(
     if "deleted_at" in spec.model.__table__.c:
         stmt = stmt.where(spec.model.deleted_at.is_(None))
     stmt = stmt.order_by(*_build_order_by_columns(spec))
-    rows = list((await session.execute(stmt)).scalars())
+    rows: list[Any] = list((await session.execute(stmt)).scalars())
     payloads = [_serialize_model_row(spec, row) for row in rows]
 
     entity_ids = [UUID(payload["id"]) for payload in payloads]

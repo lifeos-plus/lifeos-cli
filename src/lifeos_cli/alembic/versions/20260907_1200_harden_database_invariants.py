@@ -182,7 +182,7 @@ def _assert_existing_rows_valid(schema_name: str | None) -> None:
     for table_name, constraints in CONSTRAINTS.items():
         qualified_table = f'"{schema_name}"."{table_name}"' if schema_name else f'"{table_name}"'
         for constraint_name, condition in constraints:
-            invalid_count = connection.execute(
+            invalid_count: int = connection.execute(
                 # UNKNOWN must fail preflight too; NOT NULL does not match a WHERE clause.
                 sa.text(f"SELECT COUNT(*) FROM {qualified_table} WHERE ({condition}) IS NOT TRUE")
             ).scalar_one()
@@ -193,7 +193,7 @@ def _assert_existing_rows_valid(schema_name: str | None) -> None:
                     "the new invariant. Repair the rows and rerun `lifeos db upgrade`."
                 )
     finance_trees = f'"{schema_name}"."finance_trees"' if schema_name else '"finance_trees"'
-    default_count = connection.execute(
+    default_count: int = connection.execute(
         sa.text(
             f"SELECT COUNT(*) FROM {finance_trees} WHERE is_default IS TRUE AND deleted_at IS NULL"
         )

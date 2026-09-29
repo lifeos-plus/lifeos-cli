@@ -26,7 +26,10 @@ dependencies = [
     "aiosqlite>=0.21,<1.0",
     "pyfiglet>=1.0,<2.0",
     "python-dateutil>=2.9,<3.0",
-    "sqlalchemy>=2.0,<3.0",
+    # SQLAlchemy 2.1 moved greenlet behind the [asyncio] extra, and this CLI
+    # always uses the asyncio engine (sqlite+aiosqlite / postgresql+psycopg).
+    # Declare the extra so fresh resolutions keep installing greenlet.
+    "sqlalchemy[asyncio]>=2.0,<3.0",
 ]
 
 [project.scripts]

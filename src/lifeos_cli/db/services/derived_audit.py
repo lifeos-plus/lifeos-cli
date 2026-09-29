@@ -56,7 +56,8 @@ async def audit_soft_deleted_references(session: AsyncSession) -> tuple[str, ...
             .join(parent, child.c[field] == parent.c.id)
             .where(child.c.deleted_at.is_(None), parent.c.deleted_at.is_not(None))
         )
-        for record_id in (await session.scalars(statement)).all():
+        record_ids: list[UUID] = list((await session.scalars(statement)).all())
+        for record_id in record_ids:
             warnings.append(
                 f"{child.description} {record_id}: {field} references a soft-deleted "
                 f"{parent.description} record; preserved as recoverable history."

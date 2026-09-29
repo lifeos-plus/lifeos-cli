@@ -349,7 +349,7 @@ async def load_task_relation_counts(
     )
     return (
         {task_id: int(count) for task_id, count in note_rows.all()},
-        {task_id: int(count) for task_id, count in timelog_rows.all()},
+        {task_id: int(count) for task_id, count in timelog_rows.all() if task_id is not None},
     )
 
 
@@ -404,7 +404,7 @@ async def list_tasks(
         query=query,
     )
     stmt = _apply_task_display_order(stmt).offset(offset).limit(resolved_limit)
-    tasks = list((await session.execute(stmt)).scalars())
+    tasks: list[Task] = list((await session.execute(stmt)).scalars())
     return await _build_task_views(session, tasks)
 
 
@@ -526,7 +526,7 @@ async def get_planning_view(
         status_in=status_in,
     )
     stmt = _apply_task_display_order(stmt).offset(offset).limit(limit)
-    tasks = list((await session.execute(stmt)).scalars())
+    tasks: list[Task] = list((await session.execute(stmt)).scalars())
     context_parents = await _load_planning_context_parents(session, tasks, vision_in=vision_in)
     roots = _build_task_tree(
         [*tasks, *context_parents],
@@ -553,7 +553,7 @@ async def get_vision_task_hierarchy(
     stmt = _apply_task_display_order(
         select(Task).where(Task.vision_id == vision_id, Task.deleted_at.is_(None))
     )
-    tasks = list((await session.execute(stmt)).scalars())
+    tasks: list[Task] = list((await session.execute(stmt)).scalars())
     person_map = await load_person_for_entities(
         session,
         entity_ids=[task.id for task in tasks],
