@@ -809,6 +809,156 @@ def test_finance_snapshot_with_incomplete_rate_snapshot_keeps_native_totals() ->
     asyncio.run(run())
 
 
+def test_finance_snapshot_ignores_missing_rate_for_zero_amount_currency() -> None:
+    async def run() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                tree = await finance.ensure_default_finance_tree(
+                    session,
+                    primary_currency="USD",
+                )
+                assets = next(
+                    node
+                    for node in await finance.list_finance_nodes(session, tree_id=tree.id)
+                    if node.name == "Assets"
+                )
+                euro_account = await finance.create_finance_node(
+                    session,
+                    tree_id=tree.id,
+                    parent_id=assets.id,
+                    name="Euro account",
+                    currency_code="EUR",
+                )
+                btc_account = await finance.create_finance_node(
+                    session,
+                    tree_id=tree.id,
+                    parent_id=assets.id,
+                    name="BTC",
+                    currency_code="BTC",
+                )
+                rate_snapshot = await finance.create_finance_rate_snapshot(
+                    session,
+                    captured_at=datetime(2026, 6, 1, tzinfo=UTC),
+                    entries=[
+                        finance.FinanceRateSnapshotEntryInput(
+                            base_currency="BTC",
+                            quote_currency="USD",
+                            rate=Decimal("67000"),
+                        )
+                    ],
+                )
+
+                snapshot = await finance.create_finance_snapshot(
+                    session,
+                    tree_id=tree.id,
+                    rate_snapshot_id=rate_snapshot.id,
+                    entries=[
+                        finance.FinanceSnapshotEntryInput(
+                            node_id=euro_account.id,
+                            amount=Decimal("0"),
+                            currency_code="EUR",
+                        ),
+                        finance.FinanceSnapshotEntryInput(
+                            node_id=btc_account.id,
+                            amount=Decimal("1"),
+                            currency_code="BTC",
+                        ),
+                    ],
+                )
+
+                # A zero-amount currency without a rate contributes 0 no matter the
+                # price, so it must not force the snapshot back to native totals.
+                assert snapshot.summary is not None
+                assert snapshot.summary["aggregation_mode"] == "converted"
+                assert snapshot.summary["missing_rate_currencies"] == []
+                assert snapshot.exchange_rates is not None
+                assert "EUR" not in snapshot.exchange_rates["rates"]
+                assert snapshot.net_amount == Decimal("67000.00000000")
+                assert snapshot.summary["amounts_by_currency"]["EUR"]["net_amount"] == "0E-8"
+
+    asyncio.run(run())
+
+
+def test_finance_snapshot_converted_rollups_keep_native_currency_amounts() -> None:
+    async def run() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                tree = await finance.ensure_default_finance_tree(
+                    session,
+                    primary_currency="USD",
+                )
+                assets = next(
+                    node
+                    for node in await finance.list_finance_nodes(session, tree_id=tree.id)
+                    if node.name == "Assets"
+                )
+                btc_account = await finance.create_finance_node(
+                    session,
+                    tree_id=tree.id,
+                    parent_id=assets.id,
+                    name="BTC",
+                    currency_code="BTC",
+                )
+                cny_account = await finance.create_finance_node(
+                    session,
+                    tree_id=tree.id,
+                    parent_id=assets.id,
+                    name="CNY",
+                    currency_code="CNY",
+                )
+                rate_snapshot = await finance.create_finance_rate_snapshot(
+                    session,
+                    captured_at=datetime(2026, 6, 1, tzinfo=UTC),
+                    entries=[
+                        finance.FinanceRateSnapshotEntryInput(
+                            base_currency="BTC",
+                            quote_currency="USD",
+                            rate=Decimal("67000"),
+                        ),
+                        finance.FinanceRateSnapshotEntryInput(
+                            base_currency="CNY",
+                            quote_currency="USD",
+                            rate=Decimal("0.15"),
+                        ),
+                    ],
+                )
+
+                snapshot = await finance.create_finance_snapshot(
+                    session,
+                    tree_id=tree.id,
+                    rate_snapshot_id=rate_snapshot.id,
+                    entries=[
+                        finance.FinanceSnapshotEntryInput(
+                            node_id=btc_account.id,
+                            amount=Decimal("1"),
+                            currency_code="BTC",
+                        ),
+                        finance.FinanceSnapshotEntryInput(
+                            node_id=cny_account.id,
+                            amount=Decimal("100"),
+                            currency_code="CNY",
+                        ),
+                    ],
+                )
+
+                assert snapshot.summary is not None
+                assert snapshot.summary["aggregation_mode"] == "converted"
+                assert snapshot.net_amount == Decimal("67015.00000000")
+                # Auto-generated rollups must stay native so "原始金额" keeps the
+                # original currency/amount; conversion only feeds amount_converted.
+                asset_rollups = {
+                    (entry.currency_code, entry.amount, entry.amount_converted)
+                    for entry in snapshot.entries
+                    if entry.node_id == assets.id and entry.is_auto_generated
+                }
+                assert asset_rollups == {
+                    ("BTC", Decimal("1.00000000"), Decimal("67000.00000000")),
+                    ("CNY", Decimal("100.00000000"), Decimal("15.00000000")),
+                }
+
+    asyncio.run(run())
+
+
 def test_finance_rate_snapshot_can_be_updated_and_deleted() -> None:
     async def run() -> None:
         async with sqlite_session_factory() as session_factory:

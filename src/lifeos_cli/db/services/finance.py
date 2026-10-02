@@ -1547,7 +1547,9 @@ async def _rebuild_finance_snapshot_entries(
             )
             if rate_match is None:
                 rate = Decimal("1")
-                if currency_code != snapshot.primary_currency:
+                # A zero amount converts to zero at any rate, so a missing rate
+                # must not block converted aggregation for empty currencies.
+                if currency_code != snapshot.primary_currency and amount != 0:
                     missing_rate_currencies.add(currency_code)
             else:
                 rate = rate_match.rate
@@ -1584,42 +1586,31 @@ async def _rebuild_finance_snapshot_entries(
         ]
         if not descendant_entries:
             continue
-        use_converted_rollups = rate_snapshot is not None and not missing_rate_currencies
-        if not use_converted_rollups:
-            entries_by_currency: dict[str, list[FinanceSnapshotEntry]] = {}
-            for descendant_entry in descendant_entries:
-                entries_by_currency.setdefault(
-                    descendant_entry.currency_code,
-                    [],
-                ).append(descendant_entry)
-            for rollup_currency, currency_entries in sorted(entries_by_currency.items()):
-                amount = _quantize_amount(
-                    sum((entry.amount for entry in currency_entries), Decimal("0"))
-                )
-                entry = FinanceSnapshotEntry(
-                    snapshot_id=snapshot.id,
-                    node_id=rollup_node.id,
-                    amount=amount,
-                    currency_code=rollup_currency,
-                    amount_converted=amount,
-                    is_auto_generated=True,
-                )
-                session.add(entry)
-                snapshot_entries.append(entry)
-            continue
-        amount_converted = _quantize_amount(
-            sum((entry.amount_converted for entry in descendant_entries), Decimal("0"))
-        )
-        entry = FinanceSnapshotEntry(
-            snapshot_id=snapshot.id,
-            node_id=rollup_node.id,
-            amount=amount_converted,
-            currency_code=snapshot.primary_currency,
-            amount_converted=amount_converted,
-            is_auto_generated=True,
-        )
-        session.add(entry)
-        snapshot_entries.append(entry)
+        # Keep rollups in their native currency; conversion is exposed through
+        # amount_converted and the snapshot totals so original amounts stay intact.
+        entries_by_currency: dict[str, list[FinanceSnapshotEntry]] = {}
+        for descendant_entry in descendant_entries:
+            entries_by_currency.setdefault(
+                descendant_entry.currency_code,
+                [],
+            ).append(descendant_entry)
+        for rollup_currency, currency_entries in sorted(entries_by_currency.items()):
+            amount = _quantize_amount(
+                sum((entry.amount for entry in currency_entries), Decimal("0"))
+            )
+            amount_converted = _quantize_amount(
+                sum((entry.amount_converted for entry in currency_entries), Decimal("0"))
+            )
+            entry = FinanceSnapshotEntry(
+                snapshot_id=snapshot.id,
+                node_id=rollup_node.id,
+                amount=amount,
+                currency_code=rollup_currency,
+                amount_converted=amount_converted,
+                is_auto_generated=True,
+            )
+            session.add(entry)
+            snapshot_entries.append(entry)
 
     manual_entries = [entry for entry in snapshot_entries if not entry.is_auto_generated]
     aggregation_mode = (
