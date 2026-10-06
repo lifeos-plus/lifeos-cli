@@ -34,7 +34,6 @@ The following rules apply to coding agent collaboration in this repository. Thes
   ```bash
   bash ./scripts/doctor.sh
   ```
-- Keep Web API response contracts covered end to end: changes under `src/lifeos_web/response_schemas/` must update `tests/test_web_api_http.py` so the affected models are exercised through a real HTTP round trip; `scripts/check_web_response_tests.py` enforces this within `scripts/doctor.sh`.
 - Treat the dead-code scan as part of the primary validation gate. Do not delete framework-driven symbols only to satisfy generic static analysis; update `scripts/vulture_whitelist.py` when a tool-required symbol must remain intentionally reachable.
 - If changes affect compatibility claims, packaging metadata, or CI, validate the impacted Python versions explicitly.
 - Keep release-related changes aligned with:
