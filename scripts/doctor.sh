@@ -17,6 +17,9 @@ uv sync --extra dev --extra web --extra postgres --frozen
 echo "[doctor] run lint"
 uv run pre-commit run --all-files
 
+echo "[doctor] check web response contract test coverage"
+uv run python scripts/check_web_response_tests.py
+
 echo "[doctor] run tests"
 # Enforce the line-coverage floor for lifeos_cli and lifeos_web on the main
 # non-integration suite. The measured baseline is 75%; the floor is set at 74%

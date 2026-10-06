@@ -13,10 +13,17 @@ jobs:
   quality-gate:
     name: Validate Default Toolchain
     runs-on: ubuntu-latest
+    env:
+      # Empty on push events, where the merge base check falls back to origin/main.
+      LIFEOS_BASE_REF: ${{ github.event.pull_request.base.sha }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # Full history keeps the pull request base reachable for the
+          # response-contract coverage guard in scripts/doctor.sh.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
