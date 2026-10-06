@@ -489,12 +489,21 @@ def test_get_routes_return_no_server_errors(http_client) -> None:
             "end": "2026-08-31T00:00:00.000Z",
         },
         "/api/v1/stats/daily-areas": {"start": "2026-08-01", "end": "2026-08-31"},
-        "/api/v1/stats/aggregated-areas": {"start": "2026-08-01", "end": "2026-08-31"},
+        "/api/v1/stats/aggregated-areas": {
+            "granularity": "day",
+            "start": "2026-08-01",
+            "end": "2026-08-31",
+        },
         "/api/v1/stats/day-breakdown": {"day": "2026-08-14"},
         "/api/v1/tags/categories/": {"entity_type": "note"},
         "/api/v1/sleep-segments/summary": {
             "start_date": "2026-08-01",
             "end_date": "2026-08-31",
+        },
+        "/api/v1/habits/actions": {
+            "start_date": "2026-08-01",
+            "end_date": "2026-08-31",
+            "reference_date": "2026-08-14",
         },
     }
 
