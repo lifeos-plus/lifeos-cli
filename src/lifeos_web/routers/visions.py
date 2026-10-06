@@ -150,14 +150,14 @@ async def delete_vision(vision_id: UUID, session: SessionDep) -> None:
     await soft_delete(vision_services.delete_vision, session=session, vision_id=vision_id)
 
 
-@router.get("/{vision_id}/with-tasks", response_model=VisionResponse)
+@router.get("/{vision_id}/with-tasks", response_model=VisionWithTasksResponse)
 async def get_vision_with_tasks(vision_id: UUID, session: SessionDep) -> dict[str, object]:
     """Load a vision with active tasks."""
     try:
         vision = await vision_services.get_vision_with_tasks(session, vision_id=vision_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return _vision_payload(vision)
+    return _vision_payload(vision, include_tasks=True)
 
 
 @router.get("/{vision_id}/stats", response_model=VisionStatsResponse)
