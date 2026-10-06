@@ -276,6 +276,262 @@ def test_timelog_create_list_detail_and_not_found(http_client) -> None:
     assert missing_response.status_code == 404
 
 
+def test_person_activities_timeline_returns_all_filters_without_timelog_stats(
+    http_client,
+) -> None:
+    person_response = http_client.post(
+        "/api/v1/person/",
+        json={"name": "Timeline subject"},
+    )
+    assert person_response.status_code == 200
+    person_id = person_response.json()["id"]
+
+    timelog_response = http_client.post(
+        "/api/v1/timelogs/",
+        json={
+            "title": "Person-linked timelog",
+            "start_time": "2026-08-14T01:00:00.000Z",
+            "end_time": "2026-08-14T01:30:00.000Z",
+            "tracking_method": "manual",
+            "area_id": None,
+            "person_ids": [person_id],
+        },
+    )
+    assert timelog_response.status_code == 200
+
+    # The default "all" timeline must serialize without timelog stats; this is
+    # the regression that previously raised a response validation error.
+    default_response = http_client.get(
+        f"/api/v1/person/{person_id}/activities/",
+        params={"page": 1, "size": 50},
+    )
+    assert default_response.status_code == 200
+    default_meta = default_response.json()["meta"]
+    assert default_meta["activity_type"] is None
+    assert "timelog_count" not in default_meta
+    assert "timelog_total_minutes" not in default_meta
+
+    # Every non-timelog tab relies on the same meta contract.
+    for activity_type in ("vision", "task", "planned_event", "note"):
+        response = http_client.get(
+            f"/api/v1/person/{person_id}/activities/",
+            params={"page": 1, "size": 50, "activity_type": activity_type},
+        )
+        assert response.status_code == 200
+        meta = response.json()["meta"]
+        assert meta["activity_type"] == activity_type
+        assert "timelog_count" not in meta
+        assert "timelog_total_minutes" not in meta
+
+    # The "all" alias is accepted and must also omit the timelog stats.
+    alias_response = http_client.get(
+        f"/api/v1/person/{person_id}/activities/",
+        params={"page": 1, "size": 50, "activity_type": "all"},
+    )
+    assert alias_response.status_code == 200
+    assert "timelog_count" not in alias_response.json()["meta"]
+
+    # Only the timelog tab reports the derived stats.
+    stats_response = http_client.get(
+        f"/api/v1/person/{person_id}/activities/",
+        params={"page": 1, "size": 50, "activity_type": "timelog"},
+    )
+    assert stats_response.status_code == 200
+    stats_meta = stats_response.json()["meta"]
+    assert stats_meta["activity_type"] == "timelog"
+    assert stats_meta["timelog_count"] == 1
+    assert stats_meta["timelog_total_minutes"] == 30
+
+
+def test_list_filter_domain_validation_errors_return_400(http_client) -> None:
+    cases = [
+        ("/api/v1/visions/", {"status_filter": "not-a-status"}),
+        ("/api/v1/habits/", {"status_filter": "not-a-status"}),
+        ("/api/v1/habits/overviews", {"status_filter": "not-a-status"}),
+        (
+            "/api/v1/planned-events/",
+            {
+                "start": "2026-08-01T00:00:00.000Z",
+                "end": "2026-08-31T00:00:00.000Z",
+                "status": "not-a-status",
+            },
+        ),
+        ("/api/v1/planned-events/raw", {"status": "not-a-status"}),
+        ("/api/v1/timelogs/", {"tracking_method": "not-a-method"}),
+    ]
+
+    for path, params in cases:
+        response = http_client.get(path, params=params)
+        assert response.status_code == 400, (path, response.status_code, response.text)
+        assert response.json()["detail"]
+
+
+def test_vision_with_tasks_endpoint_includes_active_tasks(http_client) -> None:
+    vision_id = http_client.post(
+        "/api/v1/visions/",
+        json={"name": "Vision with tasks"},
+    ).json()["id"]
+    task_id = http_client.post(
+        "/api/v1/tasks/",
+        json={"vision_id": vision_id, "content": "Nested task"},
+    ).json()["id"]
+
+    response = http_client.get(f"/api/v1/visions/{vision_id}/with-tasks")
+
+    assert response.status_code == 200
+    assert [task["id"] for task in response.json()["tasks"]] == [task_id]
+
+
+def test_get_routes_return_no_server_errors(http_client) -> None:
+    """Guard the declared response contract of every GET route.
+
+    Each endpoint is called with a representative request on seeded data; any
+    5xx means a handler produced a payload its response model rejects. Routes
+    whose path parameters cannot be resolved from the seed data are skipped.
+    """
+    area_id = http_client.post("/api/v1/areas/", json={"name": "Sweep area"}).json()["id"]
+    vision_id = http_client.post("/api/v1/visions/", json={"name": "Sweep vision"}).json()["id"]
+    task_id = http_client.post(
+        "/api/v1/tasks/",
+        json={"vision_id": vision_id, "content": "Sweep task"},
+    ).json()["id"]
+    person_id = http_client.post("/api/v1/person/", json={"name": "Sweep subject"}).json()["id"]
+    tag_id = http_client.post(
+        "/api/v1/tags/",
+        json={"name": "Sweep tag", "entity_type": "note", "category": "topic"},
+    ).json()["id"]
+    timelog_id = http_client.post(
+        "/api/v1/timelogs/",
+        json={
+            "title": "Sweep timelog",
+            "start_time": "2026-08-14T01:00:00.000Z",
+            "end_time": "2026-08-14T01:30:00.000Z",
+            "tracking_method": "manual",
+            "area_id": area_id,
+            "task_id": task_id,
+            "person_ids": [person_id],
+        },
+    ).json()["id"]
+    note_id = http_client.post("/api/v1/notes/", json={"content": "Sweep note"}).json()["id"]
+    habit_id = http_client.post(
+        "/api/v1/habits/",
+        json={
+            "title": "Sweep habit",
+            "start_date": "2026-08-01",
+            "duration_days": 30,
+            "cadence_frequency": "daily",
+        },
+    ).json()["id"]
+    planned_event_id = http_client.post(
+        "/api/v1/planned-events/",
+        json={
+            "title": "Sweep event",
+            "start_time": "2026-08-14T02:00:00.000Z",
+            "end_time": "2026-08-14T03:00:00.000Z",
+        },
+    ).json()["id"]
+    measurement_id = http_client.post(
+        "/api/v1/body-measurements/",
+        json={"measured_at": "2026-08-14T01:00:00.000Z", "weight": 70},
+    ).json()["id"]
+    segment_id = http_client.post(
+        "/api/v1/sleep-segments/",
+        json={
+            "start_at": "2026-08-14T00:00:00.000Z",
+            "end_at": "2026-08-14T07:00:00.000Z",
+        },
+    ).json()["id"]
+    menstrual_day_id = http_client.post(
+        "/api/v1/menstrual-days/",
+        json={"log_date": "2026-08-14"},
+    ).json()["id"]
+    finance_tree_id = http_client.post(
+        "/api/v1/finance/trees",
+        json={"name": "Sweep tree"},
+    ).json()["id"]
+    finance_node_id = http_client.post(
+        f"/api/v1/finance/trees/{finance_tree_id}/nodes",
+        json={"name": "Sweep node"},
+    ).json()["id"]
+    snapshot_id = http_client.post(
+        f"/api/v1/finance/trees/{finance_tree_id}/snapshots",
+        json={"entries": [{"node_id": finance_node_id, "amount": "10"}]},
+    ).json()["id"]
+    rate_snapshot_id = http_client.post(
+        "/api/v1/finance/rate-snapshots",
+        json={"entries": [{"base_currency": "USD", "quote_currency": "CNY", "rate": "7.1"}]},
+    ).json()["id"]
+
+    path_ids = {
+        "area_id": area_id,
+        "vision_id": vision_id,
+        "task_id": task_id,
+        "person_id": person_id,
+        "tag_id": tag_id,
+        "note_id": note_id,
+        "habit_id": habit_id,
+        "timelog_id": timelog_id,
+        "planned_event_id": planned_event_id,
+        "measurement_id": measurement_id,
+        "segment_id": segment_id,
+        "day_id": menstrual_day_id,
+        "tree_id": finance_tree_id,
+        "snapshot_id": snapshot_id,
+        "rate_snapshot_id": rate_snapshot_id,
+        "key": "language",
+        "entity_type": "note",
+        "day": "2026-08-14",
+        "action_date": "2026-08-05",
+    }
+    required_params = {
+        "/api/v1/planned-events/": {
+            "start": "2026-08-01T00:00:00.000Z",
+            "end": "2026-08-31T00:00:00.000Z",
+        },
+        "/api/v1/stats/daily-areas": {"start": "2026-08-01", "end": "2026-08-31"},
+        "/api/v1/stats/aggregated-areas": {
+            "granularity": "day",
+            "start": "2026-08-01",
+            "end": "2026-08-31",
+        },
+        "/api/v1/stats/day-breakdown": {"day": "2026-08-14"},
+        "/api/v1/tags/categories/": {"entity_type": "note"},
+        "/api/v1/sleep-segments/summary": {
+            "start_date": "2026-08-01",
+            "end_date": "2026-08-31",
+        },
+        "/api/v1/habits/actions": {
+            "start_date": "2026-08-01",
+            "end_date": "2026-08-31",
+            "reference_date": "2026-08-14",
+        },
+    }
+
+    failures: list[tuple[str, str]] = []
+    for path, item in http_client.app.openapi()["paths"].items():
+        if "get" not in item:
+            continue
+        request_path = path
+        unresolved = False
+        for segment in [part for part in path.split("/") if part.startswith("{")]:
+            name = segment.strip("{}")
+            if path_ids.get(name):
+                request_path = request_path.replace(segment, str(path_ids[name]))
+            else:
+                unresolved = True
+        if unresolved:
+            continue
+        try:
+            response = http_client.get(request_path, params=required_params.get(path, {}))
+        except Exception as exc:  # pragma: no cover - only on an unexpected 5xx
+            failures.append((path, repr(exc)))
+            continue
+        if response.status_code >= 500:
+            failures.append((path, f"{response.status_code} {response.text[:120]}"))
+
+    assert failures == []
+
+
 def test_timelog_list_filters_by_duration_minutes(http_client) -> None:
     for title, start_time, end_time in (
         ("Duration untimed", "2026-08-14T00:00:00.000Z", "2026-08-14T00:00:00.000Z"),

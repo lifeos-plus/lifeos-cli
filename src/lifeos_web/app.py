@@ -11,7 +11,7 @@ from collections import deque
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError
@@ -20,6 +20,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from lifeos_cli.db.services.validation_utils import DomainValidationError
 from lifeos_web.db_errors import is_lock_contention_error
 from lifeos_web.deps import LIFEOS_SESSION_STATE_KEY
 from lifeos_web.routers import (
@@ -323,6 +324,14 @@ class CommitSessionMiddleware:
             await response(scope, receive, send)
 
 
+async def _domain_validation_error_handler(
+    _request: Request,
+    exc: DomainValidationError,
+) -> JSONResponse:
+    """Map uncaught domain validation failures to 400 instead of 500."""
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
 def create_app(
     *,
     static_dir: Path | None = None,
@@ -346,6 +355,7 @@ def create_app(
         docs_url=docs_url,
         openapi_url=openapi_url,
     )
+    app.add_exception_handler(DomainValidationError, _domain_validation_error_handler)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=resolved_hosts)
     app.add_middleware(
         OriginValidationMiddleware,

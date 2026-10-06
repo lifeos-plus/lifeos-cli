@@ -40,8 +40,8 @@ class PersonActivityMeta(ResponseModel):
     person_id: str
     person_name: str
     activity_type: str | None
-    timelog_count: int
-    timelog_total_minutes: int
+    timelog_count: int | None = None
+    timelog_total_minutes: int | None = None
 
 
 class AnniversaryResponse(ResponseModel):

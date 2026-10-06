@@ -88,6 +88,7 @@ Static-analysis governance:
 - Keep issue and PR collaboration in Simplified Chinese for this repository.
 - Prefer self-documenting code: comments explain *why*, not *what*. Do not add comments that restate the code; remove or converge such comments when you touch the surrounding code. Reserve comments for non-obvious rationale, historical context, and cross-cutting constraints, and keep them as close as possible to the code they explain.
 - Prefer explicit, additive changes over hidden behavioral shifts.
+- Web API response contracts stay covered end to end: any change under `src/lifeos_web/response_schemas/` must be accompanied by an update to `tests/test_web_api_http.py` so the affected response models are exercised through a real HTTP round trip. `scripts/check_web_response_tests.py` enforces this inside `bash ./scripts/doctor.sh`.
 - Keep Python compatibility declarations, CI matrices, and packaging metadata consistent with each other.
 - Treat release and trusted publishing changes as security-sensitive infrastructure work.
 
