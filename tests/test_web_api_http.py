@@ -276,6 +276,73 @@ def test_timelog_create_list_detail_and_not_found(http_client) -> None:
     assert missing_response.status_code == 404
 
 
+def test_person_activities_timeline_returns_all_filters_without_timelog_stats(
+    http_client,
+) -> None:
+    person_response = http_client.post(
+        "/api/v1/person/",
+        json={"name": "Timeline subject"},
+    )
+    assert person_response.status_code == 200
+    person_id = person_response.json()["id"]
+
+    timelog_response = http_client.post(
+        "/api/v1/timelogs/",
+        json={
+            "title": "Person-linked timelog",
+            "start_time": "2026-08-14T01:00:00.000Z",
+            "end_time": "2026-08-14T01:30:00.000Z",
+            "tracking_method": "manual",
+            "area_id": None,
+            "person_ids": [person_id],
+        },
+    )
+    assert timelog_response.status_code == 200
+
+    # The default "all" timeline must serialize without timelog stats; this is
+    # the regression that previously raised a response validation error.
+    default_response = http_client.get(
+        f"/api/v1/person/{person_id}/activities/",
+        params={"page": 1, "size": 50},
+    )
+    assert default_response.status_code == 200
+    default_meta = default_response.json()["meta"]
+    assert default_meta["activity_type"] is None
+    assert "timelog_count" not in default_meta
+    assert "timelog_total_minutes" not in default_meta
+
+    # Every non-timelog tab relies on the same meta contract.
+    for activity_type in ("vision", "task", "planned_event", "note"):
+        response = http_client.get(
+            f"/api/v1/person/{person_id}/activities/",
+            params={"page": 1, "size": 50, "activity_type": activity_type},
+        )
+        assert response.status_code == 200
+        meta = response.json()["meta"]
+        assert meta["activity_type"] == activity_type
+        assert "timelog_count" not in meta
+        assert "timelog_total_minutes" not in meta
+
+    # The "all" alias is accepted and must also omit the timelog stats.
+    alias_response = http_client.get(
+        f"/api/v1/person/{person_id}/activities/",
+        params={"page": 1, "size": 50, "activity_type": "all"},
+    )
+    assert alias_response.status_code == 200
+    assert "timelog_count" not in alias_response.json()["meta"]
+
+    # Only the timelog tab reports the derived stats.
+    stats_response = http_client.get(
+        f"/api/v1/person/{person_id}/activities/",
+        params={"page": 1, "size": 50, "activity_type": "timelog"},
+    )
+    assert stats_response.status_code == 200
+    stats_meta = stats_response.json()["meta"]
+    assert stats_meta["activity_type"] == "timelog"
+    assert stats_meta["timelog_count"] == 1
+    assert stats_meta["timelog_total_minutes"] == 30
+
+
 def test_timelog_list_filters_by_duration_minutes(http_client) -> None:
     for title, start_time, end_time in (
         ("Duration untimed", "2026-08-14T00:00:00.000Z", "2026-08-14T00:00:00.000Z"),
