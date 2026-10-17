@@ -237,6 +237,14 @@ async def list_person_activities(
         limit=size,
         offset=(page - 1) * size,
     )
+    meta: dict[str, object] = {
+        "person_id": str(person_id),
+        "person_name": person.name,
+        "activity_type": activity_filter,
+    }
+    if activity_filter == "timelog":
+        meta["timelog_count"] = result.timelog_count
+        meta["timelog_total_minutes"] = result.timelog_total_minutes
     return ListResponse(
         items=[_activity_payload(item) for item in result.items],
         pagination=Pagination(
@@ -245,13 +253,7 @@ async def list_person_activities(
             total=result.total,
             pages=math.ceil(result.total / size) if size else 0,
         ),
-        meta={
-            "person_id": str(person_id),
-            "person_name": person.name,
-            "activity_type": activity_filter,
-            "timelog_count": result.timelog_count,
-            "timelog_total_minutes": result.timelog_total_minutes,
-        },
+        meta=meta,
     )
 
 
