@@ -164,7 +164,7 @@ uv tool install --upgrade "lifeos-cli[web,postgres]"
 uv run --extra web --extra postgres lifeos web serve
 ```
 
-Web API 没有认证，默认绑定 `127.0.0.1`；个人使用请保持 loopback 默认值。安全边界、SQLite 文件权限与数据库凭据指引见 [SECURITY.md](SECURITY.md)。
+Web API 没有认证，默认绑定 `127.0.0.1`。具体的局域网或 Tailscale 地址会带警告允许使用；不支持绑定 `0.0.0.0` 或 `::` 等通配地址。安全边界、SQLite 文件权限与数据库凭据指引见 [SECURITY.md](SECURITY.md)。
 
 前端开发时，可以在 `lifeos-web` 中启动 Vite app，并把 API 请求代理到本地 Web API：
 

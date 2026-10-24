@@ -53,11 +53,13 @@ def build_web_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
             examples=(
                 "lifeos web serve",
                 "lifeos web serve --host 127.0.0.1 --port 8765",
+                "lifeos web serve --host <tailscale-ip> --port 8765",
                 "lifeos web serve --static-dir <path-to>/lifeos-web/dist",
             ),
             notes=(
                 _("system.web_commands.use_vite_during_frontend_development"),
                 _("system.web_commands.api_requests_rate_limited_per_client"),
+                _("system.web_commands.non_loopback_binding_policy"),
             ),
         ),
     )

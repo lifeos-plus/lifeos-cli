@@ -1084,12 +1084,14 @@
       "use_upgrade_when_configured_database_schema_needs_to_catch_up_with_code": "Use `upgrade` when the configured database schema needs to catch up with the code."
     },
     "web_commands": {
-      "bind_host": "Bind host. Defaults to 127.0.0.1; binding beyond loopback triggers a warning and requests from non-loopback hosts are rejected unless added to LIFEOS_WEB_ALLOWED_HOSTS.",
+      "all_interfaces_binding_not_supported": "Refusing to bind LifeOS Web to {host}: wildcard binding exposes every network interface and LifeOS Web has no authentication. Use a specific LAN or Tailscale address instead.",
+      "bind_host": "Bind host. Defaults to 127.0.0.1; a specific LAN or Tailscale address is supported with a warning.",
       "bind_port": "Bind port.",
       "enable_uvicorn_reload": "Enable uvicorn reload.",
       "enable_swagger_docs": "Enable Swagger UI and the OpenAPI schema at /api/v1/docs (disabled by default).",
-        "install_optional_web_dependencies": "Install the optional Web dependencies with `lifeos-cli[web]`. If your configured database is PostgreSQL, install both extras with `lifeos-cli[web,postgres]`.",
+      "install_optional_web_dependencies": "Install the optional Web dependencies with `lifeos-cli[web]`. If your configured database is PostgreSQL, install both extras with `lifeos-cli[web,postgres]`.",
       "non_loopback_binding_warning": "Warning: LifeOS Web has no authentication. Binding to {host} exposes your personal data to the network; prefer 127.0.0.1 (loopback) or restrict access at the network layer.",
+      "non_loopback_binding_policy": "Wildcard binding to 0.0.0.0 or :: is not supported because LifeOS Web is local-first and has no authentication for shared or public deployments.",
       "run_local_lifeos_web_service": "Run the local LifeOS Web service against the database configured by `lifeos init` and `lifeos config`.",
       "run_optional_local_web_api": "Run the optional local Web API",
       "serve_built_frontend_directory": "Serve a built frontend directory, for example a lifeos-web `dist/` build.",

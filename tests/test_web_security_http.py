@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from lifeos_cli import cli
-from lifeos_cli.config import clear_config_cache
+from lifeos_cli.config import ConfigurationError, clear_config_cache
 from lifeos_cli.db import session as db_session
 from tests.config_support import write_test_config
 
@@ -95,6 +95,43 @@ def test_allows_environment_configured_extra_host(
 ) -> None:
     monkeypatch.setenv("LIFEOS_WEB_ALLOWED_HOSTS", "lifeos.lan")
     client = prepared_env(base_url="http://lifeos.lan")
+
+    assert client.get("/healthy").status_code == 200
+
+
+@pytest.mark.parametrize("configured_host", ["*", "https://lifeos.lan", "lifeos.lan:8765"])
+def test_rejects_invalid_environment_configured_hosts(
+    prepared_env,
+    monkeypatch: pytest.MonkeyPatch,
+    configured_host: str,
+) -> None:
+    monkeypatch.setenv("LIFEOS_WEB_ALLOWED_HOSTS", configured_host)
+
+    with pytest.raises(ConfigurationError, match="Invalid allowed Web host"):
+        prepared_env()
+
+
+def test_allows_ipv6_loopback_host_header(prepared_env) -> None:
+    client = prepared_env(allowed_hosts=TEST_HOSTS)
+
+    assert client.get("/healthy", headers={"Host": "[::1]:8765"}).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "host_header",
+    ["[::1]attacker.example", "[::1]:not-a-port", "[example.com]"],
+)
+def test_rejects_malformed_ipv6_host_headers(prepared_env, host_header: str) -> None:
+    client = prepared_env(allowed_hosts=TEST_HOSTS)
+
+    assert client.get("/healthy", headers={"Host": host_header}).status_code == 400
+
+
+def test_allows_configured_wildcard_subdomain(prepared_env) -> None:
+    client = prepared_env(
+        base_url="http://notes.example.com",
+        allowed_hosts=["*.example.com"],
+    )
 
     assert client.get("/healthy").status_code == 200
 

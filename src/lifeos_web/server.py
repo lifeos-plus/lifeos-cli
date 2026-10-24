@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from lifeos_cli.config import (
+    ConfigurationError,
     ensure_database_driver_available,
     ensure_database_url_storage_ready,
     get_database_settings,
@@ -27,6 +28,17 @@ def is_loopback_host(host: str) -> bool:
         return False
 
 
+def is_all_interfaces_host(host: str) -> bool:
+    """Return whether binding ``host`` exposes every network interface."""
+    normalized = host.strip().lower()
+    if normalized in {"", "*"}:
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_unspecified
+    except ValueError:
+        return False
+
+
 def warn_if_non_loopback_binding(host: str) -> None:
     """Warn on stderr when the unauthenticated Web service binds beyond loopback."""
     if is_loopback_host(host):
@@ -35,6 +47,17 @@ def warn_if_non_loopback_binding(host: str) -> None:
         _("system.web_commands.non_loopback_binding_warning").format(host=host),
         file=sys.stderr,
     )
+
+
+def validate_web_binding_host(host: str) -> None:
+    """Allow loopback and specific addresses, but reject all-interface binding."""
+    if is_loopback_host(host):
+        return
+    if is_all_interfaces_host(host):
+        raise ConfigurationError(
+            _("system.web_commands.all_interfaces_binding_not_supported").format(host=host)
+        )
+    warn_if_non_loopback_binding(host)
 
 
 def preflight_database_runtime() -> None:
@@ -60,9 +83,8 @@ def serve(
             "LifeOS Web dependencies are not installed. Install with `lifeos-cli[web]`."
         ) from exc
 
+    validate_web_binding_host(host)
     preflight_database_runtime()
-
-    warn_if_non_loopback_binding(host)
 
     if static_dir is None and not docs:
         uvicorn.run("lifeos_web.app:app", host=host, port=port, reload=reload)

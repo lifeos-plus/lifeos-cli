@@ -117,6 +117,20 @@ def test_cli_config_help_avoids_hard_wrapped_description_fragments(capsys) -> No
     )
 
 
+def test_web_serve_help_documents_specific_binding_policy(capsys) -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["web", "serve", "--help"])
+
+    help_text = " ".join(capsys.readouterr().out.split())
+
+    assert "a specific LAN or Tailscale address is supported with a warning" in help_text
+    assert "Wildcard binding to 0.0.0.0 or :: is not supported" in help_text
+    assert "local-first" in help_text
+    assert "lifeos web serve --host <tailscale-ip> --port 8765" in help_text
+
+
 def test_cli_note_add_help_avoids_hard_wrapped_description_fragments(capsys) -> None:
     parser = build_parser()
 

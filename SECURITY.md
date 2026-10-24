@@ -36,11 +36,11 @@ The distribution declares `sqlalchemy[asyncio]` so every install keeps the `gree
 
 ## Local Web Service Exposure
 
-The local Web API (`lifeos web serve`) has no authentication and holds access to the same personal LifeOS data as the CLI. It defaults to binding `127.0.0.1` (loopback) and prints a warning on stderr when started with a non-loopback `--host` such as `0.0.0.0`. Keep the loopback default for personal use; if you must bind beyond loopback, treat it as an intentional exposure and restrict access at the network layer (for example a firewall or an isolated network). Do not rely on the warning as a security boundary.
+The local Web API (`lifeos web serve`) has no authentication and holds access to the same personal LifeOS data as the CLI. It defaults to binding `127.0.0.1` (loopback). A specific LAN or Tailscale address is supported with a startup warning; wildcard binding to `0.0.0.0` or `::` is rejected. LifeOS Web is local-first and does not provide the authentication expected for shared or public deployments; restrict external access at the network layer (for example a firewall, tailnet ACL, or an isolated network).
 
 Additional request-level boundaries apply by default:
 
-- Only loopback Host headers (`localhost`, `127.0.0.1`, `::1`) are accepted; add trusted hostnames with the `LIFEOS_WEB_ALLOWED_HOSTS` environment variable (comma-separated).
+- Only loopback Host headers (`localhost`, `127.0.0.1`, `::1`) are accepted by default; add trusted hostnames or subdomain patterns with the `LIFEOS_WEB_ALLOWED_HOSTS` environment variable (comma-separated). Invalid entries and the global `*` wildcard are rejected.
 - Requests carrying an `Origin` header must be same-origin or one of the allowlisted Vite development origins; anything else is rejected with `403`.
 - Request bodies are limited to 1 MiB by default (override with `LIFEOS_WEB_MAX_BODY_BYTES`), bulk payloads have explicit item caps, and `/api/` requests are rate limited per client (default 300/minute, override with `LIFEOS_WEB_RATE_LIMIT_PER_MINUTE`). Rejected requests return `429` with a JSON `detail` and a `Retry-After` header so clients can back off instead of hammering the window.
 - Task list filters are bounded: `id_in` accepts at most 100 comma-separated task IDs per request, malformed IDs are rejected with `400`, and a batch request returns every matching task regardless of `size` (the limit is raised to the ID count automatically). `id_in` selects tasks by ID directly and does not inherit the root-task semantics of `vision_id` listing.

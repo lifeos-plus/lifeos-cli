@@ -166,7 +166,7 @@ uv tool install --upgrade "lifeos-cli[web,postgres]"
 uv run --extra web --extra postgres lifeos web serve
 ```
 
-The Web API has no authentication and defaults to binding `127.0.0.1`; keep the loopback default for personal use. Security boundaries, SQLite file permissions, and database credential guidance live in [SECURITY.md](SECURITY.md).
+The Web API has no authentication and defaults to binding `127.0.0.1`. A specific LAN or Tailscale address is supported with a warning; wildcard binding to `0.0.0.0` or `::` is not supported. Security boundaries, SQLite file permissions, and database credential guidance live in [SECURITY.md](SECURITY.md).
 
 During frontend development, run the Vite app in `lifeos-web` and proxy API requests to the local Web API:
 

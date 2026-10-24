@@ -1084,12 +1084,14 @@
       "use_upgrade_when_configured_database_schema_needs_to_catch_up_with_code": "当已配置数据库的 schema 需要追上当前代码时，请使用 `upgrade`。"
     },
     "web_commands": {
-      "bind_host": "绑定 `host`。默认 127.0.0.1；绑定到 loopback 之外会触发警告，且非 loopback 的 `Host` 请求会被拒绝，除非已加入 `LIFEOS_WEB_ALLOWED_HOSTS`。",
+      "all_interfaces_binding_not_supported": "拒绝将 LifeOS Web 绑定到 {host}：通配绑定会暴露所有网络接口，而 LifeOS Web 没有认证。请使用具体的局域网或 Tailscale 地址。",
+      "bind_host": "绑定 `host`。默认 127.0.0.1；支持具体的局域网或 Tailscale 地址，并会给出警告。",
       "bind_port": "绑定 port。",
       "enable_uvicorn_reload": "启用 `uvicorn` reload。",
       "enable_swagger_docs": "启用 Swagger UI 与 `OpenAPI schema`（`/api/v1/docs`，默认关闭）。",
-        "install_optional_web_dependencies": "使用 `lifeos-cli[web]` 安装可选 Web 依赖。如果已配置数据库是 PostgreSQL，请同时安装 `lifeos-cli[web,postgres]`。",
+      "install_optional_web_dependencies": "使用 `lifeos-cli[web]` 安装可选 Web 依赖。如果已配置数据库是 PostgreSQL，请同时安装 `lifeos-cli[web,postgres]`。",
       "non_loopback_binding_warning": "警告：LifeOS Web 没有认证。绑定到 {host} 会把个人数据暴露到网络中；建议保持 127.0.0.1（loopback）或通过网络层限制访问。",
+      "non_loopback_binding_policy": "不支持 `0.0.0.0` 或 `::` 等通配绑定，因为 LifeOS Web 以本地使用为先，不提供共享或公网部署所需的认证机制。",
       "run_local_lifeos_web_service": "基于 `lifeos init` 和 `lifeos config` 配置的数据库运行本地 LifeOS Web 服务。",
       "run_optional_local_web_api": "运行可选的本地 Web API",
       "serve_built_frontend_directory": "服务已构建的前端目录，例如 `lifeos-web` 的 `dist/` 构建产物。",
