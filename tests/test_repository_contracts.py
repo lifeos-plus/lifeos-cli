@@ -57,7 +57,7 @@ def test_dependabot_configuration_keeps_backend_updates_limited() -> None:
     updates = DEPENDABOT_CONFIG["updates"]
     assert isinstance(updates, list)
     entries = {entry["package-ecosystem"]: entry for entry in updates}
-    assert set(entries) == {"uv"}
+    assert set(entries) == {"uv", "github-actions"}
 
     uv_entry = entries["uv"]
     assert uv_entry["directory"] == "/"
@@ -75,6 +75,12 @@ def test_dependabot_configuration_keeps_backend_updates_limited() -> None:
     assert uv_entry["groups"]["uv-all-updates"]["applies-to"] == "version-updates"
     assert uv_entry["groups"]["uv-all-updates"]["update-types"] == ["minor"]
     assert uv_entry["groups"]["uv-all-updates"]["patterns"] == ["*"]
+
+    actions_entry = entries["github-actions"]
+    assert actions_entry["directory"] == "/"
+    assert actions_entry["schedule"]["interval"] == "weekly"
+    assert actions_entry["open-pull-requests-limit"] == 1
+    assert actions_entry["groups"]["github-actions"]["patterns"] == ["*"]
 
 
 def test_dependency_scripts_keep_separate_scopes() -> None:

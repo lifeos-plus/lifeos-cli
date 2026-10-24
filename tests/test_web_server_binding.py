@@ -1,8 +1,16 @@
-"""Tests for loopback binding detection and non-loopback warnings."""
+"""Tests for loopback, specific-address, and wildcard binding behavior."""
 
 from __future__ import annotations
 
-from lifeos_web.server import is_loopback_host, warn_if_non_loopback_binding
+import pytest
+
+from lifeos_cli.config import ConfigurationError
+from lifeos_web.server import (
+    is_all_interfaces_host,
+    is_loopback_host,
+    validate_web_binding_host,
+    warn_if_non_loopback_binding,
+)
 
 
 def test_loopback_hosts_are_detected() -> None:
@@ -28,9 +36,25 @@ def test_loopback_binding_does_not_warn(capsys) -> None:
 
 
 def test_non_loopback_binding_warns_on_stderr(capsys) -> None:
-    warn_if_non_loopback_binding("0.0.0.0")
+    warn_if_non_loopback_binding("192.0.2.10")
 
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert "0.0.0.0" in captured.err
+    assert "192.0.2.10" in captured.err
+    assert "Warning" in captured.err
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "::", "0:0:0:0:0:0:0:0"])
+def test_all_interfaces_binding_is_rejected(host: str) -> None:
+    with pytest.raises(ConfigurationError, match="specific LAN or Tailscale address"):
+        validate_web_binding_host(host)
+
+
+def test_specific_external_binding_is_allowed_with_warning(capsys) -> None:
+    assert not is_all_interfaces_host("192.0.2.10")
+
+    validate_web_binding_host("192.0.2.10")
+
+    captured = capsys.readouterr()
+    assert "192.0.2.10" in captured.err
     assert "Warning" in captured.err

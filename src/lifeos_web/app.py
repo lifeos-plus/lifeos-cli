@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import logging
 import math
 import os
+import re
 import time
 from collections import deque
+from collections.abc import Iterable
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -16,10 +19,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from lifeos_cli.config import ConfigurationError
 from lifeos_cli.db.services.validation_utils import DomainValidationError
 from lifeos_web.db_errors import is_lock_contention_error
 from lifeos_web.deps import LIFEOS_SESSION_STATE_KEY
@@ -55,6 +58,7 @@ DEFAULT_RATE_LIMIT_PER_MINUTE = 300
 ALLOWED_HOSTS_ENV = "LIFEOS_WEB_ALLOWED_HOSTS"
 MAX_BODY_BYTES_ENV = "LIFEOS_WEB_MAX_BODY_BYTES"
 RATE_LIMIT_PER_MINUTE_ENV = "LIFEOS_WEB_RATE_LIMIT_PER_MINUTE"
+HOST_LABEL_PATTERN = re.compile(r"^(?!-)[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?$")
 
 
 def _header_value(scope: Scope, name: bytes) -> str | None:
@@ -85,14 +89,97 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _host_header_name(value: str) -> str:
+    """Return the hostname from one Host header, including bracketed IPv6."""
+    host = value.strip().lower()
+    if not host:
+        return ""
+    if host.startswith("["):
+        closing_bracket = host.find("]")
+        if closing_bracket <= 1:
+            return ""
+        suffix = host[closing_bracket + 1 :]
+        if suffix and not (suffix.startswith(":") and suffix[1:].isdigit()):
+            return ""
+        candidate = host[1:closing_bracket]
+        try:
+            if ipaddress.ip_address(candidate).version != 6:
+                return ""
+        except ValueError:
+            return ""
+        return candidate
+    if host.count(":") == 1:
+        name, _separator, port = host.partition(":")
+        if port.isdigit():
+            return name
+    return host
+
+
+def _is_valid_allowed_host(value: str) -> bool:
+    """Return whether one configured host is a hostname, IP, or wildcard domain."""
+    candidate = value
+    if candidate.startswith("*."):
+        candidate = candidate[2:]
+    elif "*" in candidate:
+        return False
+    if not candidate:
+        return False
+    try:
+        ipaddress.ip_address(candidate)
+        return True
+    except ValueError:
+        pass
+    if len(candidate) > 253:
+        return False
+    return all(HOST_LABEL_PATTERN.fullmatch(label) for label in candidate.split("."))
+
+
+def _normalized_allowed_hosts(hosts: Iterable[str]) -> list[str]:
+    """Normalize and validate configured host names."""
+    normalized_hosts: set[str] = set()
+    for raw_host in hosts:
+        host = raw_host.strip().lower()
+        if _is_valid_allowed_host(host):
+            normalized_hosts.add(host)
+            continue
+        raise ConfigurationError(
+            f"Invalid allowed Web host {raw_host!r}. Use a hostname or IP address without a "
+            "scheme or port; the wildcard '*' is not supported."
+        )
+    return sorted(normalized_hosts)
+
+
 def _resolved_allowed_hosts() -> list[str]:
     """Return loopback hosts plus any comma-separated environment override."""
-    hosts = set(DEFAULT_ALLOWED_HOSTS)
+    hosts = list(DEFAULT_ALLOWED_HOSTS)
     for host in os.environ.get(ALLOWED_HOSTS_ENV, "").split(","):
         normalized = host.strip().lower()
         if normalized:
-            hosts.add(normalized)
-    return sorted(hosts)
+            hosts.append(normalized)
+    return _normalized_allowed_hosts(hosts)
+
+
+class HostValidationMiddleware:
+    """Reject requests whose Host header is not explicitly allowed."""
+
+    def __init__(self, app: ASGIApp, *, allowed_hosts: Iterable[str]) -> None:
+        self.app = app
+        self.allowed_hosts = tuple(allowed_hosts)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in {"http", "websocket"}:
+            await self.app(scope, receive, send)
+            return
+        host = _host_header_name(_header_value(scope, b"host") or "")
+        is_valid_host = any(
+            host == pattern or (pattern.startswith("*.") and host.endswith(pattern[1:]))
+            for pattern in self.allowed_hosts
+        )
+        if is_valid_host:
+            await self.app(scope, receive, send)
+            return
+        response = PlainTextResponse("Invalid host header", status_code=400)
+        await response(scope, receive, send)
 
 
 class OriginValidationMiddleware:
@@ -339,8 +426,11 @@ def create_app(
     allowed_hosts: list[str] | None = None,
 ) -> FastAPI:
     """Create the local LifeOS Web FastAPI application."""
-    resolved_hosts = _resolved_allowed_hosts() if allowed_hosts is None else allowed_hosts
-    resolved_hosts = [host.strip().lower() for host in resolved_hosts]
+    resolved_hosts = (
+        _resolved_allowed_hosts()
+        if allowed_hosts is None
+        else _normalized_allowed_hosts(allowed_hosts)
+    )
     max_body_bytes = _env_int(MAX_BODY_BYTES_ENV, DEFAULT_MAX_BODY_BYTES)
     rate_limit_per_minute = _env_int(
         RATE_LIMIT_PER_MINUTE_ENV,
@@ -356,7 +446,7 @@ def create_app(
         openapi_url=openapi_url,
     )
     app.add_exception_handler(DomainValidationError, _domain_validation_error_handler)
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=resolved_hosts)
+    app.add_middleware(HostValidationMiddleware, allowed_hosts=resolved_hosts)
     app.add_middleware(
         OriginValidationMiddleware,
         allowed_origins=DEFAULT_CORS_ORIGINS,

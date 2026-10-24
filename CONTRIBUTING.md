@@ -63,10 +63,10 @@ bash ./scripts/dependency_health.sh
 
 Dependency maintenance policy:
 
-- `.github/dependabot.yml` checks the root `uv` backend workspace weekly.
+- `.github/dependabot.yml` checks the root `uv` backend workspace and GitHub Actions weekly.
 - Backend dependency updates use the `backend` and `dependencies` labels.
 - Routine Dependabot version updates allow only semver minor updates. Patch updates are intentionally excluded from routine PRs, and major version migrations are explicit tasks with focused validation coverage.
-- Dependabot security updates remain eligible independently of the routine version-update policy.
+- Repository Dependabot security updates are enabled independently of the routine version-update policy.
 - `bash ./scripts/dependency_health.sh` remains the explicit maintainer audit flow for Python outdated packages and dependency-related health checks.
 - `bash ./scripts/doctor.sh` rejects known vulnerabilities in the locked project and every optional Python extra during PR and `main` validation.
 - Keep `sqlalchemy[asyncio]` declared with the extra: SQLAlchemy 2.1 moved `greenlet` behind `[asyncio]`, and every supported backend here runs the asyncio engine (`sqlite+aiosqlite`, `postgresql+psycopg`). A plain `sqlalchemy` requirement resolves to 2.1 without `greenlet` and breaks `lifeos web serve` on a fresh install.
