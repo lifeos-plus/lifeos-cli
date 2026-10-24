@@ -125,9 +125,8 @@ def test_web_serve_help_documents_specific_binding_policy(capsys) -> None:
 
     help_text = " ".join(capsys.readouterr().out.split())
 
-    assert "a specific LAN or Tailscale address is supported with a warning" in help_text
-    assert "Wildcard binding to 0.0.0.0 or :: is not supported" in help_text
-    assert "local-first" in help_text
+    assert "specific LAN or Tailscale addresses are supported with a warning" in help_text
+    assert "Wildcard addresses such as 0.0.0.0 or :: are not supported" in help_text
     assert "lifeos web serve --host <tailscale-ip> --port 8765" in help_text
 
 

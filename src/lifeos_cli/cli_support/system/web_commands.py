@@ -59,7 +59,6 @@ def build_web_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentPar
             notes=(
                 _("system.web_commands.use_vite_during_frontend_development"),
                 _("system.web_commands.api_requests_rate_limited_per_client"),
-                _("system.web_commands.non_loopback_binding_policy"),
             ),
         ),
     )
