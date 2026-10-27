@@ -136,6 +136,88 @@ def test_note_can_link_to_habit_action() -> None:
     asyncio.run(run())
 
 
+def test_list_notes_by_habit_aggregates_actions_and_deduplicates_links() -> None:
+    async def run() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                habit = Habit(
+                    title="Walk",
+                    start_date=date(2026, 7, 4),
+                    duration_days=3,
+                    status="active",
+                    status_changed_date=date(2026, 7, 4),
+                )
+                other_habit = Habit(
+                    title="Read",
+                    start_date=date(2026, 7, 4),
+                    duration_days=1,
+                    status="active",
+                    status_changed_date=date(2026, 7, 4),
+                )
+                session.add_all([habit, other_habit])
+                await session.flush()
+                first_action = HabitAction(
+                    habit_id=habit.id,
+                    action_date=date(2026, 7, 4),
+                )
+                second_action = HabitAction(
+                    habit_id=habit.id,
+                    action_date=date(2026, 7, 5),
+                )
+                other_action = HabitAction(
+                    habit_id=other_habit.id,
+                    action_date=date(2026, 7, 4),
+                )
+                deleted_action = HabitAction(
+                    habit_id=habit.id,
+                    action_date=date(2026, 7, 6),
+                )
+                session.add_all([first_action, second_action, other_action, deleted_action])
+                await session.flush()
+
+                shared_note = await notes.create_note(
+                    session,
+                    content="Shared habit reflection",
+                    habit_action_ids=[first_action.id, second_action.id],
+                )
+                first_action_note = await notes.create_note(
+                    session,
+                    content="First walk note",
+                    habit_action_ids=[first_action.id],
+                )
+                await notes.create_note(
+                    session,
+                    content="Other habit note",
+                    habit_action_ids=[other_action.id],
+                )
+                deleted_note = await notes.create_note(
+                    session,
+                    content="Deleted habit note",
+                    habit_action_ids=[first_action.id],
+                )
+                await notes.delete_note(session, note_id=deleted_note.id)
+                deleted_action_note = await notes.create_note(
+                    session,
+                    content="Note on deleted action",
+                    habit_action_ids=[deleted_action.id],
+                )
+                deleted_action.soft_delete()
+                await session.flush()
+
+                rows = await notes.list_notes(session, habit_id=habit.id)
+                total = await notes.count_notes(session, habit_id=habit.id)
+
+                assert {row.id for row in rows} == {
+                    shared_note.id,
+                    first_action_note.id,
+                }
+                assert total == 2
+                assert deleted_note.id not in {row.id for row in rows}
+                assert deleted_action_note.id not in {row.id for row in rows}
+
+    asyncio.run(run())
+
+
 def test_habit_action_notes_are_stored_as_linked_notes() -> None:
     async def run() -> None:
         async with sqlite_session_factory() as session_factory:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import date, timedelta
 from typing import Annotated
 from uuid import UUID
@@ -12,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from lifeos_cli.db.models.habit import Habit
 from lifeos_cli.db.services import habit_actions as habit_action_services
 from lifeos_cli.db.services import habits as habit_services
+from lifeos_cli.db.services import notes as note_services
 from lifeos_cli.db.services import planning_lifecycle as planning_lifecycle_services
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.habits import (
@@ -22,12 +24,14 @@ from lifeos_web.response_schemas.habits import (
     HabitActionWithHabitResponse,
     HabitAssociationsResponse,
     HabitListMeta,
+    HabitNoteListMeta,
     HabitOverviewResponse,
     HabitResponse,
 )
+from lifeos_web.response_schemas.notes import NoteResponse
 from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import HabitActionUpdate, HabitCreate, HabitUpdate, ListResponse, Pagination
-from lifeos_web.serialization import to_jsonable
+from lifeos_web.serialization import note_payload, to_jsonable
 
 router = APIRouter(prefix="/habits", tags=["habits"])
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
@@ -368,6 +372,41 @@ async def list_actions_for_habit(
             "days_before": days_before,
             "days_after": days_after,
         },
+    )
+
+
+@router.get(
+    "/{habit_id}/notes",
+    response_model=ListResponse[NoteResponse, HabitNoteListMeta],
+)
+async def list_notes_for_habit(
+    habit_id: UUID,
+    session: SessionDep,
+    page: Annotated[int, Query(ge=1)] = 1,
+    size: Annotated[int, Query(ge=1, le=500)] = 50,
+) -> ListResponse:
+    """List all active notes linked to an active habit through its actions."""
+    habit = await habit_services.get_habit(session, habit_id=habit_id)
+    if habit is None:
+        raise HTTPException(status_code=404, detail=f"Habit {habit_id} was not found")
+
+    offset = (page - 1) * size
+    notes = await note_services.list_notes(
+        session,
+        habit_id=habit_id,
+        limit=size,
+        offset=offset,
+    )
+    total = await note_services.count_notes(session, habit_id=habit_id)
+    return ListResponse(
+        items=[note_payload(note) for note in notes],
+        pagination=Pagination(
+            page=page,
+            size=size,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
+        ),
+        meta={"habit_id": str(habit_id)},
     )
 
 

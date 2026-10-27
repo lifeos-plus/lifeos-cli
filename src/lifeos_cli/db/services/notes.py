@@ -112,6 +112,7 @@ def _note_query(
     timelog_id: UUID | None = None,
     vision_id: UUID | None = None,
     habit_action_id: UUID | None = None,
+    habit_id: UUID | None = None,
 ) -> Select[Note]:
     stmt = select(Note)
     stmt = stmt.where(Note.deleted_at.is_(None))
@@ -174,6 +175,20 @@ def _note_query(
                 target_model="habit_action",
                 target_id=habit_action_id,
                 link_type="captured_from",
+            )
+        )
+    if habit_id is not None:
+        stmt = stmt.where(
+            exists(
+                select(1).where(
+                    Association.source_model == "note",
+                    Association.source_id == Note.id,
+                    Association.target_model == "habit_action",
+                    Association.target_id == HabitAction.id,
+                    Association.link_type == "captured_from",
+                    HabitAction.habit_id == habit_id,
+                    HabitAction.deleted_at.is_(None),
+                )
             )
         )
     return stmt
@@ -387,6 +402,7 @@ async def list_notes(
     timelog_id: UUID | None = None,
     vision_id: UUID | None = None,
     habit_action_id: UUID | None = None,
+    habit_id: UUID | None = None,
     limit: int = 100,
     offset: int = 0,
 ) -> list[NoteView]:
@@ -400,12 +416,40 @@ async def list_notes(
             timelog_id=timelog_id,
             vision_id=vision_id,
             habit_action_id=habit_action_id,
+            habit_id=habit_id,
         )
         .order_by(Note.created_at.desc(), Note.id.desc())
         .offset(offset)
         .limit(limit)
     )
     return await _build_note_views(session, list((await session.execute(stmt)).scalars()))
+
+
+async def count_notes(
+    session: AsyncSession,
+    *,
+    tag_id: UUID | None = None,
+    event_id: UUID | None = None,
+    person_id: UUID | None = None,
+    task_id: UUID | None = None,
+    timelog_id: UUID | None = None,
+    vision_id: UUID | None = None,
+    habit_action_id: UUID | None = None,
+    habit_id: UUID | None = None,
+) -> int:
+    """Count notes matching the supported association filters."""
+    notes_query = _note_query(
+        tag_id=tag_id,
+        event_id=event_id,
+        person_id=person_id,
+        task_id=task_id,
+        timelog_id=timelog_id,
+        vision_id=vision_id,
+        habit_action_id=habit_action_id,
+        habit_id=habit_id,
+    )
+    count_stmt = select(func.count()).select_from(notes_query.subquery())
+    return int((await session.execute(count_stmt)).scalar_one())
 
 
 async def count_note_usage_by_person(session: AsyncSession) -> list[NotePersonUsage]:

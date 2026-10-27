@@ -83,3 +83,7 @@ class HabitActionListMeta(ResponseModel):
     center_date: str | None
     days_before: int | None
     days_after: int | None
+
+
+class HabitNoteListMeta(ResponseModel):
+    habit_id: str

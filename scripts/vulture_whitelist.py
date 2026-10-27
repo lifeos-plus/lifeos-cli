@@ -32,6 +32,7 @@ _keep(
     _allow_postgres_url_logic_tests_without_driver,
     list_actions_by_date,
     list_actions_for_habit,
+    list_notes_for_habit,
     get_habit_task_associations,
     list_areas,
     list_assets,

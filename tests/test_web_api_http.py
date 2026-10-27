@@ -753,6 +753,86 @@ def test_habit_action_list_and_update(http_client) -> None:
     }
 
 
+def test_habit_notes_aggregate_all_actions_and_deduplicate(http_client) -> None:
+    habit_id = http_client.post(
+        "/api/v1/habits/",
+        json={
+            "title": "HTTP habit notes",
+            "start_date": "2026-08-01",
+            "duration_days": 30,
+            "cadence_frequency": "daily",
+            "target_per_cycle": 1,
+        },
+    ).json()["id"]
+    other_habit_id = http_client.post(
+        "/api/v1/habits/",
+        json={
+            "title": "Other HTTP habit notes",
+            "start_date": "2026-08-01",
+            "duration_days": 30,
+            "cadence_frequency": "daily",
+            "target_per_cycle": 1,
+        },
+    ).json()["id"]
+    actions = http_client.get(
+        f"/api/v1/habits/{habit_id}/actions",
+        params={"start_date": "2026-08-10", "end_date": "2026-08-11"},
+    ).json()["items"]
+    other_action = http_client.get(
+        f"/api/v1/habits/{other_habit_id}/actions",
+        params={"start_date": "2026-08-10", "end_date": "2026-08-10"},
+    ).json()["items"][0]
+
+    shared_note_id = http_client.post(
+        "/api/v1/notes/",
+        json={
+            "content": "Shared note across two actions",
+            "habit_action_ids": [action["id"] for action in actions],
+        },
+    ).json()["id"]
+    single_note_id = http_client.post(
+        "/api/v1/notes/",
+        json={
+            "content": "Single action note",
+            "habit_action_ids": [actions[0]["id"]],
+        },
+    ).json()["id"]
+    http_client.post(
+        "/api/v1/notes/",
+        json={
+            "content": "Other habit note",
+            "habit_action_ids": [other_action["id"]],
+        },
+    )
+
+    response = http_client.get(
+        f"/api/v1/habits/{habit_id}/notes",
+        params={"page": 1, "size": 1},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["pagination"] == {
+        "page": 1,
+        "size": 1,
+        "total": 2,
+        "pages": 2,
+    }
+    assert payload["meta"] == {"habit_id": habit_id}
+
+    second_page = http_client.get(
+        f"/api/v1/habits/{habit_id}/notes",
+        params={"page": 2, "size": 1},
+    )
+    assert second_page.status_code == 200
+    assert {item["id"] for item in payload["items"]} | {
+        item["id"] for item in second_page.json()["items"]
+    } == {shared_note_id, single_note_id}
+
+    missing = http_client.get(f"/api/v1/habits/{uuid.uuid4()}/notes")
+    assert missing.status_code == 404
+
+
 def test_habit_area_association_round_trip(http_client) -> None:
     area_response = http_client.post(
         "/api/v1/areas/",

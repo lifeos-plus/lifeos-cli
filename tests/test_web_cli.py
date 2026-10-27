@@ -3072,7 +3072,7 @@ def test_web_note_create_maps_selector_associations_to_lifeos_note_service(
 
 
 def test_web_note_payload_exposes_primary_task_for_notes_page() -> None:
-    from lifeos_web.routers.notes import _note_payload
+    from lifeos_web.serialization import note_payload
 
     task = TaskSummaryView(
         id=UUID("33333333-3333-3333-3333-333333333333"),
@@ -3109,7 +3109,7 @@ def test_web_note_payload_exposes_primary_task_for_notes_page() -> None:
         ),
     )
 
-    payload = _note_payload(note)
+    payload = note_payload(note)
 
     assert payload["tasks"] == [
         {
@@ -3158,7 +3158,7 @@ def test_web_note_payload_exposes_primary_task_for_notes_page() -> None:
 
 def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
     from lifeos_web.response_schemas.notes import NoteResponse
-    from lifeos_web.routers.notes import _note_payload
+    from lifeos_web.serialization import note_payload
 
     task = TaskSummaryView(
         id=UUID("33333333-3333-3333-3333-333333333333"),
@@ -3181,7 +3181,7 @@ def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
         tasks=(task,),
     )
 
-    payload = _note_payload(note)
+    payload = note_payload(note)
 
     assert payload["task"] == {
         "id": str(task.id),
@@ -3208,7 +3208,7 @@ def test_web_note_payload_includes_tooltip_task_summary_fields() -> None:
 
 
 def test_web_note_payload_uses_null_primary_task_without_association() -> None:
-    from lifeos_web.routers.notes import _note_payload
+    from lifeos_web.serialization import note_payload
 
     note = NoteView(
         id=UUID("55555555-5555-5555-5555-555555555555"),
@@ -3218,7 +3218,7 @@ def test_web_note_payload_uses_null_primary_task_without_association() -> None:
         deleted_at=None,
     )
 
-    payload = _note_payload(note)
+    payload = note_payload(note)
 
     assert payload["tasks"] == []
     assert payload["task"] is None
