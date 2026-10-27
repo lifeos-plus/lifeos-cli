@@ -143,7 +143,7 @@ def test_list_notes_by_habit_aggregates_actions_and_deduplicates_links() -> None
                 habit = Habit(
                     title="Walk",
                     start_date=date(2026, 7, 4),
-                    duration_days=2,
+                    duration_days=3,
                     status="active",
                     status_changed_date=date(2026, 7, 4),
                 )
@@ -168,7 +168,11 @@ def test_list_notes_by_habit_aggregates_actions_and_deduplicates_links() -> None
                     habit_id=other_habit.id,
                     action_date=date(2026, 7, 4),
                 )
-                session.add_all([first_action, second_action, other_action])
+                deleted_action = HabitAction(
+                    habit_id=habit.id,
+                    action_date=date(2026, 7, 6),
+                )
+                session.add_all([first_action, second_action, other_action, deleted_action])
                 await session.flush()
 
                 shared_note = await notes.create_note(
@@ -186,6 +190,19 @@ def test_list_notes_by_habit_aggregates_actions_and_deduplicates_links() -> None
                     content="Other habit note",
                     habit_action_ids=[other_action.id],
                 )
+                deleted_note = await notes.create_note(
+                    session,
+                    content="Deleted habit note",
+                    habit_action_ids=[first_action.id],
+                )
+                await notes.delete_note(session, note_id=deleted_note.id)
+                deleted_action_note = await notes.create_note(
+                    session,
+                    content="Note on deleted action",
+                    habit_action_ids=[deleted_action.id],
+                )
+                deleted_action.soft_delete()
+                await session.flush()
 
                 rows = await notes.list_notes(session, habit_id=habit.id)
                 total = await notes.count_notes(session, habit_id=habit.id)
@@ -195,6 +212,8 @@ def test_list_notes_by_habit_aggregates_actions_and_deduplicates_links() -> None
                     first_action_note.id,
                 }
                 assert total == 2
+                assert deleted_note.id not in {row.id for row in rows}
+                assert deleted_action_note.id not in {row.id for row in rows}
 
     asyncio.run(run())
 
