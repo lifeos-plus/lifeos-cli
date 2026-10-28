@@ -27,6 +27,7 @@ from lifeos_web.response_schemas.habits import (
     HabitNoteListMeta,
     HabitOverviewResponse,
     HabitResponse,
+    HabitStatsResponse,
 )
 from lifeos_web.response_schemas.notes import NoteResponse
 from lifeos_web.router_utils import soft_delete
@@ -152,6 +153,11 @@ async def list_habit_overviews(
     area_id: UUID | None = None,
 ) -> ListResponse:
     """List habits with derived statistics."""
+    total = await habit_services.count_habits(
+        session,
+        status=status_filter,
+        area_id=area_id,
+    )
     overviews = await habit_services.list_habit_overviews(
         session,
         status=status_filter,
@@ -162,7 +168,12 @@ async def list_habit_overviews(
     items = [_habit_overview_payload(overview) for overview in overviews]
     return ListResponse(
         items=items,
-        pagination=Pagination(page=page, size=size, total=len(items), pages=1 if items else 0),
+        pagination=Pagination(
+            page=page,
+            size=size,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
+        ),
         meta={"status_filter": status_filter, "area_id": str(area_id) if area_id else None},
     )
 
@@ -188,6 +199,16 @@ async def get_habit_overview(habit_id: UUID, session: SessionDep) -> dict[str, o
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return _habit_overview_payload(overview)
+
+
+@router.get("/{habit_id}/stats", response_model=HabitStatsResponse)
+async def get_habit_stats(habit_id: UUID, session: SessionDep) -> dict[str, object]:
+    """Load derived statistics for one habit."""
+    try:
+        stats = await habit_services.get_habit_stats(session, habit_id=habit_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _habit_stats_payload(stats)
 
 
 @router.post("/", response_model=HabitResponse)
