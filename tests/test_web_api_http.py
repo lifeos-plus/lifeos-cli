@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -880,6 +881,54 @@ def test_habit_area_association_round_trip(http_client) -> None:
     )
     assert clear_response.status_code == 200
     assert clear_response.json()["area_id"] is None
+
+
+def test_habit_overviews_return_derived_stats(http_client) -> None:
+    today = datetime.now(UTC).date()
+    start_date = today - timedelta(days=2)
+    create_response = http_client.post(
+        "/api/v1/habits/",
+        json={
+            "title": "Derived stats habit",
+            "start_date": start_date.isoformat(),
+            "duration_days": 3,
+            "cadence_frequency": "daily",
+            "target_per_cycle": 1,
+        },
+    )
+    assert create_response.status_code == 200
+    habit_id = create_response.json()["id"]
+
+    for offset, status in enumerate(("done", "miss", "done")):
+        action_response = http_client.patch(
+            f"/api/v1/habits/{habit_id}/actions/by-date/{start_date + timedelta(days=offset)}",
+            json={"status": status},
+        )
+        assert action_response.status_code == 200
+
+    expected_stats = {
+        "habit_id": habit_id,
+        "total_actions": 3,
+        "completed_actions": 2,
+        "missed_actions": 1,
+        "skipped_actions": 0,
+        "progress_percentage": pytest.approx(200 / 3),
+        "current_streak": 1,
+        "longest_streak": 1,
+    }
+    overview_response = http_client.get(f"/api/v1/habits/{habit_id}/overview")
+    assert overview_response.status_code == 200
+    assert overview_response.json()["stats"] == expected_stats
+
+    list_response = http_client.get(
+        "/api/v1/habits/overviews",
+        params={"status_filter": "active"},
+    )
+    assert list_response.status_code == 200
+    overview = next(
+        item for item in list_response.json()["items"] if item["habit"]["id"] == habit_id
+    )
+    assert overview["stats"] == expected_stats
 
 
 def test_task_status_cascade_applies_done_to_open_subtasks(http_client) -> None:
