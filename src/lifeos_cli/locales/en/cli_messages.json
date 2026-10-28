@@ -475,6 +475,7 @@
         "search_query_string": "Search query string",
         "search_uses_case_insensitive_token_matching_each_token_is_checked_against_note_content": "Search uses case-insensitive token matching. Each token is checked against note content, and any match keeps the note in the result set.",
         "show_full_note_content": "Show full note content",
+        "show_only_notes_without_tags": "Show only notes without active tags",
         "show_single_note_with_full_metadata_and_original_content_body": "Show a single note with full metadata and the original content body.",
         "text_to_find_in_each_target_note": "Text to find in each target note",
         "this_is_first_batch_editing_primitive_for_notes_and_provides_base_shape": "This is the first batch-editing primitive for notes and provides a base shape for future bulk operations.",

@@ -106,6 +106,7 @@ def _association_exists_clause(
 def _note_query(
     *,
     tag_id: UUID | None = None,
+    untagged: bool = False,
     event_id: UUID | None = None,
     person_id: UUID | None = None,
     task_id: UUID | None = None,
@@ -116,6 +117,17 @@ def _note_query(
 ) -> Select[Note]:
     stmt = select(Note)
     stmt = stmt.where(Note.deleted_at.is_(None))
+    if untagged:
+        stmt = stmt.where(
+            ~exists(
+                select(1).where(
+                    tag_associations.c.entity_type == "note",
+                    tag_associations.c.entity_id == Note.id,
+                    Tag.id == tag_associations.c.tag_id,
+                    Tag.deleted_at.is_(None),
+                )
+            )
+        )
     if tag_id is not None:
         stmt = stmt.where(
             exists(
@@ -396,6 +408,7 @@ async def list_notes(
     session: AsyncSession,
     *,
     tag_id: UUID | None = None,
+    untagged: bool = False,
     event_id: UUID | None = None,
     person_id: UUID | None = None,
     task_id: UUID | None = None,
@@ -410,6 +423,7 @@ async def list_notes(
     stmt = (
         _note_query(
             tag_id=tag_id,
+            untagged=untagged,
             event_id=event_id,
             person_id=person_id,
             task_id=task_id,
@@ -429,6 +443,7 @@ async def count_notes(
     session: AsyncSession,
     *,
     tag_id: UUID | None = None,
+    untagged: bool = False,
     event_id: UUID | None = None,
     person_id: UUID | None = None,
     task_id: UUID | None = None,
@@ -440,6 +455,7 @@ async def count_notes(
     """Count notes matching the supported association filters."""
     notes_query = _note_query(
         tag_id=tag_id,
+        untagged=untagged,
         event_id=event_id,
         person_id=person_id,
         task_id=task_id,
@@ -492,6 +508,7 @@ async def search_notes(
     *,
     query: str,
     tag_id: UUID | None = None,
+    untagged: bool = False,
     event_id: UUID | None = None,
     person_id: UUID | None = None,
     task_id: UUID | None = None,
@@ -505,6 +522,7 @@ async def search_notes(
     tokens = _tokenize_search_query(query)
     stmt = _note_query(
         tag_id=tag_id,
+        untagged=untagged,
         event_id=event_id,
         person_id=person_id,
         task_id=task_id,
@@ -516,6 +534,37 @@ async def search_notes(
         stmt = stmt.where(or_(*[Note.content.ilike(f"%{token}%") for token in tokens]))
     stmt = stmt.order_by(Note.created_at.desc(), Note.id.desc()).offset(offset).limit(limit)
     return await _build_note_views(session, list((await session.execute(stmt)).scalars()))
+
+
+async def count_search_notes(
+    session: AsyncSession,
+    *,
+    query: str,
+    tag_id: UUID | None = None,
+    untagged: bool = False,
+    event_id: UUID | None = None,
+    person_id: UUID | None = None,
+    task_id: UUID | None = None,
+    timelog_id: UUID | None = None,
+    vision_id: UUID | None = None,
+    habit_action_id: UUID | None = None,
+) -> int:
+    """Count notes matching the same filters and tokens as ``search_notes``."""
+    tokens = _tokenize_search_query(query)
+    stmt = _note_query(
+        tag_id=tag_id,
+        untagged=untagged,
+        event_id=event_id,
+        person_id=person_id,
+        task_id=task_id,
+        timelog_id=timelog_id,
+        vision_id=vision_id,
+        habit_action_id=habit_action_id,
+    )
+    if tokens:
+        stmt = stmt.where(or_(*[Note.content.ilike(f"%{token}%") for token in tokens]))
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    return int((await session.execute(count_stmt)).scalar_one())
 
 
 async def update_note(

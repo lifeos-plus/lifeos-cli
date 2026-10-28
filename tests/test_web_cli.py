@@ -2183,14 +2183,16 @@ def test_web_habit_actions_by_date_uses_lifecycle_aware_action_query(
 
     captured: dict[str, object] = {}
 
-    async def fake_list_habit_actions(_session: object, **kwargs: object) -> list[object]:
+    async def fake_list_habit_actions_with_total(
+        _session: object, **kwargs: object
+    ) -> tuple[list[object], int]:
         captured.update(kwargs)
-        return []
+        return [], 0
 
     monkeypatch.setattr(
         habits.habit_action_services,
-        "list_habit_actions",
-        fake_list_habit_actions,
+        "list_habit_actions_with_total",
+        fake_list_habit_actions_with_total,
     )
 
     response = asyncio.run(
@@ -2274,14 +2276,16 @@ def test_web_habit_actions_for_habit_uses_center_window(
 
     captured: dict[str, object] = {}
 
-    async def fake_list_habit_actions(_session: object, **kwargs: object) -> list[object]:
+    async def fake_list_habit_actions_with_total(
+        _session: object, **kwargs: object
+    ) -> tuple[list[object], int]:
         captured.update(kwargs)
-        return []
+        return [], 0
 
     monkeypatch.setattr(
         habits.habit_action_services,
-        "list_habit_actions",
-        fake_list_habit_actions,
+        "list_habit_actions_with_total",
+        fake_list_habit_actions_with_total,
     )
 
     response = asyncio.run(
@@ -2561,6 +2565,12 @@ def test_web_tag_list_selector_payload_excludes_unconsumed_fields(
         return [tag]
 
     monkeypatch.setattr(tags.tag_services, "list_tags", fake_list_tags)
+
+    async def fake_count_tags(_session: object, **kwargs: object) -> int:
+        assert kwargs["entity_type"] == "note"
+        return 1
+
+    monkeypatch.setattr(tags.tag_services, "count_tags", fake_count_tags)
 
     response = asyncio.run(
         tags.list_tags(

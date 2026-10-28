@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -811,6 +811,64 @@ async def list_event_occurrences(
     return sorted(occurrences, key=lambda item: (item.start_time, item.id))
 
 
+async def list_events_with_total(
+    session: AsyncSession,
+    *,
+    query: EventListInput,
+) -> tuple[list[EventOccurrence | EventView], int]:
+    """List one event page and the total matching records or occurrences."""
+    resolved_filters = _resolve_event_list_filters(query.filters)
+    if resolved_filters.date_values:
+        items = await _list_events_for_discrete_dates(
+            session,
+            filters=resolved_filters,
+            offset=0,
+            limit=2**31 - 1,
+        )
+        return items[query.offset : query.offset + query.limit], len(items)
+    window_start = resolved_filters.window_start
+    window_end = resolved_filters.window_end
+
+    if window_start is not None and window_end is not None:
+        occurrences = await list_event_occurrences(
+            session,
+            query=EventOccurrenceQuery(
+                window_start=window_start,
+                window_end=window_end,
+                filters=resolved_filters,
+            ),
+        )
+        return (
+            list(occurrences[query.offset : query.offset + query.limit]),
+            len(occurrences),
+        )
+
+    count_stmt = select(func.count()).select_from(Event).where(Event.deleted_at.is_(None))
+    count_stmt = _apply_event_query_filters(count_stmt, filters=resolved_filters)
+    if window_start is not None:
+        count_stmt = count_stmt.where(or_(Event.end_time.is_(None), Event.end_time >= window_start))
+    if window_end is not None:
+        count_stmt = count_stmt.where(Event.start_time <= window_end)
+    total = int((await session.execute(count_stmt)).scalar_one())
+    stmt = select(Event).options(
+        selectinload(Event.area.and_(Area.deleted_at.is_(None))),
+        selectinload(Event.task.and_(Task.deleted_at.is_(None))),
+    )
+    stmt = stmt.where(Event.deleted_at.is_(None))
+    stmt = _apply_event_query_filters(stmt, filters=resolved_filters)
+    if window_start is not None:
+        stmt = stmt.where(or_(Event.end_time.is_(None), Event.end_time >= window_start))
+    if window_end is not None:
+        stmt = stmt.where(Event.start_time <= window_end)
+    stmt = (
+        stmt.order_by(Event.start_time.desc(), Event.id.desc())
+        .offset(query.offset)
+        .limit(query.limit)
+    )
+    events: list[Event] = list((await session.execute(stmt)).scalars())
+    return list(await _build_event_views(session, events)), total
+
+
 async def list_events(
     session: AsyncSession,
     *,
@@ -827,7 +885,6 @@ async def list_events(
         )
     window_start = resolved_filters.window_start
     window_end = resolved_filters.window_end
-
     if window_start is not None and window_end is not None:
         occurrences = await list_event_occurrences(
             session,

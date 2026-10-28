@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import Text, cast, or_, select
+from sqlalchemy import Text, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.models.person import Person
@@ -134,6 +134,33 @@ async def list_person(
     stmt = stmt.order_by(Person.created_at.desc(), Person.id.desc()).offset(offset).limit(limit)
     person_records = list((await session.execute(stmt)).scalars())
     return await _build_person_views(session, person_records)
+
+
+async def count_person(
+    session: AsyncSession,
+    *,
+    search: str | None = None,
+    tag_id: UUID | None = None,
+) -> int:
+    """Count people with the same filters as ``list_person``."""
+    stmt = select(func.count(func.distinct(Person.id))).select_from(Person)
+    stmt = stmt.where(Person.deleted_at.is_(None))
+    if search:
+        pattern = f"%{search.strip()}%"
+        stmt = stmt.where(
+            or_(
+                Person.name.ilike(pattern),
+                cast(Person.nicknames, Text).ilike(pattern),
+                Person.location.ilike(pattern),
+            )
+        )
+    if tag_id is not None:
+        stmt = stmt.join(
+            tag_associations,
+            (tag_associations.c.entity_id == Person.id)
+            & (tag_associations.c.entity_type == "person"),
+        ).where(tag_associations.c.tag_id == tag_id)
+    return int((await session.execute(stmt)).scalar_one())
 
 
 async def update_person(

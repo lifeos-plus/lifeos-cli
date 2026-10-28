@@ -13,14 +13,12 @@ class PersonResponse(ResponseModel):
     birth_date: str | None
     location: str | None
     tags: list[TagSummaryResponse]
-    anniversaries: list["AnniversaryResponse"]
     display_name: str
     primary_nickname: str
 
 
 class PersonListMeta(ResponseModel):
     search: str | None
-    tag_filter: str | None
     tag_id: str | None
 
 
@@ -42,16 +40,3 @@ class PersonActivityMeta(ResponseModel):
     activity_type: str | None
     timelog_count: int | None = None
     timelog_total_minutes: int | None = None
-
-
-class AnniversaryResponse(ResponseModel):
-    id: str
-    person_id: str
-    name: str
-    date: str
-    created_at: str
-    updated_at: str
-
-
-class AnniversaryListMeta(ResponseModel):
-    person_id: str

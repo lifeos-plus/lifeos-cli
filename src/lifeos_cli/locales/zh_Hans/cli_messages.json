@@ -475,6 +475,7 @@
         "search_query_string": "搜索查询字符串",
         "search_uses_case_insensitive_token_matching_each_token_is_checked_against_note_content": "搜索使用不区分大小写的 token 匹配。每个 token 都会检查 `note` 内容，只要任一 token 命中，该 `note` 就会保留在结果中。",
         "show_full_note_content": "显示完整 `note` 内容",
+        "show_only_notes_without_tags": "仅显示没有活动 `tag` 的 `note`",
         "show_single_note_with_full_metadata_and_original_content_body": "显示包含完整元数据和原始内容正文的单个 `note`。",
         "text_to_find_in_each_target_note": "在每个目标 `note` 中查找的文本",
         "this_is_first_batch_editing_primitive_for_notes_and_provides_base_shape": "这是第一个面向 `note` 的批量编辑原语，并为后续批量操作提供基础形状。",

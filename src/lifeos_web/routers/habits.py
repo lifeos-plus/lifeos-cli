@@ -133,10 +133,20 @@ async def list_habits(
         limit=size,
         offset=(page - 1) * size,
     )
+    total = await habit_services.count_habits(
+        session,
+        status=status_filter,
+        area_id=area_id,
+    )
     items = [_habit_model_payload(row) for row in rows]
     return ListResponse(
         items=items,
-        pagination=Pagination(page=page, size=size, total=len(items), pages=1 if items else 0),
+        pagination=Pagination(
+            page=page,
+            size=size,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
+        ),
         meta={"status_filter": status_filter, "area_id": str(area_id) if area_id else None},
     )
 
@@ -293,17 +303,24 @@ async def delete_habit(habit_id: UUID, session: SessionDep) -> None:
 async def list_actions_by_date(
     action_date: date,
     session: SessionDep,
+    page: Annotated[int, Query(ge=1)] = 1,
 ) -> ListResponse:
     """List materialized habit actions for one local date."""
-    actions = await habit_action_services.list_habit_actions(
+    actions, total = await habit_action_services.list_habit_actions_with_total(
         session,
         date_values=(action_date,),
         limit=500,
+        offset=(page - 1) * 500,
     )
     items = [await _action_with_habit_summary(session, action) for action in actions]
     return ListResponse(
         items=items,
-        pagination=Pagination(page=1, size=500, total=len(items), pages=1 if items else 0),
+        pagination=Pagination(
+            page=page,
+            size=500,
+            total=total,
+            pages=math.ceil(total / 500) if total else 0,
+        ),
         meta={"action_date": action_date.isoformat()},
     )
 
@@ -366,6 +383,7 @@ async def list_actions_for_habit(
     center_date: Annotated[date | None, Query()] = None,
     days_before: Annotated[int | None, Query(ge=0, le=500)] = None,
     days_after: Annotated[int | None, Query(ge=0, le=500)] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> ListResponse:
     """List materialized/scheduled actions for one habit."""
@@ -376,20 +394,26 @@ async def list_actions_for_habit(
         effective_end_date = center_date + timedelta(days=days_after or 0)
 
     try:
-        actions = await habit_action_services.list_habit_actions(
+        actions, total = await habit_action_services.list_habit_actions_with_total(
             session,
             habit_id=habit_id,
             status=status_filter,
             start_date=effective_start_date,
             end_date=effective_end_date,
             limit=size,
+            offset=(page - 1) * size,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     items = [_habit_action_payload(action) for action in actions]
     return ListResponse(
         items=items,
-        pagination=Pagination(page=1, size=size, total=len(items), pages=1 if items else 0),
+        pagination=Pagination(
+            page=page,
+            size=size,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
+        ),
         meta={
             "status_filter": status_filter,
             "center_date": center_date.isoformat() if center_date else None,
@@ -442,13 +466,13 @@ async def update_action(
     session: SessionDep,
 ) -> dict[str, object]:
     """Update one habit action."""
-    del habit_id
     fields = payload.model_fields_set
     clear_notes = "notes" in fields and payload.notes is None
     try:
         action = await habit_action_services.update_habit_action(
             session,
             action_id=action_id,
+            habit_id=habit_id,
             status=payload.status,
             notes=payload.notes,
             clear_notes=clear_notes,

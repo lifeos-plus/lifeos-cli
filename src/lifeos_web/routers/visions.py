@@ -65,14 +65,15 @@ async def list_visions(
         limit=size,
         offset=(page - 1) * size,
     )
+    total = await vision_services.count_visions(session, status=status_filter)
     items = [_vision_payload(row) for row in rows]
     return ListResponse(
         items=items,
         pagination=Pagination(
             page=page,
             size=size,
-            total=len(items),
-            pages=math.ceil(len(items) / size) if size > 0 else 0,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
         ),
         meta={"status_filter": status_filter},
     )

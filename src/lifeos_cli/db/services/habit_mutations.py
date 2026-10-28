@@ -275,13 +275,14 @@ async def update_habit_action(
     session: AsyncSession,
     *,
     action_id: UUID,
+    habit_id: UUID | None = None,
     status: str | None = None,
     notes: str | None = None,
     clear_notes: bool = False,
 ) -> HabitActionView:
     """Update one habit action within the editable window."""
     action = await get_habit_action_model(session, action_id=action_id)
-    if action is None:
+    if action is None or (habit_id is not None and action.habit_id != habit_id):
         raise HabitActionNotFoundError(f"Habit action {action_id} was not found")
     today = get_operational_date()
     if action.action_date > today or (today - action.action_date).days > HABIT_EDITABLE_DAYS:

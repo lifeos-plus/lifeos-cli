@@ -168,9 +168,9 @@
 │   ├── delete  —  Delete a note
 │   │       args: note_ids [required]
 │   ├── list  —  List notes
-│   │       args: --tag-id; --event-id; --person-id; --task-id; --timelog-id; --vision-id; --habit-action-id; --with-counts; --limit; --offset; --json
+│   │       args: --tag-id; --untagged; --event-id; --person-id; --task-id; --timelog-id; --vision-id; --habit-action-id; --with-counts; --limit; --offset; --json
 │   ├── search  —  Search notes
-│   │       args: query [required]; --tag-id; --event-id; --person-id; --task-id; --timelog-id; --vision-id; --habit-action-id; --with-counts; --limit; --offset; --json
+│   │       args: query [required]; --tag-id; --untagged; --event-id; --person-id; --task-id; --timelog-id; --vision-id; --habit-action-id; --with-counts; --limit; --offset; --json
 │   ├── show  —  Show full note content
 │   │       args: note_id [required]; --json
 │   └── update  —  Update a note

@@ -34,6 +34,7 @@ class NoteResponse(ResponseModel):
 
 class NoteListMeta(ResponseModel):
     keyword: str | None
+    untagged: bool
     tag_id: str | None
     person_id: str | None
     task_id: str | None

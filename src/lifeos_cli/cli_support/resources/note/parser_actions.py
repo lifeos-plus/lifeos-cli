@@ -159,6 +159,7 @@ def build_note_list_parser(
                 "lifeos note list --event-id <event-id>",
                 "lifeos note list --timelog-id <timelog-id>",
                 "lifeos note list --habit-action-id <habit-action-id>",
+                "lifeos note list --untagged",
                 "lifeos note list --limit 20 --offset 20",
             ),
             notes=(
@@ -170,6 +171,11 @@ def build_note_list_parser(
         ),
     )
     list_parser.add_argument("--tag-id", type=UUID, help=_("common.messages.filter_by_linked_tag"))
+    list_parser.add_argument(
+        "--untagged",
+        action="store_true",
+        help=_("resources.note.parser_actions.show_only_notes_without_tags"),
+    )
     list_parser.add_argument(
         "--event-id", type=UUID, help=_("resources.note.parser_actions.filter_by_linked_event")
     )
@@ -220,6 +226,7 @@ def build_note_search_parser(
                 'lifeos note search "review" --task-id <task-id>',
                 'lifeos note search "partner sync" --event-id <event-id>',
                 'lifeos note search "completed" --habit-action-id <habit-action-id>',
+                'lifeos note search "idea" --untagged',
                 'lifeos note search "budget q2" --limit 20',
                 'lifeos note search "archived idea"',
             ),
@@ -239,6 +246,11 @@ def build_note_search_parser(
     search_parser.add_argument("query", help=_("resources.note.parser_actions.search_query_string"))
     search_parser.add_argument(
         "--tag-id", type=UUID, help=_("common.messages.filter_by_linked_tag")
+    )
+    search_parser.add_argument(
+        "--untagged",
+        action="store_true",
+        help=_("resources.note.parser_actions.show_only_notes_without_tags"),
     )
     search_parser.add_argument(
         "--event-id", type=UUID, help=_("resources.note.parser_actions.filter_by_linked_event")

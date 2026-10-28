@@ -197,6 +197,30 @@ async def list_tags(
     return await _build_tag_views(session, tags, include_person=include_person)
 
 
+async def count_tags(
+    session: AsyncSession,
+    *,
+    entity_type: str | None = None,
+    category: str | None = None,
+    person_id: UUID | None = None,
+) -> int:
+    """Count tags with the same filters as ``list_tags``."""
+    stmt = select(func.count(func.distinct(Tag.id))).select_from(Tag)
+    stmt = stmt.where(Tag.deleted_at.is_(None))
+    if entity_type is not None:
+        stmt = stmt.where(Tag.entity_type == validate_tag_entity_type(entity_type))
+    if category is not None:
+        stmt = stmt.where(Tag.category == normalize_tag_category(category))
+    if person_id is not None:
+        stmt = stmt.join(
+            Association,
+            (Association.source_model == "tag")
+            & (Association.source_id == Tag.id)
+            & (Association.target_model == "person"),
+        ).where(Association.target_id == person_id)
+    return int((await session.execute(stmt)).scalar_one())
+
+
 async def list_tag_categories(
     session: AsyncSession,
     *,
