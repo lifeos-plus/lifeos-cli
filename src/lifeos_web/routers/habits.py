@@ -27,7 +27,6 @@ from lifeos_web.response_schemas.habits import (
     HabitNoteListMeta,
     HabitOverviewResponse,
     HabitResponse,
-    HabitStatsResponse,
 )
 from lifeos_web.response_schemas.notes import NoteResponse
 from lifeos_web.router_utils import soft_delete
@@ -209,16 +208,6 @@ async def get_habit_overview(habit_id: UUID, session: SessionDep) -> dict[str, o
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return _habit_overview_payload(overview)
-
-
-@router.get("/{habit_id}/stats", response_model=HabitStatsResponse)
-async def get_habit_stats(habit_id: UUID, session: SessionDep) -> dict[str, object]:
-    """Load derived statistics for one habit."""
-    try:
-        stats = await habit_services.get_habit_stats(session, habit_id=habit_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return _habit_stats_payload(stats)
 
 
 @router.post("/", response_model=HabitResponse)

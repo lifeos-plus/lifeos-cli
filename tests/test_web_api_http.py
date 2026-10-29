@@ -1039,13 +1039,6 @@ def test_habit_overviews_return_derived_stats(http_client) -> None:
     assert overview_response.status_code == 200
     assert overview_response.json()["stats"] == expected_stats
 
-    stats_response = http_client.get(f"/api/v1/habits/{habit_id}/stats")
-    assert stats_response.status_code == 200
-    assert stats_response.json() == expected_stats
-
-    missing_stats_response = http_client.get(f"/api/v1/habits/{uuid.uuid4()}/stats")
-    assert missing_stats_response.status_code == 404
-
     list_response = http_client.get(
         "/api/v1/habits/overviews",
         params={"status_filter": "active"},
