@@ -85,9 +85,12 @@ async def handle_note_add_async(args: argparse.Namespace) -> int:
 
 async def handle_note_list_async(args: argparse.Namespace) -> int:
     """List notes."""
+    if args.untagged and args.tag_id is not None:
+        raise ConfigurationError("--untagged cannot be combined with --tag-id.")
     async with db_session.session_scope() as session:
         if (
             args.tag_id is None
+            and not args.untagged
             and args.event_id is None
             and args.person_id is None
             and args.task_id is None
@@ -103,6 +106,7 @@ async def handle_note_list_async(args: argparse.Namespace) -> int:
         else:
             notes = await note_services.list_notes(
                 session,
+                untagged=args.untagged,
                 tag_id=args.tag_id,
                 event_id=args.event_id,
                 person_id=args.person_id,
@@ -130,10 +134,13 @@ async def handle_note_search_async(args: argparse.Namespace) -> int:
     normalized_query = args.query.strip()
     if not normalized_query:
         raise ConfigurationError("Search query must not be empty.")
+    if args.untagged and args.tag_id is not None:
+        raise ConfigurationError("--untagged cannot be combined with --tag-id.")
 
     async with db_session.session_scope() as session:
         if (
             args.tag_id is None
+            and not args.untagged
             and args.event_id is None
             and args.person_id is None
             and args.task_id is None
@@ -151,6 +158,7 @@ async def handle_note_search_async(args: argparse.Namespace) -> int:
             notes = await note_services.search_notes(
                 session,
                 query=normalized_query,
+                untagged=args.untagged,
                 tag_id=args.tag_id,
                 event_id=args.event_id,
                 person_id=args.person_id,

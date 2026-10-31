@@ -99,14 +99,19 @@ async def list_tags(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    total = await tag_services.count_tags(
+        session,
+        entity_type=entity_type,
+        category=category,
+    )
     items = [_tag_payload(row, fields=fields) for row in rows]
     return ListResponse(
         items=items,
         pagination=Pagination(
             page=page,
             size=size,
-            total=len(items),
-            pages=math.ceil(len(items) / size) if size else 0,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
         ),
         meta={"entity_type": entity_type, "category": category, "fields": fields},
     )

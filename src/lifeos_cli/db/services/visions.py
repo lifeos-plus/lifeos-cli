@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.config import (
@@ -323,6 +323,30 @@ async def list_visions(
     stmt = stmt.order_by(Vision.created_at.desc(), Vision.id.desc()).offset(offset).limit(limit)
     visions = list((await session.execute(stmt)).scalars())
     return await _build_vision_views(session, visions)
+
+
+async def count_visions(
+    session: AsyncSession,
+    *,
+    status: str | None = None,
+    area_id: UUID | None = None,
+    person_id: UUID | None = None,
+) -> int:
+    """Count visions with the same filters as ``list_visions``."""
+    stmt = select(func.count(func.distinct(Vision.id))).select_from(Vision)
+    stmt = stmt.where(Vision.deleted_at.is_(None))
+    if status is not None:
+        stmt = stmt.where(Vision.status == _validate_vision_status(status))
+    if area_id is not None:
+        stmt = stmt.where(Vision.area_id == area_id)
+    if person_id is not None:
+        stmt = stmt.join(
+            Association,
+            (Association.source_model == "vision")
+            & (Association.source_id == Vision.id)
+            & (Association.target_model == "person"),
+        ).where(Association.target_id == person_id)
+    return int((await session.execute(stmt)).scalar_one())
 
 
 async def update_vision(

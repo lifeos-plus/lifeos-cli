@@ -6,7 +6,7 @@ import math
 import re
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -43,12 +43,11 @@ _RRULE_WEEKDAY_TO_NAME = {
 }
 _WEEKDAY_NAME_TO_RRULE = {value: key for key, value in _RRULE_WEEKDAY_TO_NAME.items()}
 _BYDAY_PATTERN = re.compile(r"^(?P<ordinal>[+-]?\d+)?(?P<weekday>MO|TU|WE|TH|FR|SA|SU)$")
+EventScope = Literal["single", "all_future", "all"]
 
 
-def _event_scope(value: str | None) -> str:
-    if value in {"single", "all_future", "all"}:
-        return value
-    return "all"
+def _event_scope(value: EventScope | None) -> EventScope:
+    return value or "all"
 
 
 def _parse_rrule(rrule_string: str | None) -> dict[str, object]:
@@ -320,7 +319,7 @@ async def _list_events(
         window_start=start,
         window_end=end,
     )
-    rows = await event_services.list_events(
+    rows, total = await event_services.list_events_with_total(
         session,
         query=EventListInput(filters=filters, limit=size, offset=(page - 1) * size),
     )
@@ -339,8 +338,8 @@ async def _list_events(
         pagination=Pagination(
             page=page,
             size=size,
-            total=len(items),
-            pages=math.ceil(len(items) / size) if size else 0,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
         ),
         meta={
             "start": start.isoformat() if start else None,
@@ -425,7 +424,7 @@ async def update_planned_event(
     planned_event_id: UUID,
     payload: PlannedEventUpdate,
     session: SessionDep,
-    updateType: str | None = None,
+    updateType: EventScope | None = None,
     instanceStart: datetime | None = None,
 ) -> dict[str, object]:
     """Update a planned event through the frontend contract."""
@@ -448,7 +447,7 @@ async def update_planned_event(
 async def delete_planned_event(
     planned_event_id: UUID,
     session: SessionDep,
-    deleteType: str | None = None,
+    deleteType: EventScope | None = None,
     instanceStart: datetime | None = None,
 ) -> None:
     """Soft-delete a planned event through the frontend contract."""

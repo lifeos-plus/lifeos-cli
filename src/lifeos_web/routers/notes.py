@@ -11,11 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.services import notes as note_services
 from lifeos_web.deps import get_db_session
-from lifeos_web.response_schemas.notes import (
-    NoteListMeta,
-    NotePersonStatsResponse,
-    NoteResponse,
-)
+from lifeos_web.response_schemas.notes import NoteListMeta, NotePersonStatsResponse, NoteResponse
 from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import ListResponse, NoteCreate, NoteUpdate, Pagination
 from lifeos_web.serialization import note_payload
@@ -31,18 +27,22 @@ async def list_notes(
     size: int = Query(50, ge=1, le=500),
     keyword: str | None = None,
     tag_id: UUID | None = None,
+    untagged: bool = False,
     person_id: UUID | None = None,
     task_id: UUID | None = None,
     timelog_id: UUID | None = None,
     habit_action_id: UUID | None = None,
 ) -> ListResponse:
     """List notes for the local Web UI."""
+    if untagged and tag_id is not None:
+        raise HTTPException(status_code=400, detail="untagged cannot be combined with tag_id")
     offset = (page - 1) * size
-    rows = (
-        await note_services.search_notes(
+    if keyword:
+        rows = await note_services.search_notes(
             session,
             query=keyword,
             tag_id=tag_id,
+            untagged=untagged,
             person_id=person_id,
             task_id=task_id,
             timelog_id=timelog_id,
@@ -50,10 +50,21 @@ async def list_notes(
             limit=size,
             offset=offset,
         )
-        if keyword
-        else await note_services.list_notes(
+        total = await note_services.count_search_notes(
+            session,
+            query=keyword,
+            tag_id=tag_id,
+            untagged=untagged,
+            person_id=person_id,
+            task_id=task_id,
+            timelog_id=timelog_id,
+            habit_action_id=habit_action_id,
+        )
+    else:
+        rows = await note_services.list_notes(
             session,
             tag_id=tag_id,
+            untagged=untagged,
             person_id=person_id,
             task_id=task_id,
             timelog_id=timelog_id,
@@ -61,18 +72,27 @@ async def list_notes(
             limit=size,
             offset=offset,
         )
-    )
+        total = await note_services.count_notes(
+            session,
+            tag_id=tag_id,
+            untagged=untagged,
+            person_id=person_id,
+            task_id=task_id,
+            timelog_id=timelog_id,
+            habit_action_id=habit_action_id,
+        )
     items = [note_payload(row) for row in rows]
     return ListResponse(
         items=items,
         pagination=Pagination(
             page=page,
             size=size,
-            total=len(items),
-            pages=math.ceil(len(items) / size) if size else 0,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
         ),
         meta={
             "keyword": keyword,
+            "untagged": untagged,
             "tag_id": str(tag_id) if tag_id else None,
             "person_id": str(person_id) if person_id else None,
             "task_id": str(task_id) if task_id else None,

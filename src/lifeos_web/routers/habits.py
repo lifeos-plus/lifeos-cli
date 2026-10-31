@@ -56,13 +56,6 @@ def _habit_model_payload(habit: Habit) -> dict[str, object]:
     }
 
 
-async def _habit_payload(session: AsyncSession, habit_id: UUID) -> dict[str, object]:
-    habit = await habit_services.get_habit(session, habit_id=habit_id)
-    if habit is None:
-        raise HTTPException(status_code=404, detail=f"Habit {habit_id} was not found")
-    return _habit_model_payload(habit)
-
-
 def _habit_action_payload(action: object) -> dict[str, object]:
     """Serialize a habit action occurrence for Web consumers."""
     jsonable = to_jsonable(action)
@@ -97,16 +90,29 @@ async def _action_with_habit_summary(
     return payload
 
 
-def _zero_stats(habit_id: UUID) -> dict[str, object]:
+def _habit_stats_payload(stats: dict[str, object]) -> dict[str, object]:
+    """Return the documented Web API subset of derived habit statistics."""
     return {
-        "habit_id": str(habit_id),
-        "total_actions": 0,
-        "completed_actions": 0,
-        "missed_actions": 0,
-        "skipped_actions": 0,
-        "progress_percentage": 0,
-        "current_streak": 0,
-        "longest_streak": 0,
+        "habit_id": str(stats["habit_id"]),
+        "total_actions": stats["total_actions"],
+        "completed_actions": stats["completed_actions"],
+        "missed_actions": stats["missed_actions"],
+        "skipped_actions": stats["skipped_actions"],
+        "progress_percentage": stats["progress_percentage"],
+        "current_streak": stats["current_streak"],
+        "longest_streak": stats["longest_streak"],
+    }
+
+
+def _habit_overview_payload(overview: dict[str, object]) -> dict[str, object]:
+    """Serialize a derived habit overview for the Web API."""
+    habit = overview.get("habit")
+    stats = overview.get("stats")
+    if not isinstance(habit, Habit) or not isinstance(stats, dict):
+        raise RuntimeError("Habit overview payload is invalid.")
+    return {
+        "habit": _habit_model_payload(habit),
+        "stats": _habit_stats_payload(stats),
     }
 
 
@@ -126,10 +132,20 @@ async def list_habits(
         limit=size,
         offset=(page - 1) * size,
     )
+    total = await habit_services.count_habits(
+        session,
+        status=status_filter,
+        area_id=area_id,
+    )
     items = [_habit_model_payload(row) for row in rows]
     return ListResponse(
         items=items,
-        pagination=Pagination(page=page, size=size, total=len(items), pages=1 if items else 0),
+        pagination=Pagination(
+            page=page,
+            size=size,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
+        ),
         meta={"status_filter": status_filter, "area_id": str(area_id) if area_id else None},
     )
 
@@ -145,24 +161,28 @@ async def list_habit_overviews(
     status_filter: str | None = None,
     area_id: UUID | None = None,
 ) -> ListResponse:
-    """List habits with frontend-compatible zeroed stats."""
-    habits = await habit_services.list_habits(
+    """List habits with derived statistics."""
+    total = await habit_services.count_habits(
+        session,
+        status=status_filter,
+        area_id=area_id,
+    )
+    overviews = await habit_services.list_habit_overviews(
         session,
         status=status_filter,
         area_id=area_id,
         limit=size,
         offset=(page - 1) * size,
     )
-    items = [
-        {
-            "habit": _habit_model_payload(habit),
-            "stats": _zero_stats(habit.id),
-        }
-        for habit in habits
-    ]
+    items = [_habit_overview_payload(overview) for overview in overviews]
     return ListResponse(
         items=items,
-        pagination=Pagination(page=page, size=size, total=len(items), pages=1 if items else 0),
+        pagination=Pagination(
+            page=page,
+            size=size,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
+        ),
         meta={"status_filter": status_filter, "area_id": str(area_id) if area_id else None},
     )
 
@@ -182,9 +202,12 @@ async def get_habit_task_associations(session: SessionDep) -> dict[str, object]:
 
 @router.get("/{habit_id}/overview", response_model=HabitOverviewResponse)
 async def get_habit_overview(habit_id: UUID, session: SessionDep) -> dict[str, object]:
-    """Load one habit overview with frontend-compatible stats."""
-    habit = await _habit_payload(session, habit_id)
-    return {"habit": habit, "stats": _zero_stats(habit_id)}
+    """Load one habit overview with derived statistics."""
+    try:
+        overview = await habit_services.get_habit_overview(session, habit_id=habit_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _habit_overview_payload(overview)
 
 
 @router.post("/", response_model=HabitResponse)
@@ -269,17 +292,24 @@ async def delete_habit(habit_id: UUID, session: SessionDep) -> None:
 async def list_actions_by_date(
     action_date: date,
     session: SessionDep,
+    page: Annotated[int, Query(ge=1)] = 1,
 ) -> ListResponse:
     """List materialized habit actions for one local date."""
-    actions = await habit_action_services.list_habit_actions(
+    actions, total = await habit_action_services.list_habit_actions_with_total(
         session,
         date_values=(action_date,),
         limit=500,
+        offset=(page - 1) * 500,
     )
     items = [await _action_with_habit_summary(session, action) for action in actions]
     return ListResponse(
         items=items,
-        pagination=Pagination(page=1, size=500, total=len(items), pages=1 if items else 0),
+        pagination=Pagination(
+            page=page,
+            size=500,
+            total=total,
+            pages=math.ceil(total / 500) if total else 0,
+        ),
         meta={"action_date": action_date.isoformat()},
     )
 
@@ -342,6 +372,7 @@ async def list_actions_for_habit(
     center_date: Annotated[date | None, Query()] = None,
     days_before: Annotated[int | None, Query(ge=0, le=500)] = None,
     days_after: Annotated[int | None, Query(ge=0, le=500)] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> ListResponse:
     """List materialized/scheduled actions for one habit."""
@@ -352,20 +383,26 @@ async def list_actions_for_habit(
         effective_end_date = center_date + timedelta(days=days_after or 0)
 
     try:
-        actions = await habit_action_services.list_habit_actions(
+        actions, total = await habit_action_services.list_habit_actions_with_total(
             session,
             habit_id=habit_id,
             status=status_filter,
             start_date=effective_start_date,
             end_date=effective_end_date,
             limit=size,
+            offset=(page - 1) * size,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     items = [_habit_action_payload(action) for action in actions]
     return ListResponse(
         items=items,
-        pagination=Pagination(page=1, size=size, total=len(items), pages=1 if items else 0),
+        pagination=Pagination(
+            page=page,
+            size=size,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
+        ),
         meta={
             "status_filter": status_filter,
             "center_date": center_date.isoformat() if center_date else None,
@@ -418,13 +455,13 @@ async def update_action(
     session: SessionDep,
 ) -> dict[str, object]:
     """Update one habit action."""
-    del habit_id
     fields = payload.model_fields_set
     clear_notes = "notes" in fields and payload.notes is None
     try:
         action = await habit_action_services.update_habit_action(
             session,
             action_id=action_id,
+            habit_id=habit_id,
             status=payload.status,
             notes=payload.notes,
             clear_notes=clear_notes,

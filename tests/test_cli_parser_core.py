@@ -95,12 +95,13 @@ def test_cli_parser_supports_config_update_command() -> None:
 
 def test_cli_parser_supports_note_search_command() -> None:
     parser = build_parser()
-    args = parser.parse_args(["note", "search", "meeting notes", "--limit", "20"])
+    args = parser.parse_args(["note", "search", "meeting notes", "--limit", "20", "--untagged"])
 
     assert args.resource == "note"
     assert args.note_command == "search"
     assert args.query == "meeting notes"
     assert args.limit == 20
+    assert args.untagged is True
 
 
 def test_cli_parser_supports_note_batch_update_content_command() -> None:

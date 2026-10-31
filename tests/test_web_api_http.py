@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -634,6 +635,125 @@ def test_note_create_list_and_delete(http_client) -> None:
     assert delete_response.status_code == 204
 
 
+def test_note_filters_and_pagination_use_real_results(http_client) -> None:
+    tag_id = http_client.post(
+        "/api/v1/tags/",
+        json={"name": "note-pagination", "entity_type": "note"},
+    ).json()["id"]
+    person_id = http_client.post(
+        "/api/v1/person/",
+        json={"name": "Note Pagination Person"},
+    ).json()["id"]
+    vision_id = http_client.post(
+        "/api/v1/visions/",
+        json={"name": "Note pagination vision"},
+    ).json()["id"]
+    task_id = http_client.post(
+        "/api/v1/tasks/",
+        json={"vision_id": vision_id, "content": "Note pagination task"},
+    ).json()["id"]
+    tagged_id = http_client.post(
+        "/api/v1/notes/",
+        json={
+            "content": "Tagged searchable note",
+            "tag_ids": [tag_id],
+            "person_ids": [person_id],
+            "task_id": task_id,
+        },
+    ).json()["id"]
+    untagged_id = http_client.post(
+        "/api/v1/notes/",
+        json={"content": "Untagged searchable note"},
+    ).json()["id"]
+
+    first_page = http_client.get("/api/v1/notes/", params={"page": 1, "size": 1})
+    assert first_page.status_code == 200
+    assert first_page.json()["pagination"] == {
+        "page": 1,
+        "size": 1,
+        "total": 2,
+        "pages": 2,
+    }
+    second_page = http_client.get("/api/v1/notes/", params={"page": 2, "size": 1})
+    assert second_page.status_code == 200
+    assert second_page.json()["pagination"] == {
+        "page": 2,
+        "size": 1,
+        "total": 2,
+        "pages": 2,
+    }
+    assert {
+        first_page.json()["items"][0]["id"],
+        second_page.json()["items"][0]["id"],
+    } == {tagged_id, untagged_id}
+
+    untagged = http_client.get("/api/v1/notes/", params={"untagged": "true"})
+    assert untagged.status_code == 200
+    assert [item["id"] for item in untagged.json()["items"]] == [untagged_id]
+    assert untagged.json()["pagination"]["total"] == 1
+    assert untagged.json()["meta"]["untagged"] is True
+
+    tagged = http_client.get("/api/v1/notes/", params={"tag_id": tag_id})
+    assert tagged.status_code == 200
+    assert [item["id"] for item in tagged.json()["items"]] == [tagged_id]
+
+    person_filtered = http_client.get("/api/v1/notes/", params={"person_id": person_id})
+    assert person_filtered.status_code == 200
+    assert [item["id"] for item in person_filtered.json()["items"]] == [tagged_id]
+
+    task_filtered = http_client.get("/api/v1/notes/", params={"task_id": task_id})
+    assert task_filtered.status_code == 200
+    assert [item["id"] for item in task_filtered.json()["items"]] == [tagged_id]
+
+    searched = http_client.get("/api/v1/notes/", params={"keyword": "searchable"})
+    assert searched.status_code == 200
+    assert searched.json()["pagination"]["total"] == 2
+
+
+def test_resource_lists_report_true_pagination(http_client) -> None:
+    for index in range(3):
+        area_response = http_client.post(
+            "/api/v1/areas/",
+            json={"name": f"Pagination area {index}"},
+        )
+        assert area_response.status_code == 200
+        tag_response = http_client.post(
+            "/api/v1/tags/",
+            json={"name": f"pagination-tag-{index}", "entity_type": "note"},
+        )
+        assert tag_response.status_code == 200
+        vision_response = http_client.post(
+            "/api/v1/visions/",
+            json={"name": f"Pagination vision {index}"},
+        )
+        assert vision_response.status_code == 200
+        person_response = http_client.post(
+            "/api/v1/person/",
+            json={"name": f"Pagination Person {index}"},
+        )
+        assert person_response.status_code == 200
+
+    paths = ("/api/v1/areas/", "/api/v1/tags/", "/api/v1/visions/", "/api/v1/person/")
+    for path in paths:
+        response = http_client.get(path, params={"page": 1, "size": 2})
+        assert response.status_code == 200, (path, response.text)
+        assert response.json()["pagination"] == {
+            "page": 1,
+            "size": 2,
+            "total": 3,
+            "pages": 2,
+        }
+        second_page = http_client.get(path, params={"page": 2, "size": 2})
+        assert second_page.status_code == 200, (path, second_page.text)
+        assert len(second_page.json()["items"]) == 1
+        assert second_page.json()["pagination"] == {
+            "page": 2,
+            "size": 2,
+            "total": 3,
+            "pages": 2,
+        }
+
+
 def test_validation_error_maps_to_422(http_client) -> None:
     response = http_client.post(
         "/api/v1/tasks/",
@@ -880,6 +1000,214 @@ def test_habit_area_association_round_trip(http_client) -> None:
     )
     assert clear_response.status_code == 200
     assert clear_response.json()["area_id"] is None
+
+
+def test_habit_overviews_return_derived_stats(http_client) -> None:
+    today = datetime.now(UTC).date()
+    start_date = today - timedelta(days=2)
+    create_response = http_client.post(
+        "/api/v1/habits/",
+        json={
+            "title": "Derived stats habit",
+            "start_date": start_date.isoformat(),
+            "duration_days": 3,
+            "cadence_frequency": "daily",
+            "target_per_cycle": 1,
+        },
+    )
+    assert create_response.status_code == 200
+    habit_id = create_response.json()["id"]
+
+    for offset, status in enumerate(("done", "miss", "done")):
+        action_response = http_client.patch(
+            f"/api/v1/habits/{habit_id}/actions/by-date/{start_date + timedelta(days=offset)}",
+            json={"status": status},
+        )
+        assert action_response.status_code == 200
+
+    expected_stats = {
+        "habit_id": habit_id,
+        "total_actions": 3,
+        "completed_actions": 2,
+        "missed_actions": 1,
+        "skipped_actions": 0,
+        "progress_percentage": pytest.approx(200 / 3),
+        "current_streak": 1,
+        "longest_streak": 1,
+    }
+    overview_response = http_client.get(f"/api/v1/habits/{habit_id}/overview")
+    assert overview_response.status_code == 200
+    assert overview_response.json()["stats"] == expected_stats
+
+    list_response = http_client.get(
+        "/api/v1/habits/overviews",
+        params={"status_filter": "active"},
+    )
+    assert list_response.status_code == 200
+    overview = next(
+        item for item in list_response.json()["items"] if item["habit"]["id"] == habit_id
+    )
+    assert overview["stats"] == expected_stats
+
+
+def test_habit_overview_pagination_reports_filtered_total(http_client) -> None:
+    today = datetime.now(UTC).date()
+    area_id = http_client.post(
+        "/api/v1/areas/",
+        json={"name": "Paginated habits"},
+    ).json()["id"]
+    habit_ids = []
+    for index in range(4):
+        response = http_client.post(
+            "/api/v1/habits/",
+            json={
+                "title": f"Paginated habit {index}",
+                "start_date": today.isoformat(),
+                "duration_days": 30,
+                "cadence_frequency": "daily",
+                "target_per_cycle": 1,
+                "area_id": area_id,
+            },
+        )
+        assert response.status_code == 200
+        habit_ids.append(response.json()["id"])
+
+    paused_response = http_client.patch(
+        f"/api/v1/habits/{habit_ids[-1]}",
+        json={"status": "paused"},
+    )
+    assert paused_response.status_code == 200
+
+    first_page = http_client.get(
+        "/api/v1/habits/overviews",
+        params={
+            "status_filter": "active",
+            "area_id": area_id,
+            "page": 1,
+            "size": 2,
+        },
+    )
+    assert first_page.status_code == 200
+    first_payload = first_page.json()
+    assert len(first_payload["items"]) == 2
+    assert first_payload["pagination"] == {
+        "page": 1,
+        "size": 2,
+        "total": 3,
+        "pages": 2,
+    }
+
+    second_page = http_client.get(
+        "/api/v1/habits/overviews",
+        params={
+            "status_filter": "active",
+            "area_id": area_id,
+            "page": 2,
+            "size": 2,
+        },
+    )
+    assert second_page.status_code == 200
+    second_payload = second_page.json()
+    assert len(second_payload["items"]) == 1
+    assert second_payload["pagination"] == {
+        "page": 2,
+        "size": 2,
+        "total": 3,
+        "pages": 2,
+    }
+    assert {
+        item["habit"]["id"] for item in first_payload["items"] + second_payload["items"]
+    } == set(habit_ids[:3])
+
+
+def test_habit_list_and_action_lists_report_true_pagination(http_client) -> None:
+    today = datetime.now(UTC).date()
+    habit_ids = []
+    for index in range(3):
+        response = http_client.post(
+            "/api/v1/habits/",
+            json={
+                "title": f"Pagination habit {index}",
+                "start_date": today.isoformat(),
+                "duration_days": 30,
+                "cadence_frequency": "daily",
+                "target_per_cycle": 1,
+            },
+        )
+        assert response.status_code == 200
+        habit_ids.append(response.json()["id"])
+
+    first_page = http_client.get("/api/v1/habits/", params={"page": 1, "size": 2})
+    assert first_page.status_code == 200
+    assert first_page.json()["pagination"] == {
+        "page": 1,
+        "size": 2,
+        "total": 3,
+        "pages": 2,
+    }
+    second_page = http_client.get("/api/v1/habits/", params={"page": 2, "size": 2})
+    assert second_page.status_code == 200
+    assert second_page.json()["pagination"] == {
+        "page": 2,
+        "size": 2,
+        "total": 3,
+        "pages": 2,
+    }
+
+    first_actions = http_client.get(
+        f"/api/v1/habits/{habit_ids[0]}/actions",
+        params={"start_date": today, "end_date": today, "size": 1},
+    )
+    second_actions = http_client.get(
+        f"/api/v1/habits/{habit_ids[1]}/actions",
+        params={"start_date": today, "end_date": today, "size": 1},
+    )
+    mismatched = http_client.patch(
+        f"/api/v1/habits/{habit_ids[0]}/actions/{second_actions.json()['items'][0]['id']}",
+        json={"status": "done"},
+    )
+    assert mismatched.status_code == 404
+    matched = http_client.patch(
+        f"/api/v1/habits/{habit_ids[0]}/actions/{first_actions.json()['items'][0]['id']}",
+        json={"status": "done"},
+    )
+    assert matched.status_code == 200
+
+
+def test_planned_events_paginate_and_reject_invalid_scope(http_client) -> None:
+    for index in range(3):
+        response = http_client.post(
+            "/api/v1/planned-events/",
+            json={
+                "title": f"Pagination event {index}",
+                "start_time": f"2026-10-{20 + index:02d}T02:00:00Z",
+                "end_time": f"2026-10-{20 + index:02d}T03:00:00Z",
+            },
+        )
+        assert response.status_code == 200, response.text
+
+    first_page = http_client.get(
+        "/api/v1/planned-events/raw",
+        params={"page": 1, "size": 2},
+    )
+    assert first_page.status_code == 200
+    assert first_page.json()["pagination"] == {
+        "page": 1,
+        "size": 2,
+        "total": 3,
+        "pages": 2,
+    }
+
+    event_id = first_page.json()["items"][0]["id"]
+    invalid_scope = http_client.patch(
+        f"/api/v1/planned-events/{event_id}",
+        params={"updateType": "not-a-scope"},
+        json={"title": "Must not update"},
+    )
+    assert invalid_scope.status_code == 422
+    unchanged = http_client.get(f"/api/v1/planned-events/{event_id}")
+    assert unchanged.status_code == 200
+    assert unchanged.json()["title"] != "Must not update"
 
 
 def test_task_status_cascade_applies_done_to_open_subtasks(http_client) -> None:

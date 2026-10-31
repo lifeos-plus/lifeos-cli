@@ -68,14 +68,15 @@ async def list_areas(
         limit=size,
         offset=(page - 1) * size,
     )
+    total = await area_services.count_areas(session, include_inactive=include_inactive)
     items = [_area_payload(area) for area in areas]
     return ListResponse(
         items=items,
         pagination=Pagination(
             page=page,
             size=size,
-            total=len(items),
-            pages=math.ceil(len(items) / size) if size else 0,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
         ),
         meta={"include_inactive": include_inactive},
     )

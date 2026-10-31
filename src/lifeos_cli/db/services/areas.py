@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.models.area import Area
@@ -108,6 +108,18 @@ async def list_areas(
         stmt = stmt.where(Area.is_active.is_(True))
     stmt = stmt.order_by(Area.display_order.asc(), Area.name.asc()).offset(offset).limit(limit)
     return list((await session.execute(stmt)).scalars())
+
+
+async def count_areas(
+    session: AsyncSession,
+    *,
+    include_inactive: bool = False,
+) -> int:
+    """Count areas with the same visibility filter as ``list_areas``."""
+    stmt = select(func.count()).select_from(Area).where(Area.deleted_at.is_(None))
+    if not include_inactive:
+        stmt = stmt.where(Area.is_active.is_(True))
+    return int((await session.execute(stmt)).scalar_one())
 
 
 async def reorder_areas(

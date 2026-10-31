@@ -16,8 +16,6 @@ from lifeos_cli.db.services import person_activity_queries
 from lifeos_cli.db.services.read_models import PersonView, TagSummaryView
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.person import (
-    AnniversaryListMeta,
-    AnniversaryResponse,
     PersonActivityMeta,
     PersonActivityResponse,
     PersonListMeta,
@@ -77,7 +75,6 @@ def _person_payload(person: PersonView) -> dict[str, object]:
         "birth_date": person.birth_date.isoformat() if person.birth_date else None,
         "location": person.location,
         "tags": tags,
-        "anniversaries": [],
         "display_name": person.name,
         "primary_nickname": primary_nickname,
     }
@@ -109,10 +106,8 @@ async def list_person(
     size: Annotated[int, Query(ge=1, le=500)] = 100,
     search: str | None = None,
     tag_id: UUID | None = None,
-    tag_filter: str | None = None,
 ) -> ListResponse:
     """List person for frontend person selectors and pages."""
-    del tag_filter
     person_records = await person_services.list_person(
         session,
         search=search,
@@ -120,26 +115,17 @@ async def list_person(
         limit=size,
         offset=(page - 1) * size,
     )
+    total = await person_services.count_person(session, search=search, tag_id=tag_id)
     items = [_person_payload(person) for person in person_records]
     return ListResponse(
         items=items,
-        pagination=Pagination(page=page, size=size, total=len(items), pages=1 if items else 0),
-        meta={"search": search, "tag_filter": None, "tag_id": str(tag_id) if tag_id else None},
-    )
-
-
-@router.get("/search-by-tag", response_model=ListResponse[PersonResponse, PersonListMeta])
-async def search_person_by_tag(
-    session: SessionDep,
-    page: Annotated[int, Query(ge=1)] = 1,
-    size: Annotated[int, Query(ge=1, le=500)] = 50,
-) -> ListResponse:
-    """Return an empty tag-name search result until LifeOS supports tag-name lookup."""
-    del session
-    return ListResponse(
-        items=[],
-        pagination=Pagination(page=page, size=size, total=0, pages=0),
-        meta={"search": None, "tag_filter": None, "tag_id": None},
+        pagination=Pagination(
+            page=page,
+            size=size,
+            total=total,
+            pages=math.ceil(total / size) if total else 0,
+        ),
+        meta={"search": search, "tag_id": str(tag_id) if tag_id else None},
     )
 
 
@@ -254,23 +240,4 @@ async def list_person_activities(
             pages=math.ceil(result.total / size) if size else 0,
         ),
         meta=meta,
-    )
-
-
-@router.get(
-    "/{person_id}/anniversaries/",
-    response_model=ListResponse[AnniversaryResponse, AnniversaryListMeta],
-)
-async def list_person_anniversaries(
-    person_id: UUID,
-    session: SessionDep,
-) -> ListResponse:
-    """Return empty anniversaries until LifeOS has an anniversary model."""
-    person = await person_services.get_person(session, person_id=person_id)
-    if person is None:
-        raise HTTPException(status_code=404, detail=f"Person {person_id} was not found")
-    return ListResponse(
-        items=[],
-        pagination=Pagination(page=1, size=100, total=0, pages=0),
-        meta={"person_id": str(person_id)},
     )
