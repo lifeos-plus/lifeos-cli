@@ -66,3 +66,16 @@ class NoteBatchDeleteResponse(ResponseModel):
     deleted_count: int
     failed_ids: list[str]
     errors: list[str]
+
+
+class NoteBatchCreateFailedItem(ResponseModel):
+    index: int
+    content_preview: str
+    error: str
+
+
+class NoteBatchCreateResponse(ResponseModel):
+    created_notes: list[NoteResponse]
+    failed_items: list[NoteBatchCreateFailedItem]
+    created_count: int
+    failed_count: int

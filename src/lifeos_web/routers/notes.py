@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from lifeos_cli.db.services import notes as note_services
 from lifeos_web.deps import get_db_session
 from lifeos_web.response_schemas.notes import (
+    NoteBatchCreateFailedItem,
+    NoteBatchCreateResponse,
     NoteBatchDeleteResponse,
     NoteBatchUpdateResponse,
     NoteListMeta,
@@ -21,6 +23,7 @@ from lifeos_web.response_schemas.notes import (
 from lifeos_web.router_utils import soft_delete
 from lifeos_web.schemas import (
     ListResponse,
+    NoteBatchCreate,
     NoteBatchDelete,
     NoteBatchUpdate,
     NoteCreate,
@@ -229,4 +232,44 @@ async def batch_delete_notes(
         deleted_count=result.deleted_count,
         failed_ids=[str(note_id) for note_id in result.failed_ids],
         errors=list(result.errors),
+    )
+
+
+@router.post("/batch-create", response_model=NoteBatchCreateResponse)
+async def batch_create_notes(
+    payload: NoteBatchCreate,
+    session: SessionDep,
+) -> NoteBatchCreateResponse:
+    """Create multiple notes, reporting per-item failures."""
+    created_notes: list[dict[str, object]] = []
+    failed_items: list[NoteBatchCreateFailedItem] = []
+
+    for index, item in enumerate(payload.notes):
+        try:
+            async with session.begin_nested():
+                note = await note_services.create_note(
+                    session,
+                    content=item.content,
+                    tag_ids=payload.tag_ids,
+                    person_ids=payload.person_ids,
+                    task_ids=([payload.task_id] if payload.task_id is not None else None),
+                    timelog_ids=payload.timelog_ids,
+                    habit_action_ids=payload.habit_action_ids,
+                )
+        except (ValueError, LookupError) as exc:
+            failed_items.append(
+                NoteBatchCreateFailedItem(
+                    index=index,
+                    content_preview=item.content[:80],
+                    error=str(exc),
+                )
+            )
+        else:
+            created_notes.append(note_payload(note))
+
+    return NoteBatchCreateResponse(
+        created_notes=created_notes,
+        failed_items=failed_items,
+        created_count=len(created_notes),
+        failed_count=len(failed_items),
     )
