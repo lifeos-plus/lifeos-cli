@@ -33,6 +33,8 @@ _keep(
     list_actions_by_date,
     list_actions_for_habit,
     list_notes_for_habit,
+    batch_update_notes,
+    batch_delete_notes,
     get_habit_task_associations,
     list_areas,
     list_assets,

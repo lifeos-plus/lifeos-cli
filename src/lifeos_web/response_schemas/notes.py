@@ -52,3 +52,17 @@ class NotePersonStat(ResponseModel):
 class NotePersonStatsResponse(ResponseModel):
     person_stats: list[NotePersonStat]
     total_person: int
+
+
+class NoteBatchUpdateResponse(ResponseModel):
+    updated_count: int
+    replacement_count: int
+    unchanged_ids: list[str]
+    failed_ids: list[str]
+    errors: list[str]
+
+
+class NoteBatchDeleteResponse(ResponseModel):
+    deleted_count: int
+    failed_ids: list[str]
+    errors: list[str]

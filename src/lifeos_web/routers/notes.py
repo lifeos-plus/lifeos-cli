@@ -11,9 +11,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.db.services import notes as note_services
 from lifeos_web.deps import get_db_session
-from lifeos_web.response_schemas.notes import NoteListMeta, NotePersonStatsResponse, NoteResponse
+from lifeos_web.response_schemas.notes import (
+    NoteBatchDeleteResponse,
+    NoteBatchUpdateResponse,
+    NoteListMeta,
+    NotePersonStatsResponse,
+    NoteResponse,
+)
 from lifeos_web.router_utils import soft_delete
-from lifeos_web.schemas import ListResponse, NoteCreate, NoteUpdate, Pagination
+from lifeos_web.schemas import (
+    ListResponse,
+    NoteBatchDelete,
+    NoteBatchUpdate,
+    NoteCreate,
+    NoteUpdate,
+    Pagination,
+)
 from lifeos_web.serialization import note_payload
 
 router = APIRouter(prefix="/notes", tags=["notes"])
@@ -176,3 +189,44 @@ async def update_note(
 async def delete_note(note_id: UUID, session: SessionDep) -> None:
     """Soft-delete a note."""
     await soft_delete(note_services.delete_note, session=session, note_id=note_id)
+
+
+@router.post("/batch-update", response_model=NoteBatchUpdateResponse)
+async def batch_update_notes(
+    payload: NoteBatchUpdate,
+    session: SessionDep,
+) -> NoteBatchUpdateResponse:
+    """Apply a content find/replace across multiple notes."""
+    if not payload.content.find_text.strip():
+        raise HTTPException(status_code=400, detail="Find text must not be empty")
+    result = await note_services.batch_update_note_content(
+        session,
+        note_ids=payload.note_ids,
+        find_text=payload.content.find_text,
+        replace_text=payload.content.replace_text,
+        case_sensitive=payload.content.case_sensitive,
+    )
+    return NoteBatchUpdateResponse(
+        updated_count=result.updated_count,
+        replacement_count=result.replacement_count,
+        unchanged_ids=[str(note_id) for note_id in result.unchanged_ids],
+        failed_ids=[str(note_id) for note_id in result.failed_ids],
+        errors=list(result.errors),
+    )
+
+
+@router.post("/batch-delete", response_model=NoteBatchDeleteResponse)
+async def batch_delete_notes(
+    payload: NoteBatchDelete,
+    session: SessionDep,
+) -> NoteBatchDeleteResponse:
+    """Soft-delete multiple notes while reporting per-note failures."""
+    result = await note_services.batch_delete_notes(
+        session,
+        note_ids=payload.note_ids,
+    )
+    return NoteBatchDeleteResponse(
+        deleted_count=result.deleted_count,
+        failed_ids=[str(note_id) for note_id in result.failed_ids],
+        errors=list(result.errors),
+    )

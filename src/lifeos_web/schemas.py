@@ -102,6 +102,27 @@ class NoteUpdate(BaseModel):
     habit_action_ids: list[UUID] | None = None
 
 
+class NoteBatchContentUpdate(BaseModel):
+    """Find/replace payload for a note batch update."""
+
+    find_text: str = Field(..., min_length=1, max_length=500)
+    replace_text: str = ""
+    case_sensitive: bool = False
+
+
+class NoteBatchUpdate(BaseModel):
+    """Payload for updating multiple notes from the Web UI."""
+
+    note_ids: list[UUID] = Field(..., min_length=1, max_length=500)
+    content: NoteBatchContentUpdate
+
+
+class NoteBatchDelete(BaseModel):
+    """Payload for soft-deleting multiple notes from the Web UI."""
+
+    note_ids: list[UUID] = Field(..., min_length=1, max_length=500)
+
+
 class TagCreate(BaseModel):
     """Payload for creating a tag from the Web UI."""
 
