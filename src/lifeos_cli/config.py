@@ -32,6 +32,7 @@ DEFAULT_DAY_STARTS_AT = "00:00"
 DEFAULT_WEEK_STARTS_ON = "monday"
 DEFAULT_VISION_EXPERIENCE_RATE_PER_HOUR = 60
 DEFAULT_THEME = "system"
+DEFAULT_FONT: str | None = None
 DEFAULT_CALENDAR_FIRST_DAY_OF_WEEK = 1
 DEFAULT_CALENDAR_SYSTEM = "gregorian"
 DEFAULT_CALENDAR_MAYAN_NEW_YEAR_START = "07-26"
@@ -60,6 +61,16 @@ DEFAULT_TODOS_DEFAULT_INBOX_VISION = None
 DEFAULT_BODY_HEIGHT_CM: float | None = None
 SUPPORTED_WEIGHT_UNITS = ("kg", "jin", "lb")
 MAX_VISION_EXPERIENCE_RATE_PER_HOUR = 3600
+SUPPORTED_FONTS = (
+    "system",
+    "sans",
+    "serif",
+    "mono",
+    "yahei",
+    "pingfang",
+    "noto",
+    "songti",
+)
 SUPPORTED_THEMES = (
     "system",
     "fresh",
@@ -397,6 +408,21 @@ def validate_theme(value: str) -> str:
     return normalized
 
 
+def validate_font(value: object) -> str | None:
+    """Validate the optional preferred Web UI font."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ConfigurationError("Preference `font` must be a string when set.")
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if normalized not in SUPPORTED_FONTS:
+        supported = ", ".join(SUPPORTED_FONTS)
+        raise ConfigurationError(f"Preference `font` must be one of: {supported}.")
+    return normalized
+
+
 def _parse_string_list(value: object, *, field_name: str) -> list[str]:
     if isinstance(value, str):
         normalized = value.strip()
@@ -614,6 +640,8 @@ def _render_preferences_table(settings: PreferencesSettings) -> str:
         f"{'true' if settings.timelog_auto_set_task_planning else 'false'}",
         f"weight_unit = {_serialize_toml_string(settings.weight_unit)}",
     ]
+    if settings.font is not None:
+        lines.append(f"font = {_serialize_toml_string(settings.font)}")
     if settings.body_height_cm is not None:
         lines.append(f"body_height_cm = {settings.body_height_cm}")
     if settings.todos_default_inbox_vision is not None:
@@ -804,6 +832,7 @@ class PreferencesSettings:
     vision_experience_rate_per_hour: int
     config_file: Path
     theme: str = DEFAULT_THEME
+    font: str | None = DEFAULT_FONT
     calendar_first_day_of_week: int = DEFAULT_CALENDAR_FIRST_DAY_OF_WEEK
     calendar_system: str = DEFAULT_CALENDAR_SYSTEM
     calendar_mayan_new_year_start: str = DEFAULT_CALENDAR_MAYAN_NEW_YEAR_START
@@ -846,6 +875,7 @@ class PreferencesSettings:
         file_week_starts_on = preference_values.get("week_starts_on")
         file_vision_experience_rate = preference_values.get("vision_experience_rate_per_hour")
         file_theme = preference_values.get("theme")
+        file_font = preference_values.get("font")
         file_calendar_first_day_of_week = preference_values.get("calendar_first_day_of_week")
         file_calendar_system = preference_values.get("calendar_system")
         file_calendar_mayan_new_year_start = preference_values.get("calendar_mayan_new_year_start")
@@ -909,6 +939,7 @@ class PreferencesSettings:
 
         theme_value = file_theme if isinstance(file_theme, str) else DEFAULT_THEME
         theme = validate_theme(theme_value)
+        font = validate_font(file_font)
 
         calendar_first_day_of_week_value = (
             file_calendar_first_day_of_week
@@ -1030,6 +1061,7 @@ class PreferencesSettings:
             vision_experience_rate_per_hour=vision_experience_rate,
             config_file=config_path,
             theme=theme,
+            font=font,
             calendar_first_day_of_week=calendar_first_day_of_week,
             calendar_system=calendar_system,
             calendar_mayan_new_year_start=calendar_mayan_new_year_start,

@@ -32,6 +32,7 @@ from lifeos_cli.config import (
     validate_calendar_system,
     validate_database_url,
     validate_day_starts_at,
+    validate_font,
     validate_language,
     validate_navigation_visible_modules,
     validate_notes_card_min_collapsed_lines,
@@ -82,6 +83,7 @@ SUPPORTED_CONFIG_KEYS = (
     "preferences.week_starts_on",
     "preferences.vision_experience_rate_per_hour",
     "preferences.theme",
+    "preferences.font",
     "preferences.calendar_first_day_of_week",
     "preferences.calendar_system",
     "preferences.calendar_mayan_new_year_start",
@@ -314,6 +316,11 @@ def set_runtime_config_value(
         preferences_settings = replace(
             preferences_settings,
             theme=validate_theme(value),
+        )
+    elif normalized_key == "preferences.font":
+        preferences_settings = replace(
+            preferences_settings,
+            font=validate_font(value),
         )
     elif normalized_key == "preferences.calendar_first_day_of_week":
         preferences_settings = replace(

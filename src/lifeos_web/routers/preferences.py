@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lifeos_cli.application.configuration import set_runtime_config_value
 from lifeos_cli.config import (
+    SUPPORTED_FONTS,
     SUPPORTED_THEMES,
     SUPPORTED_WEIGHT_UNITS,
     ConfigurationError,
@@ -41,6 +42,7 @@ _VISIBLE_MODULES = [
 
 _CONFIG_KEY_MAP = {
     "appearance.theme": "preferences.theme",
+    "appearance.font": "preferences.font",
     "calendar.first_day_of_week": "preferences.calendar_first_day_of_week",
     "calendar.system": "preferences.calendar_system",
     "calendar.mayan_new_year_start": "preferences.calendar_mayan_new_year_start",
@@ -78,6 +80,11 @@ _META: dict[str, dict[str, Any]] = {
     "appearance.theme": {
         "allowed_values": list(SUPPORTED_THEMES),
         "description": "LifeOS Web UI theme.",
+        "module": "appearance",
+    },
+    "appearance.font": {
+        "allowed_values": list(SUPPORTED_FONTS),
+        "description": "LifeOS Web UI font.",
         "module": "appearance",
     },
     "calendar.system": {
@@ -127,6 +134,8 @@ class PreferenceUpdate(BaseModel):
 def _extract_config_preference_value(preferences: PreferencesSettings, key: str) -> Any:
     if key == "appearance.theme":
         return preferences.theme
+    if key == "appearance.font":
+        return preferences.font
     if key == "calendar.first_day_of_week":
         return preferences.calendar_first_day_of_week
     if key == "calendar.system":
