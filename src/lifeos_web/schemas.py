@@ -102,6 +102,23 @@ class NoteUpdate(BaseModel):
     habit_action_ids: list[UUID] | None = None
 
 
+class NoteBatchCreateItem(BaseModel):
+    """One note inside a batch create request."""
+
+    content: str = Field(..., min_length=1)
+
+
+class NoteBatchCreate(BaseModel):
+    """Payload for creating multiple notes from the Web UI."""
+
+    notes: list[NoteBatchCreateItem] = Field(..., min_length=1, max_length=100)
+    person_ids: list[UUID] | None = None
+    tag_ids: list[UUID] | None = None
+    task_id: UUID | None = None
+    timelog_ids: list[UUID] | None = None
+    habit_action_ids: list[UUID] | None = None
+
+
 class NoteBatchContentUpdate(BaseModel):
     """Find/replace payload for a note batch update."""
 

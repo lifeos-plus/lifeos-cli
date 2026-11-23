@@ -1545,3 +1545,42 @@ def test_note_batch_delete_reports_partial_failures(http_client) -> None:
 
     remaining = http_client.get("/api/v1/notes/")
     assert remaining.json()["pagination"]["total"] == 0
+
+
+def test_note_batch_create_reports_partial_failures(http_client) -> None:
+    tag_id = http_client.post(
+        "/api/v1/tags/",
+        json={"name": "batch-create-tag", "entity_type": "note"},
+    ).json()["id"]
+
+    response = http_client.post(
+        "/api/v1/notes/batch-create",
+        json={
+            "notes": [
+                {"content": "first batch note"},
+                {"content": "   "},
+                {"content": "third batch note"},
+            ],
+            "tag_ids": [tag_id],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["created_count"] == 2
+    assert body["failed_count"] == 1
+    assert [note["content"] for note in body["created_notes"]] == [
+        "first batch note",
+        "third batch note",
+    ]
+    assert all(tag_id in [tag["id"] for tag in note["tags"]] for note in body["created_notes"])
+    assert body["failed_items"] == [
+        {
+            "index": 1,
+            "content_preview": "   ",
+            "error": "Note content must not be empty.",
+        }
+    ]
+
+    listed = http_client.get("/api/v1/notes/", params={"keyword": "batch note"})
+    assert listed.json()["pagination"]["total"] == 2
