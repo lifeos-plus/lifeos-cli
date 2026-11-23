@@ -1302,6 +1302,21 @@ def test_area_order_round_trip(http_client) -> None:
     assert http_client.get("/api/v1/areas/order").json() == reordered
 
 
+def test_health_preferences_persist_round_trip(http_client) -> None:
+    height_response = http_client.put(
+        "/api/v1/preferences/health.body_height_cm", json={"value": 175}
+    )
+    assert height_response.status_code == 200
+    assert height_response.json()["value"] == 175
+
+    unit_response = http_client.put("/api/v1/preferences/health.weight_unit", json={"value": "jin"})
+    assert unit_response.status_code == 200
+    assert unit_response.json()["value"] == "jin"
+
+    assert http_client.get("/api/v1/preferences/health.body_height_cm").json()["value"] == 175
+    assert http_client.get("/api/v1/preferences/health.weight_unit").json()["value"] == "jin"
+
+
 def test_area_order_unknown_id_returns_404(http_client) -> None:
     response = http_client.put(
         "/api/v1/areas/order",

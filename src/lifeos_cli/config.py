@@ -612,7 +612,10 @@ def _render_preferences_table(settings: PreferencesSettings) -> str:
         f"{_serialize_toml_string(settings.tasks_default_planning_preset)}",
         f"timelog_auto_set_task_planning = "
         f"{'true' if settings.timelog_auto_set_task_planning else 'false'}",
+        f"weight_unit = {_serialize_toml_string(settings.weight_unit)}",
     ]
+    if settings.body_height_cm is not None:
+        lines.append(f"body_height_cm = {settings.body_height_cm}")
     if settings.todos_default_inbox_vision is not None:
         lines.append(
             "todos_default_inbox_vision = "

@@ -704,6 +704,59 @@ def test_write_database_settings_can_write_preferences_without_database_url(tmp_
     assert 'theme = "system"' in content
 
 
+def test_write_database_settings_round_trips_health_preferences(tmp_path: Path) -> None:
+    config_path = tmp_path / "lifeos" / "config.toml"
+    database_settings = DatabaseSettings(
+        database_url=None,
+        database_schema="lifeos",
+        database_echo=False,
+        config_file=config_path,
+    )
+    preferences_settings = PreferencesSettings(
+        timezone="UTC",
+        language="en",
+        day_starts_at="00:00",
+        week_starts_on="monday",
+        vision_experience_rate_per_hour=60,
+        weight_unit="jin",
+        body_height_cm=175.5,
+        config_file=config_path,
+    )
+
+    write_database_settings(database_settings, preferences=preferences_settings)
+
+    content = config_path.read_text(encoding="utf-8")
+    assert 'weight_unit = "jin"' in content
+    assert "body_height_cm = 175.5" in content
+
+    reloaded = PreferencesSettings.from_env({"LIFEOS_CONFIG_FILE": str(config_path)})
+    assert reloaded.weight_unit == "jin"
+    assert reloaded.body_height_cm == 175.5
+
+
+def test_write_database_settings_omits_unset_body_height(tmp_path: Path) -> None:
+    config_path = tmp_path / "lifeos" / "config.toml"
+    database_settings = DatabaseSettings(
+        database_url=None,
+        database_schema="lifeos",
+        database_echo=False,
+        config_file=config_path,
+    )
+    preferences_settings = PreferencesSettings(
+        timezone="UTC",
+        language="en",
+        day_starts_at="00:00",
+        week_starts_on="monday",
+        vision_experience_rate_per_hour=60,
+        config_file=config_path,
+    )
+
+    write_database_settings(database_settings, preferences=preferences_settings)
+
+    content = config_path.read_text(encoding="utf-8")
+    assert "body_height_cm" not in content
+
+
 def test_write_database_settings_persists_toml(tmp_path: Path) -> None:
     config_path = tmp_path / "lifeos" / "config.toml"
     database_settings = DatabaseSettings(
@@ -942,11 +995,19 @@ def test_set_runtime_config_value_updates_web_preferences(
         key="preferences.todos_default_inbox_vision",
         value="11111111-1111-1111-1111-111111111111",
     )
+    set_runtime_config_value(key="preferences.weight_unit", value="jin")
+    set_runtime_config_value(key="preferences.body_height_cm", value="180.5")
 
     content = config_path.read_text(encoding="utf-8")
     assert 'navigation_visible_modules = ["visions", "notes", "settings"]' in content
     assert "notes_card_min_collapsed_lines = 11" in content
     assert 'todos_default_inbox_vision = "11111111-1111-1111-1111-111111111111"' in content
+    assert 'weight_unit = "jin"' in content
+    assert "body_height_cm = 180.5" in content
+
+    reloaded = PreferencesSettings.from_env({"LIFEOS_CONFIG_FILE": str(config_path)})
+    assert reloaded.weight_unit == "jin"
+    assert reloaded.body_height_cm == 180.5
 
 
 def test_build_database_settings_uses_injected_prompts(
