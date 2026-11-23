@@ -1481,3 +1481,67 @@ def test_area_order_database_locked_by_raw_connection_returns_503(
     finally:
         lock_holder.rollback()
         lock_holder.close()
+
+
+def test_note_batch_update_replaces_content_across_notes(http_client) -> None:
+    first_id = http_client.post(
+        "/api/v1/notes/",
+        json={"content": "alpha bravo alpha"},
+    ).json()["id"]
+    untouched_id = http_client.post(
+        "/api/v1/notes/",
+        json={"content": "charlie"},
+    ).json()["id"]
+    missing_id = str(uuid.uuid4())
+
+    response = http_client.post(
+        "/api/v1/notes/batch-update",
+        json={
+            "note_ids": [first_id, untouched_id, missing_id],
+            "content": {"find_text": "alpha", "replace_text": "delta"},
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["updated_count"] == 1
+    assert body["replacement_count"] == 2
+    assert body["unchanged_ids"] == [untouched_id]
+    assert body["failed_ids"] == [missing_id]
+    assert len(body["errors"]) == 1
+
+    updated = http_client.get("/api/v1/notes/", params={"keyword": "delta"})
+    assert [item["content"] for item in updated.json()["items"]] == ["delta bravo delta"]
+
+    blank_find = http_client.post(
+        "/api/v1/notes/batch-update",
+        json={"note_ids": [first_id], "content": {"find_text": "   "}},
+    )
+    assert blank_find.status_code == 400
+    assert blank_find.json()["detail"] == "Find text must not be empty"
+
+
+def test_note_batch_delete_reports_partial_failures(http_client) -> None:
+    first_id = http_client.post(
+        "/api/v1/notes/",
+        json={"content": "Batch delete one"},
+    ).json()["id"]
+    second_id = http_client.post(
+        "/api/v1/notes/",
+        json={"content": "Batch delete two"},
+    ).json()["id"]
+    missing_id = str(uuid.uuid4())
+
+    response = http_client.post(
+        "/api/v1/notes/batch-delete",
+        json={"note_ids": [first_id, missing_id, second_id]},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["deleted_count"] == 2
+    assert body["failed_ids"] == [missing_id]
+    assert len(body["errors"]) == 1
+
+    remaining = http_client.get("/api/v1/notes/")
+    assert remaining.json()["pagination"]["total"] == 0
