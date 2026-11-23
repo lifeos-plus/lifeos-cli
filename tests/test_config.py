@@ -30,6 +30,7 @@ from lifeos_cli.config import (
     validate_database_schema_name,
     validate_database_url,
     validate_day_starts_at,
+    validate_font,
     validate_language,
     validate_navigation_visible_modules,
     validate_notes_card_min_collapsed_lines,
@@ -664,6 +665,13 @@ def test_validate_theme_rejects_invalid_values() -> None:
         raise AssertionError("invalid theme should fail")
 
 
+def test_validate_font_accepts_unset_and_rejects_unknown_font() -> None:
+    assert validate_font(None) is None
+    assert validate_font("") is None
+    with pytest.raises(ConfigurationError, match="Preference `font`"):
+        validate_font("comic-sans")
+
+
 def test_parse_boolean_value_rejects_invalid_values() -> None:
     assert parse_boolean_value("true", field_name="Config key `database.echo`") is True
     assert parse_boolean_value("0", field_name="Config key `database.echo`") is False
@@ -702,6 +710,87 @@ def test_write_database_settings_can_write_preferences_without_database_url(tmp_
     assert 'schema = "lifeos"' in content
     assert 'timezone = "America/Toronto"' in content
     assert 'theme = "system"' in content
+
+
+def test_write_database_settings_round_trips_health_preferences(tmp_path: Path) -> None:
+    config_path = tmp_path / "lifeos" / "config.toml"
+    database_settings = DatabaseSettings(
+        database_url=None,
+        database_schema="lifeos",
+        database_echo=False,
+        config_file=config_path,
+    )
+    preferences_settings = PreferencesSettings(
+        timezone="UTC",
+        language="en",
+        day_starts_at="00:00",
+        week_starts_on="monday",
+        vision_experience_rate_per_hour=60,
+        weight_unit="jin",
+        body_height_cm=175.5,
+        config_file=config_path,
+    )
+
+    write_database_settings(database_settings, preferences=preferences_settings)
+
+    content = config_path.read_text(encoding="utf-8")
+    assert 'weight_unit = "jin"' in content
+    assert "body_height_cm = 175.5" in content
+
+    reloaded = PreferencesSettings.from_env({"LIFEOS_CONFIG_FILE": str(config_path)})
+    assert reloaded.weight_unit == "jin"
+    assert reloaded.body_height_cm == 175.5
+
+
+def test_write_database_settings_round_trips_font_preference(tmp_path: Path) -> None:
+    config_path = tmp_path / "lifeos" / "config.toml"
+    database_settings = DatabaseSettings(
+        database_url=None,
+        database_schema="lifeos",
+        database_echo=False,
+        config_file=config_path,
+    )
+    preferences_settings = PreferencesSettings(
+        timezone="UTC",
+        language="en",
+        day_starts_at="00:00",
+        week_starts_on="monday",
+        vision_experience_rate_per_hour=60,
+        font="serif",
+        config_file=config_path,
+    )
+
+    write_database_settings(database_settings, preferences=preferences_settings)
+
+    content = config_path.read_text(encoding="utf-8")
+    assert 'font = "serif"' in content
+
+    reloaded = PreferencesSettings.from_env({"LIFEOS_CONFIG_FILE": str(config_path)})
+    assert reloaded.font == "serif"
+
+
+def test_write_database_settings_omits_unset_body_height(tmp_path: Path) -> None:
+    config_path = tmp_path / "lifeos" / "config.toml"
+    database_settings = DatabaseSettings(
+        database_url=None,
+        database_schema="lifeos",
+        database_echo=False,
+        config_file=config_path,
+    )
+    preferences_settings = PreferencesSettings(
+        timezone="UTC",
+        language="en",
+        day_starts_at="00:00",
+        week_starts_on="monday",
+        vision_experience_rate_per_hour=60,
+        config_file=config_path,
+    )
+
+    write_database_settings(database_settings, preferences=preferences_settings)
+
+    content = config_path.read_text(encoding="utf-8")
+    assert "body_height_cm" not in content
+    assert "font =" not in content
 
 
 def test_write_database_settings_persists_toml(tmp_path: Path) -> None:
@@ -942,11 +1031,22 @@ def test_set_runtime_config_value_updates_web_preferences(
         key="preferences.todos_default_inbox_vision",
         value="11111111-1111-1111-1111-111111111111",
     )
+    set_runtime_config_value(key="preferences.weight_unit", value="jin")
+    set_runtime_config_value(key="preferences.body_height_cm", value="180.5")
+    set_runtime_config_value(key="preferences.font", value="serif")
 
     content = config_path.read_text(encoding="utf-8")
     assert 'navigation_visible_modules = ["visions", "notes", "settings"]' in content
     assert "notes_card_min_collapsed_lines = 11" in content
     assert 'todos_default_inbox_vision = "11111111-1111-1111-1111-111111111111"' in content
+    assert 'weight_unit = "jin"' in content
+    assert "body_height_cm = 180.5" in content
+    assert 'font = "serif"' in content
+
+    reloaded = PreferencesSettings.from_env({"LIFEOS_CONFIG_FILE": str(config_path)})
+    assert reloaded.weight_unit == "jin"
+    assert reloaded.body_height_cm == 180.5
+    assert reloaded.font == "serif"
 
 
 def test_build_database_settings_uses_injected_prompts(
