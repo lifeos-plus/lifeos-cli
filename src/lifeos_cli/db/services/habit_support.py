@@ -488,14 +488,19 @@ def _occurs_on_date_with_normalized_cadence(
 
 
 def get_habit_occurrence_end_date(habit: object) -> date:
-    """Return the final date where a habit should produce action occurrences."""
+    """Return the final date where a habit should produce action occurrences.
+
+    A habit that is no longer active still owns the day its status changed, so
+    that day stays inside the occurrence window (materialized actions must not
+    be discarded). The habit end date always wins when it comes first.
+    """
     end_date = getattr(habit, "end_date", None)
     if not isinstance(end_date, date):
         raise HabitValidationError("Habit occurrence end date is unavailable")
     status = getattr(habit, "status", "active")
     status_changed_date = getattr(habit, "status_changed_date", None)
     if status != "active" and isinstance(status_changed_date, date):
-        return min(end_date, status_changed_date - timedelta(days=1))
+        return min(end_date, status_changed_date)
     return end_date
 
 

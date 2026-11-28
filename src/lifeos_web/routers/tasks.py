@@ -242,6 +242,7 @@ async def create_task(
             planning_cycle_type=payload.planning_cycle_type,
             planning_cycle_days=payload.planning_cycle_days,
             planning_cycle_start_date=payload.planning_cycle_start_date,
+            person_ids=payload.person_ids,
         )
     except (LookupError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -316,6 +317,7 @@ async def update_task(
     clear_planning_cycle = "planning_cycle_type" in fields and payload.planning_cycle_type is None
     clear_parent = "parent_task_id" in fields and payload.parent_task_id is None
     clear_estimated_effort = "estimated_effort" in fields and payload.estimated_effort is None
+    clear_person = "person_ids" in fields and payload.person_ids == []
     try:
         task = await task_services.update_task(
             session,
@@ -332,6 +334,8 @@ async def update_task(
             clear_planning_cycle=clear_planning_cycle,
             clear_parent=clear_parent,
             clear_estimated_effort=clear_estimated_effort,
+            person_ids=payload.person_ids,
+            clear_person=clear_person,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
