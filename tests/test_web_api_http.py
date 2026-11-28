@@ -1604,3 +1604,115 @@ def test_note_batch_create_reports_partial_failures(http_client) -> None:
 
     listed = http_client.get("/api/v1/notes/", params={"keyword": "batch note"})
     assert listed.json()["pagination"]["total"] == 2
+
+
+def test_task_person_links_are_persisted_and_replaceable(http_client) -> None:
+    vision_id = http_client.post(
+        "/api/v1/visions/",
+        json={"name": "Person-linked tasks vision"},
+    ).json()["id"]
+    first_person_id = http_client.post(
+        "/api/v1/person/",
+        json={"name": "Task owner one"},
+    ).json()["id"]
+    second_person_id = http_client.post(
+        "/api/v1/person/",
+        json={"name": "Task owner two"},
+    ).json()["id"]
+
+    create_response = http_client.post(
+        "/api/v1/tasks/",
+        json={
+            "vision_id": vision_id,
+            "content": "Person-linked task",
+            "person_ids": [first_person_id],
+        },
+    )
+    assert create_response.status_code == 200
+    created = create_response.json()
+    task_id = created["id"]
+    assert [person["id"] for person in created["person"]] == [first_person_id]
+
+    detail_response = http_client.get(f"/api/v1/tasks/{task_id}")
+    assert detail_response.status_code == 200
+    assert [person["id"] for person in detail_response.json()["person"]] == [first_person_id]
+
+    replace_response = http_client.patch(
+        f"/api/v1/tasks/{task_id}",
+        json={"person_ids": [second_person_id]},
+    )
+    assert replace_response.status_code == 200
+    assert [person["id"] for person in replace_response.json()["person"]] == [second_person_id]
+
+    untouched_response = http_client.patch(
+        f"/api/v1/tasks/{task_id}",
+        json={"content": "Renamed person-linked task"},
+    )
+    assert untouched_response.status_code == 200
+    assert [person["id"] for person in untouched_response.json()["person"]] == [second_person_id]
+
+    clear_response = http_client.patch(
+        f"/api/v1/tasks/{task_id}",
+        json={"person_ids": []},
+    )
+    assert clear_response.status_code == 200
+    assert clear_response.json()["person"] == []
+
+    unknown_person_response = http_client.post(
+        "/api/v1/tasks/",
+        json={
+            "vision_id": vision_id,
+            "content": "Task with unknown person",
+            "person_ids": [str(uuid.uuid4())],
+        },
+    )
+    assert unknown_person_response.status_code == 400
+    assert "Unknown target IDs" in unknown_person_response.json()["detail"]
+
+
+def test_completing_habit_keeps_action_on_inclusive_range_endpoint_day(http_client) -> None:
+    today = datetime.now(UTC).date()
+    start_date = today - timedelta(days=3)
+    habit_id = http_client.post(
+        "/api/v1/habits/",
+        json={
+            "title": "Habit completed through the web form",
+            "start_date": start_date.isoformat(),
+            "duration_days": 30,
+            "cadence_frequency": "daily",
+            "target_per_cycle": 1,
+        },
+    ).json()["id"]
+
+    range_params = {
+        "start_date": start_date.isoformat(),
+        "end_date": today.isoformat(),
+        "reference_date": today.isoformat(),
+    }
+    actions = http_client.get("/api/v1/habits/actions", params=range_params).json()["items"]
+    today_action = next(action for action in actions if action["action_date"] == today.isoformat())
+
+    # The Web edit form submits the schedule together with the new status, so
+    # the update reconciles the schedule against the occurrence window.
+    update_response = http_client.patch(
+        f"/api/v1/habits/{habit_id}",
+        json={"status": "completed", "duration_days": 30},
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["status"] == "completed"
+
+    refreshed_actions = http_client.get(
+        "/api/v1/habits/actions",
+        params=range_params,
+    ).json()["items"]
+    assert any(action["id"] == today_action["id"] for action in refreshed_actions)
+
+    note_response = http_client.post(
+        "/api/v1/notes/",
+        json={
+            "content": "Completion day reflection",
+            "habit_action_ids": [today_action["id"]],
+        },
+    )
+    assert note_response.status_code == 200
+    assert note_response.json()["habit_actions"][0]["id"] == today_action["id"]

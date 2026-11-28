@@ -44,6 +44,7 @@ class TaskCreate(BaseModel):
     planning_cycle_type: str | None = None
     planning_cycle_days: int | None = None
     planning_cycle_start_date: date | None = None
+    person_ids: list[UUID] | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -58,6 +59,7 @@ class TaskUpdate(BaseModel):
     planning_cycle_type: str | None = None
     planning_cycle_days: int | None = None
     planning_cycle_start_date: date | None = None
+    person_ids: list[UUID] | None = None
 
 
 class TaskStatusUpdate(BaseModel):

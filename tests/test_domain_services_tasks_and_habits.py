@@ -2044,11 +2044,11 @@ def test_reconcile_planning_habit_action_lifecycle_expires_overdue_pending_actio
     session.flush.assert_awaited_once()
 
 
-def test_build_habit_action_views_stops_after_status_change_date(
+def test_build_habit_action_views_includes_status_change_date(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     habit_id = UUID("77777777-7777-7777-7777-777777777777")
-    selected_dates = (date(2026, 6, 30), date(2026, 7, 1))
+    selected_dates = (date(2026, 6, 30), date(2026, 7, 1), date(2026, 7, 2))
     habit = SimpleNamespace(
         id=habit_id,
         title="Daily Exercise",
@@ -2085,7 +2085,7 @@ def test_build_habit_action_views_stops_after_status_change_date(
         )
     )
 
-    assert [view.action_date for view in views] == [date(2026, 6, 30)]
+    assert [view.action_date for view in views] == [date(2026, 6, 30), date(2026, 7, 1)]
 
 
 def test_build_habit_action_views_with_window_stops_after_status_change_date(
@@ -2461,4 +2461,105 @@ def test_habit_area_association_supports_create_list_and_clear() -> None:
                         area_id=other_area_id,
                     )
 
+    asyncio.run(scenario())
+
+
+def test_get_habit_occurrence_end_date_includes_status_change_day() -> None:
+    habit = SimpleNamespace(
+        start_date=date(2026, 7, 1),
+        end_date=date(2026, 7, 31),
+        status="completed",
+        status_changed_date=date(2026, 7, 10),
+    )
+
+    assert habit_support.get_habit_occurrence_end_date(habit) == date(2026, 7, 10)
+
+
+def test_get_habit_occurrence_end_date_clamps_to_end_date_before_status_change() -> None:
+    habit = SimpleNamespace(
+        start_date=date(2026, 7, 1),
+        end_date=date(2026, 7, 5),
+        status="paused",
+        status_changed_date=date(2026, 7, 10),
+    )
+
+    assert habit_support.get_habit_occurrence_end_date(habit) == date(2026, 7, 5)
+
+
+def test_completing_habit_keeps_action_on_completion_day(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    completion_day = date(2026, 7, 10)
+    next_day = completion_day + timedelta(days=1)
+
+    async def scenario() -> None:
+        async with sqlite_session_factory() as session_factory:
+            async with session_factory() as session:
+                habit = await habits.create_habit(
+                    session,
+                    title="Daily walk",
+                    start_date=date(2026, 7, 1),
+                    duration_days=30,
+                )
+
+                views, total = await habits.list_habit_actions_with_total(
+                    session,
+                    habit_id=habit.id,
+                    start_date=completion_day,
+                    end_date=next_day,
+                )
+                assert total == 2
+                actions_by_date = {view.action_date: view for view in views}
+                completion_action = actions_by_date[completion_day]
+                next_day_action = actions_by_date[next_day]
+                assert completion_action.id is not None
+                assert next_day_action.id is not None
+
+                monkeypatch.setattr(
+                    habit_mutations,
+                    "get_operational_date",
+                    lambda: completion_day,
+                )
+                updated = await habits.update_habit(
+                    session,
+                    habit_id=habit.id,
+                    status="completed",
+                    duration_days=30,
+                )
+
+                assert updated.status == "completed"
+                assert updated.status_changed_date == completion_day
+
+                # The completion day's materialized action is neither deleted nor
+                # recreated by the status change.
+                kept_action = await habits.get_habit_action(
+                    session,
+                    action_id=completion_action.id,
+                )
+                assert kept_action is not None
+                assert kept_action.action_date == completion_day
+                assert kept_action.created_at == completion_action.created_at
+
+                # Days after the status change are outside the occurrence window.
+                assert (
+                    await habits.get_habit_action(
+                        session,
+                        action_id=next_day_action.id,
+                    )
+                    is None
+                )
+                remaining = await habits.list_habit_actions(
+                    session,
+                    habit_id=habit.id,
+                    start_date=completion_day,
+                    end_date=next_day,
+                )
+                assert [view.action_date for view in remaining] == [completion_day]
+                assert remaining[0].id == completion_action.id
+
+    monkeypatch.setattr(
+        habit_support,
+        "get_operational_date",
+        lambda: completion_day,
+    )
     asyncio.run(scenario())
